@@ -9,6 +9,17 @@
 import JSZip from 'jszip'
 import type { PptxSpec } from '@shared/chat-doc-spec'
 import { foldSubtitles, layoutOf } from '../office/craft/chat-deck'
+import {
+  docxContrastProblems,
+  docxSmallRuns,
+  formulaSheetRefs,
+  overlappingPairs,
+  pptxBackground,
+  pptxContrastProblems,
+  pptxTextShapes,
+  templateLeftovers,
+  type ContrastProblem
+} from './review-checks'
 
 export interface ReviewItem {
   ok: boolean
@@ -27,6 +38,19 @@ const TOTAL_LABEL = /^\s*(total|subtotal|suma|promedio|total general)\s*:?\s*$/i
 const HAND_BULLET = /^\s*([•·▪●◦\-–*]|\d+[.)])\s+\S/
 const DRAWS_FIRST_BULLET: string[] = ['cover', 'closing', 'bullets', 'steps', 'cards', 'stat']
 const ERRORS = ['#DIV/0!', '#REF!', '#NAME?', '#VALUE!', '#N/A', '#NUM!', '#NULL!']
+
+const ratioText = (p: ContrastProblem): string =>
+  `${p.where} ${p.ratio.toFixed(1).replace('.', ',')}:1 (mínimo ${String(p.need).replace('.', ',')}:1)`
+
+/** Las tres revisiones que valen para cualquier formato: restos de plantilla en el texto. */
+function checkTemplate(r: Builder, text: string): void {
+  const left = templateLeftovers(text)
+  r.check(
+    left.length === 0,
+    'Sin restos de plantilla («lorem», «TODO», «[insertar…]»)',
+    `Restos de plantilla en el texto: ${left.join(', ')}. Escribe el contenido real`
+  )
+}
 
 function short(list: string[], n = 5): string {
   return list.slice(0, n).join(', ') + (list.length > n ? ` y ${list.length - n} más` : '')
@@ -51,6 +75,10 @@ class Builder {
   items: ReviewItem[] = []
   check(cond: boolean, good: string, bad: string): void {
     this.items.push({ ok: cond, text: cond ? good : bad })
+  }
+  /** Aviso que no obliga a recrear el archivo (se muestra como «ℹ»). */
+  note(text: string): void {
+    this.items.push({ ok: true, text, note: true })
   }
   done(): ReviewResult {
     return { items: this.items, ok: this.items.every((i) => i.ok) }
@@ -119,10 +147,51 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
       `Las ${tables.length} tabla(s) no tienen celdas vacías`,
       `Celdas vacías en tablas: ${short(empty)} (pon el dato o «—»)`
     )
+  checkTemplate(r, textOf(doc))
+  const tiny = docxSmallRuns(doc, 8)
+  r.check(
+    tiny.length === 0,
+    'Ninguna letra de menos de 8 pt',
+    `Letra demasiado chica (menos de 8 pt): ${short(tiny.map((t) => `«${t.text}» ${t.sizePt} pt`))}`
+  )
+  const low = docxContrastProblems(doc)
+  r.check(
+    low.length === 0,
+    'Contraste suficiente en los colores de texto comprobables (WCAG 4,5:1 / 3:1)',
+    `Contraste bajo (WCAG): ${short(low.map(ratioText))}`
+  )
   return r.done()
 }
 
 // ---------------------------------------------------------------- PowerPoint
+/** Fondo sólido explícito de la diapositiva o, si no tiene, el de su diseño y el de su patrón; `null` si es de tema, degradado o imagen. */
+async function slideBackground(zip: JSZip, slidePath: string, slideXml: string): Promise<string | null> {
+  const own = pptxBackground(slideXml)
+  if (own) return own
+  const relTarget = async (path: string, type: RegExp): Promise<string | null> => {
+    const dir = path.slice(0, path.lastIndexOf('/'))
+    const base = path.slice(path.lastIndexOf('/') + 1)
+    const rels = (await zip.file(`${dir}/_rels/${base}.rels`)?.async('string')) ?? ''
+    for (const m of rels.matchAll(/<Relationship\b[^>]*>/g)) {
+      if (!type.test(m[0])) continue
+      const t = /\sTarget="([^"]+)"/.exec(m[0])?.[1]
+      if (!t) continue
+      const parts = `${dir}/${t}`.split('/')
+      const stack: string[] = []
+      for (const part of parts) part === '..' ? stack.pop() : part !== '.' && stack.push(part)
+      return stack.join('/')
+    }
+    return null
+  }
+  const layout = await relTarget(slidePath, /slideLayout/)
+  if (!layout) return null
+  const layoutXml = (await zip.file(layout)?.async('string')) ?? ''
+  const fromLayout = pptxBackground(layoutXml)
+  if (fromLayout) return fromLayout
+  const master = await relTarget(layout, /slideMaster/)
+  return master ? pptxBackground((await zip.file(master)?.async('string')) ?? '') : null
+}
+
 async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const r = new Builder()
   const pres = (await zip.file('ppt/presentation.xml')?.async('string')) ?? ''
@@ -137,10 +206,42 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   }
   const noTitle: string[] = []
   const outside: string[] = []
+  const tiny: string[] = []
+  const smallish: string[] = []
+  const stacked: string[] = []
+  const tight: string[] = []
+  const lowContrast: ContrastProblem[] = []
+  let allText = ''
   const TOL = 22860
+  const EDGE = 274320 // 0,3 pulgadas: más cerca del borde que esto se ve apretado
+  const FOOTER_PH = new Set(['ftr', 'sldNum', 'dt'])
   for (const [i, name] of names.entries()) {
     const xml = (await zip.file(name)!.async('string')) ?? ''
     const sps = xml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? []
+    const textShapes = pptxTextShapes(xml)
+    allText += ' ' + textOf(xml)
+    for (const ts of textShapes) {
+      if (ts.placeholder && FOOTER_PH.has(ts.placeholder)) continue
+      for (const run of ts.runs) {
+        // El número de página («2 / 3») y el pie son texto de apoyo: se admite más chico.
+        if (run.sizePt == null || /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(run.text)) continue
+        if (run.sizePt < 10) tiny.push(`${i + 1} («${run.text.trim().slice(0, 20)}» ${run.sizePt} pt)`)
+        else if (run.sizePt < 12) smallish.push(String(i + 1))
+      }
+      const b = ts.box
+      if (
+        b &&
+        b.x >= -TOL &&
+        b.y >= -TOL &&
+        b.x + b.w <= sw + TOL &&
+        b.y + b.h <= sh + TOL &&
+        (b.x < EDGE || b.y < EDGE || b.x + b.w > sw - EDGE || b.y + b.h > sh - EDGE)
+      )
+        tight.push(`${i + 1} («${ts.name}»)`)
+    }
+    const boxed = textShapes.filter((t) => t.box && !(t.placeholder && FOOTER_PH.has(t.placeholder)))
+    for (const [a, c] of overlappingPairs(boxed.map((t) => t.box!))) stacked.push(`${i + 1} («${boxed[a].name}» con «${boxed[c].name}»)`)
+    lowContrast.push(...pptxContrastProblems(textShapes, await slideBackground(zip, name, xml), `diapositiva ${i + 1}`))
     const hasTitle = sps.some((s) => /<p:ph[^>]*\stype="(title|ctrTitle)"/.test(s) && textOf(s).trim())
     if (!hasTitle) noTitle.push(String(i + 1))
     const shapes = [
@@ -178,6 +279,26 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     )
   }
   r.check(outside.length === 0, 'Nada fuera de los bordes', `Contenido fuera de los bordes en diapositiva ${short(outside)}`)
+  r.check(
+    stacked.length === 0,
+    'Ningún texto montado sobre otro',
+    `Textos montados unos sobre otros en diapositiva ${short(stacked)}: sepáralos o acorta el contenido`
+  )
+  r.check(
+    tiny.length === 0,
+    'Ninguna letra de menos de 10 pt',
+    `Letra demasiado chica (menos de 10 pt) en diapositiva ${short(tiny)}: usa 14 pt o más para el cuerpo`
+  )
+  r.check(
+    lowContrast.length === 0,
+    'Contraste suficiente en los colores de texto comprobables (WCAG 4,5:1 / 3:1)',
+    `Contraste bajo (WCAG) en ${short(lowContrast.map(ratioText))}: cambia el color del texto o del fondo`
+  )
+  checkTemplate(r, allText)
+  if (tight.length)
+    r.note(`Texto a menos de 0,3 pulgadas del borde en diapositiva ${short(tight)}: déjale al menos 0,5 pulgadas de margen si puedes`)
+  if (smallish.length)
+    r.note(`Letra de menos de 12 pt en diapositiva ${short([...new Set(smallish)], 8)}: para el cuerpo conviene 14 pt o más`)
   return r.done()
 }
 
@@ -229,6 +350,10 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
   const errors: string[] = []
   const pasted: string[] = []
   const noValue: string[] = []
+  const brokenRefs: string[] = []
+  const textAsNumber: string[] = []
+  const known = new Set(sheets.map((x) => x.title.toLowerCase()))
+  let allText = ''
   let formulas = 0
   for (const { path: name, title } of sheets) {
     const xml = (await zip.file(name)!.async('string')) ?? ''
@@ -239,16 +364,26 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
         const body = m[2] ?? ''
         const ref = /\sr="([A-Z]+\d+)"/.exec(attrs)?.[1] ?? ''
         const type = /\st="([^"]+)"/.exec(attrs)?.[1] ?? 'n'
+        const fText = /<f\b[^>]*>([^<]*)<\/f>/.exec(body)?.[1]
         const f = /<f\b/.test(body)
         const v = /<v>([^<]*)<\/v>/.exec(body)?.[1]
         let text: string | null = null
         if (type === 's' && v !== undefined) text = shared[Number(v)] ?? null
         else if (type === 'inlineStr') text = unescapeXml([...body.matchAll(/<t(?:\s[^>]*)?>([^<]*)<\/t>/g)].map((m) => m[1]).join(''))
         else if (type === 'str' && v !== undefined) text = unescapeXml(v)
-        return { ref, type, f, v, text }
+        return { ref, type, f, fText: fText === undefined ? undefined : unescapeXml(fText), v, text }
       })
       const label = cells.find((c) => c.text && !c.f && TOTAL_LABEL.test(c.text))
       for (const c of cells) {
+        if (c.text) allText += ' ' + c.text
+        // Número escrito como texto en una celda que no es un encabezado ni un código con ceros a la izquierda.
+        if (c.text && c.type !== 'n' && !c.f && /^-?[1-9]\d{0,14}([.,]\d+)?$/.test(c.text.trim()) && Number(/\d+/.exec(c.ref)?.[0]) > 1)
+          textAsNumber.push(`${sheet}!${c.ref}`)
+        if (c.fText !== undefined) {
+          if (/#REF!/.test(c.fText)) brokenRefs.push(`${sheet}!${c.ref} (#REF! dentro de la fórmula)`)
+          for (const target of formulaSheetRefs(c.fText))
+            if (!known.has(target.toLowerCase())) brokenRefs.push(`${sheet}!${c.ref} (la hoja «${target}» no existe)`)
+        }
         if (c.f) {
           formulas++
           if (c.v === undefined || c.v === '') noValue.push(`${sheet}!${c.ref}`)
@@ -261,6 +396,16 @@ async function reviewXlsx(zip: JSZip): Promise<ReviewResult> {
     }
   }
   r.check(errors.length === 0, 'Ninguna celda con error', `Celdas con error: ${short(errors)}`)
+  r.check(
+    brokenRefs.length === 0,
+    'Ninguna fórmula apunta a una hoja que no existe',
+    `Fórmulas con referencias rotas: ${short(brokenRefs)}`
+  )
+  checkTemplate(r, allText)
+  if (textAsNumber.length)
+    r.note(
+      `${textAsNumber.length} celda(s) guardan un número como texto (${short(textAsNumber, 4)}): no se suman ni se ordenan bien; pásalos como número de JSON`
+    )
   r.check(
     pasted.length === 0,
     formulas ? 'Los totales son fórmulas vivas' : 'Sin filas de total',

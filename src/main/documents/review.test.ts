@@ -58,7 +58,9 @@ describe('revisión de calidad de documentos_crear', () => {
       expect(bad(r2)).toBe('')
     }
     // sin spec (o con lienzo libre) no se inventa una exigencia
-    expect((await reviewDocument('pptx', fx('bueno.pptx'))).items).toHaveLength(2)
+    const sinSpec = await reviewDocument('pptx', fx('bueno.pptx'))
+    expect(sinSpec.items.map((i) => i.text).join(' | ')).not.toContain('subtítulo pedido')
+    expect(sinSpec.ok).toBe(true)
   })
   it('el resumen para el agente trae la lista ✔/✘ y dice cuándo no se corrió', async () => {
     const ok = await reviewSummary('pptx', fx('bueno.pptx'))
