@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 // renderToStaticMarkup lee el estado INICIAL del store de zustand: se sustituye por un estado fijo.
 const mock: { deliverables: Record<string, unknown[]> } = { deliverables: {} }
+const sess = vi.hoisted(() => ({ messages: {} as Record<string, unknown[]> }))
+vi.mock('../../../stores/sessions', () => ({ useSessions: (sel: (s: typeof sess) => unknown) => sel(sess), MAIN_SOURCE: 'main' }))
 vi.mock('./store', () => ({ useTasks: (sel: (s: typeof mock) => unknown) => sel(mock) }))
 vi.mock('../../../lib/platform', async (orig) => ({
   ...(await orig<typeof import('../../../lib/platform')>()),
@@ -98,5 +100,38 @@ describe('borradores v1/v2 (versiones anteriores)', () => {
   it('sin borradores no aparece el botón', () => {
     Object.assign(mock, { deliverables: { t1: [f('a.docx', 1), f('b.pdf', 2)] } })
     expect(renderToStaticMarkup(<ResultCard taskId="t1" />)).not.toContain('versiones anteriores')
+  })
+})
+
+describe('entrega principal = el último documento creado con documentos_crear', () => {
+  const f = (name: string, mtime: number) => ({ path: `/Users/x/Desktop/${name}`, relPath: name, size: 2048, mtime })
+  const created = (name: string) => ({
+    info: { id: `m-${name}`, role: 'assistant' },
+    parts: [
+      {
+        type: 'tool',
+        tool: 'lazunox_documentos_crear',
+        state: { status: 'completed', output: `Documento creado: ${name} (12 KB). Revisión…` }
+      }
+    ]
+  })
+
+  it('va primero aunque otro borrador tenga fecha más nueva; los creados antes del mismo tipo quedan como anteriores', () => {
+    Object.assign(mock, { deliverables: { t1: [f('prueba-a.docx', 1), f('prueba-b.docx', 9), f('prueba-d.docx', 5), f('datos.xlsx', 3)] } })
+    sess.messages = { t1: [created('prueba-a.docx'), created('prueba-d.docx')] }
+    const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
+    expect(html.indexOf('prueba-d.docx')).toBeGreaterThan(-1)
+    expect(html.indexOf('prueba-d.docx')).toBeLessThan(html.indexOf('prueba-b.docx') === -1 ? Infinity : html.indexOf('prueba-b.docx'))
+    expect(html).not.toContain('>prueba-a.docx<')
+    expect(html).toContain('Ver versiones anteriores (1)')
+    expect(html).toContain('datos.xlsx')
+  })
+
+  it('sin llamadas a documentos_crear se ordena por fecha como antes', () => {
+    Object.assign(mock, { deliverables: { t1: [f('a.docx', 1), f('b.docx', 2)] } })
+    sess.messages = { t1: [] }
+    const html = renderToStaticMarkup(<ResultCard taskId="t1" />)
+    expect(html.indexOf('b.docx')).toBeLessThan(html.indexOf('a.docx'))
+    expect(html).not.toContain('versiones anteriores')
   })
 })

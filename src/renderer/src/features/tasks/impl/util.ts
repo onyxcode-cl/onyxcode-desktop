@@ -537,3 +537,29 @@ export function splitVersions<T extends { path: string; mtime: number }>(files: 
   }
   return { latest, older }
 }
+
+/**
+ * Documentos que el agente creó con `documentos_crear`, en orden de creación (el último es la entrega). Se leen del «Documento creado: <ruta>
+ * (N KB)» de cada llamada terminada y se emparejan con los entregables por nombre de archivo (en Windows el agente ve `/win/c/…`). No
+ * depende de la fecha de modificación: un borrador que se vuelve a tocar no le quita el lugar a la última versión creada.
+ */
+export function createdDocuments<T extends { path: string }>(entries: readonly MessageEntry[], files: readonly T[]): T[] {
+  const out: T[] = []
+  for (const e of entries) {
+    for (const p of e.parts) {
+      if (p.type !== 'tool' || !p.tool.endsWith('documentos_crear') || p.state.status !== 'completed') continue
+      const m = /Documento creado:\s*(.+?)\s*\(\d+(?:[.,]\d+)?\s*KB\)/.exec(p.state.output ?? '')
+      if (!m) continue
+      const name = baseName(m[1]).toLowerCase()
+      const f = files.find((x) => baseName(x.path).toLowerCase() === name)
+      if (f && !out.includes(f)) out.push(f)
+    }
+  }
+  return out
+}
+
+/** La entrega principal: el último documento creado con `documentos_crear` que sigue en la carpeta; null si no hay (se usa la fecha). */
+export function lastCreatedDocument<T extends { path: string }>(entries: readonly MessageEntry[], files: readonly T[]): T | null {
+  const made = createdDocuments(entries, files)
+  return made.length ? made[made.length - 1] : null
+}

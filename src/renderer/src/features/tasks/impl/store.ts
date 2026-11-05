@@ -42,7 +42,7 @@ import { MAIN_SOURCE, useSessions } from '../../../stores/sessions'
 import { resolveModelForMode, setModeModel, useExtrasPrefs } from '../../settings/impl/extras'
 import { cw, onTasks } from './bridge'
 import { useSandbox } from './sandbox-store'
-import { endedMidTurn, isHelperFile, isViewerExt } from './util'
+import { endedMidTurn, isHelperFile, isViewerExt, lastCreatedDocument } from './util'
 import { platformCaps } from '../../../lib/platform'
 import { sdkDirOf } from './path-map'
 import { hostFolder, sdkDir } from './conn-paths'
@@ -330,7 +330,9 @@ export async function autoOpenMainDeliverable(taskId: string): Promise<void> {
   if (st.activeTaskId !== taskId || st.viewerRequest || autoOpened.has(taskId)) return
   const docs = (st.deliverables[taskId] ?? []).filter((f) => !isHelperFile(f) && isViewerExt(f.path))
   if (!docs.length) return
-  const main = docs.reduce((a, b) => (b.mtime > a.mtime ? b : a))
+  // La entrega es el ÚLTIMO documento creado con `documentos_crear`; sin eso, el más reciente por fecha.
+  const main =
+    lastCreatedDocument(useSessions.getState().messages[taskId] ?? [], docs) ?? docs.reduce((a, b) => (b.mtime > a.mtime ? b : a))
   autoOpened.add(taskId)
   requestViewerOpen(main.path, true)
 }
