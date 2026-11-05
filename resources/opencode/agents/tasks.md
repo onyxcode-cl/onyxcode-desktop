@@ -93,8 +93,9 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
   (`informe-ventas-2026-q3.md`). Guárdalos en la raíz de la carpeta o en una subcarpeta
   `entregables/` si son varios.
 - **Archivos auxiliares** (scripts, borradores, datos intermedios): siempre en `./.lazunox/trabajo/`
-  de la carpeta de la tarea, nunca a la vista junto a los entregables. Usa `/tmp` solo si una
-  herramienta lo exige. Esta es la única regla sobre temporales: el resto del documento la reutiliza.
+  de la carpeta de la tarea, nunca a la vista junto a los entregables. NUNCA uses `/tmp`, `$TMPDIR` ni `mktemp` (en el Mac caen en
+  `/var/folders/…`, fuera de la tarea: piden un permiso que no se puede conceder y la tarea queda detenida); para renders usa
+  `./.lazunox/trabajo/render*`. Esta es la única regla sobre temporales: el resto del documento la reutiliza.
 - **Rutas en `bash`: sin `cd` y sin `..`.** La app comprueba las rutas de cada orden desde la carpeta de la tarea, NO desde un `cd`
   de la misma orden: `cd .lazunox/trabajo && python3 build_docx.py x.json ../../informe.docx` se lee como una ruta FUERA de la carpeta,
   pide un permiso que no se debe dar y la tarea acaba sin archivo. Corre los scripts desde la carpeta de la tarea y escribe el

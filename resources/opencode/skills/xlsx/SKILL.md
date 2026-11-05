@@ -71,7 +71,7 @@ Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderiz
 - `PY $S/check_xlsx.py archivo.xlsx --render ./.lazunox/trabajo/render` → estructura, columnas estrechas (#####), números guardados
   como texto, y PNG por página; MIRA las imágenes (¿gráfico legible, títulos y ejes, nada cortado?).
 - Si GridCraft (ArtCraft) no está instalado el script lo dice: entonces los valores NO están verificados y debes decirlo en «Para revisar».
-- Para volver a renderizar usa una carpeta nueva (`mktemp -d`) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
+- Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
 
 ## Esquema JSON de build_xlsx.py (ruta A2)
 ```json
