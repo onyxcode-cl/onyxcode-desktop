@@ -36,6 +36,8 @@ export interface TrustDeps {
   /** `execFile` sin shell: archivo + argumentos. No lanza: devuelve el código de salida. */
   run: (file: string, args: readonly string[], timeoutMs?: number) => Promise<RunResult>
   readFile: (path: string) => Promise<string>
+  /** Espera entre relecturas (por defecto `setTimeout`); se inyecta en pruebas. */
+  sleep?: (ms: number) => Promise<void>
   /** Archivo temporal único donde exportar los ajustes de confianza (y su borrado). */
   tempFile: () => Promise<{ path: string; cleanup: () => Promise<void> }>
 }
@@ -86,34 +88,132 @@ export async function runningAppSignedWithPinned(d: Pick<TrustDeps, 'execPath' |
   return r !== null && r.code === 0 && leafIsPinned(`${r.stdout}\n${r.stderr}`)
 }
 
-interface TrustSettingsJson {
-  trustList?: Record<string, { trustSettings?: Array<{ kSecTrustSettingsPolicyName?: string; kSecTrustSettingsResult?: number }> }>
+/** Valor de un plist en XML (solo lo que hace falta: sin `<data>` ni fechas útiles, que aquí no se leen). */
+export type PlistValue = string | number | boolean | null | PlistValue[] | { [key: string]: PlistValue }
+
+/**
+ * Lector mínimo y estricto de plist XML (`plutil -convert xml1`): dict, array, string, integer, real, true, false, data y date. Lanza si el
+ * documento está roto. `plutil -convert json` NO sirve: los ajustes de confianza traen `<data>` y fechas que JSON no representa.
+ */
+export function parsePlistXml(xml: string): PlistValue {
+  const body = xml
+    .replace(/<\?xml[\s\S]*?\?>/g, '')
+    .replace(/<!DOCTYPE[\s\S]*?>/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+  const tokens = [...body.matchAll(/<(\/?)([A-Za-z]+)(?:\s+[^>]*?)?(\/?)>|([^<]+)/g)]
+  let i = 0
+  const unescape = (t: string): string =>
+    t
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+  const next = (): RegExpMatchArray | undefined => {
+    while (i < tokens.length) {
+      const t = tokens[i++]
+      if (t[4] !== undefined && t[4].trim() === '') continue
+      return t
+    }
+    return undefined
+  }
+  const text = (name: string): string => {
+    let out = ''
+    for (;;) {
+      const t = tokens[i++]
+      if (!t) throw new Error(`plist: falta </${name}>`)
+      if (t[4] !== undefined) out += t[4]
+      else if (t[1] === '/' && t[2] === name) return unescape(out).trim()
+      else throw new Error(`plist: contenido inesperado en <${name}>`)
+    }
+  }
+  const value = (open: RegExpMatchArray | undefined): PlistValue => {
+    if (!open || open[4] !== undefined || open[1] === '/') throw new Error('plist: se esperaba un valor')
+    const name = open[2]
+    const selfClosed = open[3] === '/'
+    switch (name) {
+      case 'true':
+        return true
+      case 'false':
+        return false
+      case 'string':
+        return selfClosed ? '' : text(name)
+      case 'data':
+      case 'date':
+        if (!selfClosed) text(name)
+        return null
+      case 'integer':
+      case 'real': {
+        const n = Number(text(name))
+        if (Number.isNaN(n)) throw new Error('plist: número inválido')
+        return n
+      }
+      case 'array': {
+        const arr: PlistValue[] = []
+        if (selfClosed) return arr
+        for (;;) {
+          const t = next()
+          if (!t) throw new Error('plist: falta </array>')
+          if (t[1] === '/' && t[2] === 'array') return arr
+          arr.push(value(t))
+        }
+      }
+      case 'dict': {
+        const obj: { [key: string]: PlistValue } = {}
+        if (selfClosed) return obj
+        for (;;) {
+          const k = next()
+          if (!k) throw new Error('plist: falta </dict>')
+          if (k[1] === '/' && k[2] === 'dict') return obj
+          if (k[1] === '/' || k[2] !== 'key' || k[4] !== undefined) throw new Error('plist: se esperaba <key>')
+          const key = text('key')
+          obj[key] = value(next())
+        }
+      }
+      default:
+        throw new Error(`plist: etiqueta desconocida <${name}>`)
+    }
+  }
+  const root = next()
+  if (!root || root[2] !== 'plist') throw new Error('plist: no es un plist')
+  const v = value(next())
+  const end = next()
+  if (!end || end[1] !== '/' || end[2] !== 'plist') throw new Error('plist: falta </plist>')
+  return v
 }
 
-/** ¿Ya confía el usuario en el certificado fijado para firma de código? Solo lectura, sin contraseña. */
-export function isTrustedIn(json: unknown): boolean {
-  const list = (json as TrustSettingsJson | null)?.trustList
-  const entry = list?.[PINNED_CERT_SHA1.toUpperCase()] ?? list?.[PINNED_CERT_SHA1]
+const asObj = (v: PlistValue | undefined): { [key: string]: PlistValue } | null =>
+  v !== null && typeof v === 'object' && !Array.isArray(v) ? v : null
+
+/** ¿Ya confía el usuario en el certificado fijado para firma de código? Recibe el plist ya leído (`parsePlistXml`). */
+export function isTrustedIn(plist: unknown): boolean {
+  const list = asObj(asObj(plist as PlistValue)?.trustList)
+  const entry = asObj(list?.[PINNED_CERT_SHA1.toUpperCase()] ?? list?.[PINNED_CERT_SHA1])
   const settings = entry?.trustSettings
   if (!Array.isArray(settings) || settings.length === 0) return false
-  // Resultado ausente = «confiar» por omisión; 1 = confiar (raíz); 2 = confiar (certificado); el resto (denegar, desconfiar) no cuenta.
-  return settings.some(
-    (s) =>
-      s.kSecTrustSettingsPolicyName === 'CodeSigning' &&
-      (s.kSecTrustSettingsResult === undefined || s.kSecTrustSettingsResult === 1 || s.kSecTrustSettingsResult === 3)
-  )
+  // Resultado ausente = «confiar» por omisión; 1 = confiar (raíz); 3 = confiar como raíz; el resto (denegar, desconfiar) no cuenta.
+  return settings.some((x) => {
+    const st = asObj(x)
+    return (
+      st?.kSecTrustSettingsPolicyName === 'CodeSigning' &&
+      (st.kSecTrustSettingsResult === undefined || st.kSecTrustSettingsResult === 1 || st.kSecTrustSettingsResult === 3)
+    )
+  })
 }
 
-async function readUserTrustSettings(d: Pick<TrustDeps, 'run' | 'tempFile'>): Promise<unknown | null> {
+/** `unknown` = no se pudo leer (macOS cambió el formato, el comando falló…): distinto de «no está». */
+export type TrustRead = 'trusted' | 'untrusted' | 'unknown'
+
+export async function readTrust(d: Pick<TrustDeps, 'run' | 'tempFile'>): Promise<TrustRead> {
   const tmp = await d.tempFile()
   try {
     const exp = await d.run(SECURITY_BIN, ['trust-settings-export', tmp.path])
-    if (exp.code !== 0) return null
-    const conv = await d.run(PLUTIL_BIN, ['-convert', 'json', '-o', '-', '--', tmp.path])
-    if (conv.code !== 0) return null
-    return JSON.parse(conv.stdout)
+    if (exp.code !== 0) return /no trust settings/i.test(`${exp.stderr}\n${exp.stdout}`) ? 'untrusted' : 'unknown'
+    const conv = await d.run(PLUTIL_BIN, ['-convert', 'xml1', '-o', '-', '--', tmp.path])
+    if (conv.code !== 0) return 'unknown'
+    return isTrustedIn(parsePlistXml(conv.stdout)) ? 'trusted' : 'untrusted'
   } catch {
-    return null
+    return 'unknown'
   } finally {
     await tmp.cleanup().catch(() => undefined)
   }
@@ -124,11 +224,14 @@ export async function trustState(d: TrustDeps): Promise<TrustState> {
   if (d.platform !== 'darwin') return 'hidden'
   if (!(await packagedCertOk(d))) return 'hidden'
   if (!(await runningAppSignedWithPinned(d))) return 'hidden'
-  return isTrustedIn(await readUserTrustSettings(d)) ? 'trusted' : 'untrusted'
+  // Si no se pudo leer, se ofrece la pieza (confiar es idempotente): es lo más seguro y nunca bloquea nada.
+  return (await readTrust(d)) === 'trusted' ? 'trusted' : 'untrusted'
 }
 
 export interface TrustOutcome {
   ok: boolean
+  /** macOS aceptó el comando (código 0) pero no se pudo releer el estado para confirmarlo. */
+  unverified?: boolean
   /** `cancelled`: la persona canceló el aviso de macOS (no es un error). `failed`: macOS lo rechazó. `unavailable`: la pieza no corresponde. */
   error?: 'cancelled' | 'failed' | 'unavailable'
   message?: string
@@ -144,7 +247,7 @@ export function removeTrustArgs(certPath: string): string[] {
   return ['remove-trusted-cert', certPath]
 }
 
-async function changeTrust(d: TrustDeps, args: (cert: string) => string[], expect: TrustState): Promise<TrustOutcome> {
+async function changeTrust(d: TrustDeps, args: (cert: string) => string[], expect: TrustRead): Promise<TrustOutcome> {
   const state = await trustState(d)
   if (state === 'hidden' || !d.certPath) return { ok: false, error: 'unavailable' }
   const r = await d
@@ -154,8 +257,18 @@ async function changeTrust(d: TrustDeps, args: (cert: string) => string[], expec
     const text = `${r.stderr}\n${r.stdout}`.trim()
     return CANCELLED.test(text) ? { ok: false, error: 'cancelled' } : { ok: false, error: 'failed', message: text.slice(0, 500) }
   }
-  // Se vuelve a comprobar: «ok» solo si macOS de verdad quedó en el estado pedido.
-  return (await trustState(d)) === expect ? { ok: true } : { ok: false, error: 'failed', message: 'macOS no aplicó el cambio' }
+  // Se vuelve a comprobar (2 reintentos de 300 ms: macOS tarda en reflejar el cambio). Con código 0 solo se declara fallo si la lectura
+  // funciona y dice que NO quedó así; si no se puede leer, se da por hecho con la nota «sin verificar».
+  const sleep = d.sleep ?? ((ms: number) => new Promise<void>((res) => setTimeout(res, ms)))
+  let read: TrustRead = 'unknown'
+  for (let i = 0; i < 3; i++) {
+    read = await readTrust(d)
+    if (read === expect) return { ok: true }
+    if (i < 2) await sleep(300)
+  }
+  return read === 'unknown'
+    ? { ok: true, unverified: true, message: 'macOS aceptó el cambio pero no se pudo comprobar' }
+    : { ok: false, error: 'failed', message: 'macOS no aplicó el cambio' }
 }
 
 /** Confía en la firma (macOS pide su contraseña una vez). Si ya confía, no hace nada. */
