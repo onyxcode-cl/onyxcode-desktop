@@ -11,6 +11,7 @@ import { htmlFontSizesPt, pdfPageCount } from '../extras/pdf-options'
 import type { PptxSpec } from '@shared/chat-doc-spec'
 import { foldSubtitles, layoutOf } from '../office/craft/chat-deck'
 import { isXlsxSpec } from '@shared/chat-doc-spec'
+import { colLetter } from '../office/craft/chat-grid'
 import { reviewFormulas } from './formula-review'
 import {
   docxContrastProblems,
@@ -362,10 +363,12 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const noValue: string[] = []
   const brokenRefs: string[] = []
   const textAsNumber: string[] = []
+  /** Resultado numérico guardado en el archivo para cada celda con fórmula, por posición de hoja y celda. */
+  const computed = new Map<string, number>()
   const known = new Set(sheets.map((x) => x.title.toLowerCase()))
   let allText = ''
   let formulas = 0
-  for (const { path: name, title } of sheets) {
+  for (const [sheetIndex, { path: name, title }] of sheets.entries()) {
     const xml = (await zip.file(name)!.async('string')) ?? ''
     const sheet = title
     for (const row of xml.match(/<row\b[\s\S]*?<\/row>/g) ?? []) {
@@ -397,6 +400,7 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
         if (c.f) {
           formulas++
           if (c.v === undefined || c.v === '') noValue.push(`${sheet}!${c.ref}`)
+          else if (c.type === 'n' && Number.isFinite(Number(c.v))) computed.set(`${sheetIndex}:${c.ref}`, Number(c.v))
         }
         if (c.type === 'e' || (c.text && ERRORS.includes(c.text.trim())))
           errors.push(`${sheet}!${c.ref} (${c.type === 'e' ? c.v : c.text})`)
@@ -424,6 +428,34 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       )}`
     )
     for (const w of found.filter((x) => x.severity === 'warning').slice(0, 3)) r.note(`${w.sheet}!${w.cell}: ${w.message}`)
+    // Valor declarado (`value`) contra el que calculó el programa: si el modelo se equivocó en la cuenta, también se equivocará en su resumen.
+    const app = (await zip.file('docProps/app.xml')?.async('string')) ?? ''
+    if (/<Application>GridCraft<\/Application>/.test(app)) {
+      const big: string[] = []
+      const small: string[] = []
+      spec.sheets.forEach((sh, si) =>
+        sh.rows.forEach((row, ri) =>
+          row.forEach((cell, ci) => {
+            if (cell === null || typeof cell !== 'object' || typeof cell.value !== 'number') return
+            const ref = `${colLetter(ci)}${ri + 1}`
+            const real = computed.get(`${si}:${ref}`)
+            if (real === undefined) return
+            const diff = Math.abs(cell.value - real)
+            const tol = Math.max(1e-6, Math.abs(real) * 1e-6)
+            if (diff <= tol) return
+            const label = `${sh.name}!${ref} (declaraste ${cell.value}, la fórmula da ${Math.round(real * 1e6) / 1e6})`
+            if (diff > Math.max(0.01, Math.abs(real) * 0.01)) big.push(label)
+            else small.push(label)
+          })
+        )
+      )
+      r.check(
+        big.length === 0,
+        'Los valores declarados coinciden con los calculados',
+        `Valores declarados que no coinciden con el cálculo real: ${short(big, 4)}. El archivo ya guarda el valor calculado; usa ESE en tu resumen o corrige la fórmula`
+      )
+      if (small.length) r.note(`Diferencia menor al 1 % entre lo declarado y lo calculado: ${short(small, 3)}`)
+    }
   }
   if (textAsNumber.length)
     r.note(
