@@ -631,11 +631,14 @@ export function RoutinesView(): React.JSX.Element {
           <PageHeader
             title={t('routines.view.title')}
             meta={headerMeta}
-            // «Nueva rutina» siempre arriba a la derecha (también sin rutinas), como «Nueva …» en los otros modos.
+            // «Nueva rutina» arriba a la derecha cuando ya hay rutinas; sin ninguna, el botón es el del estado vacío.
+            // Sin rutinas el botón principal es el del centro («Nueva rutina»): uno solo por pantalla vacía (U11).
             actions={
-              <Button variant="primary" onClick={create}>
-                <Plus size={15} /> {t('routines.view.new')}
-              </Button>
+              routines.length === 0 && !loading ? undefined : (
+                <Button variant="primary" onClick={create}>
+                  <Plus size={15} /> {t('routines.view.new')}
+                </Button>
+              )
             }
           />
         )}

@@ -87,9 +87,11 @@ export function clampInt(raw: string | number, min: number, max: number, fallbac
   return Math.min(max, Math.max(min, Math.round(n)))
 }
 
-/** Última parte de una ruta (nombre de la carpeta). */
+/** Última parte de una ruta (nombre de la carpeta). Las carpetas creadas por la app para una tarea («20261029-59f52a») se muestran con su fecha, no con el id. */
 export function folderLabel(path: string): string {
-  return path.split(/[/\\]/).filter(Boolean).pop() ?? path
+  const last = path.split(/[/\\]/).filter(Boolean).pop() ?? path
+  const m = /^(\d{4})(\d{2})(\d{2})-[0-9a-f]{4,8}$/i.exec(last)
+  return m ? tr('tasksSettings.folder.autoName', { date: `${m[3]}/${m[2]}/${m[1]}` }) : last
 }
 
 /** Qué restringe la política gestionada, listo para desactivar/explicar controles. */

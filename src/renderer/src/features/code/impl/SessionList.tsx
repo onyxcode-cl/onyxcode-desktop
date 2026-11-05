@@ -855,7 +855,7 @@ function NoProjectsList(): React.JSX.Element {
   const recent = useSettings((s) => s.settings.recentFolders)
   return (
     <div className="flex min-h-0 flex-col gap-0.5" data-testid="code-no-projects">
-      <p className="px-2.5 py-1.5 text-meta text-subtle">{t('app.sidebar.noProjects')}</p>
+      <p className="px-2.5 py-1.5 text-meta text-subtle">{t(recent.length > 0 ? 'app.sidebar.recentFolders' : 'app.sidebar.noProjects')}</p>
       {recent.slice(0, 8).map((dir) => (
         <button
           key={dir}

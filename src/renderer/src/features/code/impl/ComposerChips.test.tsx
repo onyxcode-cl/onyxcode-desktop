@@ -84,7 +84,7 @@ describe('PermissionChip (Code)', () => {
 describe('AgentChip (Build / Plan)', () => {
   it('Build y Plan con su frase; el atajo ⇧Tab está en el title', () => {
     render(createElement(AgentChip, { agent: 'build', onChange: onAgent }))
-    expect(trigger().title).toBe('Modo de trabajo: Build (⇧Tab)')
+    expect(trigger().title).toBe('Modo de trabajo: Hacer (⇧Tab)')
     act(() => trigger().click())
     expect(items().map((i) => i.dataset.option)).toEqual(['build', 'plan'])
     expect(items()[1]!.textContent).toContain('no edita archivos mientras planifica')
@@ -95,6 +95,6 @@ describe('AgentChip (Build / Plan)', () => {
   it('en Plan el chip se destaca con el acento', () => {
     render(createElement(AgentChip, { agent: 'plan', onChange: onAgent }))
     expect(trigger().className).toContain('text-accent')
-    expect(trigger().textContent).toContain('Plan')
+    expect(trigger().textContent).toContain('Planear')
   })
 })

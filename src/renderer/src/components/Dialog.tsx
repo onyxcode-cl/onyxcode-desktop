@@ -17,7 +17,7 @@ interface ScrimProps {
 export function DialogScrim({ align = 'center', onDismiss, layer = 'dialog', children }: ScrimProps): React.JSX.Element {
   return (
     <div
-      className={`fixed inset-0 ${LAYER[layer]} flex animate-fade-in justify-center bg-(--scrim) px-4 ${align === 'top' ? 'items-start pt-[14vh]' : 'items-center p-6'}`}
+      className={`fixed inset-0 ${LAYER[layer]} flex animate-fade-in justify-center bg-(--scrim) px-4 ${align === 'top' ? 'items-start pt-[min(14vh,5rem)]' : 'items-center p-6'}`}
       onMouseDown={(e) => e.target === e.currentTarget && onDismiss?.()}
     >
       {children}

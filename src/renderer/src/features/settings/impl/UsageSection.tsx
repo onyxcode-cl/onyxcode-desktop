@@ -223,7 +223,7 @@ function UsageReportView({ report, read }: { report: UsageReport; read: UsageRea
         <UsageTable
           caption={t(report.bucketUnit === 'day' ? 'settings.usage.byDay' : 'settings.usage.byWeek')}
           firstCol={t(report.bucketUnit === 'day' ? 'settings.usage.col.day' : 'settings.usage.col.week')}
-          rows={report.buckets}
+          rows={report.buckets.filter((r) => r.total > 0 || r.conversations > 0)}
           label={(r) =>
             report.bucketUnit === 'day'
               ? { text: dayFmt.format(new Date(Number(r.key))) }

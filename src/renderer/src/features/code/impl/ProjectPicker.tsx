@@ -15,6 +15,22 @@ import { timeAgo } from './ui'
 import { openProjectTrusted, resolveTrust, usePendingTrust } from './trust'
 import { askMacAgain, setBlockedFolder, useBlockedFolder } from './folder-access'
 
+/** Ruta con «…» en el MEDIO: se ve el principio y, sobre todo, el final (el nombre de la carpeta), que es lo que dice qué es (E12). */
+export function MidPath({ path }: { path: string }): React.JSX.Element {
+  const full = tildify(path)
+  const parts = full.split(/([/\\])/)
+  // Los dos últimos tramos (con su separador) quedan siempre completos; el resto se recorta por el final con «…».
+  const tailLen = Math.min(parts.length, 4)
+  const tail = parts.slice(parts.length - tailLen).join('')
+  const head = parts.slice(0, parts.length - tailLen).join('')
+  return (
+    <>
+      {head && <span className="min-w-0 truncate">{head}</span>}
+      <span className={head ? 'shrink-0' : 'min-w-0 truncate'}>{tail}</span>
+    </>
+  )
+}
+
 export { baseName }
 export { openProjectTrusted }
 
@@ -76,8 +92,8 @@ function FolderAccessCard(): React.JSX.Element | null {
             ? t(engine ? 'code.folderAccess.engineTitle' : 'code.folderAccess.title')
             : t('code.folderAccess.titleTimeout')}
         </h3>
-        <p className="mt-1.5 truncate font-mono text-xs text-subtle desk:text-meta" title={dir}>
-          {tildify(dir)}
+        <p className="mt-1.5 flex min-w-0 font-mono text-xs text-subtle desk:text-meta" title={dir}>
+          <MidPath path={dir} />
         </p>
         <p id="folder-access-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
           {reason === 'denied'
@@ -187,8 +203,8 @@ function TrustDialog(): React.JSX.Element | null {
         <h3 id="trust-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
           {t('code.trust.title')}
         </h3>
-        <p className="mt-1.5 truncate font-mono text-xs text-subtle desk:text-meta" title={dir}>
-          {tildify(dir)}
+        <p className="mt-1.5 flex min-w-0 font-mono text-xs text-subtle desk:text-meta" title={dir}>
+          <MidPath path={dir} />
         </p>
         <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
           {t('code.trust.body')}
@@ -412,8 +428,8 @@ function ProjectCard({
                 </span>
               )}
             </div>
-            <div className="truncate font-mono text-[11px] desk:text-meta text-subtle" title={dir}>
-              {tildify(dir)}
+            <div className="flex min-w-0 font-mono text-[11px] desk:text-meta text-subtle" title={dir}>
+              <MidPath path={dir} />
             </div>
           </div>
         </div>
@@ -497,7 +513,8 @@ export function ProjectPicker({ onCancel }: { onCancel?: () => void } = {}): Rea
             ) : undefined
           }
           actions={
-            dialogs ? (
+            // Sin carpetas recientes el botón principal es el del centro: uno solo por pantalla vacía (U11).
+            dialogs && recent.length > 0 ? (
               <Button variant="primary" disabled={busy} onClick={open}>
                 <FolderOpen size={15} /> {t('code.picker.open')}
               </Button>

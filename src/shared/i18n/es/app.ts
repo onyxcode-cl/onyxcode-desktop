@@ -22,6 +22,8 @@ export const app = {
   'app.sidebar.projectActions': 'Más acciones',
   'app.sidebar.collapseProject': 'Plegar {name}',
   'app.sidebar.expandProject': 'Desplegar {name}',
+  'app.sidebar.engineStatus': 'Motor: {status}',
+  'app.sidebar.recentFolders': 'Carpetas recientes',
   'app.sidebar.noProjects': 'Aún no hay proyectos',
   'app.sidebar.working': 'Trabajando',
   'app.sidebar.tree': 'Proyectos y conversaciones',

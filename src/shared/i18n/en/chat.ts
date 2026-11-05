@@ -257,7 +257,7 @@ export const chat = {
   'chat.msg.thinking': 'Thinking',
   'chat.msg.retrying': 'The model isn’t responding; retrying…',
   'chat.msg.retryFree':
-    'The free usage has run out: connect your OpenCode Go subscription or your own key in Settings › Models, or wait for it to reset.',
+    'The free usage has run out: connect your subscription or your own key in Settings › Models, or wait for it to reset.',
   'chat.msg.retryAuth': 'The key or session for your AI isn’t valid; retrying. Reconnect it in Settings › Models.',
   'chat.msg.retryNetwork': 'Can’t reach the model; retrying. Check your internet.',
   'chat.msg.retryQuota': 'Your AI service asks to wait (usage limit); retrying…',

@@ -93,6 +93,7 @@ import { acceptFilesIn, acceptSessionIn, parseReviewed, trimReviewed, withBaseli
 import { noteRetryStatus } from '../../../lib/retry-info'
 import { getClient, requireClient, sdkData, errorMessage, subscribeEvents, subscribeReconnect, type OcEvent } from './client'
 import { ELEMENT_METADATA, elementPartsOf, elementTextsOf, isElementAttachment } from '../../browser/element-context'
+import { markFirstStepDone } from '../../../stores/first-steps'
 import { MAX_OPEN_PROJECTS, nextFocusAfterClose, parseOpenProjects, planOpen, sameDir } from './open-projects'
 import type {
   Attachment,
@@ -931,6 +932,10 @@ export const useCode = create<CodeState>((set, get) => {
           parts: [...(trimmed ? [{ type: 'text' as const, text: trimmed }] : []), ...fileParts, ...elementParts, ...attachParts]
         })
       )
+      if (trimmed) {
+        markFirstStepDone('message')
+        markFirstStepDone('model')
+      }
       return true
     } catch (err) {
       setError(sid, errorMessage(err))

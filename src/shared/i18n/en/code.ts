@@ -182,6 +182,8 @@ export const code = {
   'code.tool.todoUpdated': 'Updated to-do list',
   'code.tool.created': 'Created',
   'code.tool.edited': 'Edited',
+  'code.tool.wantsEdit': 'Wants to edit',
+  'code.tool.wantsCreate': 'Wants to create',
   'code.tool.running': 'Running',
   'code.tool.ran': 'Ran',
   'code.tool.waitShell': 'Waited for the command',

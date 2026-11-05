@@ -309,7 +309,7 @@ const UserMessage = memo(function UserMessage({
           open={sheet}
           onClose={() => setSheet(false)}
           text={text}
-          subtitle={agent === 'plan' ? 'Plan' : 'Build'}
+          subtitle={t(agent === 'plan' ? 'code.agent.plan' : 'code.agent.build')}
           actions={[
             ...(text
               ? [
@@ -354,7 +354,7 @@ const UserMessage = memo(function UserMessage({
           <span
             className={`rounded px-1 font-medium${agent === 'plan' ? ' desk:h-5 desk:bg-accent-soft desk:px-1.5 desk:leading-5 desk:text-accent' : ' desk:hidden'}`}
           >
-            {agent === 'plan' ? 'Plan' : 'Build'}
+            {t(agent === 'plan' ? 'code.agent.plan' : 'code.agent.build')}
           </span>
           <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/user:opacity-100 focus-within:opacity-100">
             <button

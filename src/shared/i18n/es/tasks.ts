@@ -89,6 +89,7 @@ export const tasks = {
   'tasks.work.filesCreated.one': '{n} creado',
   'tasks.work.filesCreated.many': '{n} creados',
   'tasks.work.stepsLabel': 'Pasos del plan',
+  'tasks.tool.other': 'Usó la herramienta «{name}»',
   'tasks.tool.plan.verb': 'Pidió tu aprobación',
   'tasks.tool.plan.detail': 'del plan',
   'tasks.gate.waiting': 'Esperando tu aprobación del plan: esta tarea está en Control total y no empieza hasta que la apruebes.',

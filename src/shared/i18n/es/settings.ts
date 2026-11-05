@@ -160,7 +160,7 @@ export const settings = {
   'settings.usage.note.tasks.unreadable': 'Hay {count} carpeta(s) de Overdrive cuyo registro no se pudo leer; no se cuentan.',
   'settings.usage.mode.notCounted': 'Overdrive no se cuenta aquí todavía',
   'settings.usage.note.cost':
-    'El costo lo informa tu servicio de IA con las tarifas públicas de cada modelo; con una suscripción (por ejemplo OpenCode Go) es solo una referencia. «Sin dato» quiere decir que el servicio no informó el costo, no que sea gratis.',
+    'El costo lo informa tu servicio de IA con las tarifas públicas de cada modelo; con una suscripción (por ejemplo, un plan mensual) es solo una referencia. «Sin dato» quiere decir que el servicio no informó el costo, no que sea gratis.',
   'settings.usage.meter.aria': 'Uso y espacio de conversación: {pct}% usado',
   'settings.usage.meter.title': 'Espacio de conversación {pct}% · {cost} en esta sesión',
   'settings.usage.meter.context': 'Espacio de conversación',

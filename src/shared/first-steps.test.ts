@@ -4,6 +4,7 @@ import {
   FIRST_STEP_IDS,
   firstStepsComplete,
   firstStepsProgress,
+  firstStepsShouldFold,
   firstStepsVisible,
   markFirstStep,
   parseFirstSteps,
@@ -58,5 +59,12 @@ describe('primeros pasos (lógica)', () => {
     expect(showFirstStepsAgain(half)).toMatchObject({ hidden: false, done: ['model'] })
     const full = { ...[...FIRST_STEP_IDS].reduce(markFirstStep, EMPTY_FIRST_STEPS), finished: true }
     expect(showFirstStepsAgain(full)).toMatchObject({ hidden: false, finished: false, done: [] })
+  })
+
+  it('se pliega sola a los 7 días de verla por primera vez (U9)', () => {
+    const DAY = 24 * 3600 * 1000
+    expect(firstStepsShouldFold(null, 1000)).toBe(false)
+    expect(firstStepsShouldFold(0, 6 * DAY)).toBe(false)
+    expect(firstStepsShouldFold(0, 7 * DAY)).toBe(true)
   })
 })
