@@ -197,6 +197,8 @@ export const settings = {
   'ctx.list.memory': 'Memory files',
   'ctx.detail.show': 'Show breakdown',
   'ctx.detail.hide': 'Hide breakdown',
+  'ctx.unavailable': 'Not available for this model',
+  'ctx.waiting': 'No data yet: it shows up once the model finishes its first reply.',
   'ctx.approx': '≈ Estimated by the engine; the total used is exact.',
   'settings.usage.meter.detail': 'View usage details',
 

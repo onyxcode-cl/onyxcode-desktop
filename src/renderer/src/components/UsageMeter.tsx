@@ -14,6 +14,7 @@ import { useProviders } from '../stores/providers'
 import { useServer } from '../stores/server'
 import { useUi } from '../stores/ui'
 import { isRemoteSurface } from '../lib/platform'
+import { contextUsage, contextTone } from '../lib/context-usage'
 
 interface Agg {
   cost: number
@@ -67,7 +68,7 @@ export async function loadGlobalUsage(client: OpencodeClient): Promise<GlobalUsa
 function Ring({ pct }: { pct: number }): React.JSX.Element {
   const r = 7.5
   const c = 2 * Math.PI * r
-  const tone = pct > 85 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : 'var(--accent)'
+  const tone = pct > 90 ? 'var(--danger)' : pct > 70 ? 'var(--warning)' : 'var(--accent)'
   // Escritorio: sin arco mínimo forzado (con 0 % un punto redondo parecía un cargador); el celular conserva el suyo.
   const mobile = isRemoteSurface()
   const arc = mobile ? Math.max(pct, pct > 0 ? 4 : 0) : pct >= 1 ? pct : 0
@@ -106,11 +107,10 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
   const [global, setGlobal] = useState<GlobalUsage | 'loading' | 'error'>('loading')
   const rootRef = useRef<HTMLDivElement>(null)
 
-  const info = providers.find((p) => p.id === model.providerID)?.models[model.modelID]
+  const usage = useMemo(() => contextUsage(messages, model, providers), [messages, model, providers])
 
   const session = useMemo(() => {
     const assistants = messages.map((m) => m.info).filter((i): i is AssistantMessage => i.role === 'assistant')
-    const last = assistants[assistants.length - 1]
     const sum = { cost: 0, input: 0, output: 0, reasoning: 0, cache: 0 }
     for (const a of assistants) {
       sum.cost += a.cost ?? 0
@@ -119,9 +119,10 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
       sum.reasoning += a.tokens.reasoning
       sum.cache += a.tokens.cache.read + a.tokens.cache.write
     }
-    const context = last && last.modelID === model.modelID ? last.tokens.input + last.tokens.cache.read + last.tokens.cache.write : 0
+    // Uso real: el último mensaje que ya trae tokens (el que está en curso aún no los tiene) y la ventana del modelo que lo respondió.
+    const context = usage.kind === 'waiting' ? 0 : usage.used
     return { ...sum, context, turns: assistants.length }
-  }, [messages, model.modelID])
+  }, [messages, usage])
 
   useEffect(() => {
     if (!open) return
@@ -152,9 +153,10 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
   }, [open, client])
 
   // Sin ningún turno del asistente no hay nada que medir (el aro vacío se leía como «cargando»; también en el celular).
-  if (!info || session.turns === 0 || session.context === 0) return null
+  if (usage.kind !== 'ready' || session.turns === 0 || session.context === 0) return null
+  const info = { name: usage.name }
 
-  const limit = info.limit.context
+  const limit = usage.limit
   const pct = limit > 0 ? Math.min(100, Math.round((session.context / limit) * 100)) : 0
   // Un 0 % redondeado tampoco es uso que mostrar.
   if (pct === 0) return null
@@ -186,7 +188,7 @@ export function UsageMeter({ messages, model }: { messages: { info: Message }[];
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-inset">
             <div
-              className={`h-full rounded-full transition-[width] duration-500 ${pct > 85 ? 'bg-danger' : pct > 60 ? 'bg-warning' : 'bg-accent'}`}
+              className={`h-full rounded-full transition-[width] duration-500 ${contextTone(pct) === 'danger' ? 'bg-danger' : contextTone(pct) === 'warn' ? 'bg-warning' : 'bg-accent'}`}
               style={{ width: `${Math.max(pct, pct > 0 ? 2 : 0)}%` }}
             />
           </div>

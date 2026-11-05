@@ -8,7 +8,8 @@ import { fileIcon } from './Deliverables'
 import { FileReview } from './FileReview'
 import { openPath, reveal } from './actions'
 import { useTasks } from './store'
-import { baseName, formatSize, isHelperFile, splitVersions } from './util'
+import { useSessions } from '../../../stores/sessions'
+import { baseName, createdDocuments, extOf, formatSize, isHelperFile, splitVersions } from './util'
 
 const MAX_ROWS = 3
 
@@ -52,12 +53,21 @@ export function ResultCard({ taskId }: { taskId: string }): React.JSX.Element | 
   const t = useT()
   const [showOlder, setShowOlder] = useState(false)
   const files = useTasks((s) => s.deliverables[taskId]) as TasksDeliverable[] | undefined
+  const entries = useSessions((s) => s.messages[taskId])
   // Abrir y mostrar en Finder son acciones del Mac: el celular no las ofrece.
   const visible = (files ?? []).filter((f) => !isHelperFile(f))
   if (isRemoteSurface() || visible.length === 0) return null
   // Los borradores (`informe.docx`, `informe-v2.docx`…) quedan tras «Ver versiones anteriores»: solo se ve la última de cada documento.
-  const { latest, older } = splitVersions(visible)
-  const shown = [...latest].sort((a, b) => b.mtime - a.mtime).slice(0, MAX_ROWS)
+  const split = splitVersions(visible)
+  // Entrega principal = el último documento creado con `documentos_crear`: va primero y los creados antes del mismo tipo (prueba-a, -b…) quedan
+  // como versiones anteriores. Sin esa información se ordena por fecha como siempre.
+  const made = createdDocuments(entries ?? [], visible)
+  const main = made.length ? made[made.length - 1] : null
+  const superseded = main ? made.filter((f) => f !== main && extOf(f.path) === extOf(main.path)) : []
+  const latest = split.latest.filter((f) => !superseded.includes(f))
+  const older = [...split.older, ...superseded.filter((f) => split.latest.includes(f))]
+  const byDate = [...latest].sort((a, b) => b.mtime - a.mtime)
+  const shown = (main && latest.includes(main) ? [main, ...byDate.filter((f) => f !== main)] : byDate).slice(0, MAX_ROWS)
   const more = latest.length - shown.length
   return (
     <section

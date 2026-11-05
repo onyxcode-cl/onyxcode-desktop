@@ -1207,6 +1207,8 @@
  "ctx.detail.show",
  "ctx.list.mcp",
  "ctx.list.memory",
+ "ctx.unavailable",
+ "ctx.waiting",
  "engine.bg.running",
  "engine.bg.title",
  "engine.model.notApplied",
