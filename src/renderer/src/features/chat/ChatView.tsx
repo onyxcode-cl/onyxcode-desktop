@@ -433,13 +433,13 @@ export function ChatView(): React.JSX.Element {
       <div className={`relative flex h-full min-w-0 flex-1 flex-col @container ${docFullscreen ? 'hidden' : ''}`}>
         <header
           data-mobile="hide"
-          className={`drag relative grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b border-border/70 bg-bg/80 pl-4 backdrop-blur @min-[44rem]:grid-cols-[minmax(10rem,1fr)_auto_minmax(10rem,1fr)] desk:pl-[calc(var(--header-inset,0px)+16px)] ${docPanel.open ? 'pr-3' : 'pr-3 desk:pr-[calc(var(--controls-inset,0px)+12px)]'}`}
+          className={`drag relative flex h-12 shrink-0 items-center gap-3 desk:@container border-b border-border/70 bg-bg/80 pl-4 backdrop-blur desk:pl-[calc(var(--header-inset,0px)+16px)] ${docPanel.open ? 'pr-3' : 'pr-3 desk:pr-[calc(var(--controls-inset,0px)+12px)]'}`}
         >
-          <span className="min-w-0 truncate text-left text-[13.5px] font-medium @min-[44rem]:col-start-2 @min-[44rem]:text-center">
+          <span className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium">
             {displayTitle(session?.title, t('chat.newConversation'))}
           </span>
           <div
-            className={`hidden h-12 shrink-0 items-center justify-end gap-1.5 desk:flex @min-[44rem]:col-start-3 ${docPanel.open && narrowRoot ? ' desk:hidden!' : ''}`}
+            className={`hidden h-12 shrink-0 items-center justify-end gap-1.5 desk:flex ${docPanel.open && narrowRoot ? ' desk:hidden!' : ''}`}
           >
             <ConversationInstructionsButton sessionId={activeId} />
             <PersonalizeButton />

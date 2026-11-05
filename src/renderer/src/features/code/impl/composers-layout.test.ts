@@ -24,7 +24,7 @@ describe('cuadro de escribir de Code (E6)', () => {
   it('«Comparar» y el medidor de uso se esconden antes de que falte sitio; el modelo conserva un mínimo legible', () => {
     expect(controls).toContain('desk:@max-[40rem]:hidden">\n        <CompareControls')
     expect(controls).toContain('desk:@max-[34rem]:hidden">\n        <UsageMeter')
-    expect(controls).toContain('desk:min-w-[6.5rem]')
+    expect(controls).toContain('desk:min-w-[4.5rem]')
   })
   it('«Mencionar» y «Adjuntar» pasan al «⋯» con la misma anchura con la que éste aparece', () => {
     expect(controls).toContain('relative hidden desk:@max-[34rem]:block')
@@ -47,7 +47,7 @@ describe('cuadro de escribir del Chat (E7)', () => {
     expect(project).toContain('collapseClass="inline desk:@max-[30rem]:sr-only"')
   })
   it('el selector de modelo nunca se encoge hasta ser un punto', () => {
-    expect(picker).toContain('desk:min-w-[5.5rem]')
+    expect(picker).toContain('desk:min-w-[4rem]')
   })
 })
 
@@ -60,5 +60,17 @@ describe('cuadro de escribir de Overdrive / Tareas (E8)', () => {
   })
   it('el medidor de uso se esconde con poco ancho', () => {
     expect(tasks).toContain('desk:@max-[26rem]:[&_[data-usage-meter]]:hidden')
+  })
+})
+
+// Windows, panel lateral fijo (cuadro de ~300 px): el chip del modelo cubría «Enviar» y un clic en «Enviar» abría el menú «Modelo».
+describe('«Enviar» de Code siempre libre (fallo B de Windows)', () => {
+  it('el modelo se encoge a un mínimo corto y el proyecto y el micrófono se esconden antes de que falte sitio', () => {
+    expect(controls).toContain('desk:min-w-[4.5rem]')
+    expect(controls).toContain('desk:max-w-[13rem] desk:@max-[20rem]:hidden')
+    expect(code).toContain('desk:@max-[17rem]:hidden')
+  })
+  it('«Enviar» va por encima (z-10): aunque algo se desborde, el clic llega a «Enviar»', () => {
+    expect(code).toContain('className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-accent')
   })
 })

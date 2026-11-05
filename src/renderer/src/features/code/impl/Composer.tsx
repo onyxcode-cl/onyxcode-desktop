@@ -880,7 +880,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 <VoiceDictationButton
                   onText={insertDictated}
                   size={14}
-                  className="h-6 w-6 shrink-0 rounded-md desk:h-7 desk:w-7 desk:rounded-lg"
+                  className="h-6 w-6 shrink-0 rounded-md desk:h-7 desk:w-7 desk:rounded-lg desk:@max-[17rem]:hidden"
                 />
                 <button
                   type="button"
@@ -912,7 +912,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                   disabled={(!text.trim() && attachments.length === 0 && !termOut) || disabled}
                   title={sendTitle}
                   aria-label={sendTitle}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100"
+                  className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg transition hover:opacity-90 disabled:opacity-30 desk:shrink-0 desk:disabled:bg-hover desk:disabled:text-muted desk:disabled:opacity-100"
                 >
                   {busy ? <Send size={14} /> : <ArrowUp size={16} />}
                 </button>

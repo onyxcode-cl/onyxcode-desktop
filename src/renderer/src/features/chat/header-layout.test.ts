@@ -9,11 +9,14 @@ const src = readFileSync(join(__dirname, 'ChatView.tsx'), 'utf8')
 const header = src.slice(src.indexOf('<header\n          data-mobile="hide"'), src.indexOf('</header>'))
 
 describe('cabecera del Chat (E3/E4)', () => {
-  it('los iconos van en el flujo (rejilla), no con «absolute», y el título puede encogerse', () => {
-    expect(header).toContain('grid')
+  it('los iconos van en el flujo (flex), no con «absolute», y el título puede encogerse mientras el grupo de iconos no', () => {
+    expect(header).toContain('relative flex h-12')
+    expect(header).not.toContain('grid')
+    expect(header).toContain('desk:@container')
+    expect(header).toContain('min-w-0 flex-1 truncate')
+    expect(header).toContain('h-12 shrink-0 items-center justify-end')
     expect(header).not.toMatch(/\babsolute\b/)
     expect(header).not.toMatch(/px-\[max\(15rem/)
-    expect(header).toContain('min-w-0 truncate')
   })
   it('la cabecera NO recorta (no repetir F8-B262)', () => {
     expect(header).not.toContain('overflow-hidden')
