@@ -114,7 +114,7 @@ import {
   isUsingComputer
 } from './store'
 import { DocumentViewerPanel } from './DocumentViewerPanel'
-import { effectiveAsideTab, type AsideTab } from './aside-tab'
+import { effectiveAsideTab, viewerForTask, type AsideTab } from './aside-tab'
 import { sdkDir } from './conn-paths'
 import {
   extOf,
@@ -202,7 +202,10 @@ function Elapsed({ entries, live }: { entries: MessageEntry[]; live: boolean }):
   if (!start) return null
   const stop = now
   return (
-    <span className="shrink-0 font-mono text-[11px] text-subtle tabular-nums @max-[30rem]:hidden desk:text-meta" title={t('tasks.ws.elapsedTitle')}>
+    <span
+      className="shrink-0 font-mono text-[11px] text-subtle tabular-nums @max-[30rem]:hidden desk:text-meta"
+      title={t('tasks.ws.elapsedTitle')}
+    >
       {formatDuration(stop - start)}
     </span>
   )
@@ -396,7 +399,8 @@ export function TasksWorkspace(): React.JSX.Element {
   const browserOwner: BrowserOwner | null = folder ? { kind: 'tasks', folder } : null
   // Visor de documentos (Fase 0 del plan del visor): `Deliverables.tsx` pide abrir un archivo con
   // `requestViewerOpen`; acá se cambia a la pestaña y se monta el panel.
-  const viewerRequest = useTasks((s) => s.viewerRequest)
+  const viewerRaw = useTasks((s) => s.viewerRequest)
+  const viewerRequest = viewerForTask(viewerRaw, activeId)
   // Si el visor o el navegador desaparecen con su pestaña elegida, el panel vuelve a Progreso en vez de quedarse en blanco.
   const tab = effectiveAsideTab(asideTab, { viewer: !!viewerRequest, browser: !!browserOwner })
   useEffect(() => {

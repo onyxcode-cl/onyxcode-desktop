@@ -187,7 +187,7 @@ interface TasksState {
    * `Deliverables.tsx`, lo consume `TasksWorkspace.tsx` (cambia a la pestaña «Documento» y monta
    * `DocumentViewerPanel`). `nonce` fuerza una nueva apertura aunque sea la misma ruta.
    */
-  viewerRequest: { path: string; nonce: number; auto?: boolean } | null
+  viewerRequest: { path: string; nonce: number; auto?: boolean; taskId?: string } | null
 
   set: (patch: Partial<TasksState>) => void
 }
@@ -310,8 +310,17 @@ export const useTasks = create<TasksState>((set) => ({
 }))
 
 /** Pide abrir `path` en el visor de documentos (`Deliverables.tsx`); `TasksWorkspace.tsx` lo consume. */
-export function requestViewerOpen(path: string, auto = false): void {
-  useTasks.setState((s) => ({ viewerRequest: { path, nonce: s.viewerRequest ? s.viewerRequest.nonce + 1 : 1, ...(auto ? { auto } : {}) } }))
+export function requestViewerOpen(path: string, auto = false, taskId?: string | null): void {
+  // `taskId`: la tarea a la que pertenece el documento (por defecto, la activa); el visor solo se muestra en ESA tarea.
+  const owner = taskId ?? useTasks.getState().activeTaskId
+  useTasks.setState((s) => ({
+    viewerRequest: {
+      path,
+      nonce: s.viewerRequest ? s.viewerRequest.nonce + 1 : 1,
+      ...(auto ? { auto } : {}),
+      ...(owner ? { taskId: owner } : {})
+    }
+  }))
 }
 
 /** Tareas a las que la app ya les abrió el visor sola (una sola vez por tarea: si la persona lo cierra, no se vuelve a abrir). */
@@ -334,7 +343,7 @@ export async function autoOpenMainDeliverable(taskId: string): Promise<void> {
   const main =
     lastCreatedDocument(useSessions.getState().messages[taskId] ?? [], docs) ?? docs.reduce((a, b) => (b.mtime > a.mtime ? b : a))
   autoOpened.add(taskId)
-  requestViewerOpen(main.path, true)
+  requestViewerOpen(main.path, true, taskId)
 }
 
 /** El visor se cerró (botón «Cerrar» o se cambió de carpeta): nadie más tiene que hacer nada. */
@@ -786,7 +795,7 @@ export function handleEvent(event: OcEvent, directory: string): void {
           const rawPath = input.filePath ?? input.path
           const path = typeof rawPath === 'string' ? rawPath : ''
           if (path && isViewerExt(path) && platformCaps().docViewer) {
-            requestViewerOpen(path)
+            requestViewerOpen(path, false, rootTaskId(part.sessionID))
             autoOpened.add(part.sessionID)
           }
         }
