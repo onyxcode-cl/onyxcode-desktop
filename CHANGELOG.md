@@ -14,7 +14,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Todo se instala solo
 
-- **Sin preguntar**: ArtCraft (el diseñador de documentos), Node.js y uv se descargan solos en segundo plano, en Mac y en Windows. Puedes usar la app mientras tanto; abajo a la izquierda se ve «Preparando herramientas…». Si falla la red, reintenta sola. Cada descarga se verifica antes de usarla.
+- **Sin preguntar**: ArtCraft (el diseñador de documentos) se descarga solo en segundo plano, en Mac y en Windows; en Mac también Node.js y uv, que usan los conectores locales de correo y calendario. Puedes usar la app mientras tanto; abajo a la izquierda se ve «Preparando herramientas…». Si falla la red, reintenta sola. Cada descarga se verifica antes de usarla.
 - **Solo lo que el sistema exige**: la pantalla «Preparando Lazunox» ya no aparece por esas piezas; queda solo para lo que macOS o Windows piden aprobar a una persona.
 
 ### Windows, a la par del Mac
