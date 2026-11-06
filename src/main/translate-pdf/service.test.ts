@@ -21,7 +21,14 @@ let script: string
 let now = 1_000_000
 
 function deps(run: ServiceDeps['run']): ServiceDeps {
-  return { jobsDir: () => join(root, 'jobs'), python: () => '/fake/python3', script: () => script, run, now: () => now }
+  return {
+    jobsDir: () => join(root, 'jobs'),
+    python: () => '/fake/python3',
+    script: () => script,
+    run,
+    now: () => now,
+    renderHtml: async () => Buffer.from('%PDF-1.7\n%limpio ' + 'x'.repeat(200))
+  }
 }
 
 beforeEach(() => {
@@ -280,5 +287,44 @@ describe('clases de página y imagen de página (hojas escaneadas)', () => {
     expect(await svc.pageImage(ex.jobId, 0)).toEqual({ ok: false })
     expect(await svc.pageImage(ex.jobId, 1.5)).toEqual({ ok: false })
     expect(await svc.pageImage(ex.jobId, 1)).toEqual({ ok: false })
+  })
+})
+
+describe('versión limpia (PDF nuevo desde HTML)', () => {
+  async function jobWithOutput(renderHtml?: ServiceDeps['renderHtml']): Promise<{ svc: PdfTranslateService; jobId: string }> {
+    const run = vi.fn(async (_py: string, args: string[], cwd: string) => {
+      if (args[1] === 'extraer') writeFileSync(join(cwd, 'segmentos.json'), segJson(2))
+      if (args[1] === 'aplicar') {
+        writeFileSync(join(cwd, 'salida.pdf'), '%PDF-1.7 salida')
+        writeFileSync(join(cwd, 'informe.json'), JSON.stringify({ traducidos: 2 }))
+      }
+      return ok()
+    })
+    const svc = new PdfTranslateService({ ...deps(run), ...(renderHtml ? { renderHtml } : {}) })
+    const ex = await svc.extract({ name: 'poliza.pdf', base64: PDF_B64 })
+    if (!ex.ok) throw new Error('extract')
+    const ap = await svc.apply({ jobId: ex.jobId, translations: { 'p1-0': 'hola', 'p1-1': 'chao' }, target: 'es' })
+    if (!ap.ok) throw new Error('apply')
+    return { svc, jobId: ex.jobId }
+  }
+
+  it('imprime el HTML, lo guarda como «… (es, limpio).pdf» y se abre/guarda por separado del fiel', async () => {
+    const { svc, jobId } = await jobWithOutput()
+    const r = await svc.clean({ jobId, html: '<p>x</p>' })
+    expect(r).toEqual({ ok: true, outName: 'poliza (es, limpio).pdf' })
+    expect(existsSync(join(root, 'jobs', jobId, 'poliza (es, limpio).pdf'))).toBe(true)
+    expect((await svc.open(jobId, true)).opened).toBe(true)
+    expect(vi.mocked(shell.openPath).mock.calls.at(-1)?.[0]).toContain('limpio')
+    await svc.open(jobId)
+    expect(vi.mocked(shell.openPath).mock.calls.at(-1)?.[0]).not.toContain('limpio')
+  })
+
+  it('rechaza un id ajeno, HTML vacío o enorme, un Word, y un motor que no devuelve un PDF', async () => {
+    const { svc, jobId } = await jobWithOutput(async () => Buffer.from('no soy un pdf '.repeat(20)))
+    expect(await svc.clean({ jobId: '../x', html: '<p>x</p>' })).toEqual({ ok: false, reason: 'failed' })
+    expect(await svc.clean({ jobId, html: '   ' })).toEqual({ ok: false, reason: 'tooLong' })
+    expect(await svc.clean({ jobId, html: 'x'.repeat(4 * 1024 * 1024 + 1) })).toEqual({ ok: false, reason: 'tooLong' })
+    expect(await svc.clean({ jobId, html: '<p>x</p>' })).toEqual({ ok: false, reason: 'failed' })
+    expect((await svc.open(jobId, true)).opened).toBe(false)
   })
 })

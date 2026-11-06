@@ -11,8 +11,9 @@ export function registerTranslatePdfHandlers(ipcMain: IpcMain): void {
   handle(ipcMain, 'translate:pdfExtract', (req) => svc.extract(req))
   handle(ipcMain, 'translate:pdfApply', (req) => svc.apply(req))
   handle(ipcMain, 'translate:pdfPageImage', (req) => svc.pageImage(req.jobId, req.page))
-  handle(ipcMain, 'translate:pdfOpen', (req) => svc.open(req.jobId))
-  handle(ipcMain, 'translate:pdfSave', (req, event) => svc.save(req.jobId, BrowserWindow.fromWebContents(event.sender)))
+  handle(ipcMain, 'translate:pdfClean', (req) => svc.clean(req))
+  handle(ipcMain, 'translate:pdfOpen', (req) => svc.open(req.jobId, req.clean === true))
+  handle(ipcMain, 'translate:pdfSave', (req, event) => svc.save(req.jobId, BrowserWindow.fromWebContents(event.sender), req.clean === true))
   handle(ipcMain, 'translate:pdfDiscard', async (req) => {
     await svc.discard(req.jobId)
   })

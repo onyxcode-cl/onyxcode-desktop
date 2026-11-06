@@ -60,7 +60,8 @@ function realDeps(): TranslateDeps {
     apply: (req) => call('translate:pdfApply', req),
     discard: (jobId) => call('translate:pdfDiscard', { jobId }),
     ask: (prompt, signal, images) => askModel(dir, prompt, { mode: 'chat', signal, timeoutMs: 240_000, images }),
-    pageImage: (req) => call('translate:pdfPageImage', req)
+    pageImage: (req) => call('translate:pdfPageImage', req),
+    clean: (req) => call('translate:pdfClean', req)
   }
 }
 
@@ -152,7 +153,9 @@ function TranslatePdfDialog(): React.JSX.Element {
         onProgress: (progress) => setView({ kind: 'running', progress }),
         // la IA ve las hojas escaneadas como imagen (si el modelo lee imágenes) y arma una ficha del documento antes de traducir
         vision: chatModelSeesImages(),
-        card: true
+        card: true,
+        // en escaneos, además un PDF nuevo y limpio (la IA reconstruye cada hoja)
+        clean: true
       })
       setView({ kind: 'done', outcome, saved: false })
       announce(tr('translate.pdf.doneTitle', { name: outcome.outName }), 'polite')
@@ -277,7 +280,12 @@ function TranslatePdfDialog(): React.JSX.Element {
                 ? t('translate.pdf.reading')
                 : view.progress.phase === 'writing'
                   ? t('translate.pdf.writing')
-                  : t('translate.pdf.translating', {
+                  : view.progress.phase === 'cleaning'
+                    ? t('translate.pdf.cleaning', {
+                        done: Math.min(view.progress.done + 1, view.progress.total),
+                        total: view.progress.total
+                      })
+                    : t('translate.pdf.translating', {
                       done: Math.min(view.progress.done + 1, view.progress.total),
                       total: view.progress.total
                     })}
@@ -362,6 +370,27 @@ function DoneView({
             <li key={n}>{n}</li>
           ))}
         </ul>
+      )}
+      {outcome.cleanOutName && (
+        <div className="mt-3 rounded-ctl border border-border px-3 py-2">
+          <p className="text-[12.5px] text-muted">{t('translate.pdf.cleanNote', { name: outcome.cleanOutName })}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void call('translate:pdfOpen', { jobId: outcome.jobId, clean: true })}
+              className="no-drag rounded-ctl border border-border px-2.5 py-1 text-[12.5px] hover:bg-hover"
+            >
+              {t('translate.pdf.openClean')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void call('translate:pdfSave', { jobId: outcome.jobId, clean: true }).then((s) => s.saved && setSaved())}
+              className="no-drag rounded-ctl border border-border px-2.5 py-1 text-[12.5px] hover:bg-hover"
+            >
+              {t('translate.pdf.saveClean')}
+            </button>
+          </div>
+        </div>
       )}
       <div className="mt-5 flex items-center justify-end gap-2">
         {view.saved && <span className="mr-auto text-[12px] text-muted">{t('translate.pdf.saved')}</span>}

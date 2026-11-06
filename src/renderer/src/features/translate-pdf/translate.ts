@@ -7,6 +7,11 @@
 import {
   batchSegments,
   buildCardPrompt,
+  buildCleanPagePrompt,
+  cleanEligible,
+  fallbackPageHtml,
+  sanitizeCleanHtml,
+  wrapCleanHtml,
   buildTranslatePrompt,
   parseCardAnswer,
   parseTranslateAnswer,
@@ -16,6 +21,8 @@ import {
   type PdfPageImageResult,
   type PdfApplyReport,
   type PdfApplyResult,
+  type PdfCleanRequest,
+  type PdfCleanResult,
   type PdfExtractRequest,
   type PdfExtractResult,
   type PdfFailReason,
@@ -24,7 +31,7 @@ import {
   type TranslateLangCode
 } from '@shared/translate-pdf'
 
-export type TranslatePhase = 'reading' | 'translating' | 'writing'
+export type TranslatePhase = 'reading' | 'translating' | 'writing' | 'cleaning'
 export interface TranslateProgress {
   phase: TranslatePhase
   /** Lotes traducidos / total (solo en `translating`). */
@@ -38,6 +45,8 @@ export interface TranslateDeps {
   discard: (jobId: string) => Promise<void>
   /** Pregunta al modelo y devuelve su texto (lanza si falla). Con `images` el modelo además VE esas imágenes. */
   ask: (prompt: string, signal: AbortSignal, images?: { mime: string; filename: string; url: string }[]) => Promise<string>
+  /** Imprime a PDF el HTML de la versión limpia. */
+  clean?: (req: PdfCleanRequest) => Promise<PdfCleanResult>
   /** Dibuja una página como imagen (solo para hojas escaneadas, si el modelo lee imágenes). */
   pageImage?: (req: { jobId: string; page: number }) => Promise<PdfPageImageResult>
 }
@@ -51,6 +60,8 @@ export interface TranslateOutcome {
   pagesWithoutText: number[]
   /** Textos que el modelo no devolvió ni tras reintentar: quedan en el idioma original. */
   failedSegments: number
+  /** Nombre de la versión limpia (PDF nuevo), si se creó. */
+  cleanOutName?: string
 }
 
 export class TranslateError extends Error {
@@ -183,6 +194,8 @@ export async function translatePdf(
     vision?: boolean
     /** Antes de traducir, el modelo lee una muestra y arma la ficha del documento y un glosario fijo. */
     card?: boolean
+    /** En documentos escaneados, crea además una versión limpia (PDF nuevo, la IA reconstruye cada hoja). Por omisión no. */
+    clean?: boolean
   }
 ): Promise<TranslateOutcome> {
   opts.onProgress({ phase: 'reading', done: 0, total: 0 })
@@ -225,6 +238,46 @@ export async function translatePdf(
       }
       return images.get(page) ?? undefined
     }
+    /** Versión limpia: la IA ve cada hoja con sus textos ya traducidos y escribe su HTML; main lo imprime a PDF. Nunca rompe la traducción. */
+    const buildClean = async (): Promise<string | undefined> => {
+      const pages = [...new Set(ex.segments.map((s) => s.pagina))].sort((a, b) => a - b)
+      const sections: string[] = []
+      for (let i = 0; i < pages.length; i++) {
+        if (opts.signal.aborted) throw new TranslateError('aborted')
+        opts.onProgress({ phase: 'cleaning', done: i, total: pages.length })
+        const paragraphs = ex.segments
+          .filter((s) => s.pagina === pages[i])
+          .map((s) => ({ id: s.id, texto: translations[s.id] ?? s.texto }))
+        const image = await imageOf(pages[i])
+        let html = ''
+        try {
+          const answer = await deps.ask(
+            buildCleanPagePrompt({
+              target: opts.target,
+              page: pages[i],
+              pages: ex.pages,
+              docName: opts.name,
+              paragraphs,
+              docCard,
+              pageImage: image !== undefined
+            }),
+            opts.signal,
+            image ? [image] : undefined
+          )
+          html = sanitizeCleanHtml(answer).trim()
+        } catch {
+          if (opts.signal.aborted) throw new TranslateError('aborted')
+        }
+        sections.push(/<section[\s>]/i.test(html) ? html : fallbackPageHtml(paragraphs))
+      }
+      opts.onProgress({ phase: 'cleaning', done: pages.length, total: pages.length })
+      try {
+        const r = await deps.clean!({ jobId, html: wrapCleanHtml(sections, opts.target, opts.name.replace(/\.pdf$/i, '')) })
+        return r.ok ? r.outName : undefined
+      } catch {
+        return undefined
+      }
+    }
     for (let i = 0; i < batches.length; i++) {
       if (opts.signal.aborted) throw new TranslateError('aborted')
       opts.onProgress({ phase: 'translating', done: i, total: batches.length })
@@ -253,6 +306,10 @@ export async function translatePdf(
     opts.onProgress({ phase: 'writing', done: batches.length, total: batches.length })
     const res = await deps.apply({ jobId, translations, target: opts.target })
     if (!res.ok) throw new TranslateError(res.reason)
+    let cleanOutName: string | undefined
+    if (opts.clean === true && useVision && deps.clean && cleanEligible(ex.segments, ex.pageClasses)) {
+      cleanOutName = await buildClean()
+    }
     return {
       jobId,
       outName: res.outName,
@@ -260,7 +317,8 @@ export async function translatePdf(
       pages: ex.pages,
       kind: opts.kind,
       pagesWithoutText: ex.pagesWithoutText,
-      failedSegments: failed
+      failedSegments: failed,
+      ...(cleanOutName ? { cleanOutName } : {})
     }
   } catch (e) {
     await deps.discard(jobId).catch(() => undefined)

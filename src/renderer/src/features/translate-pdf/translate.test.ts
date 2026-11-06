@@ -226,3 +226,67 @@ describe('hojas escaneadas y ficha del documento', () => {
     expect(cardSample(segs, 20)).toBe('')
   })
 })
+
+describe('versión limpia de un escaneo', () => {
+  const scanned = (): PdfExtractResult => ({
+    ok: true,
+    jobId: 'aaaaaaaaaaaaaaaa',
+    pages: 2,
+    segments: [
+      { id: 'p1-0', pagina: 1, texto: 'one' },
+      { id: 'p2-0', pagina: 2, texto: 'two' }
+    ],
+    pagesWithoutText: [],
+    pageClasses: { 1: 'escaneada_ocr', 2: 'escaneada_ocr' }
+  })
+  const img = vi.fn(async () => ({ ok: true as const, mime: 'image/png' as const, base64: 'X' }))
+  const askClean = (prompts: string[]) =>
+    vi.fn(async (p: string, _s: AbortSignal, i?: unknown[]) => {
+      prompts.push(p)
+      if (p.includes('rebuilding page')) return `<section class="page"><p>PAGE ${i ? 'CON-IMAGEN' : 'SIN'}</p><script>x</script></section>`
+      return answerAll(p)
+    })
+
+  it('con visión y todo escaneado, la IA arma el HTML de cada hoja y main lo imprime; el progreso incluye «cleaning»', async () => {
+    const prompts: string[] = []
+    const clean = vi.fn(async () => ({ ok: true as const, outName: 'x (en, limpio).pdf' }))
+    const seen: string[] = []
+    const r = await translatePdf(makeDeps({ ask: askClean(prompts), pageImage: img, clean }, scanned()), {
+      ...opts(new AbortController().signal, (p) => seen.push(p.phase)),
+      vision: true,
+      clean: true
+    })
+    expect(r.cleanOutName).toBe('x (en, limpio).pdf')
+    expect(prompts.filter((p) => p.includes('rebuilding page'))).toHaveLength(2)
+    const html = (clean.mock.calls[0] as unknown as [{ html: string }])[0].html
+    expect(html).toContain('<p>PAGE CON-IMAGEN</p>')
+    expect(html).not.toContain('<script')
+    expect(html.match(/<section class="page">/g)).toHaveLength(2)
+    expect(seen).toContain('cleaning')
+  })
+
+  it('no la crea si no se pidió, si el modelo no ve imágenes o si hay una hoja digital', async () => {
+    const clean = vi.fn(async () => ({ ok: true as const, outName: 'z.pdf' }))
+    const a = await translatePdf(makeDeps({ pageImage: img, clean }, scanned()), { ...opts(), vision: true })
+    const b = await translatePdf(makeDeps({ pageImage: img, clean }, scanned()), { ...opts(), clean: true })
+    const mixed = scanned()
+    if (mixed.ok) mixed.pageClasses = { 1: 'escaneada_ocr', 2: 'digital' }
+    const c = await translatePdf(makeDeps({ pageImage: img, clean }, mixed), { ...opts(), vision: true, clean: true })
+    expect([a.cleanOutName, b.cleanOutName, c.cleanOutName]).toEqual([undefined, undefined, undefined])
+    expect(clean).not.toHaveBeenCalled()
+  })
+
+  it('si el modelo falla en una hoja se usa una hoja simple con los textos; si main falla, la traducción sigue entera', async () => {
+    const ask = vi.fn(async (p: string) => {
+      if (p.includes('rebuilding page')) throw new Error('boom')
+      return answerAll(p)
+    })
+    const clean = vi.fn(async () => ({ ok: false as const, reason: 'failed' as const }))
+    const r = await translatePdf(makeDeps({ ask, pageImage: img, clean }, scanned()), { ...opts(), vision: true, clean: true })
+    const html = (clean.mock.calls[0] as unknown as [{ html: string }])[0].html
+    expect(html.match(/<section class="page"><p>/g)).toHaveLength(2)
+    expect(r.cleanOutName).toBeUndefined()
+    expect(r.failedSegments).toBe(0)
+    expect(r.outName).toBe('x (en).pdf')
+  })
+})

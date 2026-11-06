@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   batchSegments,
   buildCardPrompt,
+  buildCleanPagePrompt,
+  cleanEligible,
+  cleanName,
+  fallbackPageHtml,
+  sanitizeCleanHtml,
+  wrapCleanHtml,
   buildTranslatePrompt,
   firstJsonObject,
   glossaryFor,
@@ -169,5 +175,53 @@ describe('ficha del documento y glosario relevante', () => {
     expect(p).toContain('Insured → Asegurado')
     expect(p).not.toContain('Arbitrator')
     expect(p).toContain('SCANNED page')
+  })
+})
+
+describe('versión limpia (PDF nuevo)', () => {
+  it('sanitizeCleanHtml deja solo etiquetas sencillas y quita scripts, estilos, enlaces, imágenes y atributos peligrosos', () => {
+    const dirty =
+      '```html\n<section class="page" onclick="x()"><script>alert(1)</script><style>p{}</style><h1 style="color:red">Título</h1>' +
+      '<p class="foot">Pie <a href="http://evil.test">enlace</a><img src="http://evil.test/a.png"></p>' +
+      '<table><tr><th colspan="2" onclick="y()">A</th></tr></table><iframe src="x"></iframe></section>\n```'
+    const out = sanitizeCleanHtml(dirty)
+    expect(out).toBe('<section class="page"><h1>Título</h1><p class="foot">Pie enlace</p><table><tr><th colspan="2">A</th></tr></table></section>')
+    expect(out).not.toMatch(/script|onclick|style|href|<img|iframe/i)
+    expect(sanitizeCleanHtml('<div class="cols3"><p class="otra">x</p></div>')).toBe('<div class="cols3"><p>x</p></div>')
+  })
+
+  it('wrapCleanHtml arma un documento A4 con el idioma y escapa el título; fallbackPageHtml escapa el texto', () => {
+    const html = wrapCleanHtml(['<section class="page"><p>a</p></section>'], 'es', 'A <b> & B')
+    expect(html).toContain('<html lang="es">')
+    expect(html).toContain('@page { size: A4; margin: 18mm }')
+    expect(html).toContain('<title>A &lt;b&gt; &amp; B</title>')
+    expect(html).toContain('<section class="page"><p>a</p></section>')
+    expect(fallbackPageHtml([{ texto: 'x < y & z' }])).toBe('<section class="page"><p>x &lt; y &amp; z</p></section>')
+  })
+
+  it('cleanName y cleanEligible', () => {
+    expect(cleanName('poliza.pdf', 'es')).toBe('poliza (es, limpio).pdf')
+    const segs = [seg('p1-0', 'a', { pagina: 1 }), seg('p2-0', 'b', { pagina: 2 })]
+    expect(cleanEligible(segs, { 1: 'escaneada_ocr', 2: 'escaneada_ocr' })).toBe(true)
+    expect(cleanEligible(segs, { 1: 'escaneada_ocr', 2: 'digital' })).toBe(false)
+    expect(cleanEligible(segs, undefined)).toBe(false)
+    expect(cleanEligible([], { 1: 'escaneada_ocr' })).toBe(false)
+  })
+
+  it('buildCleanPagePrompt incluye los textos traducidos, la imagen adjunta y pide una sola sección', () => {
+    const p = buildCleanPagePrompt({
+      target: 'es',
+      page: 2,
+      pages: 5,
+      docName: 'x.pdf',
+      paragraphs: [{ id: 'p2-0', texto: 'Hola' }],
+      docCard: { summary: 'Póliza.', glossary: {} },
+      pageImage: true
+    })
+    expect(p).toContain('page 2 of 5')
+    expect(p).toContain('The attached image is the original page')
+    expect(p).toContain('p2-0: Hola')
+    expect(p).toContain('<section class="page">')
+    expect(p).toContain('About this document: Póliza.')
   })
 })

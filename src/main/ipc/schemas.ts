@@ -14,7 +14,7 @@ import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
 import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
-import { TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
+import { TRANSLATE_CLEAN_HTML_MAX, TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
 import { PROJECT_LIMITS } from '@shared/project-knowledge'
 import { EXPORT_LIMITS, type ExportDoc } from '@shared/conversation-export'
 import { PREFLIGHT_ORDER } from '@shared/preflight'
@@ -703,8 +703,9 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     target: literal(...TRANSLATE_LANGS.map((l) => l.code))
   }),
   'translate:pdfPageImage': obj({ jobId: str({ max: 16, min: 16 }), page: num({ int: true, min: 1, max: 5000 }) }),
-  'translate:pdfOpen': obj({ jobId: str({ max: 16, min: 16 }) }),
-  'translate:pdfSave': obj({ jobId: str({ max: 16, min: 16 }) }),
+  'translate:pdfClean': obj({ jobId: str({ max: 16, min: 16 }), html: str({ max: TRANSLATE_CLEAN_HTML_MAX, min: 1 }) }),
+  'translate:pdfOpen': obj({ jobId: str({ max: 16, min: 16 }), clean: optional(bool) }),
+  'translate:pdfSave': obj({ jobId: str({ max: 16, min: 16 }), clean: optional(bool) }),
   'translate:pdfDiscard': obj({ jobId: str({ max: 16, min: 16 }) }),
   'diag:export': none,
   'diag:problem': obj({ message: str({ max: 2000 }), stack: optional(str({ max: 4000 })), origin: optional(literal('chat-doc')) }),

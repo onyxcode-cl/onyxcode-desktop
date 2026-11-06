@@ -72,6 +72,12 @@ export interface PdfApplyReport {
 }
 export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string } | { ok: false; reason: PdfFailReason }
 
+/** Versión LIMPIA: un PDF nuevo armado desde cero (HTML) con el texto traducido, para hojas escaneadas. */
+export type PdfCleanRequest = { jobId: string; html: string }
+export type PdfCleanResult = { ok: true; outName: string } | { ok: false; reason: PdfFailReason }
+/** Tope del HTML de la versión limpia (el motor de impresión rechaza más de 5 MB). */
+export const TRANSLATE_CLEAN_HTML_MAX = 4 * 1024 * 1024
+
 export const PDF_JOB_ID_RE = /^[a-f0-9]{16}$/
 
 /** Agrupa los textos en lotes por orden de lectura: ≤ `maxItems` textos y ≤ `maxChars` caracteres (un texto largo va solo). */
@@ -226,6 +232,84 @@ export function glossaryFor(batchText: string, glossary: Glossary, core: Glossar
   return out
 }
 
+/** Instrucción para que el modelo reconstruya UNA hoja escaneada como HTML limpio, con los textos ya traducidos. */
+export function buildCleanPagePrompt(opts: {
+  target: TranslateLangCode
+  page: number
+  pages: number
+  docName: string
+  /** Textos de la hoja ya traducidos, en orden de lectura. */
+  paragraphs: { id: string; texto: string }[]
+  docCard?: DocCard
+  /** Va adjunta la imagen de la hoja original. */
+  pageImage: boolean
+}): string {
+  const lang = TRANSLATE_LANGS.find((l) => l.code === opts.target)?.name ?? opts.target
+  return [
+    `You are rebuilding page ${opts.page} of ${opts.pages} of the scanned document "${opts.docName}" as clean HTML in ${lang}.`,
+    opts.pageImage
+      ? 'The attached image is the original page. Below are the texts of that page, already translated into ' + lang + ', in reading order (they were read by OCR, so a few words of the page may be missing from the list).'
+      : 'Below are the texts of that page, already translated into ' + lang + ', in reading order.',
+    '',
+    'Rules:',
+    '- Output ONLY an HTML fragment for this one page: a single <section class="page">…</section>. No <html>, <head>, <body>, <style> or <script>, no markdown fences, no comments.',
+    '- Use the given translations as they are (do not rephrase them). If the image shows text that is missing from the list (labels, headings, field names, "Signature"…), translate it yourself and include it where it belongs.',
+    '- Follow the structure of the page: <h1>/<h2> for headings, <p> for paragraphs, numbered clauses stay as text, <table> with <th> for tables and forms (empty cells where the form has blanks). If the page has two or three columns, wrap them in <div class="cols2"> or <div class="cols3"> in reading order.',
+    '- Keep codes, numbers, dates and names exactly. Put page footers or document codes in <p class="foot">.',
+    '- Only simple tags (h1-h3, p, ul, ol, li, table, thead, tbody, tr, th, td, div, span, strong, em, br, hr). No images, no links, no inline styles.',
+    ...(opts.docCard?.summary ? [`- About this document: ${opts.docCard.summary}`] : []),
+    '',
+    'Translated texts (id: text):',
+    opts.paragraphs.map((p) => `${p.id}: ${p.texto}`).join('\n')
+  ].join('\n')
+}
+
+const SAFE_TAGS = new Set(['section', 'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'strong', 'b', 'em', 'i', 'u', 'br', 'hr', 'sup', 'sub'])
+
+/**
+ * Deja solo etiquetas sencillas del HTML que devolvió el modelo (es DATO, no se confía en él): sin scripts, estilos, enlaces,
+ * imágenes ni atributos salvo `class` (de una lista corta) y `colspan`/`rowspan`. El texto se conserva escapado.
+ */
+export function sanitizeCleanHtml(raw: string): string {
+  let h = raw.replace(/```(?:html)?/gi, '').replace(/<!--[\s\S]*?-->/g, '')
+  h = h.replace(/<(script|style|iframe|object|embed|svg|math|template)[\s\S]*?<\/\1\s*>/gi, '')
+  return h.trim().replace(/<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g, (m, name: string, attrs: string) => {
+    const tag = name.toLowerCase()
+    if (!SAFE_TAGS.has(tag)) return ''
+    if (m.startsWith('</')) return `</${tag}>`
+    const keep: string[] = []
+    const cls = /\bclass\s*=\s*"(page|cols2|cols3|foot)"/i.exec(attrs)
+    if (cls) keep.push(`class="${cls[1].toLowerCase()}"`)
+    for (const a of ['colspan', 'rowspan']) {
+      const v = new RegExp(`\\b${a}\\s*=\\s*"(\\d{1,2})"`, 'i').exec(attrs)
+      if (v) keep.push(`${a}="${v[1]}"`)
+    }
+    return `<${tag}${keep.length ? ' ' + keep.join(' ') : ''}${/\/\s*>$/.test(m) ? ' /' : ''}>`
+  })
+}
+
+const escHtml = (t: string): string => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/** Página mínima cuando el modelo no devolvió HTML utilizable: los textos traducidos en orden, como párrafos. */
+export function fallbackPageHtml(paragraphs: { texto: string }[]): string {
+  return `<section class="page">${paragraphs.map((p) => `<p>${escHtml(p.texto)}</p>`).join('')}</section>`
+}
+
+/** Documento HTML completo (A4, márgenes de 18 mm, letra de 11,5 px o más) con las hojas ya saneadas. */
+export function wrapCleanHtml(sections: string[], lang: TranslateLangCode, title: string): string {
+  const css = [
+    '@page { size: A4; margin: 18mm }',
+    'body { font-family: Arial, Helvetica, sans-serif; font-size: 11.5px; line-height: 1.45; color: #1a1a1a; margin: 0 }',
+    '.page { break-after: page; page-break-after: always } .page:last-child { break-after: auto; page-break-after: auto }',
+    'h1 { font-size: 22px; margin: 0 0 10px } h2 { font-size: 16px; margin: 14px 0 6px } h3 { font-size: 13px; margin: 10px 0 4px }',
+    'p { margin: 0 0 7px; text-align: justify } .foot { font-size: 10.5px; color: #555; text-align: left }',
+    '.cols2 { column-count: 2; column-gap: 8mm } .cols3 { column-count: 3; column-gap: 7mm }',
+    'table { border-collapse: collapse; width: 100%; margin: 6px 0 } th, td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left }',
+    'th { background: #eee } tr { break-inside: avoid }'
+  ].join('\n')
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>\n${css}\n</style></head><body>${sections.join('\n')}</body></html>`
+}
+
 /** Primer objeto JSON balanceado dentro de un texto (el modelo a veces añade una frase o pone el JSON entre ```). */
 export function firstJsonObject(text: string): string | null {
   const start = text.indexOf('{')
@@ -277,6 +361,17 @@ export function parseTranslateAnswer(text: string, batch: PdfSegment[]): ParsedA
     }
   }
   return { translations, glossary, missing: batch.filter((s) => !translations[s.id]).map((s) => s.id) }
+}
+
+/** Nombre de la versión limpia: «informe.pdf» → «informe (en, limpio).pdf». */
+export function cleanName(name: string, target: TranslateLangCode): string {
+  return translatedName(name, target).replace(/\)\.pdf$/, ', limpio).pdf')
+}
+
+/** ¿Conviene crear también la versión limpia? Solo si TODAS las páginas con texto son escaneos (de lo contrario el original ya conserva el diseño). */
+export function cleanEligible(segments: PdfSegment[], pageClasses: Record<number, PdfPageClass> | undefined): boolean {
+  if (!pageClasses || segments.length === 0) return false
+  return segments.every((s) => pageClasses[s.pagina] === 'escaneada_ocr')
 }
 
 /** Nombre del archivo traducido: «informe.pdf» → «informe (en).pdf». */

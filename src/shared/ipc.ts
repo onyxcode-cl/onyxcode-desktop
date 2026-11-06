@@ -13,6 +13,8 @@ import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
 import type {
   PdfApplyRequest,
   PdfApplyResult,
+  PdfCleanRequest,
+  PdfCleanResult,
   PdfExtractRequest,
   PdfExtractResult,
   PdfPageImageRequest,
@@ -159,8 +161,10 @@ export interface IpcInvokeContract {
   'translate:pdfApply': { req: PdfApplyRequest; res: PdfApplyResult }
   /** Una hoja escaneada dibujada como imagen (PNG) para que el modelo la vea junto a sus textos. */
   'translate:pdfPageImage': { req: PdfPageImageRequest; res: PdfPageImageResult }
-  'translate:pdfOpen': { req: { jobId: string }; res: { opened: boolean } }
-  'translate:pdfSave': { req: { jobId: string }; res: { saved: boolean } }
+  /** Versión LIMPIA (escaneos): main imprime a PDF el HTML que armó el renderer con el texto traducido. */
+  'translate:pdfClean': { req: PdfCleanRequest; res: PdfCleanResult }
+  'translate:pdfOpen': { req: { jobId: string; clean?: boolean }; res: { opened: boolean } }
+  'translate:pdfSave': { req: { jobId: string; clean?: boolean }; res: { saved: boolean } }
   'translate:pdfDiscard': { req: { jobId: string }; res: void }
   /** «Exportar…»: diálogo de guardado y archivo `Lazunox-diagnostico-AAAAMMDD-HHmm.txt` (0600) con el informe redactado. */
   'diag:export': { req: void; res: { saved: boolean } }
@@ -255,6 +259,7 @@ export const IPC_INVOKE_CHANNELS = [
   'translate:pdfExtract',
   'translate:pdfApply',
   'translate:pdfPageImage',
+  'translate:pdfClean',
   'translate:pdfOpen',
   'translate:pdfSave',
   'translate:pdfDiscard',

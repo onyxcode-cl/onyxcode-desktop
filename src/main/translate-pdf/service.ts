@@ -18,11 +18,15 @@ import {
   TRANSLATE_PDF_MAX_BYTES,
   TRANSLATE_PDF_MAX_CHARS,
   TRANSLATE_PAGE_IMAGE_MAX_BYTES,
+  TRANSLATE_CLEAN_HTML_MAX,
+  cleanName,
   TRANSLATE_PDF_MAX_SEGMENTS,
   translatedName,
   type PdfApplyReport,
   type PdfApplyRequest,
   type PdfApplyResult,
+  type PdfCleanRequest,
+  type PdfCleanResult,
   type PdfExtractRequest,
   type PdfExtractResult,
   type PdfFailReason,
@@ -31,6 +35,7 @@ import {
   type PdfSegment,
   type TranslateKind
 } from '@shared/translate-pdf'
+import { renderHtmlToPdf } from '../extras/artifact-window'
 import { bundledPythonEnv } from '../tasks/python-runtime'
 import { unpacked } from '../util/asar'
 
@@ -52,6 +57,8 @@ export interface ServiceDeps {
   script: (kind: TranslateKind) => string
   run: (python: string, args: string[], cwd: string) => Promise<RunResult>
   now: () => number
+  /** Imprime un HTML a PDF (el motor de documentos de la app; sin red). */
+  renderHtml: (html: string, title: string) => Promise<Buffer>
 }
 
 function defaultScript(kind: TranslateKind = 'pdf'): string {
@@ -84,7 +91,8 @@ const realDeps: ServiceDeps = {
   python: () => bundledPythonEnv().LAZUNOX_PYTHON ?? null,
   script: defaultScript,
   run: runPythonReal,
-  now: () => Date.now()
+  now: () => Date.now(),
+  renderHtml: (html, title) => renderHtmlToPdf(html, title, { remoteImages: false })
 }
 
 interface JobMeta {
@@ -92,6 +100,8 @@ interface JobMeta {
   createdAt: number
   kind?: TranslateKind
   outName?: string
+  /** Versión limpia (PDF nuevo desde HTML), si se creó. */
+  cleanOutName?: string
 }
 
 export class PdfTranslateService {
@@ -246,18 +256,40 @@ export class PdfTranslateService {
     }
   }
 
-  private async outFile(jobId: string): Promise<{ path: string; name: string } | null> {
+  /** Versión LIMPIA: imprime a PDF el HTML que armó el renderer (ya saneado allí) y lo guarda junto al trabajo. */
+  async clean(req: PdfCleanRequest): Promise<PdfCleanResult> {
+    const dir = this.jobDir(req.jobId)
+    if (!dir) return { ok: false, reason: 'failed' }
+    const meta = await this.meta(dir)
+    if (!meta || meta.kind === 'docx') return { ok: false, reason: 'failed' }
+    if (typeof req.html !== 'string' || !req.html.trim() || req.html.length > TRANSLATE_CLEAN_HTML_MAX) return { ok: false, reason: 'tooLong' }
+    try {
+      const bytes = await this.d.renderHtml(req.html, meta.name.replace(/\.pdf$/i, ''))
+      if (bytes.length < 100 || bytes.subarray(0, 5).toString('latin1') !== '%PDF-') return { ok: false, reason: 'failed' }
+      // el nombre lleva el idioma del archivo fiel: «x (es).pdf» → «x (es, limpio).pdf»
+      const base = meta.outName ?? cleanName(meta.name, 'en')
+      const name = base.replace(/\)\.pdf$/i, ', limpio).pdf')
+      await writeFile(join(dir, name), bytes, { mode: 0o600 })
+      await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, cleanOutName: name } satisfies JobMeta), { mode: 0o600 })
+      return { ok: true, outName: name }
+    } catch {
+      return { ok: false, reason: 'failed' }
+    }
+  }
+
+  private async outFile(jobId: string, clean = false): Promise<{ path: string; name: string } | null> {
     const dir = this.jobDir(jobId)
     if (!dir) return null
     const m = await this.meta(dir)
-    if (!m?.outName) return null
-    const path = join(dir, m.outName)
-    return existsSync(path) ? { path, name: m.outName } : null
+    const name = clean ? m?.cleanOutName : m?.outName
+    if (!name) return null
+    const path = join(dir, name)
+    return existsSync(path) ? { path, name } : null
   }
 
   /** «Guardar como…»: diálogo nativo y copia del PDF traducido. */
-  async save(jobId: string, parent: BrowserWindow | null): Promise<{ saved: boolean }> {
-    const f = await this.outFile(jobId)
+  async save(jobId: string, parent: BrowserWindow | null, clean = false): Promise<{ saved: boolean }> {
+    const f = await this.outFile(jobId, clean)
     if (!f) return { saved: false }
     const ext = f.name.toLowerCase().endsWith('.docx') ? 'docx' : 'pdf'
     const options = {
@@ -271,8 +303,8 @@ export class PdfTranslateService {
   }
 
   /** Abre el PDF traducido con el visor del sistema (Vista Previa). */
-  async open(jobId: string): Promise<{ opened: boolean }> {
-    const f = await this.outFile(jobId)
+  async open(jobId: string, clean = false): Promise<{ opened: boolean }> {
+    const f = await this.outFile(jobId, clean)
     if (!f) return { opened: false }
     return { opened: (await shell.openPath(f.path)) === '' }
   }
