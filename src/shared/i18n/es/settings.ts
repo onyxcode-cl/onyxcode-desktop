@@ -73,6 +73,7 @@ export const settings = {
   'settings.general.keepAwake.label': 'Mantener el Mac despierto',
   'settings.general.keepAwake.label.win': 'Mantener el PC despierto',
   'settings.general.keepAwake.description': 'Evita que el equipo entre en reposo mientras hay tareas trabajando en segundo plano.',
+  'settings.general.keepAwake.description.win': 'Evita que el equipo entre en reposo mientras hay tareas trabajando en segundo plano.',
   'settings.general.keepAwake.toggle': 'Mantener el Mac despierto mientras corren tareas',
   'settings.general.keepAwake.toggle.win': 'Mantener el PC despierto mientras corren tareas',
   'settings.general.instructions.label': 'Instrucciones globales de las tareas',
@@ -440,6 +441,8 @@ export const settings = {
     'Automático: solo se activa si las herramientas de tus conectores son muchas; con pocos conectores no cambia nada. Los permisos son los mismos de siempre: cada herramienta te pregunta igual que si estuviera a la vista. Verás una fila «Buscó herramientas del conector».',
   'settings.engine.toolSearch.chatNote':
     'Overdrive no usa esta función. Apagada, la IA recibe siempre todas las herramientas de los conectores. El navegador integrado y el control del Mac nunca se buscan: siempre están a la vista.',
+  'settings.engine.toolSearch.chatNote.win':
+    'Overdrive no usa esta función. Apagada, la IA recibe siempre todas las herramientas de los conectores. El navegador integrado y el control del PC nunca se buscan: siempre están a la vista.',
   'settings.engine.toolSearch.toggleAria': 'Búsqueda de herramientas automática en {mode}',
   'settings.engine.remember.title': 'Permisos «siempre»',
   'settings.engine.remember.desc':

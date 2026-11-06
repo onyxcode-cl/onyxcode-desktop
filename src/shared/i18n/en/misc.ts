@@ -123,6 +123,8 @@ export const misc = {
   'misc.auto.noAppsDesc': 'The agent will never grant “View only” automatically.',
   'misc.auto.appsNote':
     'Only applies to mid-task requests at the “View only” level: password managers, System Settings, Messages, Mail, terminals, IDEs, and banking apps are never granted automatically, even if you add them here.',
+  'misc.auto.appsNote.win':
+    'Only applies to mid-task requests at the “View only” level: password managers, Windows Settings, terminals, IDEs, and banking apps are never granted automatically, even if you add them here.',
   'misc.auto.logTitle': 'Log of automatic approvals',
   'misc.auto.logEmpty': 'No approvals yet',
   'misc.auto.logCount': { one: '{count} entry', other: '{count} entries' },

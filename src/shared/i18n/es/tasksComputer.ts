@@ -62,6 +62,8 @@ export const tasksComputer = {
   'tasksComputer.full.noSandbox': 'sin límite de carpeta',
   'tasksComputer.full.intro2':
     ' y con control del computador. No tienes que elegir una carpeta: el agente podrá usar todo tu equipo y empezará trabajando desde «{name}».',
+  'tasksComputer.full.intro2.win':
+    ' y con control del computador. No tienes que elegir una carpeta: el agente podrá usar todo tu equipo y empezará trabajando desde «{name}».',
   'tasksComputer.full.b1': 'Podrá mover el ratón, hacer clic, escribir y pulsar teclas en cualquier aplicación.',
   'tasksComputer.full.cap1': 'Tomará capturas de pantalla, que ',
   'tasksComputer.full.cap2': 'se envían al servicio de IA',
@@ -332,6 +334,7 @@ export const tasksComputer = {
   'tasksComputer.escalate.body':
     'Trabajando solo en tu carpeta no se pueden abrir apps, hacer clic, teclear en otras apps ni capturar la pantalla. Si cambias a Control total, se abrirá una tarea nueva con tu encargo y un resumen de lo hecho hasta ahora; antes te pediremos confirmar el cambio y el agente pedirá tu aprobación para actuar.',
   'tasksComputer.escalate.switch': 'Cambiar a Control total y continuar',
+  'tasksComputer.escalate.switch.win': 'Cambiar a Control total del PC y continuar',
   'tasksComputer.escalate.stay': 'Seguir en «Una carpeta»',
   'tasksComputer.escalate.app.title': 'Esta tarea necesita {app}',
   'tasksComputer.escalate.app.lead': 'Para usar apps hay que pasar a «El computador completo».',

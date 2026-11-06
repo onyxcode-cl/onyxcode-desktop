@@ -76,6 +76,7 @@ export const settings = {
   'settings.general.keepAwake.label': 'Keep your Mac awake',
   'settings.general.keepAwake.label.win': 'Keep your PC awake',
   'settings.general.keepAwake.description': 'Prevents your Mac from sleeping while tasks are working in the background.',
+  'settings.general.keepAwake.description.win': 'Prevents your PC from sleeping while tasks are working in the background.',
   'settings.general.keepAwake.toggle': 'Keep your Mac awake while tasks are running',
   'settings.general.keepAwake.toggle.win': 'Keep your PC awake while tasks are running',
   'settings.general.instructions.label': 'Global task instructions',
@@ -443,6 +444,8 @@ export const settings = {
     'Automatic: only turns on when your connectors’ tools are numerous; with few connectors nothing changes. Permissions are the same as always: each tool asks you just as if it were in plain view. You’ll see a “Searched connector tools” row.',
   'settings.engine.toolSearch.chatNote':
     'Overdrive doesn’t use this feature. When off, the AI always gets every connector tool. The built-in browser and Mac control are never searched: they are always in view.',
+  'settings.engine.toolSearch.chatNote.win':
+    'Overdrive doesn’t use this feature. When off, the AI always gets every connector tool. The built-in browser and PC control are never searched: they are always in view.',
   'settings.engine.toolSearch.toggleAria': 'Automatic tool search in {mode}',
   'settings.engine.remember.title': '“Always” permissions',
   'settings.engine.remember.desc':

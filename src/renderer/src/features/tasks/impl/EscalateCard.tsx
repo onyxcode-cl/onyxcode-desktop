@@ -174,6 +174,8 @@ export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = ge
   let summary = lastAssistantText(entries)
   // Se conserva el final: ahí están las conclusiones y el motivo de la escalada.
   if (summary.length > MAX_SUMMARY_CHARS) summary = `…${summary.slice(-(MAX_SUMMARY_CHARS - 1))}`
+  // En Windows el equipo es el «PC»: nunca «Mac» en el texto que la IA recibe como encargo.
+  const device = isWindowsPlatform() ? 'PC' : 'Mac'
   if (app) {
     return lang === 'en'
       ? // i18n-ignore: prompt al agente (en el idioma de la interfaz)
@@ -188,7 +190,7 @@ export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = ge
   if (lang === 'en') {
     return (
       // i18n-ignore: prompt al agente (en el idioma de la interfaz)
-      'Continue this task, which I started in sandbox mode, in Full Mac control.\n\n' +
+      `Continue this task, which I started in sandbox mode, in Full ${device} control.\n\n` +
       // i18n-ignore: prompt al agente
       `Original request:\n${original}\n\n` +
       // i18n-ignore: prompt al agente
@@ -197,7 +199,7 @@ export function buildContinuationPrompt(entries: MessageEntry[], lang: Lang = ge
   }
   return (
     // i18n-ignore: prompt al agente (en el idioma de la interfaz)
-    'Continúa en Control total del Mac esta tarea que empecé en modo sandbox.\n\n' +
+    `Continúa en Control total del ${device} esta tarea que empecé en modo sandbox.\n\n` +
     // i18n-ignore: prompt al agente
     `Encargo original:\n${original}\n\n` +
     // i18n-ignore: prompt al agente

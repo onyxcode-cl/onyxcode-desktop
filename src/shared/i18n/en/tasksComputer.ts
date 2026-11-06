@@ -65,6 +65,8 @@ export const tasksComputer = {
   'tasksComputer.full.noSandbox': 'with no folder limit',
   'tasksComputer.full.intro2':
     ' and with Mac control. You don’t have to pick a folder: the agent will be able to use your whole computer and will start working from “{name}”.',
+  'tasksComputer.full.intro2.win':
+    ' and with PC control. You don’t have to pick a folder: the agent will be able to use your whole PC and will start working from “{name}”.',
   'tasksComputer.full.b1': 'It will be able to move the mouse, click, type and press keys in any app.',
   'tasksComputer.full.cap1': 'It will take screenshots, which ',
   'tasksComputer.full.cap2': 'are sent to the AI service',
@@ -333,6 +335,7 @@ export const tasksComputer = {
   'tasksComputer.escalate.body':
     'Working only in your folder, it can’t open apps, click, type in other apps or capture the screen. If you switch to Full control, a new task opens with your request and a summary of what’s been done so far; first we’ll ask you to confirm the change and the agent will ask for your approval before acting.',
   'tasksComputer.escalate.switch': 'Switch to Full Mac control and continue',
+  'tasksComputer.escalate.switch.win': 'Switch to Full PC control and continue',
   'tasksComputer.escalate.stay': 'Stay in “One folder”',
   'tasksComputer.escalate.app.title': 'This task needs {app}',
   'tasksComputer.escalate.app.lead': 'To use apps, you need to switch to "The entire computer".',
