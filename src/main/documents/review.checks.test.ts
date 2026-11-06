@@ -170,8 +170,7 @@ const docxWithStyles = async (body: string): Promise<Buffer> => {
   )
   return z.generateAsync({ type: 'nodebuffer' })
 }
-const para = (style: string, text: string): string =>
-  `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`
+const para = (style: string, text: string): string => `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`
 const TITLE = para('Title', 'Informe anual')
 
 describe('R1 en Word: salto de encabezado (ℹ)', () => {
@@ -184,7 +183,9 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
     expect(notes(salto)).toContain('Salto de nivel en «Detalle» (nivel 3 después de nivel 1)')
     const bien = await reviewDocument(
       'docx',
-      await docxWithStyles(TITLE + para('Heading1', 'Resumen') + para('Heading2', 'Medio') + para('Heading3', 'Detalle') + para('Normal', 'Texto.'))
+      await docxWithStyles(
+        TITLE + para('Heading1', 'Resumen') + para('Heading2', 'Medio') + para('Heading3', 'Detalle') + para('Normal', 'Texto.')
+      )
     )
     expect(notes(bien)).not.toContain('Salto de nivel')
   })
@@ -213,7 +214,9 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
     expect(bad(largo)).toBe('')
     expect(notes(largo)).toContain('Lista de 8 ítems seguidos')
     const siete = Array.from({ length: 7 }, (_, i) => item('1', `Ítem ${i + 1}`)).join('')
-    expect(notes(await reviewDocument('docx', await docxWithStyles(TITLE + siete + para('Normal', 'Fin.'))))).not.toContain('ítems seguidos')
+    expect(notes(await reviewDocument('docx', await docxWithStyles(TITLE + siete + para('Normal', 'Fin.'))))).not.toContain(
+      'ítems seguidos'
+    )
     const palabras = Array(31).fill('palabra').join(' ')
     const ancho = await reviewDocument('docx', await docxWithStyles(TITLE + item('2', palabras)))
     expect(notes(ancho)).toContain('ítem(s) de lista de más de 30 palabras')
@@ -272,7 +275,9 @@ describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
     expect(notes(r)).toContain('Las 4 láminas de contenido son todas de viñetas')
   })
   it('si una lámina es «stat» o sin spec, no avisa', async () => {
-    const spec = { slides: [{ title: 'Portada' }, { title: 'A', bullets: ['x'] }, { title: 'B', layout: 'stat' }, { title: 'C' }, { title: 'D' }] }
+    const spec = {
+      slides: [{ title: 'Portada' }, { title: 'A', bullets: ['x'] }, { title: 'B', layout: 'stat' }, { title: 'C' }, { title: 'D' }]
+    }
     expect(notes(await reviewDocument('pptx', await pptxSlides(slides), spec))).not.toContain('todas de viñetas')
     expect(notes(await reviewDocument('pptx', await pptxSlides(slides)))).not.toContain('todas de viñetas')
   })
@@ -293,7 +298,9 @@ describe('R10 en Excel: hoja sin datos (✘) y encabezados largos (ℹ)', () => 
   it('encabezado de más de 25 caracteres y más de 12 columnas → ℹ, no ✘', async () => {
     const largo = 'Ventas netas del trimestre con impuestos'
     const cols = Array.from({ length: 13 }, (_, i) => `C${i + 1}`)
-    const r = await reviewDocument('xlsx', await book(), { sheets: [{ name: 'Datos', rows: [[largo, ...cols.slice(1)], Array(13).fill(1)] }] })
+    const r = await reviewDocument('xlsx', await book(), {
+      sheets: [{ name: 'Datos', rows: [[largo, ...cols.slice(1)], Array(13).fill(1)] }]
+    })
     expect(bad(r)).toBe('')
     expect(notes(r)).toContain('Encabezado de más de 25 caracteres')
     expect(notes(r)).toContain('Hoja de más de 12 columnas')
@@ -359,7 +366,16 @@ describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
     return z.generateAsync({ type: 'nodebuffer' })
   }
   const spec = (valor: number) => ({
-    sheets: [{ name: 'Datos', columnFormats: [null, 'percent'], rows: [['Región', 'Cuota'], ['Norte', valor]] }]
+    sheets: [
+      {
+        name: 'Datos',
+        columnFormats: [null, 'percent'],
+        rows: [
+          ['Región', 'Cuota'],
+          ['Norte', valor]
+        ]
+      }
+    ]
   })
   it('22 en una columna de porcentaje → ✘ con la cifra', async () => {
     const r = await reviewDocument('xlsx', await book(), spec(22))
@@ -370,7 +386,17 @@ describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
     const ok = await reviewDocument('xlsx', await book(), spec(0.22))
     expect(bad(ok)).toBe('')
     expect(ok.items.map((i) => i.text).join(' | ')).toContain('Las columnas en porcentaje llevan fracciones')
-    const sin = { sheets: [{ name: 'Datos', rows: [['a', 'b'], ['x', 22]] }] }
+    const sin = {
+      sheets: [
+        {
+          name: 'Datos',
+          rows: [
+            ['a', 'b'],
+            ['x', 22]
+          ]
+        }
+      ]
+    }
     expect((await reviewDocument('xlsx', await book(), sin)).items.map((i) => i.text).join(' | ')).not.toContain('porcentaje')
   })
 })
