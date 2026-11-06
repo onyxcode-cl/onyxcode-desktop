@@ -93,7 +93,9 @@ export const wizard = {
   'wizard.permissions.review': 'You can review or remove them in System Settings › Privacy & Security.',
   'wizard.stepTitle.setup': 'All set',
   'wizard.setup.lead':
-    'Anything you left for later (ArtCraft, Node.js and uv, permissions) can be installed or turned on whenever you want from Settings › Diagnostics › “Install or turn on pieces”. You can start now.',
+    'The tools that are still missing finish installing on their own while you use {app}. Anything you left for later (like permissions) can be turned on from Settings › Diagnostics › “Install or turn on pieces”. You can start now.',
+  'wizard.setup.lead.win':
+    'The tools that are still missing finish installing on their own while you use {app}. If anything is still pending, you will see it in Settings › Diagnostics › “Install or turn on pieces”. You can start now.',
   'wizard.welcome.title': 'Welcome to {app}',
   'wizard.welcome.tagline': 'An AI assistant that chats with you and does tasks on your own computer.',
   'wizard.welcome.madeBy': 'Made by {maker}',
@@ -122,6 +124,10 @@ export const wizard = {
   'preflight.acceptAll.subtitle': 'One click and {app} downloads and installs everything it needs. Or choose what to install.',
   'preflight.acceptAll.size':
     'About {size} will be downloaded in total, from GitHub and nodejs.org; it is verified as authentic and asks for no administrator password.',
+  'preflight.acceptAll.size.win':
+    'About {size} will be downloaded in total, from GitHub; it is verified as authentic and asks for no administrator password.',
+  'preflight.firstRun.subtitle':
+    '{app} is already downloading what it needs in the background (you will see the progress below). Only what needs your approval is left here.',
   'preflight.acceptAll.progress': '{done} of {total} ready',
   'preflight.custom.show': 'Choose what to install',
   'preflight.custom.hide': 'Back to the single button',
@@ -145,7 +151,9 @@ export const wizard = {
   'preflight.title': 'Getting {app} ready',
   'preflight.subtitle.blocking': 'Something essential is missing for {app} to work. You can fix it here.',
   'preflight.subtitle.optional':
-    'You can already use {app}. These pieces are optional: check the ones you want and install them now, or leave them for later (they are also in Settings).',
+    'You can already use {app}. Something optional is still pending: sort it out now or leave it for later (it is also in Settings › Diagnostics).',
+  'preflight.subtitle.optional.pick':
+    'You can already use {app}. This is optional: check what you want and install it now, or leave it for later (it is also in Settings › Diagnostics).',
   'preflight.checking': 'Checking your computer…',
   'preflight.size': 'About {size} will be downloaded.',
   'preflight.size.none': 'Nothing is checked: nothing will be downloaded.',
