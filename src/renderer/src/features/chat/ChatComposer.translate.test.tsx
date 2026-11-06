@@ -6,11 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { click, mount, pressKey, typeInto, type Mounted } from '../../../../test/dom-render'
 
 const openTranslatePdf = vi.fn()
+const caps = vi.hoisted(() => ({ translatePdf: true }))
 vi.mock('../translate-pdf/TranslatePdfDialog', () => ({ openTranslatePdf: (...a: unknown[]) => openTranslatePdf(...a) }))
 vi.mock('../translate-pdf/model-info', () => ({ chatModelInfo: () => ({ label: 'GPT-6 Luna', free: false }) }))
 vi.mock('../../lib/platform', async (orig) => ({
   ...(await orig<typeof import('../../lib/platform')>()),
-  platformCaps: () => ({ ...({} as Record<string, boolean>), translatePdf: true, docViewer: false, tasks: true })
+  platformCaps: () => ({ ...({} as Record<string, boolean>), translatePdf: caps.translatePdf, docViewer: false, tasks: true })
 }))
 
 import { ChatComposer } from './ChatComposer'
@@ -24,6 +25,7 @@ let n = 0
 beforeEach(() => {
   n++
   openTranslatePdf.mockClear()
+  caps.translatePdf = true
   vi.unstubAllGlobals()
   delete (window as unknown as { api?: unknown }).api
   vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => (cb(0), 0))
@@ -111,6 +113,17 @@ describe('tarjeta «¿traducir este PDF sin cambiar el diseño?»', () => {
     await flush()
     expect(m!.q('[data-testid="translate-offer"]')).toBeNull()
     expect(onSend).toHaveBeenCalledTimes(1)
+  })
+
+  it('sin translatePdf (equipo sin Python incluido): no hay botón de traducir ni tarjeta, y el mensaje se envía normal', async () => {
+    caps.translatePdf = false
+    const { onSend } = setup('traduce esto al inglés', [pdf])
+    expect(m!.q('[data-testid="translate-pdf-button"]')).toBeNull()
+    send()
+    await flush()
+    expect(m!.q('[data-testid="translate-offer"]')).toBeNull()
+    expect(openTranslatePdf).not.toHaveBeenCalled()
+    expect(onSend).toHaveBeenCalledWith('traduce esto al inglés', [pdf])
   })
 
   it('si la persona edita el mensaje, la tarjeta desaparece', () => {
