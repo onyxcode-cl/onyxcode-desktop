@@ -54,7 +54,17 @@ const ID_PROP: PropSchema = {
   maxLength: 64
 }
 
-export const TOOLS: ToolDef[] = [
+/** Shell real con el que se lanza el comando: en Windows `cmd.exe /d /s /c` (spawn con `shell: true`), en el resto `/bin/sh -c`. */
+export function shellLabel(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'cmd.exe /d /s /c' : '/bin/sh -c'
+}
+
+/** Herramientas según la plataforma (la descripción de `start` nombra el shell real). */
+export function toolsFor(platform: NodeJS.Platform = process.platform): ToolDef[] {
+  return TOOL_DEFS(platform)
+}
+
+const TOOL_DEFS = (platform: NodeJS.Platform): ToolDef[] => [
   {
     name: 'start',
     description:
@@ -69,7 +79,7 @@ export const TOOLS: ToolDef[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        command: { type: 'string', description: 'Shell command line to run with /bin/sh -c.', minLength: 1, maxLength: 8192 },
+        command: { type: 'string', description: `Shell command line to run with ${shellLabel(platform)}.`, minLength: 1, maxLength: 8192 },
         cwd: {
           type: 'string',
           description: 'Absolute path of the working directory (must exist). Defaults to the directory this tool was started in.',
@@ -148,6 +158,8 @@ export const TOOLS: ToolDef[] = [
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   }
 ]
+
+export const TOOLS: ToolDef[] = toolsFor()
 
 /** Valida `args` contra el subconjunto de JSON Schema que usan las herramientas. Devuelve el mensaje de error o `null`. */
 export function validateArgs(schema: Schema, args: unknown): string | null {
