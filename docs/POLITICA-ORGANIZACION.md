@@ -24,8 +24,7 @@ se lee y se valida, pero todavía no cambia nada visible: el cableado al puente 
 `disableWslTasks` (booleano) apaga **Tareas en Windows** (WSL2, beta) para toda la organización: aunque el usuario active
 «Tareas (beta)», la bandera efectiva `tasksWin` queda apagada. Se valida como el resto de booleanos y falla cerrado: cualquier
 valor distinto de `false` (texto, número, `null`) cuenta como `true`, y un `managed.json` ilegible o inválido también lo activa.
-No tiene efecto en macOS. Mientras la puerta de compilación `TASKS_WIN_BUILD` siga apagada, Tareas en Windows no existe y esta
-clave no cambia nada visible.
+No tiene efecto en macOS. **Estado 2026-11-06 (1.8.11).** La puerta de compilación `TASKS_WIN_BUILD` está encendida, así que Overdrive (Tareas) existe en Windows y esta clave sí lo apaga. (Con la puerta apagada, como en versiones anteriores, esta clave no cambiaba nada visible.)
 
 ## Bloque `remote`
 

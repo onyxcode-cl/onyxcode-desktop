@@ -2163,7 +2163,7 @@ Recomendación mínima: el camino 1 (ya hecho) en la próxima imagen; si no se q
 
 ## 3 quinquagies undevicies. Traducir un PDF sin cambiar el diseño (F8-B200)
 
-**Qué hace.** El botón «Traducir un PDF sin cambiar el diseño» del compositor del Chat (solo macOS, `caps.translatePdf`) lee los textos de un PDF con
+**Qué hace.** **Estado 2026-11-06 (1.8.11).** Ya no es solo macOS: en Windows también, con el Python incluido (`caps.translatePdf` = `pythonWin`). El botón «Traducir un PDF sin cambiar el diseño» del compositor del Chat lee los textos de un PDF con
 PyMuPDF y los vuelve a escribir sobre el MISMO PDF (`resources/opencode/skills/pdf/scripts/translate_pdf.py`, el mismo script que usa la skill
 `pdf` en Code y Overdrive). La traducción la pide el renderer al modelo que la persona tiene elegido en el Chat; `main` no habla con ningún modelo
 ni con la red.

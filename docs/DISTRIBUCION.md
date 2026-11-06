@@ -261,8 +261,8 @@ Ojo: no ejecutes el binario contra tu `HOME` real (crea datos en `~/.local/share
 ## 10. Publicar una versión y actualizar desde la app
 
 Lazunox avisa de las versiones nuevas (ver `docs/SEGURIDAD.md`, secciones 3 quinquies y 3 septies) y, si esta
-copia puede instalar sola, el botón **«Actualizar»** descarga la versión, la verifica y la sustituye. Sin la
-clave de firma (`UPDATE_PUBLIC_KEY` vacía) o en una carpeta sin permiso, todo sigue como antes: «Descargar» abre la
+copia puede instalar sola, el botón **«Actualizar»** descarga la versión, la verifica y la sustituye. Sin una
+clave de firma válida (`UPDATE_PUBLIC_KEY` en `src/shared/brand.ts`; en 1.8.11 ya está fijada) o en una carpeta sin permiso, todo sigue como antes: «Descargar» abre la
 página de la release y el usuario arrastra el `.dmg` a Aplicaciones.
 
 ### 10.1 Una sola vez: el par de claves de actualización (Ed25519)
@@ -482,7 +482,7 @@ disco lleno.
 - **Sin firma:** no hay certificado de firma de código de Windows. Consecuencias que no se pueden comprobar sin él: **SmartScreen** mostrará «Windows protegió su PC» al ejecutar el instalador descargado (el usuario pulsa «Más información › Ejecutar de todas formas») y Defender puede tardar en confiar en el ejecutable. Para firmarlo hace falta un certificado y `win.certificateSubjectName`/`CSC_LINK`; electron-builder firma entonces el `.exe` y el desinstalador.
 - **Qué esperar de SmartScreen (2026):** desde marzo de 2024 un certificado **EV ya no da reputación inmediata**: EV y OV la ganan igual, con descargas limpias a lo largo del tiempo, así que **el primer instalador firmado seguirá mostrando el aviso**. Desde junio de 2023 la clave de cualquier certificado de firma de código debe vivir en un HSM o un token (USB o nube): ya no sirve un `.p12` suelto en CI.
 - **Opciones de firma desde Chile** (precios de referencia, comprobar antes de contratar): **Azure Artifact Signing** (antes Trusted Signing, ~10 USD/mes) **no está disponible** para personas en Chile (solo individuos de EE. UU. y Canadá y organizaciones de EE. UU., Canadá, UE y Reino Unido). **SignPath Foundation**: gratis para código abierto (exige licencia OSI sin doble licencia comercial, repositorio público ya con cierta reputación y política de firma publicada; el editor visible es «SignPath Foundation»; preguntarles por la cuenta obligatoria contra `api.onyxcode.cl`). **Certum Open Source** (nube, ~49 EUR, solo individuos, firma con código del móvil: difícil de automatizar, se firma en local). **OV comercial** (Sectigo, SSL.com…, unos 200–400 USD/año más token o nube). Ninguna quita el aviso el primer día.
-- **Verificar:** `scripts/win/pack-check.ps1 -Install` (ver `docs/VERIFICACION.md` › «Paquete de Windows»). **Actualizar:** la app de Windows ya tiene actualizador propio (sección 12.1), pero queda apagado mientras `UPDATE_PUBLIC_KEY` esté vacía; sin él se instala la versión nueva encima.
+- **Verificar:** `scripts/win/pack-check.ps1 -Install` (ver `docs/VERIFICACION.md` › «Paquete de Windows»). **Actualizar:** la app de Windows ya tiene actualizador propio (sección 12.1). Desde 1.8.11 la clave pública está fijada en `src/shared/brand.ts`, así que el botón existe; antes, con la clave vacía, se instalaba la versión nueva encima.
 
 ### 12.1 Windows: publicar y firmar una actualización
 
@@ -526,11 +526,13 @@ firmar, que el ZIP sea idéntico en dos ejecuciones, que `WinUpdateInstaller` (e
 
 **No verificado:** `tar.exe` de Windows extrayendo un ZIP de estos scripts; el reemplazo completo con la app real (no solo `swap.ps1`
 con un ejecutable de prueba); el instalador NSIS por usuario con una actualización real encima; Defender sobre el ZIP; y la clave
-pública: `UPDATE_PUBLIC_KEY` sigue vacía, así que hoy el actualizador está apagado en Mac y Windows y los scripts se niegan a publicar.
+pública: `UPDATE_PUBLIC_KEY` ya está fijada en `src/shared/brand.ts` (1.8.11), así que el actualizador de Mac y Windows está encendido. Falta comprobar de punta a punta una actualización real firmada con esa clave.
 
-### 12.2 Windows: Control del PC en el paquete (apagado)
+### 12.2 Windows: Control del PC en el paquete
 
-- **Hoy no entra nada.** Mientras `TASKS_WIN_BUILD` sea `false`, ni `cu-helper.exe` ni el agente `computer.win.md` van en el instalador (ni en el `.asar`, ni en el paquete de macOS): `files` excluye `resources/opencode/agents-win/computer.win.md` y todo `resources/computer-use/win/**`. Esa exclusión del `.asar` ya existía para los fuentes de Rust y `target/`; no se duplicó.
+**Estado 2026-11-06 (1.8.11).** Con `TASKS_WIN_BUILD = true` (desde 2026-10-07) el helper `cu-helper.exe` y el agente `computer.win.md` sí entran en el instalador de Windows (`electron-builder.js`, `win.extraResources`). Lo que sigue describe el estado con la bandera apagada, como historia.
+
+- **Con la bandera apagada, no entraba nada.** Mientras `TASKS_WIN_BUILD` sea `false`, ni `cu-helper.exe` ni el agente `computer.win.md` van en el instalador (ni en el `.asar`, ni en el paquete de macOS): `files` excluye `resources/opencode/agents-win/computer.win.md` y todo `resources/computer-use/win/**`. Esa exclusión del `.asar` ya existía para los fuentes de Rust y `target/`; no se duplicó.
 - **Cuándo entran:** solo con la función activa (`TASKS_WIN_BUILD = true` en `src/shared/feature-flags.ts`; ya no hace falta `LAZUNOX_COMPUTER_WIN_PACK=1`). Con ella activa y sin `cu-helper.exe` compilado, `check-win-bundle` hace fallar el empaquetado. Entonces `win.extraResources` copia **solo** `resources/computer-use/win/bin/cu-helper.exe` → `resources\computer-use\bin\` (compílalo antes con `node scripts/build-native.mjs --win-helper`; `npm run package:win` no lo compila) y `computer.win.md` → `resources\opencode\agents\`, fuera del asar, donde `computer-agent.ts` lo busca. Nunca los fuentes de Rust ni `target/`.
 - **Comprobar:** `node scripts/check-win-bundle.mjs --config-only` valida `electron-builder.js` (helper y agente solo en `win.extraResources`, solo con la función activa, con el filtro exacto, y la exclusión del `.asar` intacta); sin `--config-only` además revisa `out/main/index.js` (requiere `npm run build`). Pruebas: `node --test scripts/check-win-bundle.test.mjs`.
 - **Sin firma Authenticode (pendiente):** el helper iría sin firmar. Un exe sin firmar que combina gancho de teclado, SendInput y captura de pantalla puede ser puesto en cuarentena por la heurística de Defender; **no se ha probado** un escaneo a demanda (`scripts\win\run-cu.ps1 -Step defender`, a pedido del dueño). Que el helper aparezca o no tras instalar es lo primero que habría que mirar. Decisión del dueño: firma antes de publicar (véase `docs/SEGURIDAD.md`, «3 quadragies quinquies»).
