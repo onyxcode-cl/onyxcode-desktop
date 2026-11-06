@@ -101,21 +101,44 @@ describe('readTaskFile', () => {
     await fails(readTaskFile(root, 'a.docx'), /varios nombres/)
   })
   it('si el archivo se reemplaza entre la apertura y la lectura (otro archivo o un enlace), se rechaza', async () => {
+    // Propiedad de seguridad: NUNCA se devuelve el contenido del reemplazo. En macOS/Linux el reemplazo se hace y la lectura lo detecta
+    // («cambió»). En Windows el sistema no deja renombrar sobre un archivo abierto (EBUSY/EPERM/EACCES), o borrarlo y crear un enlace
+    // (EPERM sin privilegio / EEXIST porque el nombre sigue ocupado hasta cerrar): entonces el reemplazo no ocurre y se lee el original.
+    const intenta = (op: () => void) => async (): Promise<void> => {
+      try {
+        op()
+      } catch (e) {
+        expect(['EBUSY', 'EPERM', 'EACCES', 'EEXIST']).toContain((e as NodeJS.ErrnoException).code)
+        if (process.platform !== 'win32') throw e // fuera de Windows el reemplazo SÍ tiene que poder hacerse
+      }
+    }
+    const lee = (name: string, op: () => void) =>
+      readTaskFile(root, name, [], { afterOpen: intenta(op) }).then(
+        (r) => ({ r, err: null as unknown }),
+        (err: unknown) => ({ r: null, err })
+      )
     writeFileSync(join(root, 'a.docx'), ZIP)
     writeFileSync(join(root, 'otro.docx'), Buffer.concat([ZIP, Buffer.from('distinto')]))
-    await fails(
-      readTaskFile(root, 'a.docx', [], { afterOpen: async () => renameSync(join(root, 'otro.docx'), join(root, 'a.docx')) }),
-      /cambió/
-    )
+    const r1 = await lee('a.docx', () => renameSync(join(root, 'otro.docx'), join(root, 'a.docx')))
+    if (r1.err) {
+      expect(r1.err).toBeInstanceOf(OutputPathError)
+      expect((r1.err as Error).message).toMatch(/cambió/)
+    } else {
+      expect(process.platform).toBe('win32') // el reemplazo no ocurrió: solo es posible en Windows
+      expect(r1.r!.bytes.equals(ZIP)).toBe(true)
+    }
     writeFileSync(join(root, 'b.docx'), ZIP)
-    await fails(
-      readTaskFile(root, 'b.docx', [], {
-        afterOpen: async () => {
-          rmSync(join(root, 'b.docx'))
-          symlinkSync(join(outside, 'secreto.docx'), join(root, 'b.docx'))
-        }
-      }),
-      /cambió/
-    )
+    const r2 = await lee('b.docx', () => {
+      rmSync(join(root, 'b.docx'))
+      symlinkSync(join(outside, 'secreto.docx'), join(root, 'b.docx'))
+    })
+    if (r2.err) {
+      expect(r2.err).toBeInstanceOf(OutputPathError)
+      expect((r2.err as Error).message).toMatch(/cambió/)
+    } else {
+      expect(process.platform).toBe('win32')
+      expect(r2.r!.bytes.includes('SECRETO')).toBe(false)
+      expect(r2.r!.bytes.equals(ZIP)).toBe(true)
+    }
   })
 })
