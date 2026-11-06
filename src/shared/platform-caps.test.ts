@@ -13,7 +13,6 @@ describe('capsFor', () => {
       computer: true,
       computerBackend: 'ax',
       updater: true,
-      keepAwakeText: true,
       quickLook: true,
       remote: true,
       docViewer: true,
@@ -28,7 +27,6 @@ describe('capsFor', () => {
       computer: false,
       computerBackend: 'none',
       updater: true,
-      keepAwakeText: false,
       quickLook: false,
       remote: false,
       docViewer: false,
@@ -43,7 +41,6 @@ describe('capsFor', () => {
       computer: false,
       computerBackend: 'none',
       updater: false,
-      keepAwakeText: false,
       quickLook: false,
       remote: false,
       docViewer: false,
@@ -109,7 +106,6 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       computer: true,
       computerBackend: 'ax',
       updater: true,
-      keepAwakeText: true,
       remote: true,
       docViewer: true,
       translatePdf: true
@@ -120,7 +116,6 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       computer: false,
       computerBackend: 'none',
       updater: true, // actualizador de Windows (plan win-D): antes apagado
-      keepAwakeText: false,
       remote: false,
       docViewer: false,
       translatePdf: false
@@ -161,7 +156,6 @@ describe('superficie remote (PWA del celular)', () => {
       computer: false,
       computerBackend: 'none',
       updater: false,
-      keepAwakeText: false,
       quickLook: false,
       remote: false,
       terminal: false,

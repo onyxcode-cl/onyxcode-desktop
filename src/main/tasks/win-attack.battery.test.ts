@@ -4,9 +4,9 @@
  * Es el lado DEFENSIVO que sí se puede probar sin Windows: cada ataque se corre contra funciones puras con la
  * plataforma inyectada (`resolveUiPath`, `toSandboxPath`, `fromSandboxPath`, `checkNoLinks`, el mapa de rutas y
  * `forbiddenFolderReason`). Lo que exige un Windows/WSL real (montajes, Landlock, red, ciclo de vida…) NO se
- * simula: queda en `ATTACKS` como `pc` con su motivo y lo cubre `scripts/win/tasks-attack.ps1` en el PC.
- * `tasks-win-report.guard.test.ts` impide activar Tareas sin ese informe del PC: que esta batería pase en macOS
- * NO equivale a que el aislamiento de Windows funcione.
+ * simula: queda en `ATTACKS` como `pc` con su motivo; la cubrirá el arnés de PC (todavía no está en el repositorio).
+ * No hay hoy ninguna guardia que exija un informe del PC antes de activar Tareas (`tasks-win-report.ts` está archivado):
+ * que esta batería pase en macOS NO equivale a que el aislamiento de Windows funcione.
  */
 import { afterAll, describe, expect, it } from 'vitest'
 import attack from './__fixtures__/attack-paths.json'
