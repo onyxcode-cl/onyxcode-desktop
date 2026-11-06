@@ -19,7 +19,8 @@ import {
   listRuns,
   blankRuns,
   slideTitleIssues,
-  monotonousLayouts
+  monotonousLayouts,
+  denseBullets
 } from './review-checks'
 
 describe('R7: todo viñetas', () => {
@@ -30,6 +31,16 @@ describe('R7: todo viñetas', () => {
   it('menos de 4 láminas de contenido, o alguna de otro tipo → no', () => {
     expect(monotonousLayouts([undefined, undefined, undefined, undefined])).toBe(false)
     expect(monotonousLayouts([undefined, 'bullets', 'stat', 'bullets', 'bullets'])).toBe(false)
+  })
+})
+
+describe('R8: lámina cargada', () => {
+  it('más de 6 viñetas, o más de 60 palabras entre todas, cargan la lámina', () => {
+    expect(denseBullets(['a', 'b', 'c', 'd', 'e', 'f'])).toBe(false)
+    expect(denseBullets(['a', 'b', 'c', 'd', 'e', 'f', 'g'])).toBe(true)
+    expect(denseBullets([Array(30).fill('p').join(' '), Array(30).fill('p').join(' ')])).toBe(false)
+    expect(denseBullets([Array(31).fill('p').join(' '), Array(30).fill('p').join(' ')])).toBe(true)
+    expect(denseBullets(undefined)).toBe(false)
   })
 })
 

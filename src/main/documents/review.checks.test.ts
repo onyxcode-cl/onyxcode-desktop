@@ -278,6 +278,23 @@ describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
   })
 })
 
+describe('R8 en PowerPoint: lámina cargada (ℹ)', () => {
+  const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  it('una lámina con 7 viñetas → ℹ con su número; con 6 no', async () => {
+    const slides = [[T('Portada')], [T('Carga')], [T('Bien')]]
+    const spec = {
+      slides: [
+        { title: 'Portada' },
+        { title: 'Carga', bullets: ['1', '2', '3', '4', '5', '6', '7'] },
+        { title: 'Bien', bullets: ['1', '2', '3', '4', '5', '6'] }
+      ]
+    }
+    const r = await reviewDocument('pptx', await pptxSlides(slides), spec)
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Láminas con más de 6 viñetas o más de 60 palabras de cuerpo (nº 2)')
+  })
+})
+
 describe('resumen para el agente', () => {
   it('incluye los avisos ℹ y la lista ✔/✘ nueva', async () => {
     const z = new JSZip()

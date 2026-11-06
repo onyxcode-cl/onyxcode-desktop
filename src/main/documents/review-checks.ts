@@ -403,6 +403,12 @@ export function monotonousLayouts(layouts: Array<string | undefined>): boolean {
   return content.length >= 4 && content.every((l) => l === undefined || l === 'bullets')
 }
 
+/** Lámina cargada: más de 6 viñetas, o más de 60 palabras entre todas sus viñetas. */
+export function denseBullets(bullets: string[] | undefined): boolean {
+  if (!bullets?.length) return false
+  return bullets.length > 6 || bullets.reduce((n, b) => n + countWords(b), 0) > 60
+}
+
 /** Cuántos tramos de dos o más `true` seguidos hay en `flags` (p. ej. párrafos vacíos seguidos). */
 export function blankRuns(flags: boolean[]): number {
   let runs = 0

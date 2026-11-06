@@ -24,6 +24,7 @@ import {
   slideTitleIssues,
   listRuns,
   monotonousLayouts,
+  denseBullets,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -355,6 +356,9 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     r.note(
       `Las ${specSlides.length - 1} láminas de contenido son todas de viñetas: varía el tipo de lámina (cifras, pasos, tarjetas, tabla o gráfico) donde el contenido lo pida`
     )
+  const dense = (specSlides ?? []).flatMap((s, i) => (denseBullets(s.bullets) ? [i + 1] : []))
+  if (dense.length)
+    r.note(`Láminas con más de 6 viñetas o más de 60 palabras de cuerpo (nº ${short(dense.map(String), 6)}): reparte el contenido en dos láminas`)
   const titleIssues = slideTitleIssues(titles)
   if (titleIssues.repeated.length)
     r.note(`Título repetido en varias diapositivas: ${short(titleIssues.repeated.map((t) => `«${t.slice(0, 30)}»`), 3)}: cada lámina necesita su propio título`)
