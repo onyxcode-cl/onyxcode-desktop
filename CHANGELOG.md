@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.10] - 2026-11-06
+
+### Traducir documentos, mucho mejor (macOS)
+
+- **Los PDF escaneados ya se traducen**: si el PDF es una foto con texto reconocido por OCR, la traducción tapa el idioma original de la foto y escribe encima. Antes quedaban los dos idiomas apilados e ilegibles.
+- **La IA mira cada hoja escaneada** (con un modelo que lee imágenes) y corrige errores evidentes del reconocimiento, sin inventar texto.
+- **Traducción más consistente**: antes de empezar, la IA arma una ficha del documento y un glosario fijo (por ejemplo «Asegurado», «Póliza»), y cada tanda usa los términos que le corresponden.
+- **Versión limpia de un escaneo (opcional)**: además del PDF fiel, se crea un PDF nuevo con el texto traducido, ordenado y editable, sin la foto del original.
+- **Avisos antes de entregar**: si una cifra, fecha o importe cambió, o una traducción quedó sospechosamente corta o larga, el informe lo marca.
+- **Dentro de la conversación**: en el Chat, la traducción es una tarjeta sobre el cuadro de escribir (progreso, cancelar, abrir, guardar), sin ventana aparte, y puedes seguir escribiendo. En Tareas y Code, el agente traduce siguiendo la misma guía, también con escaneos.
+
+### Correcciones
+
+- **Letra pareja en los escaneos**: un párrafo ya no sale mucho más grande que los demás de la misma hoja.
+- **Fuentes incorporadas**: la traducción de PDF ya no depende de las fuentes instaladas en el equipo; cubre español, ñ, ¿, ¡ y comillas.
+
 ## [1.8.9] - 2026-11-06
 
 ### Primera vez más simple
