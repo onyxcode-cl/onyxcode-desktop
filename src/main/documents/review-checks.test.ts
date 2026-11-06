@@ -14,8 +14,18 @@ import {
   specGapCells,
   gapCells,
   headingJumps,
-  headingStyleIssue
+  headingStyleIssue,
+  countWords
 } from './review-checks'
+
+describe('R3: párrafo de cuerpo de más de 140 palabras', () => {
+  it('cuenta palabras y deja pasar 140 exactas', () => {
+    expect(countWords('')).toBe(0)
+    expect(countWords('  uno   dos  ')).toBe(2)
+    expect(countWords(Array(140).fill('p').join(' '))).toBe(140)
+    expect(countWords(Array(141).fill('p').join(' '))).toBe(141)
+  })
+})
 
 describe('R1: salto de nivel de encabezado', () => {
   it('1, 2, 3 y 1, 2, 1, 2 no saltan; 1 → 3 sí, y se marca el encabezado que salta', () => {

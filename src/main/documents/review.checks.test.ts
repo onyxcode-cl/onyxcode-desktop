@@ -197,6 +197,14 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
     expect(notes(r)).toContain('«RESUMEN EJECUTIVO» va en mayúsculas')
     expect(notes(r)).toContain('«Ventas de 2026.» termina en punto')
   })
+  it('párrafo de cuerpo de 141 palabras → ℹ; de 140 no; un encabezado largo no cuenta', async () => {
+    const largo = Array(141).fill('palabra').join(' ')
+    const r = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', largo)))
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('1 párrafo(s) de más de 140 palabras')
+    const justo = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', Array(140).fill('palabra').join(' '))))
+    expect(notes(justo)).not.toContain('más de 140 palabras')
+  })
   it('encabezado normal y siglas cortas no avisan', async () => {
     const r = await reviewDocument(
       'docx',

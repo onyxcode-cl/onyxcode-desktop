@@ -19,6 +19,7 @@ import {
   formulaSheetRefs,
   headingJumps,
   headingStyleIssue,
+  countWords,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -135,6 +136,11 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
   for (const i of headingJumps(hs.map((p) => Number(p.key.slice(7)))))
     r.note(
       `Salto de nivel en «${hs[i].text.slice(0, 30)}» (nivel ${hs[i].key.slice(7)} después de nivel ${hs[i - 1].key.slice(7)}): falta un encabezado de nivel ${Number(hs[i - 1].key.slice(7)) + 1} antes`
+    )
+  const long = paras.filter((p) => !/^(list|heading|title)/.test(p.key) && countWords(p.text) > 140)
+  if (long.length)
+    r.note(
+      `${long.length} párrafo(s) de más de 140 palabras (${short(long.map((p) => `«${p.text.trim().slice(0, 24)}…» ${countWords(p.text)} palabras`), 3)}): divídelos o pasa las ideas a una lista`
     )
   for (const p of paras.filter((x) => x.key === 'title' || /^heading\d$/.test(x.key))) {
     const issue = headingStyleIssue(p.text)

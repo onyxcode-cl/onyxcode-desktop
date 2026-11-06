@@ -356,6 +356,12 @@ export function headingJumps(levels: number[]): number[] {
   return out
 }
 
+/** Palabras de un texto (separadas por espacios). */
+export function countWords(text: string): number {
+  const t = text.trim()
+  return t ? t.split(/\s+/).length : 0
+}
+
 /**
  * Título o encabezado con forma de texto pegado: termina en punto, o va en mayúsculas sostenidas (4 letras o más, sin cifras; «KPI» y
  * «Q3 2026» no cuentan). Devuelve el motivo o `null`.
