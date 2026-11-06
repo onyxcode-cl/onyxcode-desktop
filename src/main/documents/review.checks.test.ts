@@ -235,6 +235,32 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
   })
 })
 
+/** Presentación mínima con varias diapositivas (una lista de formas por diapositiva). */
+async function pptxSlides(slides: string[][]): Promise<Buffer> {
+  const z = new JSZip()
+  z.file('ppt/presentation.xml', '<p:presentation><p:sldSz cx="12192000" cy="6858000"/></p:presentation>')
+  slides.forEach((shapes, i) =>
+    z.file(`ppt/slides/slide${i + 1}.xml`, `<p:sld ${NS_P}><p:cSld><p:spTree>${shapes.join('')}</p:spTree></p:cSld></p:sld>`)
+  )
+  return z.generateAsync({ type: 'nodebuffer' })
+}
+
+describe('R6 en PowerPoint: título repetido o con punto (ℹ)', () => {
+  const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  it('el mismo título en dos diapositivas → ℹ', async () => {
+    const r = await reviewDocument('pptx', await pptxSlides([[T('Resumen')], [T('Resumen')]]))
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Título repetido en varias diapositivas: «Resumen»')
+  })
+  it('título que termina en punto → ℹ; títulos distintos sin punto no avisan', async () => {
+    const r = await reviewDocument('pptx', await pptxSlides([[T('Ventas del trimestre.')], [T('Costos')]]))
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Título que termina en punto: «Ventas del trimestre.»')
+    const limpio = await reviewDocument('pptx', await pptxSlides([[T('Ventas')], [T('Costos')]]))
+    expect(notes(limpio)).not.toContain('Título')
+  })
+})
+
 describe('resumen para el agente', () => {
   it('incluye los avisos ℹ y la lista ✔/✘ nueva', async () => {
     const z = new JSZip()

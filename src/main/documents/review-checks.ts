@@ -374,6 +374,26 @@ export function listRuns(numIds: Array<string | null>): number[] {
   return lengths
 }
 
+/**
+ * Títulos de diapositiva repetidos (mismo texto en 2 o más, sin distinguir mayúsculas) y títulos que terminan en punto. `titles[i]` es
+ * el título de la diapositiva i, o `null` si no tiene. Devuelve los textos tal como están en la primera diapositiva que los trae.
+ */
+export function slideTitleIssues(titles: Array<string | null>): { repeated: string[]; dotted: string[] } {
+  const count = new Map<string, { text: string; n: number }>()
+  for (const t of titles) {
+    const text = t?.trim()
+    if (!text) continue
+    const key = text.toLowerCase()
+    const entry = count.get(key)
+    if (entry) entry.n++
+    else count.set(key, { text, n: 1 })
+  }
+  return {
+    repeated: [...count.values()].filter((e) => e.n >= 2).map((e) => e.text),
+    dotted: [...count.values()].filter((e) => /\.$/.test(e.text)).map((e) => e.text)
+  }
+}
+
 /** Cuántos tramos de dos o más `true` seguidos hay en `flags` (p. ej. párrafos vacíos seguidos). */
 export function blankRuns(flags: boolean[]): number {
   let runs = 0

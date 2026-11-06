@@ -21,6 +21,7 @@ import {
   headingStyleIssue,
   blankRuns,
   countWords,
+  slideTitleIssues,
   listRuns,
   overlappingPairs,
   pptxBackground,
@@ -259,6 +260,7 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const stacked: string[] = []
   const tight: string[] = []
   const lowContrast: ContrastProblem[] = []
+  const titles: Array<string | null> = []
   let allText = ''
   const TOL = 22860
   const EDGE = 274320 // 0,3 pulgadas: más cerca del borde que esto se ve apretado
@@ -294,6 +296,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     lowContrast.push(...pptxContrastProblems(textShapes, await slideBackground(zip, name, xml), `diapositiva ${i + 1}`, pptxPanels(xml)))
     const hasTitle = sps.some((s) => /<p:ph[^>]*\stype="(title|ctrTitle)"/.test(s) && textOf(s).trim())
     if (!hasTitle) noTitle.push(String(i + 1))
+    const titleShape = textShapes.find((t) => t.placeholder === 'title' || t.placeholder === 'ctrTitle')
+    titles.push(titleShape ? titleShape.runs.map((x) => x.text).join('') : null)
     const shapes = [
       ...sps,
       ...(xml.match(/<p:pic>[\s\S]*?<\/p:pic>/g) ?? []),
@@ -345,6 +349,11 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     `Contraste bajo (WCAG) en ${short(lowContrast.map(ratioText))}: cambia el color del texto o del fondo`
   )
   checkTemplate(r, allText)
+  const titleIssues = slideTitleIssues(titles)
+  if (titleIssues.repeated.length)
+    r.note(`Título repetido en varias diapositivas: ${short(titleIssues.repeated.map((t) => `«${t.slice(0, 30)}»`), 3)}: cada lámina necesita su propio título`)
+  if (titleIssues.dotted.length)
+    r.note(`Título que termina en punto: ${short(titleIssues.dotted.map((t) => `«${t.slice(0, 30)}»`), 3)}: los títulos no llevan punto final`)
   if (tight.length)
     r.note(`Texto a menos de 0,3 pulgadas del borde en diapositiva ${short(tight)}: déjale al menos 0,5 pulgadas de margen si puedes`)
   return r.done()

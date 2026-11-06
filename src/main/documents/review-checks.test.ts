@@ -17,8 +17,21 @@ import {
   headingStyleIssue,
   countWords,
   listRuns,
-  blankRuns
+  blankRuns,
+  slideTitleIssues
 } from './review-checks'
+
+describe('R6: títulos de diapositiva repetidos o con punto', () => {
+  it('el mismo título (sin distinguir mayúsculas) en 2 diapositivas se marca; uno solo no', () => {
+    const r = slideTitleIssues(['Resumen', 'resumen ', 'Ventas', null])
+    expect(r.repeated).toEqual(['Resumen'])
+    expect(slideTitleIssues(['Uno', 'Dos', null]).repeated).toEqual([])
+  })
+  it('título que termina en punto se marca; sin título (null) no cuenta', () => {
+    expect(slideTitleIssues(['Ventas del trimestre.', null, 'Costos']).dotted).toEqual(['Ventas del trimestre.'])
+    expect(slideTitleIssues([null, null]).dotted).toEqual([])
+  })
+})
 
 describe('R5: párrafos vacíos seguidos', () => {
   it('dos o más vacíos seguidos cuentan como un tramo; uno solo no', () => {
