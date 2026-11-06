@@ -168,7 +168,7 @@ describe('renderPreview: tiempo total, memoria y carpeta privada', () => {
           }
         }
       )
-      expect(seen.startsWith(`${priv}/dentro/lazunox-preview-`)).toBe(true)
+      expect(seen.startsWith(join(priv, 'dentro', 'lazunox-preview-'))).toBe(true)
     } finally {
       setPrivateTmpBase(null)
       await fs.rm(priv, { recursive: true, force: true })
