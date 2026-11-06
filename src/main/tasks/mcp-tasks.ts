@@ -156,7 +156,14 @@ function infoOf(name: string, entry: McpEntry, flags: McpFlags | undefined, exte
  * Bloque `mcp`/`permission`/`hosts` a inyectar en un servidor Tareas. Solo entran los servidores
  * activos y marcados "Disponible en Tareas". Los hosts solo importan en sandbox (allowlist del proxy).
  */
-export function tasksMcpContribution(opts: { sandboxed: boolean; registerRoute?: McpRouteRegistrar }): TasksMcpContribution {
+export function tasksMcpContribution(opts: {
+  sandboxed: boolean
+  registerRoute?: McpRouteRegistrar
+  /** Plataforma del servidor Lazunox (por defecto `process.platform`). Con win32 y `sandboxed:false` el MCP corre en Windows nativo. */
+  platform?: NodeJS.Platform
+}): TasksMcpContribution {
+  // Windows nativo (Control total): no existe `/usr/bin/env`. Con WSL (`sandboxed:true`) el MCP corre dentro de Linux y el prefijo se queda.
+  const nativeWindows = (opts.platform ?? process.platform) === 'win32' && !opts.sandboxed
   const out: TasksMcpContribution = { mcp: {}, permission: {}, hosts: [], blocked: [] }
   let servers: Record<string, McpEntry>
   try {
@@ -210,10 +217,14 @@ export function tasksMcpContribution(opts: { sandboxed: boolean; registerRoute?:
       continue
     }
     if (entry.type === 'local') {
+      // Windows nativo: sin `env -u`, las variables ocultas se anulan (vacías) en el `environment` del MCP; las del usuario mandan.
+      const environment = nativeWindows
+        ? { ...Object.fromEntries(HIDDEN_SHELL_ENV.map((n) => [n, ''])), ...entry.environment }
+        : entry.environment
       out.mcp[name] = {
         type: 'local',
-        command: [...MCP_ENV_WRAPPER, ...entry.command],
-        ...(entry.environment ? { environment: entry.environment } : {}),
+        command: nativeWindows ? [...entry.command] : [...MCP_ENV_WRAPPER, ...entry.command],
+        ...(environment ? { environment } : {}),
         ...(entry.cwd ? { cwd: entry.cwd } : {}),
         enabled: true,
         ...(entry.timeout ? { timeout: entry.timeout } : {})
