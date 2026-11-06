@@ -122,6 +122,8 @@ export const misc = {
   'misc.auto.noAppsDesc': 'El agente nunca concederá «Solo ver» en automático.',
   'misc.auto.appsNote':
     'Solo aplica a peticiones a mitad de tarea con nivel «Solo ver»: gestores de contraseñas, Ajustes del sistema, Mensajes, Mail, terminales, IDE y apps de banca nunca se conceden en automático, aunque las añadas aquí.',
+  'misc.auto.appsNote.win':
+    'Solo aplica a peticiones a mitad de tarea con nivel «Solo ver»: gestores de contraseñas, Configuración de Windows, terminales, IDE y apps de banca nunca se conceden en automático, aunque las añadas aquí.',
   'misc.auto.logTitle': 'Registro de aprobaciones automáticas',
   'misc.auto.logEmpty': 'Sin aprobaciones todavía',
   'misc.auto.logCount': { one: '{count} entradas', other: '{count} entradas' },

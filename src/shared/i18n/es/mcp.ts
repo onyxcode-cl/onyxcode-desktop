@@ -122,6 +122,7 @@ export const mcp = {
   'mcp.dlg.remoteNote': 'No ejecuta nada en tu Mac: es un servicio remoto.',
   'mcp.dlg.remoteNote.win': 'No ejecuta nada en tu PC: es un servicio remoto.',
   'mcp.dlg.dataOut': 'Qué datos salen',
+  'mcp.dlg.dataOut.win': 'Qué datos salen',
   'mcp.dlg.serverName': 'Nombre del servidor',
   'mcp.dlg.serverNameHint': 'Las herramientas aparecerán como nombre_herramienta.',
   'mcp.dlg.nameFormat': 'Usa solo letras, números, "-" o "_" (máx. 64).',

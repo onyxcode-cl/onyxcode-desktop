@@ -108,4 +108,19 @@ describe('buildContinuationPrompt', () => {
     expect(es).toContain('Encargo original:\nEscribe a Fulano')
     expect(buildContinuationPrompt(entries, 'en', 'Discord')).toContain('"The entire computer"')
   })
+  it('en Windows el prompt dice PC y nunca Mac', () => {
+    const w = globalThis as { window?: { api?: { platform?: string } } }
+    const prev = w.window
+    w.window = { api: { platform: 'win32' } }
+    try {
+      const es = buildContinuationPrompt(entries, 'es')
+      const en = buildContinuationPrompt(entries, 'en')
+      expect(es).toContain('Continúa en Control total del PC')
+      expect(es).not.toMatch(/Mac/)
+      expect(en).toContain('Full PC control')
+      expect(en).not.toMatch(/Mac/)
+    } finally {
+      w.window = prev
+    }
+  })
 })
