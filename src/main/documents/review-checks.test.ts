@@ -22,7 +22,10 @@ import {
   monotonousLayouts,
   denseBullets,
   percentMisfits,
-  sheetShapeIssues
+  sheetShapeIssues,
+  fontFamilies,
+  wideHeaderRows,
+  hasFixedPosition
 } from './review-checks'
 
 describe('R7: todo viñetas', () => {
@@ -33,6 +36,26 @@ describe('R7: todo viñetas', () => {
   it('menos de 4 láminas de contenido, o alguna de otro tipo → no', () => {
     expect(monotonousLayouts([undefined, undefined, undefined, undefined])).toBe(false)
     expect(monotonousLayouts([undefined, 'bullets', 'stat', 'bullets', 'bullets'])).toBe(false)
+  })
+})
+
+describe('R11: PDF — posición fija (✘), familias de letra y encabezados anchos (ℹ)', () => {
+  it('familias de letra: sin comillas, en minúsculas y sin repetir', () => {
+    expect(fontFamilies('body{font-family: "Inter", Arial, sans-serif} h1{font-family:Georgia,serif}')).toEqual([
+      'inter',
+      'arial',
+      'sans-serif',
+      'georgia',
+      'serif'
+    ])
+    expect(fontFamilies('p{font-size:10pt}')).toEqual([])
+  })
+  it('fila con 9 encabezados cuenta; con 8 no; posición fija se detecta', () => {
+    const th = (n: number): string => '<th>x</th>'.repeat(n)
+    expect(wideHeaderRows(`<table><tr>${th(9)}</tr><tr>${th(8)}</tr></table>`)).toBe(1)
+    expect(wideHeaderRows(`<table><tr>${th(8)}</tr></table>`)).toBe(0)
+    expect(hasFixedPosition('.pie{position: fixed; bottom:0}')).toBe(true)
+    expect(hasFixedPosition('.pie{position: absolute}')).toBe(false)
   })
 })
 

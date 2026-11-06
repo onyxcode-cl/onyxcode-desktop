@@ -433,6 +433,27 @@ export function sheetShapeIssues(sheets: Array<{ name: string; rows: unknown[][]
   return out
 }
 
+/** Familias de letra distintas en las declaraciones `font-family` de un CSS (sin comillas, en minúsculas). */
+export function fontFamilies(css: string): string[] {
+  const out = new Set<string>()
+  for (const m of css.matchAll(/font-family\s*:\s*([^;}]+)/gi))
+    for (const part of m[1].split(',')) {
+      const f = part.trim().replace(/^['"]+|['"]+$/g, '').trim().toLowerCase()
+      if (f && !['inherit', 'initial', 'unset'].includes(f)) out.add(f)
+    }
+  return [...out]
+}
+
+/** Filas de tabla con más de `max` encabezados (`<th>`): en una página impresa se salen del ancho. */
+export function wideHeaderRows(html: string, max = 8): number {
+  return (html.match(/<tr\b[\s\S]*?<\/tr>/gi) ?? []).filter((tr) => (tr.match(/<th\b/gi) ?? []).length > max).length
+}
+
+/** `position: fixed` en el CSS: en un PDF se repite en cada página y tapa el contenido. */
+export function hasFixedPosition(css: string): boolean {
+  return /position\s*:\s*fixed/i.test(css)
+}
+
 /** Lámina cargada: más de 6 viñetas, o más de 60 palabras entre todas sus viñetas. */
 export function denseBullets(bullets: string[] | undefined): boolean {
   if (!bullets?.length) return false

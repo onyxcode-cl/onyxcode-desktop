@@ -27,6 +27,9 @@ import {
   denseBullets,
   percentMisfits,
   sheetShapeIssues,
+  fontFamilies,
+  hasFixedPosition,
+  wideHeaderRows,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -594,6 +597,21 @@ export function reviewPdf(html: string, bytes: Buffer): ReviewResult {
   if (overlaps && !/break-inside\s*:\s*avoid|page-break-inside\s*:\s*avoid/i.test(styleText))
     r.note('Hay tarjetas que cruzan franjas: ponles break-inside: avoid para que no se partan entre páginas')
   r.check(/@page\b/i.test(html), 'Define @page (márgenes y tamaño)', 'Falta @page con tamaño A4 y márgenes de unos 18 a 22 mm')
+  r.check(
+    !hasFixedPosition(styleText),
+    'Sin elementos con posición fija',
+    'Hay elementos con position: fixed: en un PDF se repiten en cada página y tapan el contenido. Usa el encabezado y el pie de @page'
+  )
+  // Hojas de estilo y atributos style, unidos con «}» y «;» para que una declaración no se coma la siguiente.
+  const fontCss =
+    (html.match(/<style[\s\S]*?<\/style>/gi) ?? []).map((s) => s.replace(/<\/?style[^>]*>/gi, '')).join('}') +
+    ';' +
+    [...html.matchAll(/\bstyle\s*=\s*"([^"]*)"/gi)].map((m) => m[1]).join(';')
+  const families = fontFamilies(fontCss)
+  if (families.length > 2)
+    r.note(`Hay ${families.length} familias de letra distintas (${short(families, 4)}): con una o dos se ve más ordenado`)
+  const wide = wideHeaderRows(html)
+  if (wide) r.note(`${wide} fila(s) de tabla con más de 8 encabezados: se salen de la página; acorta los títulos o parte la tabla`)
   r.check(/<html\b[^>]*\blang\s*=/i.test(html), 'Declara el idioma (<html lang>)', 'Falta <html lang="es"> (accesibilidad y separación de sílabas)')
   const noAlt = (html.match(/<img\b[^>]*>/gi) ?? []).filter((t) => !/\balt\s*=/i.test(t)).length
   if (noAlt) r.note(`${noAlt} imagen${noAlt === 1 ? '' : 'es'} sin texto alternativo (alt)`)

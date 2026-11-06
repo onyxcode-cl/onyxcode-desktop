@@ -1,7 +1,7 @@
 /** Chequeos nuevos de `reviewDocument` (aspecto, plantilla, contraste, referencias de Excel) sobre archivos mínimos armados aquí. */
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
-import { reviewDocument, reviewSummary } from './review'
+import { reviewDocument, reviewPdf, reviewSummary } from './review'
 
 const bad = (r: Awaited<ReturnType<typeof reviewDocument>>): string =>
   r.items
@@ -297,6 +297,29 @@ describe('R10 en Excel: hoja sin datos (✘) y encabezados largos (ℹ)', () => 
     expect(bad(r)).toBe('')
     expect(notes(r)).toContain('Encabezado de más de 25 caracteres')
     expect(notes(r)).toContain('Hoja de más de 12 columnas')
+  })
+})
+
+describe('R11 en PDF: posición fija (✘), familias y encabezados anchos (ℹ)', () => {
+  const pdf1 = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type /Pages\n/Count 1\n/Kids []>>\nendobj\n')
+  const page = (css: string, body = '<p>Hola</p>'): string =>
+    `<html lang="es"><head><style>@page{size:A4;margin:20mm} body{font-size:11pt} ${css}</style></head><body>${body}</body></html>`
+  it('position: fixed → ✘', () => {
+    const r = reviewPdf(page('.pie{position:fixed;bottom:0}'), pdf1)
+    expect(r.ok).toBe(false)
+    expect(bad(r)).toContain('position: fixed')
+  })
+  it('tres familias de letra → ℹ; dos no', () => {
+    const tres = reviewPdf(page('h1{font-family:Georgia} p{font-family:Arial} b{font-family:Verdana}'), pdf1)
+    expect(tres.ok).toBe(true)
+    expect(notes(tres)).toContain('3 familias de letra distintas')
+    expect(notes(reviewPdf(page('h1{font-family:Georgia,serif} p{font-family:Georgia}'), pdf1))).not.toContain('familias')
+  })
+  it('una fila con 9 encabezados → ℹ', () => {
+    const th = '<th>x</th>'.repeat(9)
+    const r = reviewPdf(page('', `<table><thead><tr>${th}</tr></thead></table>`), pdf1)
+    expect(r.ok).toBe(true)
+    expect(notes(r)).toContain('1 fila(s) de tabla con más de 8 encabezados')
   })
 })
 
