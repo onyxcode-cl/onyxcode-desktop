@@ -345,3 +345,13 @@ export function specGapCells(kind: 'pptx' | 'docx' | 'xlsx', spec: unknown): str
   else arr(s.sheets).forEach((sh, i) => sh && Array.isArray(sh.rows) && sh.rows.length > 1 && run(sh.rows[0] ?? [], sh.rows.slice(1), `hoja ${i + 1}`))
   return found
 }
+
+/**
+ * Saltos en la jerarquía de encabezados de Word: un nivel 3 justo después de un 1 (sin un 2 en medio) deja el índice y el panel de
+ * navegación con huecos. `levels` son los niveles de los encabezados en orden; devuelve el índice de cada encabezado que salta.
+ */
+export function headingJumps(levels: number[]): number[] {
+  const out: number[] = []
+  for (let i = 1; i < levels.length; i++) if (levels[i] - levels[i - 1] > 1) out.push(i)
+  return out
+}

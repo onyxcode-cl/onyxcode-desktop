@@ -159,6 +159,37 @@ describe('Excel: chequeos nuevos', () => {
   })
 })
 
+/** Word mínimo con estilos de encabezado tal como los guarda Word («heading 1», «title», «list paragraph»…). */
+const docxWithStyles = async (body: string): Promise<Buffer> => {
+  const z = new JSZip()
+  z.file('word/document.xml', `<w:document xmlns:w="w"><w:body>${body}</w:body></w:document>`)
+  const style = (id: string, name: string): string => `<w:style w:styleId="${id}"><w:name w:val="${name}"/></w:style>`
+  z.file(
+    'word/styles.xml',
+    `<w:styles>${style('Title', 'Title')}${style('Heading1', 'heading 1')}${style('Heading2', 'heading 2')}${style('Heading3', 'heading 3')}${style('ListParagraph', 'List Paragraph')}</w:styles>`
+  )
+  return z.generateAsync({ type: 'nodebuffer' })
+}
+const para = (style: string, text: string): string =>
+  `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`
+const TITLE = para('Title', 'Informe anual')
+
+describe('R1 en Word: salto de encabezado (ℹ)', () => {
+  it('H1 seguido de H3 avisa; con H2 en medio no', async () => {
+    const salto = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'Resumen') + para('Heading3', 'Detalle') + para('Normal', 'Texto.'))
+    )
+    expect(bad(salto)).toBe('')
+    expect(notes(salto)).toContain('Salto de nivel en «Detalle» (nivel 3 después de nivel 1)')
+    const bien = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'Resumen') + para('Heading2', 'Medio') + para('Heading3', 'Detalle') + para('Normal', 'Texto.'))
+    )
+    expect(notes(bien)).not.toContain('Salto de nivel')
+  })
+})
+
 describe('resumen para el agente', () => {
   it('incluye los avisos ℹ y la lista ✔/✘ nueva', async () => {
     const z = new JSZip()

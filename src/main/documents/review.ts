@@ -17,6 +17,7 @@ import {
   docxContrastProblems,
   docxSmallRuns,
   formulaSheetRefs,
+  headingJumps,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -129,6 +130,11 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
       `Documento de ${paras.length} párrafos sin encabezados Heading: usa estilos de encabezado`
     )
   else r.items.push({ ok: true, text: `Encabezados reales: ${heads}` })
+  const hs = paras.filter((p) => /^heading\d$/.test(p.key))
+  for (const i of headingJumps(hs.map((p) => Number(p.key.slice(7)))))
+    r.note(
+      `Salto de nivel en «${hs[i].text.slice(0, 30)}» (nivel ${hs[i].key.slice(7)} después de nivel ${hs[i - 1].key.slice(7)}): falta un encabezado de nivel ${Number(hs[i - 1].key.slice(7)) + 1} antes`
+    )
   const manual = paras
     .filter((p) => !/^(list|heading|title)/.test(p.key) && !p.numbered && HAND_BULLET.test(p.text))
     .map((p) => p.text.slice(0, 30))

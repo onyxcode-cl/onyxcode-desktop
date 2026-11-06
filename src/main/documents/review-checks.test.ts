@@ -12,8 +12,21 @@ import {
   textExtentBox,
   textNearEdge,
   specGapCells,
-  gapCells
+  gapCells,
+  headingJumps
 } from './review-checks'
+
+describe('R1: salto de nivel de encabezado', () => {
+  it('1, 2, 3 y 1, 2, 1, 2 no saltan; 1 → 3 sí, y se marca el encabezado que salta', () => {
+    expect(headingJumps([1, 2, 3])).toEqual([])
+    expect(headingJumps([1, 2, 1, 2])).toEqual([])
+    expect(headingJumps([1, 3])).toEqual([1])
+    expect(headingJumps([1, 2, 1, 3, 2])).toEqual([3])
+  })
+  it('bajar de nivel (3 → 1) no es un salto', () => {
+    expect(headingJumps([1, 2, 3, 1])).toEqual([])
+  })
+})
 
 describe('restos de plantilla', () => {
   it('detecta lorem, TODO, TBD, [insertar…], texto de relleno y xxx', () => {
