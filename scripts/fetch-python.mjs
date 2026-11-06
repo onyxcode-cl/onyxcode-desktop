@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Descarga el Python PROPIO de Lazunox (python-build-standalone, fijado en resources/python-bin/pin.json), instala
 // las librerías de oficina de resources/python-bin/requirements.txt con ESE intérprete y lo deja en
-// resources/python-bin/mac-<arm64|x64>/python/ (bin/python3). Lo empaqueta electron-builder vía extraResources, así las
-// skills de oficina no dependen del Python del Mac del usuario. Sin dependencias: https de Node, crypto y `tar` del sistema.
+// resources/python-bin/mac-<arm64|x64>/python/ (bin/python3) o, en Windows, resources/python-bin/win-x64/python/ (python.exe).
+// Lo empaqueta electron-builder vía extraResources, así las skills de oficina no dependen del Python del usuario.
+// En Windows se EJECUTA en un PC con Windows (las ruedas son win_amd64: pip las instala con el propio intérprete extraído). Sin dependencias: https de Node, crypto y `tar` del sistema.
 //
 // Uso: node scripts/fetch-python.mjs [--if-missing] [--arch arm64|x64]
 //   --if-missing  no hace nada si ya hay una instalación con el sello `.lazunox-python` que coincide con el pin y los requisitos.
-//   --arch        arquitectura destino (por defecto la del proceso). Para x64 en un Mac arm64 hace falta Rosetta.
+//   --arch        arquitectura destino (por defecto la del proceso). Para x64 en un Mac arm64 hace falta Rosetta. En Windows solo x64.
 //
 // Garantías: el .tar.gz se verifica (tamaño y SHA-256) ANTES de extraer; si no coincide no se extrae nada. Todo se prepara
 // en una carpeta temporal y solo se mueve a su sitio si la verificación final (importar las 10 librerías y generar un .docx)
@@ -36,6 +37,7 @@ export const PIN_PATH = join(PY_DIR, 'pin.json')
 export const REQUIREMENTS_PATH = join(PY_DIR, 'requirements.txt')
 export const SEAL_NAME = '.lazunox-python'
 export const ARCHS = ['arm64', 'x64']
+export const PLATFORMS = ['darwin', 'win32']
 /** Módulos de importación de las 10 librerías de oficina. */
 export const OFFICE_MODULES = ['docx', 'openpyxl', 'pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'PIL', 'lxml', 'fitz']
 
@@ -43,18 +45,21 @@ const URL_RE = /^https:\/\/github\.com\/astral-sh\/python-build-standalone\/rele
 const validAsset = (a) =>
   !!a && typeof a.url === 'string' && URL_RE.test(a.url) && /^[0-9a-f]{64}$/.test(a.sha256) && Number.isInteger(a.size) && a.size > 0
 
-/** Clave de plataforma del pin: `darwin-arm64` | `darwin-x64`. */
-export function pinKey(arch) {
+/** Clave de plataforma del pin: `darwin-arm64` | `darwin-x64` | `win32-x64`. */
+export function pinKey(arch, platform = process.platform) {
+  if (!PLATFORMS.includes(platform)) throw new Error(`Plataforma no soportada: ${platform} (usa ${PLATFORMS.join(' o ')}).`)
   if (!ARCHS.includes(arch)) throw new Error(`Arquitectura no soportada: ${arch} (usa ${ARCHS.join(' o ')}).`)
-  return `darwin-${arch}`
+  if (platform === 'win32' && arch !== 'x64') throw new Error(`Arquitectura no soportada en Windows: ${arch} (solo x64).`)
+  return `${platform}-${arch}`
 }
 
-/** Carpeta destino de la instalación: resources/python-bin/mac-<arch>/python */
-export function pythonDir(arch, base = PY_DIR) {
-  return join(base, `mac-${arch}`, 'python')
+/** Carpeta destino de la instalación: resources/python-bin/mac-<arch>/python (macOS) o win-x64/python (Windows). */
+export function pythonDir(arch, base = PY_DIR, platform = process.platform) {
+  return join(base, platform === 'win32' ? 'win-x64' : `mac-${arch}`, 'python')
 }
 
-export const pythonBin = (arch, base = PY_DIR) => join(pythonDir(arch, base), 'bin', 'python3')
+export const pythonBin = (arch, base = PY_DIR, platform = process.platform) =>
+  platform === 'win32' ? join(pythonDir(arch, base, platform), 'python.exe') : join(pythonDir(arch, base, platform), 'bin', 'python3')
 
 /** Valida y devuelve el pin; lanza si falta algo o no es de github.com/astral-sh. */
 export function parsePin(text, label = 'pin.json') {
@@ -73,7 +78,7 @@ export function parsePin(text, label = 'pin.json') {
   ) {
     throw new Error(`${label} inválido: faltan python/release/assets`)
   }
-  for (const key of ['darwin-arm64', 'darwin-x64']) {
+  for (const key of ['darwin-arm64', 'darwin-x64', 'win32-x64']) {
     if (!validAsset(pin.assets[key]))
       throw new Error(`${label} inválido (asset ${key}): url https de github.com/astral-sh, sha256 de 64 hex y size entero`)
   }
@@ -82,9 +87,9 @@ export function parsePin(text, label = 'pin.json') {
 
 export const readPin = (path = PIN_PATH) => parsePin(readFileSync(path, 'utf8'), path)
 
-export function assetFor(pin, arch) {
-  const asset = pin.assets?.[pinKey(arch)]
-  if (!validAsset(asset)) throw new Error(`No hay Python fijado para ${pinKey(arch)}.`)
+export function assetFor(pin, arch, platform = process.platform) {
+  const asset = pin.assets?.[pinKey(arch, platform)]
+  if (!validAsset(asset)) throw new Error(`No hay Python fijado para ${pinKey(arch, platform)}.`)
   return asset
 }
 
@@ -131,6 +136,33 @@ export const PRUNE_PREFIXES = [
   ['lib/python3.12/site-packages', 'pip-'],
   ['lib/python3.12/site-packages', 'setuptools-']
 ]
+/** Windows (install_only_stripped): rutas relativas a python/ que se borran. Ninguna es necesaria para las 10 librerías. */
+export const PRUNE_PATHS_WIN = [
+  'include',
+  'libs',
+  'tcl',
+  'Scripts',
+  'DLLs/_tkinter.pyd',
+  'DLLs/tcl86t.dll',
+  'DLLs/tk86t.dll',
+  'Lib/test',
+  'Lib/idlelib',
+  'Lib/tkinter',
+  'Lib/turtledemo',
+  'Lib/turtle.py',
+  'Lib/lib2to3',
+  'Lib/pydoc_data',
+  'Lib/ensurepip',
+  'Lib/site-packages/pip',
+  'Lib/site-packages/setuptools',
+  'Lib/site-packages/pkg_resources',
+  'Lib/site-packages/_distutils_hack',
+  'Lib/site-packages/distutils-precedence.pth'
+]
+export const PRUNE_PREFIXES_WIN = [
+  ['Lib/site-packages', 'pip-'],
+  ['Lib/site-packages', 'setuptools-']
+]
 /** Ejecutables de bin/ que se conservan (el resto: pip, idle, pydoc, *-config… se borra). */
 export const KEEP_BIN = ['python3', 'python3.12']
 
@@ -144,8 +176,17 @@ function run(cmd, args, options = {}) {
 }
 
 /** Entorno mínimo y aislado para ejecutar el Python extraído (nunca toca HOME ni el Python del usuario). */
-const pyEnv = (home) => ({
-  PATH: '/usr/bin:/bin',
+const pyEnv = (home, platform = process.platform) => ({
+  // Windows: el intérprete necesita SystemRoot (sockets, criptografía) y TEMP; PATH solo con las carpetas del sistema.
+  ...(platform === 'win32'
+    ? {
+        PATH: `${process.env.SystemRoot ?? 'C:\\Windows'}\\System32;${process.env.SystemRoot ?? 'C:\\Windows'}`,
+        SystemRoot: process.env.SystemRoot ?? 'C:\\Windows',
+        USERPROFILE: home,
+        TEMP: home,
+        TMP: home
+      }
+    : { PATH: '/usr/bin:/bin' }),
   HOME: home,
   TMPDIR: home,
   PYTHONNOUSERSITE: '1',
@@ -153,15 +194,18 @@ const pyEnv = (home) => ({
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
 })
 
-export function pruneInstall(pyRoot) {
-  for (const rel of PRUNE_PATHS) rmSync(join(pyRoot, rel), { recursive: true, force: true })
-  for (const [dir, prefix] of PRUNE_PREFIXES) {
+export function pruneInstall(pyRoot, platform = 'darwin') {
+  const win = platform === 'win32'
+  for (const rel of win ? PRUNE_PATHS_WIN : PRUNE_PATHS) rmSync(join(pyRoot, rel), { recursive: true, force: true })
+  for (const [dir, prefix] of win ? PRUNE_PREFIXES_WIN : PRUNE_PREFIXES) {
     const abs = join(pyRoot, dir)
     if (!existsSync(abs)) continue
     for (const name of readdirSync(abs)) if (name.startsWith(prefix)) rmSync(join(abs, name), { recursive: true, force: true })
   }
-  const bin = join(pyRoot, 'bin')
-  for (const name of readdirSync(bin)) if (!KEEP_BIN.includes(name)) rmSync(join(bin, name), { recursive: true, force: true })
+  if (!win) {
+    const bin = join(pyRoot, 'bin')
+    for (const name of readdirSync(bin)) if (!KEEP_BIN.includes(name)) rmSync(join(bin, name), { recursive: true, force: true })
+  }
   // __pycache__, .pyc sueltos y documentación suelta; recorrido manual (sin dependencias).
   const walk = (dir) => {
     for (const name of readdirSync(dir)) {
@@ -201,8 +245,8 @@ function dirSize(dir) {
 }
 
 /** Importa las 10 librerías y genera un .docx mínimo con el intérprete dado. Devuelve la versión de Python. */
-export async function verifyInstall(pyBin, home) {
-  const out = await run(pyBin, ['-I', '-c', VERIFY_PY], { cwd: home, env: pyEnv(home) })
+export async function verifyInstall(pyBin, home, platform = process.platform) {
+  const out = await run(pyBin, ['-I', '-c', VERIFY_PY], { cwd: home, env: pyEnv(home, platform) })
   return JSON.parse(out.split('\n').pop()).python
 }
 
@@ -213,6 +257,9 @@ function readSeal(pyRoot) {
     return null
   }
 }
+
+/** ¿Los requisitos traen hashes (`--hash=sha256:…`)? Entonces pip debe instalar con `--require-hashes`. */
+export const hasHashes = (requirementsText) => /--hash=sha256:[0-9a-f]{64}/.test(requirementsText)
 
 export function expectedSeal(pin, arch, requirementsText) {
   return { python: pin.python, release: pin.release, arch, requirementsSha256: sha256Text(parseRequirements(requirementsText).join('\n')) }
@@ -227,14 +274,16 @@ export async function fetchPython({
   base = PY_DIR,
   ifMissing = false,
   log = console.log,
-  requirementsPath = REQUIREMENTS_PATH
+  requirementsPath = REQUIREMENTS_PATH,
+  platform = process.platform
 } = {}) {
   pin ??= readPin()
-  const asset = assetFor(pin, arch)
+  const asset = assetFor(pin, arch, platform)
   const requirementsText = readFileSync(requirementsPath, 'utf8')
   const want = expectedSeal(pin, arch, requirementsText)
-  const dest = pythonDir(arch, base)
-  if (ifMissing && existsSync(pythonBin(arch, base)) && sealMatches(readSeal(dest), want)) {
+  const win = platform === 'win32'
+  const dest = pythonDir(arch, base, platform)
+  if (ifMissing && existsSync(pythonBin(arch, base, platform)) && sealMatches(readSeal(dest), want)) {
     log(`[fetch-python] ya presente: Python ${pin.python} (${dest})`)
     return { status: 'present', path: dest }
   }
@@ -252,26 +301,31 @@ export async function fetchPython({
     await verifyDownload(tgz, asset) // ANTES de extraer
     const out = join(work, 'out')
     mkdirSync(out)
-    await run('/usr/bin/tar', ['-xzf', tgz, '-C', out])
+    // Windows 10+ trae bsdtar en System32; ahí se usa por ruta absoluta (el `tar` del PATH podría ser el de Git, que no entiende «C:»).
+    const tarBin = win ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : '/usr/bin/tar'
+    await run(tarBin, ['-xzf', tgz, '-C', out])
     rmSync(tgz, { force: true })
     const root = join(out, 'python')
-    const py = join(root, 'bin', 'python3')
-    if (!existsSync(py)) throw new Error('El archivo no contiene python/bin/python3.')
+    const py = win ? join(root, 'python.exe') : join(root, 'bin', 'python3')
+    if (!existsSync(py)) throw new Error(`El archivo no contiene ${win ? 'python/python.exe' : 'python/bin/python3'}.`)
 
     const home = join(work, 'home')
     mkdirSync(home)
     log('[fetch-python] instalando librerías de oficina…')
-    await run(py, ['-I', '-m', 'pip', 'install', '--no-compile', '--only-binary=:all:', '--no-cache-dir', '-r', requirementsPath], {
-      cwd: home,
-      env: pyEnv(home)
-    })
-    const frozen = (await run(py, ['-I', '-m', 'pip', 'freeze'], { cwd: home, env: pyEnv(home) })).split('\n').filter(Boolean)
+    const env = pyEnv(home, platform)
+    const pipArgs = ['-I', '-m', 'pip', 'install', '--no-compile', '--only-binary=:all:', '--no-cache-dir']
+    if (hasHashes(requirementsText)) pipArgs.push('--require-hashes')
+    await run(py, [...pipArgs, '-r', requirementsPath], { cwd: home, env })
+    const frozen = (await run(py, ['-I', '-m', 'pip', 'freeze'], { cwd: home, env }))
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => l.trim())
 
     log('[fetch-python] podando lo innecesario…')
-    pruneInstall(root)
-    const version = await verifyInstall(py, home)
+    pruneInstall(root, platform)
+    const version = await verifyInstall(py, home, platform)
     if (version !== pin.python) throw new Error(`El intérprete dice ser ${version}, el pin es ${pin.python}.`)
-    pruneInstall(root) // por si la verificación dejó algún __pycache__
+    pruneInstall(root, platform) // por si la verificación dejó algún __pycache__
 
     writeFileSync(join(root, SEAL_NAME), JSON.stringify({ ...want, packages: frozen, pin: asset.sha256 }, null, 2) + '\n')
     rmSync(dest, { recursive: true, force: true })
@@ -284,17 +338,17 @@ export async function fetchPython({
   }
 }
 
-export function parseArgs(argv) {
+export function parseArgs(argv, platform = process.platform) {
   const args = { ifMissing: argv.includes('--if-missing'), arch: process.arch === 'x64' ? 'x64' : 'arm64' }
   const i = argv.indexOf('--arch')
   if (i >= 0) args.arch = argv[i + 1]
-  pinKey(args.arch) // valida
+  pinKey(args.arch, platform) // valida
   return args
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.platform !== 'darwin') {
-    console.log('[fetch-python] solo macOS: nada que hacer en esta plataforma.')
+  if (process.platform !== 'darwin' && process.platform !== 'win32') {
+    console.log('[fetch-python] solo macOS y Windows: nada que hacer en esta plataforma.')
   } else {
     try {
       const { ifMissing, arch } = parseArgs(process.argv.slice(2))

@@ -9,6 +9,7 @@ import {
   REQUIREMENTS_PATH,
   assetFor,
   expectedSeal,
+  hasHashes,
   parseArgs,
   parsePin,
   parseRequirements,
@@ -24,14 +25,81 @@ const good = () => JSON.parse(readFileSync(PIN_PATH, 'utf8'))
 test('el pin real es válido y cubre arm64 y x64 con sha256 de 64 hex y URLs de astral-sh', () => {
   const pin = readPin()
   assert.match(pin.python, /^3\.12\.\d+$/)
-  for (const key of ['darwin-arm64', 'darwin-x64']) {
+  for (const key of ['darwin-arm64', 'darwin-x64', 'win32-x64']) {
     const a = pin.assets[key]
     assert.match(a.sha256, /^[0-9a-f]{64}$/)
     assert.ok(a.url.startsWith('https://github.com/astral-sh/python-build-standalone/releases/download/'))
     assert.ok(a.url.includes(pin.release) && a.url.endsWith('.tar.gz'))
     assert.ok(Number.isInteger(a.size) && a.size > 1_000_000)
   }
-  assert.equal(assetFor(pin, 'arm64'), pin.assets['darwin-arm64'])
+  assert.equal(assetFor(pin, 'arm64', 'darwin'), pin.assets['darwin-arm64'])
+})
+
+test('el pin de Windows es el cpython x86_64-pc-windows-msvc install_only_stripped de la misma versión y release', () => {
+  const pin = readPin()
+  const a = assetFor(pin, 'x64', 'win32')
+  assert.equal(a, pin.assets['win32-x64'])
+  assert.ok(a.url.endsWith(`cpython-${pin.python}%2B${pin.release}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`))
+})
+
+test('parsePin exige también el asset win32-x64', () => {
+  const p = good()
+  delete p.assets['win32-x64']
+  assert.throws(() => parsePin(JSON.stringify(p)), /win32-x64/)
+  const q = good()
+  q.assets['win32-x64'].sha256 = 'abc'
+  assert.throws(() => parsePin(JSON.stringify(q)), /win32-x64/)
+})
+
+test('claves y rutas por plataforma (Windows: solo x64, python.exe sin bin/), sin depender del SO anfitrión', () => {
+  assert.equal(pinKey('x64', 'win32'), 'win32-x64')
+  assert.equal(pinKey('arm64', 'darwin'), 'darwin-arm64')
+  assert.throws(() => pinKey('arm64', 'win32'), /Windows/)
+  assert.throws(() => pinKey('x64', 'linux'), /Plataforma no soportada/)
+  assert.equal(pythonDir('x64', join('b'), 'win32'), join('b', 'win-x64', 'python'))
+  assert.equal(pythonBin('x64', join('b'), 'win32'), join('b', 'win-x64', 'python', 'python.exe'))
+  assert.equal(pythonBin('arm64', join('b'), 'darwin'), join('b', 'mac-arm64', 'python', 'bin', 'python3'))
+  assert.deepEqual(parseArgs(['--arch', 'x64'], 'win32'), { ifMissing: false, arch: 'x64' })
+  assert.throws(() => parseArgs(['--arch', 'arm64'], 'win32'), /Windows/)
+})
+
+test('--require-hashes solo si los requisitos traen hashes', () => {
+  assert.equal(hasHashes('docx==1\n'), false)
+  assert.equal(hasHashes(`docx==1 --hash=sha256:${'a'.repeat(64)}\n`), true)
+})
+
+test('pruneInstall de Windows borra lo innecesario y conserva python.exe, DLLs, Lib y site-packages', () => {
+  const root = mkdtempSync(join(tmpdir(), 'prune-win-test-'))
+  try {
+    const mk = (rel) => {
+      const p = join(root, rel)
+      mkdirSync(join(p, '..'), { recursive: true })
+      writeFileSync(p, 'x')
+    }
+    const keep = ['python.exe', 'python312.dll', 'DLLs/_ssl.pyd', 'Lib/os.py', 'Lib/site-packages/docx/a.py']
+    const drop = [
+      'include/Python.h',
+      'libs/python312.lib',
+      'tcl/tcl8.6/init.tcl',
+      'Scripts/pip.exe',
+      'DLLs/_tkinter.pyd',
+      'DLLs/tcl86t.dll',
+      'Lib/test/a.py',
+      'Lib/idlelib/a.py',
+      'Lib/tkinter/a.py',
+      'Lib/__pycache__/os.cpython-312.pyc',
+      'Lib/site-packages/docx/__pycache__/a.pyc',
+      'Lib/site-packages/pip/a.py',
+      'Lib/site-packages/pip-25.0.1.dist-info/METADATA',
+      'Lib/site-packages/setuptools/a.py'
+    ]
+    for (const f of [...keep, ...drop]) mk(f)
+    pruneInstall(root, 'win32')
+    for (const f of keep) assert.ok(existsSync(join(root, f)), f)
+    for (const f of drop) assert.ok(!existsSync(join(root, f)), f)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 test('parsePin rechaza sha256 malo, URL ajena, http, sin plataforma y JSON roto', () => {
@@ -79,7 +147,18 @@ test('requirements.txt fija las 10 librerías con versión exacta', () => {
     lines.every((l) => /^[A-Za-z0-9_.-]+==\d[\w.]*$/.test(l)),
     'todas con =='
   )
-  for (const name of ['python-docx', 'openpyxl', 'python-pptx', 'pypdf', 'pdfplumber', 'reportlab', 'pypdfium2', 'pillow', 'lxml', 'pymupdf']) {
+  for (const name of [
+    'python-docx',
+    'openpyxl',
+    'python-pptx',
+    'pypdf',
+    'pdfplumber',
+    'reportlab',
+    'pypdfium2',
+    'pillow',
+    'lxml',
+    'pymupdf'
+  ]) {
     assert.ok(
       lines.some((l) => l.startsWith(`${name}==`)),
       name

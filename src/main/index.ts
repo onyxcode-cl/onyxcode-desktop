@@ -24,6 +24,7 @@ import { migrateLegacyUserData, runMigrations } from './migrations'
 import { cleanLegacyBrowserData } from './tasks/legacy-cleanup'
 import { cleanLegacyAccountSession } from './legacy-account-cleanup'
 import { prepareOpencodeConfigDir } from './tasks/opencode-config'
+import { bundledPythonPresent } from './tasks/python-runtime'
 import { registerAllHandlers } from './ipc'
 import { registerBrowserHandlers } from './ipc/browser-handlers'
 import { registerCodeHandlers } from './ipc/code-handlers'
@@ -69,8 +70,8 @@ app.setName(INTERNAL_NAME)
  * Capacidades de la plataforma: Tareas y Control del PC solo en macOS (en Windows tras banderas); actualizador en macOS y Windows,
  * salvo en una build de la Microsoft Store (`process.windowsStore`): la actualiza la Store, nunca el actualizador propio.
  */
-function capsOf(tasksWin: boolean, remoteWin = false, computerWin = false): ReturnType<typeof capsFor> {
-  const baseCaps = capsFor(process.platform, { tasksWin, remoteWin, computerWin })
+function capsOf(tasksWin: boolean, remoteWin = false, computerWin = false, pythonWin = false): ReturnType<typeof capsFor> {
+  const baseCaps = capsFor(process.platform, { tasksWin, remoteWin, computerWin, pythonWin })
   return { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
 }
 /**
@@ -83,6 +84,8 @@ let tasksWinOn = false
 let remoteWinOn = false
 /** Bandera efectiva `computerWin` (Control del PC en Windows; `computer/computer-win-flag.ts`): exige `tasksWin` y el helper; la puerta real es el consentimiento de la tarjeta. */
 let computerWinOn = false
+/** Bandera efectiva `pythonWin` (traducir PDF/oficina en Windows): se enciende si el Python incluido existe en el paquete (`tasks/python-runtime.ts`). */
+let pythonWinOn = false
 let caps = capsOf(false)
 /** Lo que `main` necesita de Tareas al salir; macOS lo trae `ipc/tasks-handlers`, el resto solo Rutinas. */
 interface TasksLike {
@@ -175,7 +178,7 @@ function createWindow(): BrowserWindow {
       devTools: !app.isPackaged,
       // Banderas de capacidades para el preload (solo la ventana principal; los preloads secundarios no las reciben).
       // prettier-ignore
-      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, glass: glassSupported() })
+      additionalArguments: capsFlagsToArgs({ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, pythonWin: pythonWinOn, glass: glassSupported() })
     }
   })
   registerWindowRole(win.webContents, 'main')
@@ -303,7 +306,8 @@ function start(): void {
       policyBlocked: process.platform === 'win32' ? getOrgPolicy().blocked !== false : false
     })
     setRemoteWin(remoteWinOn)
-    caps = capsOf(tasksWinOn, remoteWinOn, computerWinOn)
+    pythonWinOn = bundledPythonPresent()
+    caps = capsOf(tasksWinOn, remoteWinOn, computerWinOn, pythonWinOn)
     if (caps.updater) {
       ;[updateBoot, updateSwap, updateSwapWin] = await Promise.all([
         import('./update/boot'),

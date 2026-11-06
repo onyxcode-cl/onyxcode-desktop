@@ -278,6 +278,14 @@ module.exports = {
             { from: 'resources/opencode/agents-win', to: 'opencode/agents-win', filter: ['computer.win.md'] }
           ]
         : []),
+      // Python propio con las librerías de oficina (scripts/fetch-python.mjs, en el PC con Windows; `package:win` lo corre antes del build)
+      // → resources\\python-bin\\win-x64\\python\\python.exe (src/main/tasks/python-runtime.ts). Sin __pycache__ ni .pyc. `check-win-bundle` exige
+      // que exista el sello `.lazunox-python`.
+      {
+        from: 'resources/python-bin/win-x64',
+        to: 'python-bin/win-x64',
+        filter: ['**/*', '!**/__pycache__', '!**/__pycache__/**', '!**/*.pyc']
+      },
       // Tareas en Windows (beta opcional, solo con `wslBundlePack`): lanzador y carga de WSL → resources\\wsl, el pin → resources\\wsl\\pin.json
       // y las dos imágenes → resources\\wsl\\images (de ahí `setup()` las COPIA a la caché y las verifica; nunca se usan en el sitio).
       ...(wslBundlePack

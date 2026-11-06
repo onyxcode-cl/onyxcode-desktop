@@ -24,9 +24,9 @@ describe('propagación de tasksWin', () => {
   it('main/index.ts calcula la bandera con resolveTasksWin y la pasa a capsFor, al preload y a los handlers', () => {
     const s = read('main/index.ts')
     expect(s).toMatch(/resolveTasksWin\(\{[\s\S]*platform: process\.platform[\s\S]*policy:/)
-    expect(s).toMatch(/capsFor\(process\.platform, \{ tasksWin, remoteWin, computerWin \}\)/)
+    expect(s).toMatch(/capsFor\(process\.platform, \{ tasksWin, remoteWin, computerWin, pythonWin \}\)/)
     expect(s).toMatch(
-      /additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, glass: glassSupported\(\) \}\)/
+      /additionalArguments: capsFlagsToArgs\(\{ tasksWin: tasksWinOn, remoteWin: remoteWinOn, computerWin: computerWinOn, pythonWin: pythonWinOn, glass: glassSupported\(\) \}\)/
     )
     expect(s).toMatch(
       /computer: caps\.computer,\s*tasksWin: tasksWinOn,\s*computerWin: computerWinOn,\s*winBackend: tasksWinOn \? await createWinBackend\(\) : undefined/

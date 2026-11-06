@@ -10,6 +10,8 @@ describe('caps-argv', () => {
     expect(capsFlagsToArgs({ tasksWin: true })).toEqual([`${CAPS_ARG_PREFIX}tasksWin`])
     expect(capsFlagsFromArgv(['electron', ...capsFlagsToArgs({ tasksWin: true })])).toEqual({ tasksWin: true })
     expect(capsFlagsFromArgv(capsFlagsToArgs({ tasksWin: true, computerWin: true }))).toEqual({ tasksWin: true, computerWin: true })
+    expect(capsFlagsToArgs({ pythonWin: true })).toEqual([`${CAPS_ARG_PREFIX}pythonWin`])
+    expect(capsFlagsFromArgv(capsFlagsToArgs({ tasksWin: true, pythonWin: true }))).toEqual({ tasksWin: true, pythonWin: true })
   })
   it('lo desconocido, vacío o mal formado se ignora (todo apagado)', () => {
     expect(capsFlagsFromArgv([])).toEqual({})

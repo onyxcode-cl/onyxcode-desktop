@@ -8,6 +8,8 @@
 //     (`TASKS_WIN_BUILD` a `true`; ya no hace falta `LAZUNOX_COMPUTER_WIN_PACK`) y, activa, el helper compilado debe existir; nunca por `files`, `mac` ni el bloque común;
 //   - los fuentes de Rust y `target/` no entran NUNCA (la exclusión de `files` sobre `resources/computer-use/win/**` sigue ahí
 //     y ninguna entrada de extraResources apunta a esa carpeta salvo `win/bin` con el filtro exacto `cu-helper.exe`).
+// Y (W11) el Python propio de Windows: `win.extraResources` lleva EXACTAMENTE un bloque `resources/python-bin/win-x64 → python-bin/win-x64`
+// (sin __pycache__/.pyc; nunca en `mac`/comunes) y deben existir `python.exe` y el sello `.lazunox-python` que deja `npm run fetch:python`.
 // Y (beta opcional de Tareas en Windows, decisión del dueño 2026-10-07) el paquete de WSL:
 //   - con `TASKS_WIN_BUILD` activo `win.extraResources` lleva EXACTAMENTE tres bloques: `resources/wsl` filtrado a los 5 archivos de la
 //     carga → `wsl`, `pin.json` → `wsl/pin.json` y las dos imágenes → `wsl/images`; con la bandera apagada, ninguno;
@@ -28,6 +30,14 @@ const file = join(root, 'out', 'main', 'index.js')
 const WIN_SRC = 'resources/computer-use/win'
 const HELPER_ENTRY = { from: `${WIN_SRC}/bin`, filter: ['cu-helper.exe'] }
 const AGENT_ENTRY = { from: 'resources/opencode/agents-win', filter: ['computer.win.md'] }
+export const PYTHON_WIN_DIR = 'resources/python-bin/win-x64'
+export const PYTHON_WIN_SEAL = `${PYTHON_WIN_DIR}/python/.lazunox-python`
+export const PYTHON_WIN_EXE = `${PYTHON_WIN_DIR}/python/python.exe`
+const PYTHON_WIN_ENTRY = {
+  from: PYTHON_WIN_DIR,
+  to: 'python-bin/win-x64',
+  filter: ['**/*', '!**/__pycache__', '!**/__pycache__/**', '!**/*.pyc']
+}
 const norm = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '')
 
 /** ¿Debe estar activa la función en el paquete? Misma regla que electron-builder.js. */
@@ -165,6 +175,39 @@ export function checkWslBundlePackaging(config, expectActive, pin) {
   return problems
 }
 
+/**
+ * Python incluido en Windows (W11). Devuelve los problemas (vacía si todo bien). Pura: `exists` inyectado.
+ * @param {any} config   lo que exporta electron-builder.js
+ * @param {(p: string) => boolean} exists   ¿existe la ruta (relativa a la raíz del repo)?
+ */
+export function checkPythonWinPackaging(config, exists) {
+  const problems = []
+  const isPy = (e) => typeof e === 'object' && /(^|\/)python-bin(\/|$)/.test(norm(e.from ?? ''))
+  for (const [plat, list] of [
+    ['comun', config.extraResources ?? []],
+    ['mac', config.mac?.extraResources ?? []]
+  ])
+    for (const e of list)
+      if (isPy(e) && norm(e.from).includes('win-x64'))
+        problems.push(`${plat}.extraResources lleva el Python de Windows (solo win.extraResources)`)
+  const files = (config.files ?? []).map(String)
+  if (!files.includes('!resources/python-bin/**'))
+    problems.push('files ya no excluye resources/python-bin/** (el Python entraría en el .asar)')
+  const win = (config.win?.extraResources ?? []).filter(isPy)
+  if (win.length !== 1) problems.push(`win.extraResources debe llevar UN bloque ${PYTHON_WIN_DIR} (hay ${win.length})`)
+  else if (
+    norm(win[0].from) !== PYTHON_WIN_ENTRY.from ||
+    norm(win[0].to) !== PYTHON_WIN_ENTRY.to ||
+    JSON.stringify(win[0].filter) !== JSON.stringify(PYTHON_WIN_ENTRY.filter)
+  )
+    problems.push(
+      `win.extraResources «${PYTHON_WIN_DIR}»: debe ser to «${PYTHON_WIN_ENTRY.to}» y filter ${JSON.stringify(PYTHON_WIN_ENTRY.filter)}`
+    )
+  if (!exists(PYTHON_WIN_EXE)) problems.push(`falta ${PYTHON_WIN_EXE} (corre en Windows: npm run fetch:python)`)
+  if (!exists(PYTHON_WIN_SEAL)) problems.push(`falta el sello ${PYTHON_WIN_SEAL} (el Python no se instaló completo: npm run fetch:python)`)
+  return problems
+}
+
 /** Archivos del .asar que NO deben estar (lista de rutas del paquete). Pura. */
 export function wslLeaksInAsar(entries) {
   return entries
@@ -210,6 +253,14 @@ async function main() {
     console.error(`Control del PC en Windows: helper ausente:\n- ${helperBad.join('\n- ')}`)
     process.exit(1)
   }
+  const pyBad = checkPythonWinPackaging(config, (p) => existsSync(join(root, p)))
+  if (pyBad.length) {
+    console.error(`Python incluido en Windows incorrecto (${pyBad.length}):\n- ${pyBad.join('\n- ')}`)
+    process.exit(1)
+  }
+  console.log(
+    '[check-win-bundle] OK: Python incluido en Windows (python.exe y sello .lazunox-python presentes; win.extraResources lo lleva)'
+  )
   const asarArg = process.argv.indexOf('--asar')
   if (asarArg > 0) await checkAsar(process.argv[asarArg + 1])
   if (process.argv.includes('--config-only')) return
