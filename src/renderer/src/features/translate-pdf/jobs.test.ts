@@ -12,10 +12,21 @@ import {
   dismissTranslateJob,
   markJobSaved,
   retryTranslateJob,
+  fileKind,
   startTranslateJob,
   useTranslateJobs
 } from './jobs'
 import type { TranslateDeps } from './translate'
+
+describe('fileKind', () => {
+  it('reconoce PDF, Word y Excel por tipo o extensión', () => {
+    expect(fileKind({ type: 'application/pdf', name: 'a' })).toBe('pdf')
+    expect(fileKind({ type: '', name: 'A.DOCX' })).toBe('docx')
+    expect(fileKind({ type: '', name: 'ventas.xlsx' })).toBe('xlsx')
+    expect(fileKind({ type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', name: 'x' })).toBe('xlsx')
+    expect(fileKind({ type: 'text/plain', name: 'a.txt' })).toBeNull()
+  })
+})
 
 const preset = { name: 'x.pdf', base64: 'AAAA', target: 'en' as const }
 

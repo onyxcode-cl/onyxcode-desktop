@@ -227,6 +227,20 @@ describe('hojas escaneadas y ficha del documento', () => {
   })
 })
 
+describe('Excel', () => {
+  const scanSeg = (pagina: number, i: number): PdfSegment => ({ id: `s${i}`, pagina, texto: `texto ${pagina}.${i}` })
+  it('cardSample con más textos por hoja deja ver más del libro', () => {
+    const segs = [scanSeg(1, 0), scanSeg(1, 1), scanSeg(1, 2)]
+    expect(cardSample(segs, undefined, 15)).toContain('texto 1.2')
+  })
+  it('planBatches sin clases de página agrupa por orden y sin imágenes, también con visión', () => {
+    const segs = [scanSeg(1, 0), scanSeg(1, 1)]
+    const planned = planBatches(segs, undefined, true)
+    expect(planned).toHaveLength(1)
+    expect(planned[0].scannedPage).toBeUndefined()
+  })
+})
+
 describe('versión limpia de un escaneo', () => {
   const scanned = (): PdfExtractResult => ({
     ok: true,

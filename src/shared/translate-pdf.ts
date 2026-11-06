@@ -38,11 +38,16 @@ export interface PdfSegment {
 }
 
 export type PdfFailReason =
-  'tooBig' | 'unreadable' | 'encrypted' | 'scanned' | 'tooLong' | 'noPython' | 'unsupported' | 'timeout' | 'failed'
+  'tooBig' | 'unreadable' | 'encrypted' | 'scanned' | 'noText' | 'tooLong' | 'noPython' | 'unsupported' | 'timeout' | 'failed'
 
-/** Qué se traduce: un PDF (PyMuPDF) o un Word (python-docx). El resto del flujo es el mismo. */
-export type TranslateKind = 'pdf' | 'docx'
+/** Qué se traduce: un PDF (PyMuPDF), un Word (python-docx) o un Excel (`translate_xlsx.py`). El resto del flujo es el mismo. */
+export type TranslateKind = 'pdf' | 'docx' | 'xlsx'
 export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+/** Nombre del tipo de documento para los textos que van al modelo (en inglés). */
+function kindLabel(kind: TranslateKind | undefined): string {
+  return kind === 'docx' ? 'Word document' : kind === 'xlsx' ? 'Excel workbook' : 'PDF'
+}
 
 export type PdfExtractRequest = { name: string; base64: string; kind?: TranslateKind }
 /** Cómo es cada página según el script: texto de verdad, foto con texto OCR invisible, o solo imagen. */
@@ -67,8 +72,10 @@ export interface PdfApplyReport {
   overflow: string[]
   /** Enlaces que no se pudieron conservar. */
   linksDropped: number
-  /** Word: textos cuya traducción perdió parte del formato (negrita, color…). */
+  /** Word y Excel: textos cuya traducción perdió parte del formato (negrita, color…). */
   formatLost?: number
+  /** Excel: celdas cuyo texto traducido es más largo que el ancho de su columna (no se cambian los anchos para no alterar el diseño). */
+  cutOff?: number
 }
 export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string } | { ok: false; reason: PdfFailReason }
 
@@ -134,12 +141,14 @@ export function buildTranslatePrompt(opts: {
     ? glossaryFor(opts.batch.map((x) => x.texto).join('\n'), opts.glossary, opts.docCard?.glossary)
     : trimGlossary(opts.glossary)
   return [
-    `You are a professional translator. Translate every text below into ${lang}. The texts come from the ${opts.kind === 'docx' ? 'Word document' : 'PDF'} "${opts.docName}"; each one sits in a fixed place of the page, so keep each translation about as long as the original.`,
+    `You are a professional translator. Translate every text below into ${lang}. The texts come from the ${kindLabel(opts.kind)} "${opts.docName}"; each one sits in a fixed place of the ${opts.kind === 'xlsx' ? 'sheet (a cell, a chart title or a comment)' : 'page'}, so keep each translation about as long as the original.`,
     '',
     'Rules:',
     '- Translate ALL human-readable text, even short labels and headings. Keep numbers, dates, amounts, references and codes exactly.',
     '- Do NOT translate code, commands, file names, paths, URLs, e-mail addresses or configuration keys. Proper names of people and companies stay as they are.',
-    `- Keep the tags exactly where they belong around the equivalent translated words: <b>…</b> (bold), ${opts.kind === 'docx' ? '<i>…</i> (italic), <u>…</u> (underline), ' : ''}<c=#rrggbb>…</c> (color), <l=N>…</l> (link) and [[…]] (highlight).`,
+    opts.kind === 'xlsx'
+      ? '- Some texts carry tags like <r1>…</r1><r2>…</r2> that mark runs with different formatting inside one cell: keep every tag exactly, around the equivalent translated words. Cells are short: do not add line breaks that were not in the original.'
+      : `- Keep the tags exactly where they belong around the equivalent translated words: <b>…</b> (bold), ${opts.kind === 'docx' ? '<i>…</i> (italic), <u>…</u> (underline), ' : ''}<c=#rrggbb>…</c> (color), <l=N>…</l> (link) and [[…]] (highlight).`,
     marks.length
       ? '- Some texts have highlighted parts. For each id below, wrap in [[ ]] the words of YOUR translation that correspond to the highlighted part of the original (and only those):\n' +
         marks.map((s) => `  ${s.id}: ${s.resaltado.map((r) => JSON.stringify(r)).join(' + ')}`).join('\n')
@@ -190,7 +199,7 @@ export interface DocCard {
 export function buildCardPrompt(opts: { target: TranslateLangCode; docName: string; kind?: TranslateKind; sample: string }): string {
   const lang = TRANSLATE_LANGS.find((l) => l.code === opts.target)?.name ?? opts.target
   return [
-    `You are preparing to translate the ${opts.kind === 'docx' ? 'Word document' : 'PDF'} "${opts.docName}" into ${lang}. Below is a sample of its text (the beginning of each page, in reading order).`,
+    `You are preparing to translate the ${kindLabel(opts.kind)} "${opts.docName}" into ${lang}. Below is a sample of its text (the beginning of each page, in reading order).`,
     '',
     'Answer with ONLY a JSON object (no markdown fences, no comments) of this shape:',
     '{"summary": "<2-3 sentences: what kind of document it is, its subject, its register or tone and the source language>", "glossary": {"<term or phrase that will recur>": "<the one translation to use every time>"}}',
@@ -378,7 +387,7 @@ export function cleanEligible(segments: PdfSegment[], pageClasses: Record<number
 export function translatedName(name: string, target: TranslateLangCode, kind: TranslateKind = 'pdf'): string {
   const base =
     name
-      .replace(kind === 'docx' ? /\.docx$/i : /\.pdf$/i, '')
+      .replace(new RegExp(`\\.${kind}$`, 'i'), '')
       .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
       .trim() || 'documento'
   return `${base} (${target}).${kind}`

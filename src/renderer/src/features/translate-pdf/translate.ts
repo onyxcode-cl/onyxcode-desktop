@@ -165,11 +165,11 @@ export function planBatches(segments: PdfSegment[], pageClasses: Record<number, 
 }
 
 /** Muestra del documento para la ficha: el comienzo de cada página (como mucho 2 textos por página, 12 000 caracteres en total). */
-export function cardSample(segments: PdfSegment[], maxChars = 12_000): string {
+export function cardSample(segments: PdfSegment[], maxChars = 12_000, perPageMax = 2): string {
   const perPage = new Map<number, string[]>()
   for (const s of segments) {
     const list = perPage.get(s.pagina) ?? []
-    if (list.length < 2) list.push(s.texto.replace(/<[^>]+>/g, '').slice(0, 400))
+    if (list.length < perPageMax) list.push(s.texto.replace(/<[^>]+>/g, '').slice(0, 400))
     perPage.set(s.pagina, list)
   }
   let out = ''
@@ -215,7 +215,7 @@ export async function translatePdf(
       opts.onProgress({ phase: 'reading', done: 0, total: 0 })
       try {
         const answer = await deps.ask(
-          buildCardPrompt({ target: opts.target, docName: opts.name, kind: opts.kind, sample: cardSample(ex.segments) }),
+          buildCardPrompt({ target: opts.target, docName: opts.name, kind: opts.kind, sample: cardSample(ex.segments, undefined, opts.kind === 'xlsx' ? 15 : 2) }),
           opts.signal
         )
         docCard = parseCardAnswer(answer) ?? undefined

@@ -81,6 +81,15 @@ describe('tarjeta «¿traducir este PDF sin cambiar el diseño?»', () => {
     expect(openTranslatePdf).toHaveBeenCalledWith({ kind: 'docx', name: 'acta.docx', base64: 'UEsDBAo=', target: 'en' })
   })
 
+  it('un Excel adjunto (convertido a texto) también ofrece la tarjeta y traduce los bytes ORIGINALES', () => {
+    const xlsx = { id: 'x1', name: 'ventas.xlsx', mime: 'text/plain', url: 'data:text/plain;base64,aG9sYQ==', originalXlsx: 'UEsDBBQ=' }
+    const { onSend } = setup('traduce al inglés', [xlsx])
+    send()
+    expect(onSend).not.toHaveBeenCalled()
+    click(m!.q('[data-testid="translate-offer-yes"]'))
+    expect(openTranslatePdf).toHaveBeenCalledWith({ kind: 'xlsx', name: 'ventas.xlsx', base64: 'UEsDBBQ=', target: 'en' })
+  })
+
   it('«Enviar como mensaje» manda el mensaje tal cual, con el PDF', async () => {
     const { onSend } = setup('traduce esto al inglés', [pdf])
     send()

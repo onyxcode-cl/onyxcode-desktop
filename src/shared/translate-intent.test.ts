@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { detectTranslateIntent, languageIn } from './translate-intent'
-import { DOCX_MIME } from './translate-pdf'
+import { DOCX_MIME, XLSX_MIME } from './translate-pdf'
 
 const pdf = { mime: 'application/pdf' }
 const txt = { mime: 'text/plain' }
 
 describe('detectTranslateIntent', () => {
+  it('también ofrece traducir un Excel (.xlsx); con un PDF a la vez es ambiguo', () => {
+    const xlsx = { mime: XLSX_MIME }
+    expect(detectTranslateIntent('traduce al inglés', [xlsx], 'es')).toEqual({ fileIndex: 0, kind: 'xlsx', target: 'en' })
+    expect(detectTranslateIntent('traduce al inglés', [pdf, xlsx], 'es')).toBeNull()
+  })
+
   it.each([
     ['traduce este pdf al inglés', 'en'],
     ['Tradúcelo a español por favor', 'es'],

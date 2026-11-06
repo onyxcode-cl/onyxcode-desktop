@@ -68,6 +68,101 @@ describe('extract (Word)', () => {
   })
 })
 
+describe('Excel', () => {
+  const XLSX_B64 = Buffer.from('PK\u0003\u0004fake').toString('base64')
+  // Forma REAL de `translate_xlsx.py extraer` (comprobada con un libro de prueba): sin `pagina` ni `paginas`, ids s<n> / i|c|g<parte>-<n>.
+  const xlsxSegs = {
+    segmentos: [
+      { id: 'g1-0', texto: 'Ventas por producto', parte: 'texto de gráfico' },
+      { id: 'c1-0', texto: 'Fruta fresca', parte: 'comentario' },
+      { id: 's3', texto: 'Producto', celdas: ['Ventas!A1'] },
+      { id: 'i1-7', texto: 'Informe', parte: 'texto en línea' },
+      { id: '../x', texto: 'ajeno' }
+    ],
+    nombres_de_hoja_no_traducidos: ['Ventas'],
+    omitidos: {}
+  }
+  const run2 = (applyCode = 0, extractCode = 0, stderr = ''): ServiceDeps['run'] =>
+    async (_p, args, cwd) => {
+      if (args[1] === 'extraer') {
+        writeFileSync(join(cwd, 'segmentos.json'), JSON.stringify(xlsxSegs))
+        return ok({ code: extractCode, stderr })
+      }
+      writeFileSync(join(cwd, 'salida.xlsx'), 'PK-out')
+      writeFileSync(
+        join(cwd, 'informe.json'),
+        JSON.stringify({ traducidos: 4, sin_traduccion: ['i1-1'], iguales: 0, formato_simplificado: ['s3'], posible_recorte: ['Ventas!B1', 'Ventas!C1'] })
+      )
+      return ok({ code: applyCode })
+    }
+
+  it('extrae con translate_xlsx.py, normaliza los segmentos (pagina 1) y descarta ids ajenos', async () => {
+    const run = vi.fn(run2())
+    const r = await new PdfTranslateService(deps(run)).extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    expect(run.mock.calls[0][1].slice(1)).toEqual(['extraer', 'input.xlsx', '-o', 'segmentos.json'])
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.pages).toBe(1)
+    expect(r.pagesWithoutText).toEqual([])
+    expect(r.segments).toEqual([
+      { id: 'g1-0', pagina: 1, texto: 'Ventas por producto' },
+      { id: 'c1-0', pagina: 1, texto: 'Fruta fresca' },
+      { id: 's3', pagina: 1, texto: 'Producto' },
+      { id: 'i1-7', pagina: 1, texto: 'Informe' }
+    ])
+    expect(r.pageClasses).toBeUndefined()
+    expect(existsSync(join(root, 'jobs', r.jobId, 'input.xlsx'))).toBe(true)
+  })
+  it('un PDF presentado como Excel se rechaza sin llamar a Python', async () => {
+    const run = vi.fn()
+    expect(await new PdfTranslateService(deps(run)).extract({ name: 'a.xlsx', base64: PDF_B64, kind: 'xlsx' })).toEqual({
+      ok: false,
+      reason: 'unreadable'
+    })
+    expect(run).not.toHaveBeenCalled()
+  })
+  it('libro sin texto (código 2) → noText; cifrado → encrypted', async () => {
+    const s = new PdfTranslateService(deps(async () => ok({ code: 2 })))
+    expect(await s.extract({ name: 'a.xlsx', base64: XLSX_B64, kind: 'xlsx' })).toEqual({ ok: false, reason: 'noText' })
+    const e = new PdfTranslateService(deps(async () => ok({ code: 1, stderr: 'ERROR: el libro está cifrado con contraseña' })))
+    expect(await e.extract({ name: 'a.xlsx', base64: XLSX_B64, kind: 'xlsx' })).toEqual({ ok: false, reason: 'encrypted' })
+  })
+  it('aplica con la herramienta xlsx, nombra «x (en).xlsx» e informa formato y recortes', async () => {
+    const run = vi.fn(run2())
+    const svc = new PdfTranslateService(deps(run))
+    const ex = await svc.extract({ name: 'Ventas.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    if (!ex.ok) throw new Error('extract falló')
+    const r = await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'Product', 'i1-7': 'Report', 'g1-0': 'Sales' } })
+    expect(run.mock.calls.at(-1)![1].slice(1)).toEqual([
+      'aplicar', 'input.xlsx', '-t', 'traduccion.json', '-o', 'salida.xlsx', '--informe', 'informe.json'
+    ])
+    expect(r).toEqual({
+      ok: true,
+      outName: 'Ventas (en).xlsx',
+      report: { translated: 4, untranslated: 1, shrunk: 0, overflow: [], linksDropped: 0, formatLost: 1, cutOff: 2 }
+    })
+    expect(existsSync(join(root, 'jobs', ex.jobId, 'Ventas (en).xlsx'))).toBe(true)
+    // Excel no tiene imagen de página ni versión limpia
+    expect(await svc.pageImage(ex.jobId, 1)).toEqual({ ok: false })
+    expect(await svc.clean({ jobId: ex.jobId, html: '<p>x</p>' })).toEqual({ ok: false, reason: 'failed' })
+  })
+  it('si la estructura cambia (código 1) no hay archivo y se informa el fallo', async () => {
+    const svc = new PdfTranslateService(deps(run2(1)))
+    const ex = await svc.extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    if (!ex.ok) throw new Error('extract falló')
+    expect(await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })).toEqual({ ok: false, reason: 'failed' })
+  })
+  it('guardar usa el filtro «Excel»', async () => {
+    const svc = new PdfTranslateService(deps(run2()))
+    const ex = await svc.extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    if (!ex.ok) throw new Error('extract falló')
+    await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })
+    vi.mocked(dialog.showSaveDialog).mockResolvedValueOnce({ canceled: true, filePath: '' })
+    await svc.save(ex.jobId, null)
+    expect(vi.mocked(dialog.showSaveDialog).mock.calls.at(-1)![0]).toMatchObject({ filters: [{ name: 'Excel', extensions: ['xlsx'] }] })
+  })
+})
+
 describe('extract', () => {
   it('guarda el PDF en una carpeta propia y devuelve los textos y las páginas sin texto', async () => {
     const run = vi.fn(async (_py: string, args: string[], cwd: string) => {

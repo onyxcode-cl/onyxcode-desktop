@@ -35,6 +35,8 @@ export interface ChatAttachment {
   office?: OfficeAttachmentInfo
   /** Solo un Word (.docx): sus bytes originales en base64, para ofrecer «traducir sin cambiar el diseño». Nunca se envía al modelo. */
   originalDocx?: string
+  /** Solo un Excel (.xlsx): sus bytes originales en base64, para ofrecer «traducir sin cambiar el diseño». Nunca se envía al modelo. */
+  originalXlsx?: string
 }
 
 export {
@@ -126,7 +128,8 @@ async function officeToChatAttachment(file: File): Promise<ChatAttachment> {
     mime: 'text/plain',
     url: textToDataUrl(res.text),
     office: { family: res.family, unit: res.unit, units: res.units, truncated: res.truncated, notes: res.notes },
-    ...(/\.docx$/i.test(name) ? { originalDocx: base64 } : {})
+    ...(/\.docx$/i.test(name) ? { originalDocx: base64 } : {}),
+    ...(/\.xlsx$/i.test(name) ? { originalXlsx: base64 } : {})
   }
 }
 

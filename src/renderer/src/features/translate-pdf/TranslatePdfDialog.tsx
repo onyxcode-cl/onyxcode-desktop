@@ -1,5 +1,5 @@
 /**
- * «Traducir un PDF o Word»: solo el SELECTOR (archivo e idioma). La traducción en sí corre como un trabajo dentro de la conversación
+ * «Traducir un PDF, Word o Excel»: solo el SELECTOR (archivo e idioma). La traducción en sí corre como un trabajo dentro de la conversación
  * (`jobs.ts` + `TranslateJobs.tsx`): al pulsar «Traducir» esta ventana se cierra y el progreso y el resultado aparecen en una
  * tarjeta sobre el cuadro de escribir. `<TranslatePdfHost />` se monta una vez en `App.tsx`; el botón del compositor la abre con
  * `openTranslatePdf()`, y con un archivo e idioma ya decididos (la tarjeta «Traducir así») no se abre ninguna ventana.
@@ -115,7 +115,7 @@ function TranslatePdfDialog(): React.JSX.Element {
           <input
             ref={input}
             type="file"
-            accept="application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept="application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="hidden"
             onChange={(e) => choose(e.target.files?.[0])}
           />
