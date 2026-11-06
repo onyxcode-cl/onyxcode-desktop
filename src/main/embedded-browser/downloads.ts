@@ -11,6 +11,7 @@
  */
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { dialog, type DownloadItem, type WebContents } from 'electron'
@@ -76,6 +77,36 @@ function applyQuarantine(filePath: string): void {
   })
 }
 
+/**
+ * Contenido del flujo `Zone.Identifier` (marca «descargado de Internet», ZoneId=3) que usa
+ * SmartScreen. `HostUrl` lleva la URL SIN usuario ni contraseña; no se escribe `ReferrerUrl`
+ * porque puede arrastrar datos privados. Si la URL no se puede interpretar, se omite `HostUrl`.
+ */
+export function zoneIdentifierContent(url: string): string {
+  let host = ''
+  try {
+    const u = new URL(url)
+    u.username = ''
+    u.password = ''
+    u.hash = ''
+    host = u.href
+  } catch {
+    host = ''
+  }
+  const hostLine = host ? `HostUrl=${host.replace(/[\r\n]/g, '')}\r\n` : ''
+  return `[ZoneTransfer]\r\nZoneId=3\r\n${hostLine}`
+}
+
+/** Solo Windows. Si falla (p. ej. FAT32, sin flujos NTFS) deja un aviso y no rompe la descarga. */
+async function applyZoneIdentifier(filePath: string, url: string): Promise<void> {
+  if (process.platform !== 'win32') return
+  try {
+    await writeFile(`${filePath}:Zone.Identifier`, zoneIdentifierContent(url))
+  } catch (err) {
+    console.warn('[embedded-browser] no se pudo escribir Zone.Identifier:', err)
+  }
+}
+
 function ownerOf(wc: WebContents): BrowserOwner | null {
   return tabByWebContents(wc)?.owner ?? null
 }
@@ -107,7 +138,9 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
     item.setSavePath(savePath)
     item.resume()
     item.once('done', (_e, state) => {
-      if (state === 'completed' && attribution.agent) applyQuarantine(item.getSavePath())
+      if (state !== 'completed') return
+      if (attribution.agent) applyQuarantine(item.getSavePath())
+      void applyZoneIdentifier(item.getSavePath(), item.getURL())
     })
   }
 
