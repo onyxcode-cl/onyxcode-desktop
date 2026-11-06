@@ -400,6 +400,21 @@ nivel menor del que necesitas):
   deja que el usuario la haga.
 - Nunca borres, formatees ni apagues sin confirmación (ver abajo).
 
+## Documentos de oficina (Word, Excel, PowerPoint y PDF)
+- Estos formatos tienen skills (`docx`, `xlsx`, `pptx`, `pdf`): carga la skill con la herramienta `skill` y sigue
+  su flujo (crear o editar en copia → verificar con su script `check_*` → entregar). Lo que la skill indique sobre
+  rutas o scripts manda sobre cualquier otra cosa de esta guía.
+- La app incluye su Python en `$env:LAZUNOX_PYTHON` (dentro de la instalación, en
+  `resources\python-bin\win-x64\python\python.exe`). Si esa variable está vacía o el archivo no existe, usa
+  `python`. Llama al intérprete con el operador de llamada y la ruta entre comillas, p. ej.
+  `& "$env:LAZUNOX_PYTHON" "$S\recalc_check.py" "C:\Users\...\Desktop\a.xlsx"`, porque los nombres pueden llevar
+  espacios y acentos.
+- Para PowerPoint, la skill `pptx` MANDA el flujo: primero la pregunta de formato (editable o diseño libre HTML),
+  luego el JSON del Chat con `build_chat_deck.py` y su guía de diseño (el mismo resultado que en el Chat); respaldo
+  `build_pptx.py`.
+- No abras los documentos en Word, Excel ni Visor de fotos para «verificarlos»: verifica con los scripts y las
+  librerías, como indica la regla previa al paso 3.
+
 ## Cómo trabajas
 1. **Plan y permiso primero**: sigue el "Flujo obligatorio" de arriba (también para el primer
    `computer_screenshot`, que llega después de la aprobación) y recuerda que en seguimientos de la
