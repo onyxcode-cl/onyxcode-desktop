@@ -158,6 +158,16 @@ export function sandboxView(status: TasksSandboxStatus | null, backend: 'seatbel
       }
     }
     default:
+      // Abierto como administrador: el motivo lo puede arreglar la persona, así que se lo decimos (sin botones: hay que reabrir la app).
+      if (status.state === 'unsupported' && status.detail === 'elevated') {
+        return {
+          kind: 'unavailable',
+          title: 'tasks.sandbox.elevated.title',
+          body: 'tasks.sandbox.elevated.body',
+          actions: [],
+          blocksStart: true
+        }
+      }
       // `unsupported` (puertas de seguridad cerradas) y cualquier estado que no conozcamos: cierra, sin acciones que no hacen nada.
       return {
         kind: 'unavailable',
