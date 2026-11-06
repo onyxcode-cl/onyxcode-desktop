@@ -3,8 +3,11 @@ import {
   AUTO_INSTALL_IDS,
   AUTO_RETRY_DELAYS_MS,
   SANDBOX_APPROX_BYTES,
+  acceptAllPlan,
   autoDiskEnough,
   autoInstallPlan,
+  installStageNeeded,
+  permsStageNeeded,
   retryableCode,
   screenReport,
   blocking,
@@ -384,5 +387,81 @@ describe('instalación automática (AUTO_INSTALL_IDS)', () => {
     for (const code of ['disk', 'no-space', 'hash', 'bad-hash', 'signature', 'permission', 'unsafe', 'blocked'])
       expect(retryableCode(code)).toBe(false)
     expect(AUTO_RETRY_DELAYS_MS.length).toBeGreaterThan(0)
+  })
+})
+
+describe('recorrido del primer uso tras la instalación automática (C5)', () => {
+  // Sin lo automático (ArtCraft, Node.js y uv, entorno aislado) la pantalla solo pide lo que requiere a una persona.
+  const trust = (ok: boolean): PreflightComponent => c('trust', { ok, installable: true, reason: ok ? undefined : 'missing' })
+
+  it('caso 1, Mac primer uso: la pantalla deja firma y permisos; «Aceptar todo» es solo la firma; pasa a permisos tras firmar', () => {
+    const r = report([
+      c('storage'),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, reason: 'missing', sizeBytes: 228e6 }),
+      c('runtimes', { ok: false, reason: 'missing', sizeBytes: 67e6 }),
+      trust(false),
+      c('perms', { ok: false, essential: false, reason: 'both' })
+    ])
+    const v = screenReport(r)
+    expect(v.components.map((x) => x.id)).toEqual(['storage', 'engine', 'trust', 'perms'])
+    expect(acceptAllPlan(v).map((x) => x.id)).toEqual(['trust'])
+    expect(installStageNeeded(v)).toBe(true)
+    expect(permsStageNeeded(v)).toBe(true)
+
+    const firmada = report([
+      c('storage'),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, reason: 'missing', sizeBytes: 228e6 }),
+      c('runtimes', { ok: false, reason: 'missing', sizeBytes: 67e6 }),
+      trust(true),
+      c('perms', { ok: false, essential: false, reason: 'both' })
+    ])
+    const despues = screenReport(firmada)
+    expect(installStageNeeded(despues)).toBe(false)
+    expect(permsStageNeeded(despues)).toBe(true)
+  })
+
+  it('caso 2, Mac sin componente de firma: la etapa «Instalar» no hace falta y se va directo a permisos', () => {
+    const r = report([
+      c('storage'),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, reason: 'missing', sizeBytes: 228e6 }),
+      c('runtimes', { ok: false, reason: 'missing', sizeBytes: 67e6 }),
+      c('perms', { ok: false, essential: false, reason: 'both' })
+    ])
+    const v = screenReport(r)
+    expect(v.components.some((x) => x.id === 'trust')).toBe(false)
+    expect(installStageNeeded(v)).toBe(false)
+    expect(permsStageNeeded(v)).toBe(true)
+  })
+
+  it('caso 3, Windows primer uso: la pantalla no se abre y lo automático trae ArtCraft y entorno aislado', () => {
+    const r = report(
+      [
+        c('storage'),
+        c('disk'),
+        c('engine'),
+        c('craft', { ok: false, reason: 'missing', sizeBytes: 228e6 }),
+        c('sandbox', { ok: false, reason: 'needsSetup', sizeBytes: SANDBOX_APPROX_BYTES })
+      ],
+      { platform: 'win32' }
+    )
+    expect(shouldShow(screenReport(r), null)).toBeNull()
+    expect(autoInstallPlan(r).map((x) => x.id)).toEqual(['craft', 'sandbox'])
+  })
+
+  it('caso 4, carpeta de datos no escribible: lo automático queda vacío', () => {
+    const r = report([
+      c('storage', { ok: false, reason: 'not-writable' }),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, reason: 'missing', sizeBytes: 228e6 }),
+      c('sandbox', { ok: false, reason: 'needsSetup', sizeBytes: SANDBOX_APPROX_BYTES })
+    ])
+    expect(autoInstallPlan(r)).toEqual([])
   })
 })
