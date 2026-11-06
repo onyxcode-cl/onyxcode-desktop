@@ -12,6 +12,7 @@ import { useT } from '../../../lib/i18n'
 import { cw } from '../../tasks/impl/bridge'
 import { LABELS, hintKey } from '../../onboarding/preflight-view'
 import { openPreflight } from '../../onboarding/preflight-open'
+import { autoBusy, autoPercent, useAutoInstall } from '../../onboarding/auto-install'
 import { Badge, Card, ErrorText } from './ui'
 
 export function ComponentsCard(): React.JSX.Element {
@@ -19,6 +20,7 @@ export function ComponentsCard(): React.JSX.Element {
   const [report, setReport] = useState<PreflightReport | null>(null)
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  const auto = useAutoInstall()
 
   const run = useCallback(async (): Promise<void> => {
     setBusy(true)
@@ -88,9 +90,15 @@ export function ComponentsCard(): React.JSX.Element {
                       : ''}
                 </div>
               </div>
-              <Badge tone={c.ok ? 'ok' : c.essential ? 'error' : 'warn'}>
-                {c.ok ? t('preflight.state.ready') : c.essential ? t('preflight.state.missing') : t('preflight.state.pending')}
-              </Badge>
+              {!c.ok && autoBusy(auto) && auto.ids.includes(c.id) && !auto.done.includes(c.id) ? (
+                <Badge tone="muted">{t('autoinstall.state.running', { pct: autoPercent(auto) })}</Badge>
+              ) : !c.ok && auto.failed[c.id] ? (
+                <Badge tone="error">{t('preflight.state.failed')}</Badge>
+              ) : (
+                <Badge tone={c.ok ? 'ok' : c.essential ? 'error' : 'warn'}>
+                  {c.ok ? t('preflight.state.ready') : c.essential ? t('preflight.state.missing') : t('preflight.state.pending')}
+                </Badge>
+              )}
             </div>
           )
         })}

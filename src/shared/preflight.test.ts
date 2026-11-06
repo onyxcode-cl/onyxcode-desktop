@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AUTO_INSTALL_IDS,
+  AUTO_RETRY_DELAYS_MS,
   SANDBOX_APPROX_BYTES,
+  autoDiskEnough,
+  autoInstallPlan,
+  retryableCode,
+  screenReport,
   blocking,
   canContinue,
   canInstall,
@@ -311,5 +317,72 @@ describe('recorrido de la primera vez: etapas', () => {
     expect(m.installStageNeeded(win)).toBe(true)
     expect(m.permsStageNeeded(win)).toBe(false)
     expect(m.firstRunTotal(win)).toBe(3)
+  })
+})
+
+describe('instalación automática (AUTO_INSTALL_IDS)', () => {
+  const rep = (over: Partial<PreflightReport> = {}, extra: PreflightComponent[] = []): PreflightReport => ({
+    at: 1,
+    platform: 'win32',
+    appVersion: '1.0.0',
+    freeBytes: 50e9,
+    components: [
+      c('storage'),
+      c('disk'),
+      c('engine'),
+      c('craft', { ok: false, reason: 'missing', sizeBytes: 228e6 }),
+      c('runtimes', { ok: false, reason: 'missing', sizeBytes: 67e6 }),
+      c('sandbox', { ok: false, reason: 'needsSetup', sizeBytes: SANDBOX_APPROX_BYTES }),
+      ...extra
+    ],
+    ...over
+  })
+
+  it('el plan automático son ArtCraft, Node.js y uv y el entorno aislado, nunca firma ni permisos', () => {
+    const r = rep({}, [c('trust', { ok: false, installable: true, reason: 'missing' }), c('perms', { ok: false, reason: 'both' })])
+    expect(autoInstallPlan(r).map((x) => x.id)).toEqual(['craft', 'runtimes', 'sandbox'])
+    expect(AUTO_INSTALL_IDS).not.toContain('trust')
+    expect(AUTO_INSTALL_IDS).not.toContain('perms')
+  })
+
+  it('un entorno aislado que pide administrador o reinicio (no instalable) no entra', () => {
+    const r = rep()
+    r.components = r.components.map((x) => (x.id === 'sandbox' ? { ...x, reason: 'needsWsl', installable: false } : x))
+    expect(autoInstallPlan(r).map((x) => x.id)).toEqual(['craft', 'runtimes'])
+  })
+
+  it('sin carpeta de datos escribible, o con la revisión omitida, no se instala nada', () => {
+    const r = rep()
+    r.components = r.components.map((x) => (x.id === 'storage' ? { ...x, ok: false, reason: 'not-writable' } : x))
+    expect(autoInstallPlan(r)).toEqual([])
+    expect(autoInstallPlan({ ...rep(), skipped: true })).toEqual([])
+  })
+
+  it('el disco usa la misma regla DISK_FACTOR (ArtCraft ×4, Node.js y uv ×6, entorno ×1)', () => {
+    const need = 228e6 * 4 + 67e6 * 6 + SANDBOX_APPROX_BYTES
+    expect(autoDiskEnough(rep({ freeBytes: need }))).toBe(true)
+    expect(autoDiskEnough(rep({ freeBytes: need - 1 }))).toBe(false)
+    expect(autoDiskEnough(rep({ freeBytes: null }))).toBe(true)
+  })
+
+  it('screenReport quita lo automático y el aviso de disco que causa: la pantalla no se abre por eso', () => {
+    const r = rep({}, [])
+    r.components = r.components.map((x) => (x.id === 'disk' ? { ...x, ok: false, reason: 'low-space' } : x))
+    const v = screenReport(r)
+    expect(v.components.map((x) => x.id)).toEqual(['storage', 'engine'])
+    expect(shouldShow(v, null)).toBeNull()
+  })
+
+  it('lo esencial que falta sigue bloqueando aunque lo automático se quite de la vista', () => {
+    const r = rep()
+    r.components = r.components.map((x) => (x.id === 'engine' ? { ...x, ok: false, reason: 'not-found' } : x))
+    expect(shouldShow(screenReport(r), null)).toBe('blocking')
+  })
+
+  it('solo se reintenta en silencio lo que arregla la espera (red); disco, firma o integridad no', () => {
+    for (const code of ['offline', 'download', 'download-failed', 'io', 'generic', undefined]) expect(retryableCode(code)).toBe(true)
+    for (const code of ['disk', 'no-space', 'hash', 'bad-hash', 'signature', 'permission', 'unsafe', 'blocked'])
+      expect(retryableCode(code)).toBe(false)
+    expect(AUTO_RETRY_DELAYS_MS.length).toBeGreaterThan(0)
   })
 })

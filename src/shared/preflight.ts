@@ -164,6 +164,41 @@ export function acceptAllPlan(report: PreflightReport): PreflightComponent[] {
   return installable(report)
 }
 
+/**
+ * Piezas que la app instala SOLA en segundo plano, sin pantalla ni casillas: solo descargan (verificadas) y no piden administrador ni
+ * contraseña. `trust` (contraseña de macOS) y los permisos NO están aquí: los decide una persona y siguen en la pantalla.
+ */
+export const AUTO_INSTALL_IDS: readonly PreflightId[] = ['craft', 'runtimes', 'sandbox']
+
+/** Qué instala sola la app: lo instalable que falta de `AUTO_INSTALL_IDS`. Sin carpeta de datos escribible no se instala nada. */
+export function autoInstallPlan(report: PreflightReport): PreflightComponent[] {
+  if (report.skipped) return []
+  if (report.components.some((c) => c.id === 'storage' && !c.ok)) return []
+  return installable(report).filter((c) => AUTO_INSTALL_IDS.includes(c.id))
+}
+
+/** ¿Alcanza el disco para todo el plan automático? (misma regla `DISK_FACTOR`; sin medida se intenta igual). */
+export function autoDiskEnough(report: PreflightReport, plan: readonly PreflightComponent[] = autoInstallPlan(report)): boolean {
+  const need = plan.reduce((n, c) => n + (c.sizeBytes ?? 0) * (DISK_FACTOR[c.id] ?? 1), 0)
+  return diskEnough(report.freeBytes, need)
+}
+
+/**
+ * El informe tal como lo ve la pantalla «Preparando» cuando la app instala sola: sin las piezas automáticas (siguen su propio avance)
+ * y sin el aviso de disco que ellas causan. Quedan lo que exige a una persona (permisos, firma, motor, ubicación).
+ */
+export function screenReport(report: PreflightReport): PreflightReport {
+  return { ...report, components: report.components.filter((c) => !AUTO_INSTALL_IDS.includes(c.id) && c.id !== 'disk') }
+}
+
+/** Esperas (ms) entre reintentos silenciosos cuando falla la red; agotadas, se muestra el error con «Reintentar». */
+export const AUTO_RETRY_DELAYS_MS: readonly number[] = [30_000, 120_000, 600_000]
+
+/** Fallos que pueden arreglarse solos esperando (red); disco, firma, hash, permisos… no: se informan de inmediato. */
+export function retryableCode(code: string | undefined): boolean {
+  return code === undefined || ['offline', 'download', 'download-failed', 'io', 'generic'].includes(code)
+}
+
 /** Filas de una etapa: «Instalar» sin permisos; «Permisos» solo los permisos (también el silencioso de archivos). */
 export function stageRows(report: PreflightReport, stage: PreflightStage, unchecked: readonly PreflightId[] = []): PreflightComponent[] {
   if (stage === 'perms') return ordered(report).filter((c) => PERMS_IDS.includes(c.id))

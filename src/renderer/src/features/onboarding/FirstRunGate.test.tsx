@@ -18,11 +18,13 @@ const c = (id: PreflightComponent['id'], o: Partial<PreflightComponent> = {}): P
 })
 let platform: 'darwin' | 'win32' = 'darwin'
 let trustResult: { ok: boolean; error?: string } = { ok: true }
+let craftResult: { ok: boolean; error?: string } = { ok: true }
+let freeBytes = 50e9
 const report = (): PreflightReport => ({
   at: 1,
   platform,
   appVersion: '1.8.9',
-  freeBytes: 50e9,
+  freeBytes,
   components: [
     c('storage'),
     c('disk'),
@@ -42,6 +44,8 @@ vi.mock('../tasks/impl/bridge', () => ({
     calls.push(channel)
     if (channel === 'preflight:run') return report()
     if (channel === 'preflight:trust') return trustResult
+    if (channel === 'craft:install') return craftResult
+    if (channel === 'tasks:sandbox:status') return { state: 'ready', setup: null }
     return undefined
   })
 }))
@@ -56,6 +60,7 @@ vi.mock('../code/impl/client', () => ({ nativeCode: () => null }))
 import { FirstRunGate } from './FirstRunGate'
 import { openPreflight } from './preflight-open'
 import { useSettings } from '../../stores/settings'
+import { resetAutoInstall } from './auto-install'
 
 let host: HTMLDivElement
 let root: Root
@@ -82,6 +87,10 @@ beforeEach(() => {
   calls.length = 0
   runtimesInstall.mockClear()
   trustResult = { ok: true }
+  craftResult = { ok: true }
+  freeBytes = 50e9
+  Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+  resetAutoInstall()
   localStorage.clear?.()
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -109,41 +118,30 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     expect(calls).not.toContain('preflight:run')
   })
 
-  it('2) «Empezar» → «Instalar lo necesario» (paso 2 de 4 en Mac) con el botón grande y el total de descarga ANTES del clic', async () => {
+  it('2) «Empezar» → «Instalar lo necesario» (paso 2 de 4 en Mac): solo lo que pide una persona; ArtCraft y Node.js y uv se instalan solos, sin botón', async () => {
     await start()
     expect(q('preflight-step')?.textContent).toContain('Paso 2 de 4')
-    expect(btn('Aceptar todo e instalar')).toBeDefined()
-    expect(q('preflight-size')?.textContent).toMatch(/272 MB.*GitHub.*nodejs\.org/)
+    expect(q('preflight-row-trust')).not.toBeNull()
+    expect(q('preflight-row-craft')).toBeNull()
+    expect(q('preflight-row-runtimes')).toBeNull()
+    expect(q('pick-craft')).toBeNull()
+    expect(calls).toContain('craft:install')
+    expect(runtimesInstall).toHaveBeenCalledTimes(1)
     expect(q('welcome')).toBeNull()
     expect(q('wizard-step')).toBeNull()
-  })
-
-  it('las casillas quedan debajo de «Elegir qué instalar»: recomendado marcado, opcional desmarcado, y «Instalar lo marcado»', async () => {
-    await start()
-    expect(q('pick-craft')).toBeNull()
-    await act(async () => btn('Elegir qué instalar')!.click())
-    expect((q('pick-craft') as HTMLInputElement).checked).toBe(true)
-    expect((q('pick-runtimes') as HTMLInputElement).checked).toBe(false)
-    expect(btn('Instalar lo marcado')).toBeDefined()
-    expect(btn('Aceptar todo e instalar')).toBeUndefined()
-    expect(q('preflight-size')?.textContent).toContain('205 MB')
   })
 
   it('el paso de instalar NO lleva permisos; esos van aparte', async () => {
     await start()
     expect(q('preflight-row-perms')).toBeNull()
     expect(q('preflight-row-files')).toBeNull()
-    expect(q('preflight-row-craft')).not.toBeNull()
+    expect(q('preflight-row-trust')).not.toBeNull()
   })
 
-  it('«Aceptar todo e instalar» instala todo lo instalable (también Node.js y uv, aunque su casilla nazca desmarcada) y nunca pide permisos', async () => {
+  it('la instalación automática nunca pide permisos de macOS', async () => {
     await start()
-    await act(async () => btn('Aceptar todo e instalar')!.click())
-    await flush()
-    await flush()
-    expect(calls).toContain('craft:install')
-    expect(runtimesInstall).toHaveBeenCalledTimes(1)
     expect(calls).not.toContain('computer:requestPermissions')
+    expect(calls).not.toContain('preflight:trust')
   })
 
   it('Mac: «Confiar en la firma» sale en la lista de instalar, con su explicación, y entra en «Aceptar todo» (sin tocar permisos)', async () => {
@@ -152,22 +150,12 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     expect(row.textContent).toContain('Confiar en la firma de Lazunox')
     expect(row.textContent).toContain('Te pedirá tu contraseña una vez')
     expect(row.textContent).toContain('Falta tu clic')
+    expect(calls).not.toContain('preflight:trust')
     await act(async () => btn('Aceptar todo e instalar')!.click())
     await flush()
     await flush()
     expect(calls).toContain('preflight:trust')
     expect(calls).not.toContain('computer:requestPermissions')
-  })
-
-  it('«Confiar en la firma» marcada por defecto y desmarcable en «Elegir qué instalar»', async () => {
-    await start()
-    await act(async () => btn('Elegir qué instalar')!.click())
-    expect((q('pick-trust') as HTMLInputElement).checked).toBe(true)
-    await act(async () => (q('pick-trust') as HTMLInputElement).click())
-    await act(async () => btn('Instalar lo marcado')!.click())
-    await flush()
-    await flush()
-    expect(calls).not.toContain('preflight:trust')
   })
 
   it('cancelar el aviso de contraseña de macOS no es un error: la fila queda «Falta tu clic» y el recorrido sigue', async () => {
@@ -214,19 +202,17 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     await flush()
     expect(q('preflight-screen')).toBeNull()
     expect(q('wizard-step')).not.toBeNull()
-    expect(localStorage.getItem('lazunox.preflight.dismissed')).toContain('craft')
+    expect(localStorage.getItem('lazunox.preflight.dismissed')).toContain('trust')
+    expect(localStorage.getItem('lazunox.preflight.dismissed')).not.toContain('craft')
   })
 
-  it('Windows: «Paso 2 de 3», sin paso ni fila de permisos; «Más tarde» va directo al asistente; el entorno aislado entra en «Aceptar todo»', async () => {
+  it('Windows: sin firma ni permisos y con ArtCraft, Node.js y uv y el entorno aislado ya instalándose solos, no hay nada que pida una persona: pasa directo al asistente', async () => {
     await start(false, 'win32')
-    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 3')
-    expect(q('preflight-row-perms')).toBeNull()
-    expect(q('preflight-row-location')).toBeNull()
-    expect(q('preflight-row-sandbox')).not.toBeNull()
-    await act(async () => btn('Más tarde')!.click())
-    await flush()
-    expect(q('preflight-step')).toBeNull()
+    expect(q('preflight-screen')).toBeNull()
     expect(q('wizard-step')).not.toBeNull()
+    expect(calls).toContain('craft:install')
+    expect(calls).toContain('tasks:sandbox:setup')
+    expect(runtimesInstall).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -252,6 +238,73 @@ describe('quien ya terminó el asistente', () => {
     await act(async () => btn('Más tarde')!.click())
     await flush()
     expect(q('preflight-screen')).toBeNull()
+  })
+})
+
+describe('instalación automática en segundo plano', () => {
+  it('en cada arranque en que falten, instala ArtCraft y Node.js y uv solo: sin pantalla, sin casillas y con la app ya usable', async () => {
+    await mount(true, 'win32')
+    expect(q('preflight-screen')).toBeNull()
+    expect(q('pick-craft')).toBeNull()
+    expect(calls).toContain('craft:install')
+    expect(calls).toContain('tasks:sandbox:setup')
+    expect(runtimesInstall).toHaveBeenCalledTimes(1)
+    expect(host.textContent).not.toContain('Aceptar todo e instalar')
+  })
+
+  it('sin internet no descarga nada y deja un aviso discreto; al volver la conexión, instala', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+    await mount(true, 'win32')
+    expect(calls).not.toContain('craft:install')
+    expect(q('autoinstall-pill')?.getAttribute('data-phase')).toBe('offline')
+    expect(q('autoinstall-pill')?.textContent).toContain('Sin internet')
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    await act(async () => window.dispatchEvent(new Event('online')))
+    await flush()
+    await flush()
+    expect(calls).toContain('craft:install')
+  })
+
+  it('sin espacio suficiente (regla del disco) no instala nada y avisa con «Reintentar»', async () => {
+    freeBytes = 100e6
+    await mount(true, 'win32')
+    expect(calls).not.toContain('craft:install')
+    expect(runtimesInstall).not.toHaveBeenCalled()
+    const pill = q('autoinstall-pill')!
+    expect(pill.getAttribute('data-phase')).toBe('nodisk')
+    expect(pill.textContent).toContain('No hay espacio suficiente')
+    freeBytes = 50e9
+    await act(async () => btn('Reintentar')!.click())
+    await flush()
+    await flush()
+    expect(calls).toContain('craft:install')
+  })
+
+  it('si falla de verdad (p. ej. la comprobación de integridad) dice el motivo y ofrece «Reintentar», sin bloquear la app', async () => {
+    craftResult = { ok: false, error: 'hash' }
+    await mount(true, 'win32')
+    await flush()
+    const pill = q('autoinstall-pill')!
+    expect(pill.getAttribute('data-phase')).toBe('failed')
+    expect(btn('Reintentar')).toBeDefined()
+    expect(q('preflight-screen')).toBeNull()
+    craftResult = { ok: true }
+    const before = calls.filter((x) => x === 'craft:install').length
+    await act(async () => btn('Reintentar')!.click())
+    await flush()
+    await flush()
+    expect(calls.filter((x) => x === 'craft:install').length).toBe(before + 1)
+  })
+
+  it('Ajustes › «Instalar o activar piezas» sigue mostrando todo con sus casillas (recomendado marcado, Node.js y uv desmarcado)', async () => {
+    await mount(true)
+    await act(async () => openPreflight())
+    await flush()
+    expect(q('preflight-row-craft')).not.toBeNull()
+    await act(async () => btn('Elegir qué instalar')!.click())
+    expect((q('pick-craft') as HTMLInputElement).checked).toBe(true)
+    expect((q('pick-runtimes') as HTMLInputElement).checked).toBe(false)
+    expect(btn('Instalar lo marcado')).toBeDefined()
   })
 })
 
