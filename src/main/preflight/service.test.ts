@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { blocking, installPlan, optionalPending, type PreflightComponent } from '@shared/preflight'
+import { autoInstallPlan, blocking, installPlan, optionalPending, type PreflightComponent } from '@shared/preflight'
 import type { CraftPart } from '../office/craft/craft-install'
 import { failureDetail, placementOf, runPreflightChecks, skippedReport, type CraftCheck, type PreflightDeps } from './service'
 
@@ -255,6 +255,21 @@ describe('Windows: entorno aislado', () => {
   it('falta WSL o virtualización: avisa pero deja entrar', async () => {
     for (const s of ['needsWsl', 'needsWsl2', 'needsVirtualization']) {
       expect(await get(win(s), 'sandbox')).toMatchObject({ ok: false, essential: false, installable: false, reason: s })
+    }
+  })
+  it('WSL ausente, WSL2 o virtualización: no son instalables y el arranque automático no los incluye', async () => {
+    for (const s of ['needsWsl', 'needsWsl2', 'needsVirtualization']) {
+      const r = await runPreflightChecks(
+        deps({
+          ...win(s),
+          craft: () => ({ state: 'missing', version: '0.5.0', sizeBytes: 300e6, parts: ALL.map((n) => part(n, 'no-mark')) }),
+          freeBytes: () => 50e9,
+          runtimes: () => ({ offered: false, ready: true, broken: false, sizeBytes: 0 })
+        })
+      )
+      expect(r.components.find((c) => c.id === 'sandbox')).toMatchObject({ ok: false, installable: false, reason: s })
+      expect(autoInstallPlan(r).map((c) => c.id)).not.toContain('sandbox')
+      expect(autoInstallPlan(r).map((c) => c.id)).toContain('craft')
     }
   })
   it('no soportado o bloqueado por la organización: sin componente', async () => {
