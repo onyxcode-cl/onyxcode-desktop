@@ -353,8 +353,36 @@ function pick(): { lang: 'es' | 'en'; dict: Dict } {
 const current = pick()
 export const lang = current.lang
 
+/** Clave que guarda la interfaz completa (`src/renderer/remote/host-platform.ts`, mismo origen que esta página): `darwin` | `win32`. */
+const HOST_PLATFORM_KEY = 'lazunox.hostPlatform'
+
+/**
+ * Palabra con la que se nombra al equipo en los textos (que están escritos con «Mac»): `darwin` → Mac, `win32` → PC y, sin nada
+ * recordado (primer emparejamiento, antes de saber el sistema), una palabra neutra. Pura: se prueba sin navegador.
+ */
+export function hostWord(platform: string | null | undefined, l: 'es' | 'en' = lang): string {
+  if (platform === 'darwin') return 'Mac'
+  if (platform === 'win32') return 'PC'
+  return l === 'es' ? 'computador' : 'computer'
+}
+
+/** Sustituye «Mac» por la palabra del equipo (los textos van en masculino/neutro: «tu», «el», «del» sirven con las tres). */
+export function localizeHost(s: string, platform: string | null | undefined, l: 'es' | 'en' = lang): string {
+  const w = hostWord(platform, l)
+  return w === 'Mac' ? s : s.replace(/\bMac\b/g, w)
+}
+
+/** Último sistema recordado por la app completa en este celular; sin almacenamiento o sin valor, `undefined`. */
+function rememberedPlatform(): string | undefined {
+  try {
+    return localStorage.getItem(HOST_PLATFORM_KEY) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function t(key: string, vars?: Record<string, string | number>): string {
-  let s = current.dict[key] ?? es[key] ?? key
+  let s = localizeHost(current.dict[key] ?? es[key] ?? key, rememberedPlatform())
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v))
   return s
 }
