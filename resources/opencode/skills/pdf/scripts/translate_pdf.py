@@ -28,33 +28,14 @@ MARGEN_DER = 526.0     # tope derecho si no hay vecino (hoja carta/A4 con margen
 INTERLINEA = 1.18
 TAM_MIN = 6.0
 
-_SUP = "/System/Library/Fonts/Supplemental/"
-_WIN = "C:/Windows/Fonts/"
-_LIN = "/usr/share/fonts/truetype/liberation/"
-# Familia (sans = Arial, serif = Times New Roman, mono = Courier New) × estilo → rutas en macOS, Windows y Linux (Liberation).
-FUENTES = {
-    "sans": {"regular": [_SUP + "Arial.ttf", _WIN + "arial.ttf", _LIN + "LiberationSans-Regular.ttf"],
-             "bold": [_SUP + "Arial Bold.ttf", _WIN + "arialbd.ttf", _LIN + "LiberationSans-Bold.ttf"],
-             "italic": [_SUP + "Arial Italic.ttf", _WIN + "ariali.ttf", _LIN + "LiberationSans-Italic.ttf"],
-             "bolditalic": [_SUP + "Arial Bold Italic.ttf", _WIN + "arialbi.ttf", _LIN + "LiberationSans-BoldItalic.ttf"]},
-    "serif": {"regular": [_SUP + "Times New Roman.ttf", _WIN + "times.ttf", _LIN + "LiberationSerif-Regular.ttf"],
-              "bold": [_SUP + "Times New Roman Bold.ttf", _WIN + "timesbd.ttf", _LIN + "LiberationSerif-Bold.ttf"],
-              "italic": [_SUP + "Times New Roman Italic.ttf", _WIN + "timesi.ttf", _LIN + "LiberationSerif-Italic.ttf"],
-              "bolditalic": [_SUP + "Times New Roman Bold Italic.ttf", _WIN + "timesbi.ttf", _LIN + "LiberationSerif-BoldItalic.ttf"]},
-    "mono": {"regular": [_SUP + "Courier New.ttf", _WIN + "cour.ttf", _LIN + "LiberationMono-Regular.ttf"],
-             "bold": [_SUP + "Courier New Bold.ttf", _WIN + "courbd.ttf", _LIN + "LiberationMono-Bold.ttf"],
-             "italic": [_SUP + "Courier New Italic.ttf", _WIN + "couri.ttf", _LIN + "LiberationMono-Italic.ttf"],
-             "bolditalic": [_SUP + "Courier New Bold Italic.ttf", _WIN + "courbi.ttf", _LIN + "LiberationMono-BoldItalic.ttf"]},
-}
 _BASE = {"sans": ("helv", "hebo", "heit", "hebi"), "serif": ("tiro", "tibo", "tiit", "tibi"), "mono": ("cour", "cobo", "coit", "cobi")}
 
 
 def _fuente(estilo, familia="sans"):
-    for ruta in FUENTES[familia][estilo]:
-        if os.path.isfile(ruta):
-            return fitz.Font(fontfile=ruta)
+    """Fuente incorporada de MuPDF (Helvetica/Times/Courier: mismas métricas que Arial/Times New Roman/Courier New; con TextWriter
+    cubre español, latín extendido, griego y cirílico). No depende de las fuentes del sistema, así que da lo mismo en Mac, Windows y Linux."""
     nombres = _BASE[familia]
-    return fitz.Font(nombres[["regular", "bold", "italic", "bolditalic"].index(estilo)])  # fuente base del PDF: solo Latin-1
+    return fitz.Font(nombres[["regular", "bold", "italic", "bolditalic"].index(estilo)])
 
 
 # ---------------------------------------------------------------- segmentación
@@ -98,8 +79,96 @@ def _obstaculos(pagina, resaltados):
     return out
 
 
+_MARCA_ITEM = re.compile(r"^(\d+(\.\d+)*\.|[a-zA-Z]\.|\(?[a-z0-9]{1,2}\)|Memo \d|•|-|–)\s")
+
+
+def _segmentos_ocr(pagina):
+    """Párrafos de una hoja escaneada con capa OCR invisible. Esa capa trae el texto bien pero troceado (1-5 palabras por «línea»):
+    se juntan las palabras por línea visual dentro de cada bloque, se unen las líneas en párrafos (cortando en viñetas y números de
+    cláusula y en saltos verticales), se quitan los guiones de fin de línea y se respeta el orden por bloque/columna de la capa."""
+    alto = pagina.rect.height
+    info = {}
+    for b in pagina.get_text("dict")["blocks"]:
+        if b["type"] != 0:
+            continue
+        cuenta, flags = {}, {}
+        for l in b["lines"]:
+            for s in l["spans"]:
+                n = len(s["text"].strip())
+                cuenta[round(s["size"], 1)] = cuenta.get(round(s["size"], 1), 0) + n
+                flags[s["flags"]] = flags.get(s["flags"], 0) + n
+        if cuenta:
+            info[b["number"]] = (max(cuenta, key=cuenta.get), max(flags, key=flags.get))
+    por_bloque = {}
+    for w in pagina.get_text("words"):
+        if w[4].strip():
+            por_bloque.setdefault(w[5], []).append(w)
+    parrafos = []
+    for nb in sorted(por_bloque):
+        ws = sorted(por_bloque[nb], key=lambda w: ((w[1] + w[3]) / 2, w[0]))
+        lineas, cur, cy = [], [], None
+        for w in ws:
+            c = (w[1] + w[3]) / 2
+            if cur and abs(c - cy) > 3:
+                lineas.append(cur)
+                cur = []
+            if not cur:
+                cy = c
+            cur.append(w)
+        if cur:
+            lineas.append(cur)
+        tam, fl = info.get(nb, (10.0, 0))
+        base = {"bold": bool(fl & 16), "italic": bool(fl & 2), "size": tam, "color": 0,
+                "fam": "mono" if fl & 8 else "serif" if fl & 4 else "sans"}
+        actual = None
+        for ln in lineas:
+            ln.sort(key=lambda w: w[0])
+            bb = [min(w[0] for w in ln), min(w[1] for w in ln), max(w[2] for w in ln), max(w[3] for w in ln)]
+            txt = " ".join(w[4] for w in ln)
+            nueva = (actual is None or _MARCA_ITEM.match(txt) is not None
+                     or (bb[1] - actual["lines"][-1]["bbox"][3]) > 0.8 * (bb[3] - bb[1]) + 1.5)
+            linea = dict(base, bbox=bb, text=txt)
+            if nueva:
+                actual = {"lines": [linea], "blk": nb}
+                parrafos.append(actual)
+            else:
+                prev = actual["lines"][-1]
+                if prev["text"].endswith("-") and txt[:1].islower():
+                    prev["text"] = prev["text"][:-1]
+                    prev["_une"] = True   # la palabra continúa sin espacio
+                actual["lines"].append(linea)
+    segs = []
+    for p in parrafos:
+        partes = []
+        for l in p["lines"]:
+            if partes and partes[-1][1]:
+                partes[-1] = (partes[-1][0] + l["text"], l.get("_une", False))
+            else:
+                partes.append((l["text"], l.get("_une", False)))
+        texto = " ".join(t for t, _ in partes)
+        bb = [l["bbox"] for l in p["lines"]]
+        sg = {"lines": p["lines"], "text": texto,
+              "bbox": [min(b[0] for b in bb), min(b[1] for b in bb), max(b[2] for b in bb), max(b[3] for b in bb)],
+              "blk": p["blk"]}
+        base = p["lines"][0]
+        sg["bold"], sg["italic"], sg["size"], sg["color"], sg["fam"] = base["bold"], base["italic"], base["size"], base["color"], base["fam"]
+        sg["multi"] = len(p["lines"]) > 1
+        # folios y pies pegados al borde inferior (código de la póliza, «2/5»): no se traducen
+        if sg["bbox"][1] > 0.93 * alto and len(texto) <= 30:
+            continue
+        segs.append(sg)
+    # una frase que sigue en OTRA columna: se avisa al modelo con «sigue» (no se mezclan en una sola caja)
+    for a_, b_ in zip(segs, segs[1:]):
+        if (a_["blk"] != b_["blk"] and not a_["text"].rstrip().endswith((".", ";", ":", "?", "!", "”", '"'))
+                and b_["text"][:1].islower()):
+            a_["sigue_con"] = b_
+    return segs
+
+
 def segmentos_de_pagina(pagina):
     """Párrafos de la página: líneas consecutivas del mismo bloque, misma sangría y estilo, sin línea en blanco entre ellas."""
+    if _clase_pagina(pagina) == "escaneada_ocr":
+        return _segmentos_ocr(pagina)
     enlaces = [fitz.Rect(k["from"]) for k in pagina.get_links()]
     segs = []
     for b in pagina.get_text("dict")["blocks"]:
@@ -224,9 +293,81 @@ def _info_resaltado(pagina, seg, hl):
     return partes or None
 
 
+def _limpio(texto):
+    """Texto sin las marcas de formato ([[ ]], <b>, <c=…>, <l=N>)."""
+    return " ".join(re.sub(r"</?b>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>", "", texto.replace("[[", "").replace("]]", "")).split())
+
+
+def _cifras(texto):
+    """Números del texto (cifras, fechas, importes): la traducción debe conservarlos."""
+    return re.findall(r"\d+(?:[.,]\d+)*", _limpio(texto))
+
+
 def _traducible(texto):
     """Sin letras (números, fechas, folios, símbolos): no se traduce y se deja tal cual."""
     return bool(re.search(r"[^\W\d_]", texto))
+
+
+def _clase_pagina(pag):
+    """'digital' (texto de verdad), 'escaneada_ocr' (la foto de la hoja con una capa de texto invisible encima)
+    o 'escaneada_sin_texto' (solo imagen). En un escaneo el idioma que se VE es la foto: borrar el texto invisible no lo quita."""
+    try:
+        r = pag.rect
+        area = r.width * r.height
+        if area <= 0:
+            return "digital"
+        cubierto = 0.0
+        for i in pag.get_image_info():
+            x = fitz.Rect(i["bbox"]) & r
+            if not x.is_empty:
+                cubierto += x.width * x.height
+        if min(cubierto / area, 1.0) < 0.6:
+            return "digital"
+        trazas = pag.get_texttrace()
+        total = sum(len(t.get("chars", ())) for t in trazas)
+        if total == 0:
+            return "escaneada_sin_texto"
+        invisibles = sum(len(t.get("chars", ())) for t in trazas if t.get("type") == 3)
+        return "escaneada_ocr" if invisibles >= 0.5 * total else "digital"
+    except Exception as e:  # nunca esconder un fallo del detector como «es digital» sin dejar rastro
+        print("AVISO: no se pudo clasificar una página (%s); se trata como digital." % e, file=sys.stderr)
+        return "digital"
+
+
+def _color_fondo(pag, rect):
+    """Color de fondo más frecuente dentro de rect (el texto es minoría): (r, g, b) entre 0 y 1; blanco si no se puede medir."""
+    try:
+        r = rect & pag.rect
+        if r.is_empty:
+            return (1, 1, 1)
+        pix = pag.get_pixmap(clip=r, dpi=110, colorspace=fitz.csRGB, alpha=False)
+        datos, n = pix.samples, pix.n
+        cuentas = {}
+        for i in range(0, len(datos) - n + 1, n):
+            k = (datos[i] >> 4, datos[i + 1] >> 4, datos[i + 2] >> 4)
+            c = cuentas.get(k)
+            if c is None:
+                cuentas[k] = [1, datos[i], datos[i + 1], datos[i + 2]]
+            else:
+                c[0] += 1
+                c[1] += datos[i]
+                c[2] += datos[i + 1]
+                c[3] += datos[i + 2]
+        if not cuentas:
+            return (1, 1, 1)
+        c = max(cuentas.values(), key=lambda v: v[0])
+        return (c[1] / c[0] / 255.0, c[2] / c[0] / 255.0, c[3] / c[0] / 255.0)
+    except Exception:
+        return (1, 1, 1)
+
+
+def _tapar_original(pag, trabajo):
+    """Tapa con el color del fondo cada línea que se va a traducir (para hojas escaneadas, donde el texto original es una imagen)."""
+    for _, s in trabajo:
+        for l in s["lines"]:
+            sz = max(1.0, s["size"])
+            r = fitz.Rect(l["bbox"]) + (-3.0, -0.2 * sz, 3.0, 0.2 * sz)   # las cajas de la capa OCR quedan 2-4 pt más angostas que las palabras
+            pag.draw_rect(r, color=None, fill=_color_fondo(pag, r), width=0, overlay=True)
 
 
 # ---------------------------------------------------------------- extraer
@@ -238,12 +379,18 @@ def cmd_extraer(a):
         error("el PDF tiene contraseña; este script no la maneja.")
     salida = []
     total_chars = 0
+    clases = {}
     for n, pag in enumerate(doc):
+        clases[n + 1] = _clase_pagina(pag)
         hl = _resaltados(pag)
-        for i, s in enumerate(segmentos_de_pagina(pag)):
+        segs_p = segmentos_de_pagina(pag)
+        pos = {id(s): i for i, s in enumerate(segs_p)}
+        for i, s in enumerate(segs_p):
             if not _traducible(s["text"]):
                 continue
             item = {"id": "p%d-%d" % (n + 1, i), "pagina": n + 1, "texto": s["text"], "negrita": s["bold"]}
+            if s.get("sigue_con") is not None:
+                item["sigue"] = "p%d-%d" % (n + 1, pos[id(s["sigue_con"])])
             marc = _info_resaltado(pag, s, hl)
             if marc:
                 item["resaltado"] = marc
@@ -261,10 +408,13 @@ def cmd_extraer(a):
         sys.exit(2)
     sin_texto = [n + 1 for n in range(len(doc)) if (n + 1) not in paginas_con_texto]
     with open(a.salida, "w", encoding="utf-8") as f:
-        json.dump({"paginas": len(doc), "segmentos": salida}, f, ensure_ascii=False, indent=1)
+        json.dump({"paginas": len(doc), "clases": {str(k): v for k, v in clases.items()}, "segmentos": salida}, f, ensure_ascii=False, indent=1)
     print("OK: %d textos a traducir (%d caracteres) en %d páginas -> %s" % (len(salida), total_chars, len(paginas_con_texto), a.salida))
     if sin_texto:
         print("AVISO: páginas sin texto (imágenes): %s. Quedarán tal cual, en el idioma original." % ",".join(map(str, sin_texto)))
+    escaneadas = [str(k) for k, v in clases.items() if v == "escaneada_ocr"]
+    if escaneadas:
+        print("AVISO: páginas ESCANEADAS con texto OCR invisible: %s. El idioma original es una foto: al aplicar se tapa con el color del fondo y se escribe encima." % ",".join(escaneadas))
     print("Los textos con \"sigue\": la frase continúa en ese otro id (traduce ambos como una sola frase natural). "
           "Traduce cada \"texto\" (id -> traducción) y guarda un JSON {\"p1-0\": \"...\"}. "
           "En los textos con \"resaltado\", envuelve en [[ ]] la parte traducida que corresponde a lo resaltado.")
@@ -348,6 +498,9 @@ def cmd_aplicar(a):
     usados = set()
 
     for n, pag in enumerate(doc):
+        escaneada = _clase_pagina(pag) == "escaneada_ocr"   # se mide antes de borrar el texto invisible
+        if escaneada:
+            informe.setdefault("escaneadas", []).append(n + 1)
         segs = segmentos_de_pagina(pag)
         hl = _resaltados(pag)
         obst = _obstaculos(pag, hl)
@@ -365,6 +518,11 @@ def cmd_aplicar(a):
             if " ".join(re.sub(r"</?b>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>", "", str(tr[sid]).replace("[[", "").replace("]]", "")).split()) == " ".join(re.sub(r"</?b>|<c=#[0-9a-fA-F]{6}>|</c>|<l=\d+>|</l>", "", s["text"]).split()):
                 informe["iguales"] = informe.get("iguales", 0) + 1   # nombres propios, códigos, cifras: se dejan como están
                 continue
+            if sorted(_cifras(s["text"])) != sorted(_cifras(str(tr[sid]))):
+                informe.setdefault("cifras_distintas", []).append(sid)
+            lo, ln_ = len(_limpio(s["text"])), len(_limpio(str(tr[sid])))
+            if lo >= 30 and not (0.5 <= ln_ / lo <= 2.5):
+                informe.setdefault("largo_raro", []).append(sid)
             trabajo.append((sid, s))
         # 1) borrar el texto viejo (y los resaltados que lo cubrían; se vuelven a dibujar donde corresponda)
         hl_viejos = [(r, c) for (r, c) in hl if any(fitz.Rect(s["bbox"]).intersects(r) for _, s in trabajo)]
@@ -377,7 +535,9 @@ def cmd_aplicar(a):
             for l in s["lines"]:
                 pag.add_redact_annot(fitz.Rect(l["bbox"]), fill=False)
         pag.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE, graphics=fitz.PDF_REDACT_LINE_ART_NONE)
-        color_hl = hl_viejos[0][1] if hl_viejos else (1, 1, 0)
+        if escaneada:
+            _tapar_original(pag, trabajo)
+        color_hl =hl_viejos[0][1] if hl_viejos else (1, 1, 0)
         # 2) escribir la traducción
         for sid, s in trabajo:
             texto = str(tr[sid])
