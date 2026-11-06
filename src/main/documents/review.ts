@@ -19,6 +19,7 @@ import {
   formulaSheetRefs,
   headingJumps,
   headingStyleIssue,
+  blankRuns,
   countWords,
   listRuns,
   overlappingPairs,
@@ -140,6 +141,14 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
     r.note(
       `Salto de nivel en «${hs[i].text.slice(0, 30)}» (nivel ${hs[i].key.slice(7)} después de nivel ${hs[i - 1].key.slice(7)}): falta un encabezado de nivel ${Number(hs[i - 1].key.slice(7)) + 1} antes`
     )
+  // Párrafos vacíos (sin texto, sin salto de página ni imagen): se cuentan antes de quitarlos, para avisar del Enter usado como espacio.
+  const blanks = blankRuns(
+    [...outside.matchAll(/<w:p\b[^>]*\/>|<w:p[ >][\s\S]*?<\/w:p>/g)].map(
+      (m) => !textOf(m[0]).trim() && !/<w:br\b|<w:drawing|<w:pict|<w:sectPr/.test(m[0])
+    )
+  )
+  if (blanks)
+    r.note(`${blanks} sitio(s) con dos o más párrafos vacíos seguidos: usa el espacio del estilo en vez de varios Enter`)
   const runs = listRuns(paras.map((p) => p.numId)).filter((n) => n > 7)
   if (runs.length) r.note(`Lista de ${runs.join(' y ')} ítems seguidos (más de 7): divide la lista en grupos con un título o usa una tabla`)
   const wordy = paras.filter((p) => p.numbered && countWords(p.text) > 30)

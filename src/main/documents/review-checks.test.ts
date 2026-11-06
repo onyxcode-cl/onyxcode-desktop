@@ -16,8 +16,17 @@ import {
   headingJumps,
   headingStyleIssue,
   countWords,
-  listRuns
+  listRuns,
+  blankRuns
 } from './review-checks'
+
+describe('R5: párrafos vacíos seguidos', () => {
+  it('dos o más vacíos seguidos cuentan como un tramo; uno solo no', () => {
+    expect(blankRuns([false, true, false])).toBe(0)
+    expect(blankRuns([false, true, true, false])).toBe(1)
+    expect(blankRuns([true, true, true, false, true, true])).toBe(2)
+  })
+})
 
 describe('R4: listas largas', () => {
   it('cuenta tramos seguidos del mismo numId; otro párrafo los corta', () => {

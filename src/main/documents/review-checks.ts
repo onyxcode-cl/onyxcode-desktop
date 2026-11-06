@@ -374,6 +374,17 @@ export function listRuns(numIds: Array<string | null>): number[] {
   return lengths
 }
 
+/** Cuántos tramos de dos o más `true` seguidos hay en `flags` (p. ej. párrafos vacíos seguidos). */
+export function blankRuns(flags: boolean[]): number {
+  let runs = 0
+  let cur = 0
+  for (const f of flags) {
+    if (!f) cur = 0
+    else if (++cur === 2) runs++
+  }
+  return runs
+}
+
 /** Palabras de un texto (separadas por espacios). */
 export function countWords(text: string): number {
   const t = text.trim()

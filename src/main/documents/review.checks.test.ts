@@ -218,6 +218,13 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
     const ancho = await reviewDocument('docx', await docxWithStyles(TITLE + item('2', palabras)))
     expect(notes(ancho)).toContain('ítem(s) de lista de más de 30 palabras')
   })
+  it('dos párrafos vacíos seguidos → ℹ; uno solo no', async () => {
+    const dos = await reviewDocument('docx', await docxWithStyles(TITLE + '<w:p/><w:p/>' + para('Normal', 'Texto.')))
+    expect(bad(dos)).toBe('')
+    expect(notes(dos)).toContain('1 sitio(s) con dos o más párrafos vacíos seguidos')
+    const uno = await reviewDocument('docx', await docxWithStyles(TITLE + '<w:p/>' + para('Normal', 'Texto.')))
+    expect(notes(uno)).not.toContain('párrafos vacíos')
+  })
   it('encabezado normal y siglas cortas no avisan', async () => {
     const r = await reviewDocument(
       'docx',
