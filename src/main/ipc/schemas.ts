@@ -695,7 +695,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'translate:pdfExtract': obj({
     name: str({ max: 300, min: 1 }),
     base64: str({ max: Math.ceil((TRANSLATE_PDF_MAX_BYTES * 4) / 3) + 16 }),
-    kind: optional(literal('pdf', 'docx'))
+    kind: optional(literal('pdf', 'docx', 'xlsx'))
   }),
   'translate:pdfApply': obj({
     jobId: str({ max: 16, min: 16 }),

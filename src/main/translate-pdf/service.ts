@@ -41,7 +41,8 @@ import { unpacked } from '../util/asar'
 
 const JOB_TTL_MS = 24 * 60 * 60 * 1000
 const RUN_TIMEOUT_MS = 4 * 60 * 1000
-const SEGMENT_ID_RE = /^[pd]\d{1,5}-\d{1,5}$/
+/** PDF `p<página>-<n>`, Word `d<parte>-<n>`, Excel `s<n>` (cadena compartida) o `i|c|g|d<parte>-<n>` (texto en línea, comentario, gráfico, cuadro). */
+const SEGMENT_ID_RE = /^(?:[pd]\d{1,5}-\d{1,5}|s\d{1,6}|[icgd]\d{1,4}-\d{1,6})$/
 const MAX_TRANSLATION_CHARS = 20_000
 
 export interface RunResult {
@@ -62,7 +63,8 @@ export interface ServiceDeps {
 }
 
 function defaultScript(kind: TranslateKind = 'pdf'): string {
-  const [skill, file] = kind === 'docx' ? ['docx', 'translate_docx.py'] : ['pdf', 'translate_pdf.py']
+  const [skill, file] =
+    kind === 'docx' ? ['docx', 'translate_docx.py'] : kind === 'xlsx' ? ['xlsx', 'translate_xlsx.py'] : ['pdf', 'translate_pdf.py']
   return unpacked(join(app.getAppPath(), 'resources', 'opencode', 'skills', skill, 'scripts', file))
 }
 
@@ -137,12 +139,12 @@ export class PdfTranslateService {
 
   async extract(req: PdfExtractRequest): Promise<PdfExtractResult> {
     const python = this.d.python()
-    const kind: TranslateKind = req.kind === 'docx' ? 'docx' : 'pdf'
+    const kind: TranslateKind = req.kind === 'docx' || req.kind === 'xlsx' ? req.kind : 'pdf'
     if (!python || !existsSync(this.d.script(kind))) return { ok: false, reason: 'noPython' }
     const buf = Buffer.from(req.base64, 'base64')
-    // %PDF- o, para Word, un zip («PK\x03\x04»): lo demás ni se guarda.
+    // %PDF- o, para Word y Excel, un zip («PK\x03\x04»): lo demás ni se guarda.
     const magic =
-      kind === 'docx' ? buf.subarray(0, 4).toString('latin1') === 'PK\u0003\u0004' : buf.subarray(0, 5).toString('latin1') === '%PDF-'
+      kind !== 'pdf' ? buf.subarray(0, 4).toString('latin1') === 'PK\u0003\u0004' : buf.subarray(0, 5).toString('latin1') === '%PDF-'
     if (buf.length === 0 || !magic) return { ok: false, reason: 'unreadable' }
     if (buf.length > TRANSLATE_PDF_MAX_BYTES) return { ok: false, reason: 'tooBig' }
     await this.cleanup()
@@ -159,22 +161,26 @@ export class PdfTranslateService {
     })
     const r = await this.d.run(python, [this.d.script(kind), 'extraer', `input.${kind}`, '-o', 'segmentos.json'], dir)
     if (r.timedOut) return fail('timeout')
-    if (r.code === 2) return fail('scanned')
+    // 2 = sin texto: en un PDF es «parece escaneado»; en un Excel, «el libro no tiene texto».
+    if (r.code === 2) return fail(kind === 'xlsx' ? 'noText' : 'scanned')
     if (r.code !== 0)
       return fail(
         /contraseña/i.test(r.stderr) ? 'encrypted' : /no se pudo abrir|mupdf|damaged|dañad/i.test(r.stderr) ? 'unreadable' : 'failed'
       )
-    let parsed: { paginas?: number; segmentos?: PdfSegment[]; clases?: Record<string, string> }
+    let parsed: { paginas?: number; segmentos?: Partial<PdfSegment>[]; clases?: Record<string, string> }
     try {
       parsed = JSON.parse(await readFile(join(dir, 'segmentos.json'), 'utf8')) as typeof parsed
     } catch {
       return fail('failed')
     }
-    const segments = (parsed.segmentos ?? []).filter(
+    // Excel no tiene páginas (el script no escribe `pagina` ni `paginas`): todo va en la «página» 1 y se descartan los campos
+    // que solo sirven de pista (`celdas`, `parte`).
+    const raw = (parsed.segmentos ?? []) as PdfSegment[]
+    const segments = (kind === 'xlsx' ? raw.map((s) => ({ id: s.id, pagina: 1, texto: s.texto })) : raw).filter(
       (s) => SEGMENT_ID_RE.test(s.id) && typeof s.texto === 'string' && Number.isInteger(s.pagina)
     )
     const chars = segments.reduce((n, s) => n + s.texto.length, 0)
-    if (segments.length === 0) return fail('scanned')
+    if (segments.length === 0) return fail(kind === 'xlsx' ? 'noText' : 'scanned')
     if (segments.length > TRANSLATE_PDF_MAX_SEGMENTS || chars > TRANSLATE_PDF_MAX_CHARS) return fail('tooLong')
     const pages = Number.isInteger(parsed.paginas) ? (parsed.paginas as number) : Math.max(...segments.map((s) => s.pagina))
     const withText = new Set(segments.map((s) => s.pagina))
@@ -193,7 +199,7 @@ export class PdfTranslateService {
     const dir = this.jobDir(jobId)
     if (!python || !dir || !Number.isInteger(page) || page < 1) return { ok: false }
     const meta = await this.meta(dir)
-    if (!meta || meta.kind === 'docx') return { ok: false }
+    if (!meta || (meta.kind ?? 'pdf') !== 'pdf') return { ok: false }
     const file = `pagina-${page}.png`
     await rm(join(dir, file), { force: true })
     const r = await this.d.run(python, [this.d.script('pdf'), 'imagen', 'input.pdf', '--pagina', String(page), '-o', file], dir)
@@ -219,7 +225,7 @@ export class PdfTranslateService {
     }
     if (Object.keys(clean).length === 0) return { ok: false, reason: 'failed' }
     await writeFile(join(dir, 'traduccion.json'), JSON.stringify(clean), { mode: 0o600 })
-    const kind: TranslateKind = meta.kind === 'docx' ? 'docx' : 'pdf'
+    const kind: TranslateKind = meta.kind === 'docx' || meta.kind === 'xlsx' ? meta.kind : 'pdf'
     await rm(join(dir, `salida.${kind}`), { force: true })
     const r = await this.d.run(
       python,
@@ -238,13 +244,17 @@ export class PdfTranslateService {
         no_cabe?: string[]
         enlaces_quitados?: unknown[] | number
         formato_perdido?: number
+        formato_simplificado?: string[]
+        posible_recorte?: string[]
       }
       const report: PdfApplyReport = {
         translated: inf.traducidos ?? 0,
         untranslated: inf.sin_traduccion?.length ?? 0,
         shrunk: inf.letra_reducida?.length ?? 0,
         overflow: (inf.no_cabe ?? []).filter((id) => SEGMENT_ID_RE.test(id)),
-        formatLost: inf.formato_perdido ?? 0,
+        // Excel: `formato_simplificado` (ids) y `posible_recorte` (celdas); el de Word/PDF trae `formato_perdido`.
+        formatLost: inf.formato_perdido ?? inf.formato_simplificado?.length ?? 0,
+        ...(kind === 'xlsx' ? { cutOff: inf.posible_recorte?.length ?? 0 } : {}),
         linksDropped: Array.isArray(inf.enlaces_quitados) ? inf.enlaces_quitados.length : (inf.enlaces_quitados ?? 0)
       }
       const outName = translatedName(meta.name, req.target, kind)
@@ -261,7 +271,7 @@ export class PdfTranslateService {
     const dir = this.jobDir(req.jobId)
     if (!dir) return { ok: false, reason: 'failed' }
     const meta = await this.meta(dir)
-    if (!meta || meta.kind === 'docx') return { ok: false, reason: 'failed' }
+    if (!meta || (meta.kind ?? 'pdf') !== 'pdf') return { ok: false, reason: 'failed' }
     if (typeof req.html !== 'string' || !req.html.trim() || req.html.length > TRANSLATE_CLEAN_HTML_MAX) return { ok: false, reason: 'tooLong' }
     try {
       const bytes = await this.d.renderHtml(req.html, meta.name.replace(/\.pdf$/i, ''))
@@ -291,10 +301,11 @@ export class PdfTranslateService {
   async save(jobId: string, parent: BrowserWindow | null, clean = false): Promise<{ saved: boolean }> {
     const f = await this.outFile(jobId, clean)
     if (!f) return { saved: false }
-    const ext = f.name.toLowerCase().endsWith('.docx') ? 'docx' : 'pdf'
+    const lower = f.name.toLowerCase()
+    const ext = lower.endsWith('.docx') ? 'docx' : lower.endsWith('.xlsx') ? 'xlsx' : 'pdf'
     const options = {
       defaultPath: join(app.getPath('downloads'), f.name),
-      filters: [{ name: ext === 'docx' ? 'Word' : 'PDF', extensions: [ext] }]
+      filters: [{ name: ext === 'docx' ? 'Word' : ext === 'xlsx' ? 'Excel' : 'PDF', extensions: [ext] }]
     }
     const res = parent ? await dialog.showSaveDialog(parent, options) : await dialog.showSaveDialog(options)
     if (res.canceled || !res.filePath) return { saved: false }

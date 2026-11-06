@@ -2,10 +2,10 @@
  * ¿La persona está pidiendo traducir el PDF que adjuntó? (F8-B200). Puro y conservador: solo ofrece la herramienta (la persona confirma
  * con un clic), así que un falso positivo cuesta un clic y un falso negativo se arregla con el ícono del compositor.
  */
-import { DOCX_MIME, TRANSLATE_LANGS, type TranslateKind, type TranslateLangCode } from './translate-pdf'
+import { DOCX_MIME, XLSX_MIME, TRANSLATE_LANGS, type TranslateKind, type TranslateLangCode } from './translate-pdf'
 
 export interface TranslateIntent {
-  /** Posición del PDF o Word dentro de los adjuntos. */
+  /** Posición del PDF, Word o Excel dentro de los adjuntos. */
   fileIndex: number
   kind: TranslateKind
   target: TranslateLangCode
@@ -43,7 +43,7 @@ export function languageIn(text: string): TranslateLangCode | null {
 
 export function detectTranslateIntent(text: string, files: readonly { mime: string }[], uiLang: 'es' | 'en'): TranslateIntent | null {
   const docs = files
-    .map((f, i) => ({ f, i, kind: (f.mime === 'application/pdf' ? 'pdf' : f.mime === DOCX_MIME ? 'docx' : null) as TranslateKind | null }))
+    .map((f, i) => ({ f, i, kind: (f.mime === 'application/pdf' ? 'pdf' : f.mime === DOCX_MIME ? 'docx' : f.mime === XLSX_MIME ? 'xlsx' : null) as TranslateKind | null }))
     .filter((x) => x.kind !== null)
   if (docs.length !== 1) return null
   const t = plain(text)

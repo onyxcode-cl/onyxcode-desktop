@@ -68,6 +68,12 @@ describe('buildTranslatePrompt', () => {
     expect(p).toContain('<i>…</i> (italic)')
     expect(buildTranslatePrompt({ target: 'en', batch: [seg('p1-0', 'Hola')], glossary: {}, docName: 'a.pdf' })).not.toContain('italic')
   })
+  it('para Excel dice «Excel workbook», pide conservar las etiquetas <rN> y no las de PDF', () => {
+    const p = buildTranslatePrompt({ target: 'en', batch: [seg('i1-0', 'Hola')], glossary: {}, docName: 'a.xlsx', kind: 'xlsx' })
+    expect(p).toContain('Excel workbook "a.xlsx"')
+    expect(p).toContain('<r1>')
+    expect(p).not.toContain('(highlight)')
+  })
   it('sin resaltados ni glosario no nombra [[ ]] por id ni glosario', () => {
     const p = buildTranslatePrompt({ target: 'es', batch: [seg('p1-0', 'Hello')], glossary: {}, docName: 'a.pdf' })
     expect(p).not.toContain('highlighted parts')
@@ -136,6 +142,7 @@ describe('trimGlossary / translatedName', () => {
     expect(translatedName('../../etc/x.pdf', 'es')).toBe('.._.._etc_x (es).pdf')
     expect(translatedName('', 'fr')).toBe('documento (fr).pdf')
     expect(translatedName('Acta final.DOCX', 'en', 'docx')).toBe('Acta final (en).docx')
+    expect(translatedName('Ventas 2026.XLSX', 'fr', 'xlsx')).toBe('Ventas 2026 (fr).xlsx')
   })
 })
 
