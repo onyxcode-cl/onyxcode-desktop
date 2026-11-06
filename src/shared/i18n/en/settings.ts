@@ -411,6 +411,8 @@ export const settings = {
   'settings.doctor.item.git.title': 'Apple command line tools',
   'settings.doctor.item.git.ok': 'Tools installed',
   'settings.doctor.item.git.warn': 'The Apple command line tools are missing (needed for git)',
+  'settings.doctor.item.git.title.win': 'Git',
+  'settings.doctor.item.git.warn.win': 'Git for Windows is missing (needed for changes and history)',
   'settings.doctor.item.disk.title': 'Disk space',
   'settings.doctor.item.disk.ok': 'Enough space',
   'settings.doctor.item.disk.warn': 'Disk space is running low',
