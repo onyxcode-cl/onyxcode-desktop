@@ -27,6 +27,13 @@ export type McpToolResult = {
   isError?: boolean
 }
 
+/** Token Bearer de un bloque MCP remoto (`headers.Authorization`), o null. */
+export function bearerOf(cfg: Record<string, unknown> | null): string | null {
+  const h = cfg?.headers
+  const a = h && typeof h === 'object' ? (h as Record<string, unknown>).Authorization : undefined
+  return typeof a === 'string' && a.startsWith('Bearer ') ? a.slice(7) : null
+}
+
 export abstract class LoopbackMcpServer<B extends { folder: string }> {
   private server: ReturnType<typeof createServer> | null = null
   private port = 0
