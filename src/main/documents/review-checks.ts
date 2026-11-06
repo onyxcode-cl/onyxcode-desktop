@@ -10,6 +10,9 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/lorem ipsum/i, 'lorem ipsum'],
   [/\bTODO\b/, 'TODO'],
   [/\bTBD\b/, 'TBD'],
+  [/\bTBC\b/, 'TBC'],
+  [/\bto be (confirmed|determined|defined)\b/i, 'to be…'],
+  [/\[\s*(logo|firma|imagen)\b[^\]]{0,40}\]/i, '[logo/firma/imagen]'],
   [/\[\s*(insert|insertar|aquí|aqui|nombre|empresa|fecha|título|titulo|texto|cliente)\b[^\]]{0,40}\]/i, '[insertar…]'],
   [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b/i, '[PENDIENTE…]'],
   [/\[\s*(\.{3}|…)\s*\]/, '[…]'],
@@ -20,6 +23,14 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/haga clic para|haz clic para|click to (add|edit)/i, 'texto de plantilla'],
   [/\bx{3,}\b/i, 'xxx']
 ]
+
+/**
+ * Una celda que es solo «N/A» (sin nada más): resto de plantilla en una hoja de cálculo. Se mira celda por celda, porque dentro de un texto
+ * corrido «N/A» puede ser legítimo («N/A del sistema»).
+ */
+export function isNaCell(text: string): boolean {
+  return /^\s*n\/a\s*$/i.test(text)
+}
 
 /** Restos de plantilla encontrados en un texto (sin repetir). */
 export function templateLeftovers(text: string): string[] {
@@ -344,4 +355,147 @@ export function specGapCells(kind: 'pptx' | 'docx' | 'xlsx', spec: unknown): str
     arr(s.blocks).forEach((b, i) => b && b.type === 'table' && Array.isArray(b.rows) && run((b.columns as unknown[]) ?? [], b.rows as unknown[][], `tabla del bloque ${i + 1}`))
   else arr(s.sheets).forEach((sh, i) => sh && Array.isArray(sh.rows) && sh.rows.length > 1 && run(sh.rows[0] ?? [], sh.rows.slice(1), `hoja ${i + 1}`))
   return found
+}
+
+/**
+ * Saltos en la jerarquía de encabezados de Word: un nivel 3 justo después de un 1 (sin un 2 en medio) deja el índice y el panel de
+ * navegación con huecos. `levels` son los niveles de los encabezados en orden; devuelve el índice de cada encabezado que salta.
+ */
+export function headingJumps(levels: number[]): number[] {
+  const out: number[] = []
+  for (let i = 1; i < levels.length; i++) if (levels[i] - levels[i - 1] > 1) out.push(i)
+  return out
+}
+
+/**
+ * Longitud de cada tramo de ítems seguidos con el mismo `numId` de lista (`null` = párrafo que no es ítem: corta el tramo). Sirve para
+ * avisar de listas demasiado largas, que cansan y suelen pedir una tabla o dos listas.
+ */
+export function listRuns(numIds: Array<string | null>): number[] {
+  const lengths: number[] = []
+  let cur = 0
+  numIds.forEach((id, i) => {
+    if (id && id === numIds[i - 1]) cur++
+    else {
+      if (cur) lengths.push(cur)
+      cur = id ? 1 : 0
+    }
+  })
+  if (cur) lengths.push(cur)
+  return lengths
+}
+
+/**
+ * Títulos de diapositiva repetidos (mismo texto en 2 o más, sin distinguir mayúsculas) y títulos que terminan en punto. `titles[i]` es
+ * el título de la diapositiva i, o `null` si no tiene. Devuelve los textos tal como están en la primera diapositiva que los trae.
+ */
+export function slideTitleIssues(titles: Array<string | null>): { repeated: string[]; dotted: string[] } {
+  const count = new Map<string, { text: string; n: number }>()
+  for (const t of titles) {
+    const text = t?.trim()
+    if (!text) continue
+    const key = text.toLowerCase()
+    const entry = count.get(key)
+    if (entry) entry.n++
+    else count.set(key, { text, n: 1 })
+  }
+  return {
+    repeated: [...count.values()].filter((e) => e.n >= 2).map((e) => e.text),
+    dotted: [...count.values()].filter((e) => /\.$/.test(e.text)).map((e) => e.text)
+  }
+}
+
+/**
+ * ¿Toda la presentación son viñetas? Con 4 o más láminas de contenido (sin contar la portada, `layouts[0]`) y todas con diseño ausente o
+ * `bullets`, el lector ve una pared de viñetas: conviene variar el tipo de lámina.
+ */
+export function monotonousLayouts(layouts: Array<string | undefined>): boolean {
+  const content = layouts.slice(1)
+  return content.length >= 4 && content.every((l) => l === undefined || l === 'bullets')
+}
+
+/**
+ * Columnas con formato «porcentaje» que guardan números mayores que 1,5 en sus datos (p. ej. 22 donde se quería 22 %, o sea 0,22). Solo
+ * cuentan los números escritos: una fórmula o un texto no se juzga. Devuelve «hoja, columna n (valor)» por cada columna.
+ */
+export function percentMisfits(sheets: Array<{ name: string; columnFormats?: Array<string | null>; rows: unknown[][] }>): string[] {
+  const out: string[] = []
+  for (const sh of sheets)
+    (sh.columnFormats ?? []).forEach((fmt, c) => {
+      if (fmt !== 'percent') return
+      const big = sh.rows.slice(1).map((r) => r[c]).filter((v): v is number => typeof v === 'number' && v > 1.5)
+      if (big.length) out.push(`${sh.name}, columna ${c + 1} (${big[0]})`)
+    })
+  return out
+}
+
+/**
+ * Forma de las hojas (la primera fila es el encabezado): hojas con solo el encabezado (✘), encabezados de más de 25 caracteres y hojas de
+ * más de 12 columnas (avisos). Devuelve los nombres o textos afectados.
+ */
+export function sheetShapeIssues(sheets: Array<{ name: string; rows: unknown[][] }>): { empty: string[]; longHeader: string[]; wide: string[] } {
+  const out = { empty: [] as string[], longHeader: [] as string[], wide: [] as string[] }
+  for (const sh of sheets) {
+    if (sh.rows.length <= 1) out.empty.push(sh.name)
+    const header = sh.rows[0] ?? []
+    for (const h of header) if (typeof h === 'string' && h.length > 25) out.longHeader.push(`«${h.slice(0, 25)}…» (${sh.name})`)
+    if (header.length > 12) out.wide.push(`${sh.name} (${header.length} columnas)`)
+  }
+  return out
+}
+
+/** Familias de letra distintas en las declaraciones `font-family` de un CSS (sin comillas, en minúsculas). */
+export function fontFamilies(css: string): string[] {
+  const out = new Set<string>()
+  for (const m of css.matchAll(/font-family\s*:\s*([^;}]+)/gi))
+    for (const part of m[1].split(',')) {
+      const f = part.trim().replace(/^['"]+|['"]+$/g, '').trim().toLowerCase()
+      if (f && !['inherit', 'initial', 'unset'].includes(f)) out.add(f)
+    }
+  return [...out]
+}
+
+/** Filas de tabla con más de `max` encabezados (`<th>`): en una página impresa se salen del ancho. */
+export function wideHeaderRows(html: string, max = 8): number {
+  return (html.match(/<tr\b[\s\S]*?<\/tr>/gi) ?? []).filter((tr) => (tr.match(/<th\b/gi) ?? []).length > max).length
+}
+
+/** `position: fixed` en el CSS: en un PDF se repite en cada página y tapa el contenido. */
+export function hasFixedPosition(css: string): boolean {
+  return /position\s*:\s*fixed/i.test(css)
+}
+
+/** Lámina cargada: más de 6 viñetas, o más de 60 palabras entre todas sus viñetas. */
+export function denseBullets(bullets: string[] | undefined): boolean {
+  if (!bullets?.length) return false
+  return bullets.length > 6 || bullets.reduce((n, b) => n + countWords(b), 0) > 60
+}
+
+/** Cuántos tramos de dos o más `true` seguidos hay en `flags` (p. ej. párrafos vacíos seguidos). */
+export function blankRuns(flags: boolean[]): number {
+  let runs = 0
+  let cur = 0
+  for (const f of flags) {
+    if (!f) cur = 0
+    else if (++cur === 2) runs++
+  }
+  return runs
+}
+
+/** Palabras de un texto (separadas por espacios). */
+export function countWords(text: string): number {
+  const t = text.trim()
+  return t ? t.split(/\s+/).length : 0
+}
+
+/**
+ * Título o encabezado con forma de texto pegado: termina en punto, o va en mayúsculas sostenidas (4 letras o más, sin cifras; «KPI» y
+ * «Q3 2026» no cuentan). Devuelve el motivo o `null`.
+ */
+export function headingStyleIssue(text: string): 'punto' | 'mayusculas' | null {
+  const t = text.trim()
+  if (/\.$/.test(t)) return 'punto'
+  const letters = t.replace(/[^\p{L}]/gu, '')
+  if (letters.length >= 4 && !/\d/.test(t) && letters === letters.toUpperCase() && letters !== letters.toLowerCase()) return 'mayusculas'
+  return null
 }

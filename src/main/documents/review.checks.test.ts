@@ -1,7 +1,7 @@
 /** Chequeos nuevos de `reviewDocument` (aspecto, plantilla, contraste, referencias de Excel) sobre archivos mínimos armados aquí. */
 import JSZip from 'jszip'
 import { describe, expect, it } from 'vitest'
-import { reviewDocument, reviewSummary } from './review'
+import { reviewDocument, reviewPdf, reviewSummary } from './review'
 
 const bad = (r: Awaited<ReturnType<typeof reviewDocument>>): string =>
   r.items
@@ -156,6 +156,265 @@ describe('Excel: chequeos nuevos', () => {
     )
     expect(bad(r)).toBe('')
     expect(notes(r)).toContain('1 celda(s) guardan un número como texto')
+  })
+})
+
+/** Word mínimo con estilos de encabezado tal como los guarda Word («heading 1», «title», «list paragraph»…). */
+const docxWithStyles = async (body: string): Promise<Buffer> => {
+  const z = new JSZip()
+  z.file('word/document.xml', `<w:document xmlns:w="w"><w:body>${body}</w:body></w:document>`)
+  const style = (id: string, name: string): string => `<w:style w:styleId="${id}"><w:name w:val="${name}"/></w:style>`
+  z.file(
+    'word/styles.xml',
+    `<w:styles>${style('Title', 'Title')}${style('Heading1', 'heading 1')}${style('Heading2', 'heading 2')}${style('Heading3', 'heading 3')}${style('ListParagraph', 'List Paragraph')}</w:styles>`
+  )
+  return z.generateAsync({ type: 'nodebuffer' })
+}
+const para = (style: string, text: string): string => `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`
+const TITLE = para('Title', 'Informe anual')
+
+describe('R1 en Word: salto de encabezado (ℹ)', () => {
+  it('H1 seguido de H3 avisa; con H2 en medio no', async () => {
+    const salto = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'Resumen') + para('Heading3', 'Detalle') + para('Normal', 'Texto.'))
+    )
+    expect(bad(salto)).toBe('')
+    expect(notes(salto)).toContain('Salto de nivel en «Detalle» (nivel 3 después de nivel 1)')
+    const bien = await reviewDocument(
+      'docx',
+      await docxWithStyles(
+        TITLE + para('Heading1', 'Resumen') + para('Heading2', 'Medio') + para('Heading3', 'Detalle') + para('Normal', 'Texto.')
+      )
+    )
+    expect(notes(bien)).not.toContain('Salto de nivel')
+  })
+  it('título con punto final y encabezado en mayúsculas → ℹ, no ✘', async () => {
+    const r = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'RESUMEN EJECUTIVO') + para('Heading2', 'Ventas de 2026.') + para('Normal', 'Texto.'))
+    )
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('«RESUMEN EJECUTIVO» va en mayúsculas')
+    expect(notes(r)).toContain('«Ventas de 2026.» termina en punto')
+  })
+  it('párrafo de cuerpo de 141 palabras → ℹ; de 140 no; un encabezado largo no cuenta', async () => {
+    const largo = Array(141).fill('palabra').join(' ')
+    const r = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', largo)))
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('1 párrafo(s) de más de 140 palabras')
+    const justo = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', Array(140).fill('palabra').join(' '))))
+    expect(notes(justo)).not.toContain('más de 140 palabras')
+  })
+  it('lista de 8 ítems con el mismo numId → ℹ; de 7 no; ítem de más de 30 palabras → ℹ', async () => {
+    const item = (id: string, text: string): string =>
+      `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="${id}"/></w:numPr></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`
+    const ocho = Array.from({ length: 8 }, (_, i) => item('1', `Ítem ${i + 1}`)).join('')
+    const largo = await reviewDocument('docx', await docxWithStyles(TITLE + ocho + para('Normal', 'Fin.')))
+    expect(bad(largo)).toBe('')
+    expect(notes(largo)).toContain('Lista de 8 ítems seguidos')
+    const siete = Array.from({ length: 7 }, (_, i) => item('1', `Ítem ${i + 1}`)).join('')
+    expect(notes(await reviewDocument('docx', await docxWithStyles(TITLE + siete + para('Normal', 'Fin.'))))).not.toContain(
+      'ítems seguidos'
+    )
+    const palabras = Array(31).fill('palabra').join(' ')
+    const ancho = await reviewDocument('docx', await docxWithStyles(TITLE + item('2', palabras)))
+    expect(notes(ancho)).toContain('ítem(s) de lista de más de 30 palabras')
+  })
+  it('dos párrafos vacíos seguidos → ℹ; uno solo no', async () => {
+    const dos = await reviewDocument('docx', await docxWithStyles(TITLE + '<w:p/><w:p/>' + para('Normal', 'Texto.')))
+    expect(bad(dos)).toBe('')
+    expect(notes(dos)).toContain('1 sitio(s) con dos o más párrafos vacíos seguidos')
+    const uno = await reviewDocument('docx', await docxWithStyles(TITLE + '<w:p/>' + para('Normal', 'Texto.')))
+    expect(notes(uno)).not.toContain('párrafos vacíos')
+  })
+  it('encabezado normal y siglas cortas no avisan', async () => {
+    const r = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'Resumen ejecutivo') + para('Heading2', 'KPI Q3 2026') + para('Normal', 'Texto.'))
+    )
+    expect(notes(r)).not.toContain('mayúsculas')
+    expect(notes(r)).not.toContain('punto')
+  })
+})
+
+/** Presentación mínima con varias diapositivas (una lista de formas por diapositiva). */
+async function pptxSlides(slides: string[][]): Promise<Buffer> {
+  const z = new JSZip()
+  z.file('ppt/presentation.xml', '<p:presentation><p:sldSz cx="12192000" cy="6858000"/></p:presentation>')
+  slides.forEach((shapes, i) =>
+    z.file(`ppt/slides/slide${i + 1}.xml`, `<p:sld ${NS_P}><p:cSld><p:spTree>${shapes.join('')}</p:spTree></p:cSld></p:sld>`)
+  )
+  return z.generateAsync({ type: 'nodebuffer' })
+}
+
+describe('R6 en PowerPoint: título repetido o con punto (ℹ)', () => {
+  const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  it('el mismo título en dos diapositivas → ℹ', async () => {
+    const r = await reviewDocument('pptx', await pptxSlides([[T('Resumen')], [T('Resumen')]]))
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Título repetido en varias diapositivas: «Resumen»')
+  })
+  it('título que termina en punto → ℹ; títulos distintos sin punto no avisan', async () => {
+    const r = await reviewDocument('pptx', await pptxSlides([[T('Ventas del trimestre.')], [T('Costos')]]))
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Título que termina en punto: «Ventas del trimestre.»')
+    const limpio = await reviewDocument('pptx', await pptxSlides([[T('Ventas')], [T('Costos')]]))
+    expect(notes(limpio)).not.toContain('Título')
+  })
+})
+
+describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
+  const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  const slides = Array.from({ length: 5 }, (_, i) => [T(`Lámina ${i + 1}`)])
+  it('cuatro láminas de contenido sin variar el tipo → ℹ', async () => {
+    // La portada sin viñetas (si no, la exigencia del subtítulo de portada se aplicaría al archivo de prueba).
+    const spec = { slides: Array.from({ length: 5 }, (_, i) => ({ title: `Lámina ${i + 1}`, ...(i ? { bullets: ['Punto'] } : {}) })) }
+    const r = await reviewDocument('pptx', await pptxSlides(slides), spec)
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Las 4 láminas de contenido son todas de viñetas')
+  })
+  it('si una lámina es «stat» o sin spec, no avisa', async () => {
+    const spec = {
+      slides: [{ title: 'Portada' }, { title: 'A', bullets: ['x'] }, { title: 'B', layout: 'stat' }, { title: 'C' }, { title: 'D' }]
+    }
+    expect(notes(await reviewDocument('pptx', await pptxSlides(slides), spec))).not.toContain('todas de viñetas')
+    expect(notes(await reviewDocument('pptx', await pptxSlides(slides)))).not.toContain('todas de viñetas')
+  })
+})
+
+describe('R10 en Excel: hoja sin datos (✘) y encabezados largos (ℹ)', () => {
+  const book = async (): Promise<Buffer> => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file('xl/worksheets/sheet1.xml', '<worksheet><sheetData/></worksheet>')
+    return z.generateAsync({ type: 'nodebuffer' })
+  }
+  it('una hoja con solo el encabezado → ✘', async () => {
+    const r = await reviewDocument('xlsx', await book(), { sheets: [{ name: 'Datos', rows: [['Región', 'Ventas']] }] })
+    expect(bad(r)).toContain('Hoja sin datos (solo el encabezado): Datos')
+  })
+  it('encabezado de más de 25 caracteres y más de 12 columnas → ℹ, no ✘', async () => {
+    const largo = 'Ventas netas del trimestre con impuestos'
+    const cols = Array.from({ length: 13 }, (_, i) => `C${i + 1}`)
+    const r = await reviewDocument('xlsx', await book(), {
+      sheets: [{ name: 'Datos', rows: [[largo, ...cols.slice(1)], Array(13).fill(1)] }]
+    })
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Encabezado de más de 25 caracteres')
+    expect(notes(r)).toContain('Hoja de más de 12 columnas')
+  })
+})
+
+describe('R11 en PDF: posición fija (✘), familias y encabezados anchos (ℹ)', () => {
+  const pdf1 = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type /Pages\n/Count 1\n/Kids []>>\nendobj\n')
+  const page = (css: string, body = '<p>Hola</p>'): string =>
+    `<html lang="es"><head><style>@page{size:A4;margin:20mm} body{font-size:11pt} ${css}</style></head><body>${body}</body></html>`
+  it('position: fixed → ✘', () => {
+    const r = reviewPdf(page('.pie{position:fixed;bottom:0}'), pdf1)
+    expect(r.ok).toBe(false)
+    expect(bad(r)).toContain('position: fixed')
+  })
+  it('tres familias de letra → ℹ; dos no', () => {
+    const tres = reviewPdf(page('h1{font-family:Georgia} p{font-family:Arial} b{font-family:Verdana}'), pdf1)
+    expect(tres.ok).toBe(true)
+    expect(notes(tres)).toContain('3 familias de letra distintas')
+    expect(notes(reviewPdf(page('h1{font-family:Georgia,serif} p{font-family:Georgia}'), pdf1))).not.toContain('familias')
+  })
+  it('una fila con 9 encabezados → ℹ', () => {
+    const th = '<th>x</th>'.repeat(9)
+    const r = reviewPdf(page('', `<table><thead><tr>${th}</tr></thead></table>`), pdf1)
+    expect(r.ok).toBe(true)
+    expect(notes(r)).toContain('1 fila(s) de tabla con más de 8 encabezados')
+  })
+})
+
+describe('R12 en los archivos: restos de plantilla nuevos (✘)', () => {
+  const pdf1 = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type /Pages\n/Count 1\n/Kids []>>\nendobj\n')
+  it('[logo] en un PDF → ✘; TBC en un Word → ✘', async () => {
+    const pdf = reviewPdf(
+      '<html lang="es"><head><style>@page{size:A4;margin:20mm}</style></head><body><p>Cliente [logo]</p></body></html>',
+      pdf1
+    )
+    expect(bad(pdf)).toContain('[logo/firma/imagen]')
+    const word = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', 'Fecha: TBC')))
+    expect(bad(word)).toContain('TBC')
+  })
+  it('N/A como celda entera en una hoja → ✘; «N/A del sistema» dentro de una frase no', async () => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file(
+      'xl/worksheets/sheet1.xml',
+      '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>N/A</t></is></c></row>' +
+        '<row r="2"><c r="A2" t="inlineStr"><is><t>N/A del sistema</t></is></c></row></sheetData></worksheet>'
+    )
+    const buf = await z.generateAsync({ type: 'nodebuffer' })
+    const r = await reviewDocument('xlsx', buf)
+    expect(bad(r)).toContain('«N/A» como texto de plantilla (Datos!A1)')
+    expect(bad(r)).not.toContain('A2')
+  })
+})
+
+describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
+  const book = async (): Promise<Buffer> => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file('xl/worksheets/sheet1.xml', '<worksheet><sheetData/></worksheet>')
+    return z.generateAsync({ type: 'nodebuffer' })
+  }
+  const spec = (valor: number) => ({
+    sheets: [
+      {
+        name: 'Datos',
+        columnFormats: [null, 'percent'],
+        rows: [
+          ['Región', 'Cuota'],
+          ['Norte', valor]
+        ]
+      }
+    ]
+  })
+  it('22 en una columna de porcentaje → ✘ con la cifra', async () => {
+    const r = await reviewDocument('xlsx', await book(), spec(22))
+    expect(bad(r)).toContain('Columnas en porcentaje con cifras mayores que 1,5')
+    expect(bad(r)).toContain('Datos, columna 2 (22)')
+  })
+  it('0,22 pasa y no aparece la línea si no hay columnas de porcentaje', async () => {
+    const ok = await reviewDocument('xlsx', await book(), spec(0.22))
+    expect(bad(ok)).toBe('')
+    expect(ok.items.map((i) => i.text).join(' | ')).toContain('Las columnas en porcentaje llevan fracciones')
+    const sin = {
+      sheets: [
+        {
+          name: 'Datos',
+          rows: [
+            ['a', 'b'],
+            ['x', 22]
+          ]
+        }
+      ]
+    }
+    expect((await reviewDocument('xlsx', await book(), sin)).items.map((i) => i.text).join(' | ')).not.toContain('porcentaje')
+  })
+})
+
+describe('R8 en PowerPoint: lámina cargada (ℹ)', () => {
+  const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  it('una lámina con 7 viñetas → ℹ con su número; con 6 no', async () => {
+    const slides = [[T('Portada')], [T('Carga')], [T('Bien')]]
+    const spec = {
+      slides: [
+        { title: 'Portada' },
+        { title: 'Carga', bullets: ['1', '2', '3', '4', '5', '6', '7'] },
+        { title: 'Bien', bullets: ['1', '2', '3', '4', '5', '6'] }
+      ]
+    }
+    const r = await reviewDocument('pptx', await pptxSlides(slides), spec)
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Láminas con más de 6 viñetas o más de 60 palabras de cuerpo (nº 2)')
   })
 })
 

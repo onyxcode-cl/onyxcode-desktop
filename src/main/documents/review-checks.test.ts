@@ -12,8 +12,158 @@ import {
   textExtentBox,
   textNearEdge,
   specGapCells,
-  gapCells
+  gapCells,
+  headingJumps,
+  headingStyleIssue,
+  countWords,
+  listRuns,
+  blankRuns,
+  slideTitleIssues,
+  monotonousLayouts,
+  denseBullets,
+  percentMisfits,
+  sheetShapeIssues,
+  fontFamilies,
+  wideHeaderRows,
+  hasFixedPosition,
+  isNaCell
 } from './review-checks'
+
+describe('R7: todo viñetas', () => {
+  it('4 o más láminas de contenido, todas de viñetas o sin diseño → sí; la portada no cuenta', () => {
+    expect(monotonousLayouts([undefined, undefined, 'bullets', undefined, undefined])).toBe(true)
+    expect(monotonousLayouts(['stat', 'bullets', 'bullets', 'bullets', 'bullets'])).toBe(true)
+  })
+  it('menos de 4 láminas de contenido, o alguna de otro tipo → no', () => {
+    expect(monotonousLayouts([undefined, undefined, undefined, undefined])).toBe(false)
+    expect(monotonousLayouts([undefined, 'bullets', 'stat', 'bullets', 'bullets'])).toBe(false)
+  })
+})
+
+describe('R11: PDF — posición fija (✘), familias de letra y encabezados anchos (ℹ)', () => {
+  it('familias de letra: sin comillas, en minúsculas y sin repetir', () => {
+    expect(fontFamilies('body{font-family: "Inter", Arial, sans-serif} h1{font-family:Georgia,serif}')).toEqual([
+      'inter',
+      'arial',
+      'sans-serif',
+      'georgia',
+      'serif'
+    ])
+    expect(fontFamilies('p{font-size:10pt}')).toEqual([])
+  })
+  it('fila con 9 encabezados cuenta; con 8 no; posición fija se detecta', () => {
+    const th = (n: number): string => '<th>x</th>'.repeat(n)
+    expect(wideHeaderRows(`<table><tr>${th(9)}</tr><tr>${th(8)}</tr></table>`)).toBe(1)
+    expect(wideHeaderRows(`<table><tr>${th(8)}</tr></table>`)).toBe(0)
+    expect(hasFixedPosition('.pie{position: fixed; bottom:0}')).toBe(true)
+    expect(hasFixedPosition('.pie{position: absolute}')).toBe(false)
+  })
+})
+
+describe('R10: forma de las hojas', () => {
+  it('hoja con solo encabezado → vacía; encabezado de 26 caracteres → largo; 13 columnas → ancha', () => {
+    const r = sheetShapeIssues([
+      { name: 'Vacía', rows: [['a', 'b']] },
+      { name: 'Larga', rows: [['x'.repeat(26), 'b'], [1, 2]] },
+      { name: 'Ancha', rows: [Array(13).fill('c'), Array(13).fill(1)] }
+    ])
+    expect(r.empty).toEqual(['Vacía'])
+    expect(r.longHeader).toEqual([`«${'x'.repeat(25)}…» (Larga)`])
+    expect(r.wide).toEqual(['Ancha (13 columnas)'])
+  })
+  it('encabezado de 25 caracteres y 12 columnas no avisan', () => {
+    const r = sheetShapeIssues([{ name: 'Ok', rows: [Array(12).fill('c'), Array(12).fill(1)] }])
+    expect(r.longHeader).toEqual([])
+    expect(r.wide).toEqual([])
+    expect(sheetShapeIssues([{ name: 'Ok', rows: [['x'.repeat(25)], [1]] }]).longHeader).toEqual([])
+  })
+})
+
+describe('R9: porcentaje escrito como entero', () => {
+  it('0,22 con formato porcentaje pasa; 22 no; una fórmula o un texto no se juzgan', () => {
+    const sh = (rows: unknown[][]) => [{ name: 'Datos', columnFormats: [null, 'percent'], rows }]
+    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', 0.22]]))).toEqual([])
+    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', 22]]))).toEqual(['Datos, columna 2 (22)'])
+    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', { formula: 'B3*2', value: 44 }], ['Sur', '22']]))).toEqual([])
+    // sin formato de porcentaje, un 22 es normal
+    expect(percentMisfits([{ name: 'Datos', columnFormats: [null, 'integer'], rows: [['a', 'b'], ['x', 22]] }])).toEqual([])
+  })
+})
+
+describe('R8: lámina cargada', () => {
+  it('más de 6 viñetas, o más de 60 palabras entre todas, cargan la lámina', () => {
+    expect(denseBullets(['a', 'b', 'c', 'd', 'e', 'f'])).toBe(false)
+    expect(denseBullets(['a', 'b', 'c', 'd', 'e', 'f', 'g'])).toBe(true)
+    expect(denseBullets([Array(30).fill('p').join(' '), Array(30).fill('p').join(' ')])).toBe(false)
+    expect(denseBullets([Array(31).fill('p').join(' '), Array(30).fill('p').join(' ')])).toBe(true)
+    expect(denseBullets(undefined)).toBe(false)
+  })
+})
+
+describe('R6: títulos de diapositiva repetidos o con punto', () => {
+  it('el mismo título (sin distinguir mayúsculas) en 2 diapositivas se marca; uno solo no', () => {
+    const r = slideTitleIssues(['Resumen', 'resumen ', 'Ventas', null])
+    expect(r.repeated).toEqual(['Resumen'])
+    expect(slideTitleIssues(['Uno', 'Dos', null]).repeated).toEqual([])
+  })
+  it('título que termina en punto se marca; sin título (null) no cuenta', () => {
+    expect(slideTitleIssues(['Ventas del trimestre.', null, 'Costos']).dotted).toEqual(['Ventas del trimestre.'])
+    expect(slideTitleIssues([null, null]).dotted).toEqual([])
+  })
+})
+
+describe('R5: párrafos vacíos seguidos', () => {
+  it('dos o más vacíos seguidos cuentan como un tramo; uno solo no', () => {
+    expect(blankRuns([false, true, false])).toBe(0)
+    expect(blankRuns([false, true, true, false])).toBe(1)
+    expect(blankRuns([true, true, true, false, true, true])).toBe(2)
+  })
+})
+
+describe('R4: listas largas', () => {
+  it('cuenta tramos seguidos del mismo numId; otro párrafo los corta', () => {
+    expect(listRuns(['1', '1', '1'])).toEqual([3])
+    expect(listRuns(['1', '1', null, '1'])).toEqual([2, 1])
+    expect(listRuns(['1', '2', '2'])).toEqual([1, 2])
+    expect(listRuns([null, null])).toEqual([])
+  })
+})
+
+describe('R3: párrafo de cuerpo de más de 140 palabras', () => {
+  it('cuenta palabras y deja pasar 140 exactas', () => {
+    expect(countWords('')).toBe(0)
+    expect(countWords('  uno   dos  ')).toBe(2)
+    expect(countWords(Array(140).fill('p').join(' '))).toBe(140)
+    expect(countWords(Array(141).fill('p').join(' '))).toBe(141)
+  })
+})
+
+describe('R1: salto de nivel de encabezado', () => {
+  it('1, 2, 3 y 1, 2, 1, 2 no saltan; 1 → 3 sí, y se marca el encabezado que salta', () => {
+    expect(headingJumps([1, 2, 3])).toEqual([])
+    expect(headingJumps([1, 2, 1, 2])).toEqual([])
+    expect(headingJumps([1, 3])).toEqual([1])
+    expect(headingJumps([1, 2, 1, 3, 2])).toEqual([3])
+  })
+  it('bajar de nivel (3 → 1) no es un salto', () => {
+    expect(headingJumps([1, 2, 3, 1])).toEqual([])
+  })
+})
+
+describe('R2: título con punto final o en mayúsculas sostenidas', () => {
+  it('termina en punto o va en MAYÚSCULAS (4 letras o más) → aviso', () => {
+    expect(headingStyleIssue('Resumen ejecutivo.')).toBe('punto')
+    expect(headingStyleIssue('RESUMEN EJECUTIVO')).toBe('mayusculas')
+    expect(headingStyleIssue('ÁREAS CLAVE')).toBe('mayusculas')
+  })
+  it('no dispara con siglas cortas, cifras ni títulos normales', () => {
+    expect(headingStyleIssue('KPI')).toBeNull()
+    expect(headingStyleIssue('Q3 2026')).toBeNull()
+    expect(headingStyleIssue('ROI Q3 2026')).toBeNull()
+    expect(headingStyleIssue('Resumen ejecutivo')).toBeNull()
+    expect(headingStyleIssue('2026')).toBeNull()
+  })
+})
 
 describe('restos de plantilla', () => {
   it('detecta lorem, TODO, TBD, [insertar…], texto de relleno y xxx', () => {
@@ -33,6 +183,24 @@ describe('restos de plantilla', () => {
   })
   it('no confunde la palabra «todo» ni texto normal con restos', () => {
     expect(templateLeftovers('Lo hicimos todo bien. Todo el equipo participó; el índice [1] y la nota [a].')).toEqual([])
+  })
+})
+
+describe('R12: más restos de plantilla', () => {
+  it('TBC, «to be confirmed», [logo] / [firma] / [imagen] son restos', () => {
+    expect(templateLeftovers('Fecha: TBC')).toContain('TBC')
+    expect(templateLeftovers('Precio to be confirmed')).toContain('to be…')
+    expect(templateLeftovers('Lugar [logo de la empresa]')).toContain('[logo/firma/imagen]')
+    expect(templateLeftovers('Firma: [Firma del cliente]')).toContain('[logo/firma/imagen]')
+  })
+  it('no dispara con texto normal (logo, firma o to be sin el resto)', () => {
+    expect(templateLeftovers('Sin logo en la portada, la firma va al final. Hay que ser to be honest.')).toEqual([])
+  })
+  it('N/A solo cuenta si es toda la celda', () => {
+    expect(isNaCell('N/A')).toBe(true)
+    expect(isNaCell(' n/a ')).toBe(true)
+    expect(isNaCell('N/A del sistema')).toBe(false)
+    expect(isNaCell('0,22')).toBe(false)
   })
 })
 

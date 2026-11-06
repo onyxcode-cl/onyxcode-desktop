@@ -17,6 +17,20 @@ import {
   docxContrastProblems,
   docxSmallRuns,
   formulaSheetRefs,
+  headingJumps,
+  headingStyleIssue,
+  blankRuns,
+  countWords,
+  slideTitleIssues,
+  listRuns,
+  monotonousLayouts,
+  denseBullets,
+  percentMisfits,
+  sheetShapeIssues,
+  isNaCell,
+  fontFamilies,
+  hasFixedPosition,
+  wideHeaderRows,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -107,7 +121,9 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
       const id = /<w:pStyle w:val="([^"]+)"/.exec(xml)?.[1] ?? ''
       const style = names.get(id) ?? id
       // Word guarda el nombre del estilo en minúsculas («heading 1», «title», «list paragraph»): se compara sin mayúsculas ni espacios.
-      return { style, key: style.toLowerCase().replace(/\s+/g, ''), text: textOf(xml), numbered: /<w:numPr>/.test(xml), xml }
+      const numbered = /<w:numPr>/.test(xml)
+      const numId = numbered ? (/<w:numId w:val="(\d+)"/.exec(xml)?.[1] ?? null) : null
+      return { style, key: style.toLowerCase().replace(/\s+/g, ''), text: textOf(xml), numbered, numId, xml }
     })
     .filter((p) => p.text.trim())
   if (!paras.length) {
@@ -129,6 +145,38 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
       `Documento de ${paras.length} párrafos sin encabezados Heading: usa estilos de encabezado`
     )
   else r.items.push({ ok: true, text: `Encabezados reales: ${heads}` })
+  const hs = paras.filter((p) => /^heading\d$/.test(p.key))
+  for (const i of headingJumps(hs.map((p) => Number(p.key.slice(7)))))
+    r.note(
+      `Salto de nivel en «${hs[i].text.slice(0, 30)}» (nivel ${hs[i].key.slice(7)} después de nivel ${hs[i - 1].key.slice(7)}): falta un encabezado de nivel ${Number(hs[i - 1].key.slice(7)) + 1} antes`
+    )
+  // Párrafos vacíos (sin texto, sin salto de página ni imagen): se cuentan antes de quitarlos, para avisar del Enter usado como espacio.
+  const blanks = blankRuns(
+    [...outside.matchAll(/<w:p\b[^>]*\/>|<w:p[ >][\s\S]*?<\/w:p>/g)].map(
+      (m) => !textOf(m[0]).trim() && !/<w:br\b|<w:drawing|<w:pict|<w:sectPr/.test(m[0])
+    )
+  )
+  if (blanks)
+    r.note(`${blanks} sitio(s) con dos o más párrafos vacíos seguidos: usa el espacio del estilo en vez de varios Enter`)
+  const runs = listRuns(paras.map((p) => p.numId)).filter((n) => n > 7)
+  if (runs.length) r.note(`Lista de ${runs.join(' y ')} ítems seguidos (más de 7): divide la lista en grupos con un título o usa una tabla`)
+  const wordy = paras.filter((p) => p.numbered && countWords(p.text) > 30)
+  if (wordy.length)
+    r.note(`${wordy.length} ítem(s) de lista de más de 30 palabras (${short(wordy.map((p) => `«${p.text.trim().slice(0, 24)}…»`), 3)}): acórtalos o pásalos a párrafos`)
+  const long = paras.filter((p) => !/^(list|heading|title)/.test(p.key) && countWords(p.text) > 140)
+  if (long.length)
+    r.note(
+      `${long.length} párrafo(s) de más de 140 palabras (${short(long.map((p) => `«${p.text.trim().slice(0, 24)}…» ${countWords(p.text)} palabras`), 3)}): divídelos o pasa las ideas a una lista`
+    )
+  for (const p of paras.filter((x) => x.key === 'title' || /^heading\d$/.test(x.key))) {
+    const issue = headingStyleIssue(p.text)
+    if (issue)
+      r.note(
+        issue === 'punto'
+          ? `El título «${p.text.trim().slice(0, 30)}» termina en punto: los títulos no llevan punto final`
+          : `El título «${p.text.trim().slice(0, 30)}» va en mayúsculas sostenidas: úsalas solo para siglas`
+      )
+  }
   const manual = paras
     .filter((p) => !/^(list|heading|title)/.test(p.key) && !p.numbered && HAND_BULLET.test(p.text))
     .map((p) => p.text.slice(0, 30))
@@ -220,6 +268,7 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const stacked: string[] = []
   const tight: string[] = []
   const lowContrast: ContrastProblem[] = []
+  const titles: Array<string | null> = []
   let allText = ''
   const TOL = 22860
   const EDGE = 274320 // 0,3 pulgadas: más cerca del borde que esto se ve apretado
@@ -255,6 +304,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     lowContrast.push(...pptxContrastProblems(textShapes, await slideBackground(zip, name, xml), `diapositiva ${i + 1}`, pptxPanels(xml)))
     const hasTitle = sps.some((s) => /<p:ph[^>]*\stype="(title|ctrTitle)"/.test(s) && textOf(s).trim())
     if (!hasTitle) noTitle.push(String(i + 1))
+    const titleShape = textShapes.find((t) => t.placeholder === 'title' || t.placeholder === 'ctrTitle')
+    titles.push(titleShape ? titleShape.runs.map((x) => x.text).join('') : null)
     const shapes = [
       ...sps,
       ...(xml.match(/<p:pic>[\s\S]*?<\/p:pic>/g) ?? []),
@@ -306,6 +357,19 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     `Contraste bajo (WCAG) en ${short(lowContrast.map(ratioText))}: cambia el color del texto o del fondo`
   )
   checkTemplate(r, allText)
+  const specSlides = spec && typeof spec === 'object' && Array.isArray((spec as PptxSpec).slides) ? (spec as PptxSpec).slides : null
+  if (specSlides && monotonousLayouts(specSlides.map((s) => s.layout)))
+    r.note(
+      `Las ${specSlides.length - 1} láminas de contenido son todas de viñetas: varía el tipo de lámina (cifras, pasos, tarjetas, tabla o gráfico) donde el contenido lo pida`
+    )
+  const dense = (specSlides ?? []).flatMap((s, i) => (denseBullets(s.bullets) ? [i + 1] : []))
+  if (dense.length)
+    r.note(`Láminas con más de 6 viñetas o más de 60 palabras de cuerpo (nº ${short(dense.map(String), 6)}): reparte el contenido en dos láminas`)
+  const titleIssues = slideTitleIssues(titles)
+  if (titleIssues.repeated.length)
+    r.note(`Título repetido en varias diapositivas: ${short(titleIssues.repeated.map((t) => `«${t.slice(0, 30)}»`), 3)}: cada lámina necesita su propio título`)
+  if (titleIssues.dotted.length)
+    r.note(`Título que termina en punto: ${short(titleIssues.dotted.map((t) => `«${t.slice(0, 30)}»`), 3)}: los títulos no llevan punto final`)
   if (tight.length)
     r.note(`Texto a menos de 0,3 pulgadas del borde en diapositiva ${short(tight)}: déjale al menos 0,5 pulgadas de margen si puedes`)
   return r.done()
@@ -361,6 +425,7 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const noValue: string[] = []
   const brokenRefs: string[] = []
   const textAsNumber: string[] = []
+  const naCells: string[] = []
   /** Resultado numérico guardado en el archivo para cada celda con fórmula, por posición de hoja y celda. */
   const computed = new Map<string, number>()
   const known = new Set(sheets.map((x) => x.title.toLowerCase()))
@@ -387,6 +452,7 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       const label = cells.find((c) => c.text && !c.f && TOTAL_LABEL.test(c.text))
       for (const c of cells) {
         if (c.text) allText += ' ' + c.text
+        if (c.text && isNaCell(c.text)) naCells.push(`${sheet}!${c.ref}`)
         // Número escrito como texto en una celda que no es un encabezado ni un código con ceros a la izquierda.
         if (c.text && c.type !== 'n' && !c.f && /^-?[1-9]\d{0,14}([.,]\d+)?$/.test(c.text.trim()) && Number(/\d+/.exec(c.ref)?.[0]) > 1)
           textAsNumber.push(`${sheet}!${c.ref}`)
@@ -414,6 +480,12 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     `Fórmulas con referencias rotas: ${short(brokenRefs)}`
   )
   checkTemplate(r, allText)
+  if (naCells.length)
+    r.check(
+      false,
+      '',
+      `Celdas con «N/A» como texto de plantilla (${short(naCells)}): pon el valor real, «—» o quita la columna`
+    )
   if (isXlsxSpec(spec)) {
     const found = reviewFormulas(spec)
     const errs = found.filter((x) => x.severity === 'error')
@@ -426,6 +498,23 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       )}`
     )
     for (const w of found.filter((x) => x.severity === 'warning').slice(0, 3)) r.note(`${w.sheet}!${w.cell}: ${w.message}`)
+    const shape = sheetShapeIssues(spec.sheets)
+    r.check(
+      shape.empty.length === 0,
+      'Todas las hojas tienen datos además del encabezado',
+      `Hoja sin datos (solo el encabezado): ${short(shape.empty)}. Pon los datos o quita la hoja`
+    )
+    if (shape.longHeader.length)
+      r.note(`Encabezado de más de 25 caracteres: ${short(shape.longHeader, 3)}: en la columna se corta; acórtalo`)
+    if (shape.wide.length) r.note(`Hoja de más de 12 columnas: ${short(shape.wide, 3)}: cuesta leerla en pantalla; reparte en dos hojas`)
+    if (spec.sheets.some((sh) => sh.columnFormats?.includes('percent'))) {
+      const misfits = percentMisfits(spec.sheets)
+      r.check(
+        misfits.length === 0,
+        'Las columnas en porcentaje llevan fracciones (0,22 = 22 %)',
+        `Columnas en porcentaje con cifras mayores que 1,5 (¿quisiste 22 % o 0,22?): ${short(misfits, 4)}. Escribe 0,22 para el 22 %`
+      )
+    }
     // Valor declarado (`value`) contra el que calculó el programa: si el modelo se equivocó en la cuenta, también se equivocará en su resumen.
     const app = (await zip.file('docProps/app.xml')?.async('string')) ?? ''
     if (/<Application>GridCraft<\/Application>/.test(app)) {
@@ -517,6 +606,21 @@ export function reviewPdf(html: string, bytes: Buffer): ReviewResult {
   if (overlaps && !/break-inside\s*:\s*avoid|page-break-inside\s*:\s*avoid/i.test(styleText))
     r.note('Hay tarjetas que cruzan franjas: ponles break-inside: avoid para que no se partan entre páginas')
   r.check(/@page\b/i.test(html), 'Define @page (márgenes y tamaño)', 'Falta @page con tamaño A4 y márgenes de unos 18 a 22 mm')
+  r.check(
+    !hasFixedPosition(styleText),
+    'Sin elementos con posición fija',
+    'Hay elementos con position: fixed: en un PDF se repiten en cada página y tapan el contenido. Usa el encabezado y el pie de @page'
+  )
+  // Hojas de estilo y atributos style, unidos con «}» y «;» para que una declaración no se coma la siguiente.
+  const fontCss =
+    (html.match(/<style[\s\S]*?<\/style>/gi) ?? []).map((s) => s.replace(/<\/?style[^>]*>/gi, '')).join('}') +
+    ';' +
+    [...html.matchAll(/\bstyle\s*=\s*"([^"]*)"/gi)].map((m) => m[1]).join(';')
+  const families = fontFamilies(fontCss)
+  if (families.length > 2)
+    r.note(`Hay ${families.length} familias de letra distintas (${short(families, 4)}): con una o dos se ve más ordenado`)
+  const wide = wideHeaderRows(html)
+  if (wide) r.note(`${wide} fila(s) de tabla con más de 8 encabezados: se salen de la página; acorta los títulos o parte la tabla`)
   r.check(/<html\b[^>]*\blang\s*=/i.test(html), 'Declara el idioma (<html lang>)', 'Falta <html lang="es"> (accesibilidad y separación de sílabas)')
   const noAlt = (html.match(/<img\b[^>]*>/gi) ?? []).filter((t) => !/\balt\s*=/i.test(t)).length
   if (noAlt) r.note(`${noAlt} imagen${noAlt === 1 ? '' : 'es'} sin texto alternativo (alt)`)
