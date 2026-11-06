@@ -234,3 +234,28 @@ describe('bandera de producto computerWin (apagada por defecto) y computerBacken
     expect(on).toEqual(off)
   })
 })
+
+describe('bandera pythonWin (Python incluido en Windows) y translatePdf', () => {
+  it('win32: translatePdf solo con pythonWin === true; sin ella queda apagado', () => {
+    expect(capsFor('win32').translatePdf).toBe(false)
+    expect(capsFor('win32', {}).translatePdf).toBe(false)
+    expect(capsFor('win32', { tasksWin: true, computerWin: true }).translatePdf).toBe(false)
+    expect(capsFor('win32', { pythonWin: false }).translatePdf).toBe(false)
+    expect(capsFor('win32', { pythonWin: true }).translatePdf).toBe(true)
+  })
+  it('no depende de tasksWin y no enciende nada más', () => {
+    const on = capsFor('win32', { pythonWin: true })
+    const off = capsFor('win32')
+    expect({ ...on, translatePdf: false }).toEqual(off)
+  })
+  it('un valor no booleano no la enciende (fail closed)', () => {
+    expect(capsFor('win32', { pythonWin: 'si' as unknown as boolean }).translatePdf).toBe(false)
+  })
+  it('macOS siempre true; Linux y la PWA del celular siempre false, con o sin la bandera', () => {
+    for (const pythonWin of [undefined, false, true]) {
+      expect(capsFor('darwin', { pythonWin }).translatePdf).toBe(true)
+      expect(capsFor('linux', { pythonWin }).translatePdf).toBe(false)
+      expect(capsFor(REMOTE_SURFACE, { pythonWin }).translatePdf).toBe(false)
+    }
+  })
+})

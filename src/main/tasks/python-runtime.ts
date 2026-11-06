@@ -7,7 +7,8 @@
  * LOCALIZA: si existe, se exporta como `LAZUNOX_PYTHON` a los servidores de OpenCode (las skills lo usan antes de
  * caer en `python3`); si no, no se exporta nada y todo sigue como antes.
  *
- * Solo macOS por ahora (en Windows las Tareas usan su propia imagen: ver `docs/WINDOWS-TAREAS.md`).
+ * macOS y Windows (x64). En Windows el intérprete viaja en `resources\python-bin\win-x64\python\python.exe` (extraResources) y
+ * solo sirve al lado de Windows (traducir y editar oficina en Chat/Code); las Tareas en WSL usan su propia imagen (`docs/WINDOWS-TAREAS.md`).
  */
 import { app } from 'electron'
 import { existsSync } from 'node:fs'
@@ -16,6 +17,7 @@ import { unpacked } from '../util/asar'
 
 /** Carpeta de la plataforma dentro de `resources/python-bin/` (la misma que crea `fetch-python.mjs`). */
 export function pythonDirFor(platform: string, arch: string): string | null {
+  if (platform === 'win32') return arch === 'x64' ? 'win-x64' : null
   if (platform !== 'darwin') return null
   if (arch === 'arm64') return 'mac-arm64'
   if (arch === 'x64') return 'mac-x64'
@@ -37,6 +39,12 @@ export function pythonCandidates(l: Omit<PythonLookup, 'exists'>): string[] {
   const dir = pythonDirFor(l.platform, l.arch)
   if (!dir) return []
   const out: string[] = []
+  if (l.platform === 'win32') {
+    // Windows: `python.exe` en la raíz de la carpeta (sin `bin/`); empaquetado en Resources\python-bin\win-x64\python.
+    if (l.resourcesPath) out.push(join(l.resourcesPath, 'python-bin', dir, 'python', 'python.exe'))
+    out.push(unpacked(join(l.appPath, 'resources', 'python-bin', dir, 'python', 'python.exe')))
+    return out
+  }
   if (l.resourcesPath) out.push(join(l.resourcesPath, 'python', 'bin', 'python3'))
   out.push(unpacked(join(l.appPath, 'resources', 'python-bin', dir, 'python', 'bin', 'python3')))
   return out
@@ -68,4 +76,9 @@ export function bundledPythonEnv(): Record<string, string> {
     exists: existsSync
   })
   return pythonEnvFor(bin)
+}
+
+/** ¿Hay un Python incluido en este equipo? Alimenta la bandera `pythonWin` (traducir PDF en Windows). Falso en el resto de plataformas. */
+export function bundledPythonPresent(): boolean {
+  return process.platform === 'win32' && !!bundledPythonEnv().LAZUNOX_PYTHON
 }

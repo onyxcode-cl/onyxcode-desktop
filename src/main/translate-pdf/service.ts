@@ -70,12 +70,25 @@ function defaultScript(kind: TranslateKind = 'pdf'): string {
 
 export function runPythonReal(python: string, args: string[], cwd: string): Promise<RunResult> {
   return new Promise((resolve) => {
-    const env: Record<string, string> = {
-      PATH: '/usr/bin:/bin',
-      HOME: cwd, // PyMuPDF no necesita nada del usuario; que no encuentre su carpeta personal
-      LANG: 'en_US.UTF-8',
-      ...bundledPythonEnv()
-    }
+    const sysRoot = process.env.SystemRoot ?? 'C:\\Windows'
+    const env: Record<string, string> =
+      process.platform === 'win32'
+        ? // Windows: python.exe necesita SystemRoot; TEMP/USERPROFILE dentro de la carpeta del trabajo.
+          {
+            PATH: `${sysRoot}\\System32;${sysRoot}`,
+            SystemRoot: sysRoot,
+            USERPROFILE: cwd,
+            TEMP: cwd,
+            TMP: cwd,
+            HOME: cwd,
+            ...bundledPythonEnv()
+          }
+        : {
+            PATH: '/usr/bin:/bin',
+            HOME: cwd, // PyMuPDF no necesita nada del usuario; que no encuentre su carpeta personal
+            LANG: 'en_US.UTF-8',
+            ...bundledPythonEnv()
+          }
     execFile(python, args, { cwd, env, timeout: RUN_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
       const e = err as (NodeJS.ErrnoException & { code?: number | string; killed?: boolean }) | null
       resolve({
@@ -188,7 +201,8 @@ export class PdfTranslateService {
     const pageClasses: Record<number, PdfPageClass> = {}
     for (const [k, v] of Object.entries(parsed.clases ?? {})) {
       const n = Number(k)
-      if (Number.isInteger(n) && n >= 1 && n <= pages && (v === 'digital' || v === 'escaneada_ocr' || v === 'escaneada_sin_texto')) pageClasses[n] = v
+      if (Number.isInteger(n) && n >= 1 && n <= pages && (v === 'digital' || v === 'escaneada_ocr' || v === 'escaneada_sin_texto'))
+        pageClasses[n] = v
     }
     return { ok: true, jobId, pages, segments, pagesWithoutText, ...(Object.keys(pageClasses).length ? { pageClasses } : {}) }
   }
@@ -272,7 +286,8 @@ export class PdfTranslateService {
     if (!dir) return { ok: false, reason: 'failed' }
     const meta = await this.meta(dir)
     if (!meta || (meta.kind ?? 'pdf') !== 'pdf') return { ok: false, reason: 'failed' }
-    if (typeof req.html !== 'string' || !req.html.trim() || req.html.length > TRANSLATE_CLEAN_HTML_MAX) return { ok: false, reason: 'tooLong' }
+    if (typeof req.html !== 'string' || !req.html.trim() || req.html.length > TRANSLATE_CLEAN_HTML_MAX)
+      return { ok: false, reason: 'tooLong' }
     try {
       const bytes = await this.d.renderHtml(req.html, meta.name.replace(/\.pdf$/i, ''))
       if (bytes.length < 100 || bytes.subarray(0, 5).toString('latin1') !== '%PDF-') return { ok: false, reason: 'failed' }

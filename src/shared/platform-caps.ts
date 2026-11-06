@@ -2,8 +2,9 @@
  * Capacidades que dependen de la plataforma. Lazunox en Windows cubre Chat, Code, Rutinas en modo
  * Code, Ajustes, cuentas, Diagnóstico, MCP, puntos de restauración/Git y accesibilidad. Tareas (Overdrive)
  * funciona en Windows con WSL cuando la app se abre sin administrador (`tasksWin`); Control del PC depende de
- * `tasksWin` y del helper nativo (`computerWin`). Quedan solo en macOS (y desactivadas limpiamente en el resto):
- * traducir PDF y editar documentos con Python incluido, y el actualizador en su versión de macOS (intercambio de
+ * `tasksWin` y del helper nativo (`computerWin`). Traducir PDF y editar documentos con Python incluido funciona en Windows
+ * cuando el instalador lleva el Python (`pythonWin`, se enciende si existe). Queda solo en macOS (y desactivado limpiamente en el resto):
+ * el actualizador en su versión de macOS (intercambio de
  * la .app; el de Windows cambia la carpeta de instalación y solo actúa en instalaciones por usuario, `src/main/update/swap-win.ts`).
  * Además existe la superficie `remote` (PWA del celular, F8-B56): la misma interfaz React corriendo en el navegador del
  * celular, sin ventana nativa. Reutiliza este mismo mecanismo de degradación: oculta Control del PC, actualizador, ajustes del
@@ -55,8 +56,8 @@ export interface PlatformCaps {
    */
   docViewer: boolean
   /**
-   * Traducir un PDF sin cambiar su diseño (F8-B200): usa el Python incluido con PyMuPDF, que hoy solo viaja en macOS. En el celular
-   * no existe (necesita la ventana nativa) y en Windows queda apagada hasta que el paquete incluya Python.
+   * Traducir un PDF sin cambiar su diseño (F8-B200): usa el Python incluido con PyMuPDF, que viaja en macOS y, desde W11, en Windows. En el celular
+   * no existe (necesita la ventana nativa) y en Windows solo con la bandera `pythonWin` (el Python incluido existe en el paquete).
    */
   translatePdf: boolean
 }
@@ -82,6 +83,8 @@ export interface CapsFlags {
    * `src/main/remote/remote-win-flag.ts`, que respeta la política `blocked`). No depende de `tasksWin` (el remoto expone Chat y Code; Tareas solo si existe).
    */
   remoteWin?: boolean
+  /** Python incluido en Windows (`resources\\python-bin\\win-x64`). Se enciende en `main` si el intérprete existe; habilita `translatePdf`. */
+  pythonWin?: boolean
   /** La ventana puede ser translúcida (vibrancy en macOS, Mica/Acrylic en Windows 11). Solo adorno: la resuelve `main`. */
   glass?: boolean
 }
@@ -126,7 +129,7 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     openExternal: true,
     nativeBrowser: true,
     docViewer: mac || (win && flags.tasksWin === true),
-    translatePdf: mac
+    translatePdf: mac || (win && flags.pythonWin === true)
   }
 }
 

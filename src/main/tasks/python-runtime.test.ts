@@ -13,7 +13,8 @@ describe('pythonDirFor', () => {
   it('mapea macOS por arquitectura y rechaza el resto', () => {
     expect(pythonDirFor('darwin', 'arm64')).toBe('mac-arm64')
     expect(pythonDirFor('darwin', 'x64')).toBe('mac-x64')
-    expect(pythonDirFor('win32', 'x64')).toBeNull()
+    expect(pythonDirFor('win32', 'x64')).toBe('win-x64')
+    expect(pythonDirFor('win32', 'arm64')).toBeNull()
     expect(pythonDirFor('linux', 'x64')).toBeNull()
     expect(pythonDirFor('darwin', 'ia32')).toBeNull()
   })
@@ -38,8 +39,19 @@ describe('pythonCandidates', () => {
     expect(c[0]).toContain('app.asar.unpacked')
   })
 
+  it('Windows x64: python.exe sin bin/ (empaquetado en python-bin/win-x64 y árbol de desarrollo)', () => {
+    expect(pythonCandidates({ platform: 'win32', arch: 'x64', resourcesPath: '/R', appPath: '/repo' })).toEqual([
+      join('/R', 'python-bin', 'win-x64', 'python', 'python.exe'),
+      join('/repo', 'resources', 'python-bin', 'win-x64', 'python', 'python.exe')
+    ])
+    expect(pythonCandidates({ platform: 'win32', arch: 'x64', appPath: '/repo' })).toEqual([
+      join('/repo', 'resources', 'python-bin', 'win-x64', 'python', 'python.exe')
+    ])
+  })
+
   it('plataformas sin Python incluido: lista vacía', () => {
-    expect(pythonCandidates({ platform: 'win32', arch: 'x64', appPath: '/repo' })).toEqual([])
+    expect(pythonCandidates({ platform: 'win32', arch: 'arm64', appPath: '/repo' })).toEqual([])
+    expect(pythonCandidates({ platform: 'linux', arch: 'x64', appPath: '/repo' })).toEqual([])
   })
 })
 

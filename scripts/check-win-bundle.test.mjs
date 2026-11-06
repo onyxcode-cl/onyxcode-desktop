@@ -11,6 +11,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import {
   HELPER_EXE,
+  PYTHON_WIN_EXE,
+  PYTHON_WIN_SEAL,
+  checkPythonWinPackaging,
   checkComputerWinPackaging,
   checkWslBundlePackaging,
   checkHelperPresent,
@@ -128,12 +131,54 @@ test('detecta configuraciones peligrosas', () => {
   assert.ok(has(c, /no lleva cu-helper\.exe/))
 })
 
+// ───────────── Python incluido en Windows (W11) ─────────────
+test('Python de Windows: la config real lleva UN bloque en win.extraResources, no en mac ni en común, y pasa con python.exe y sello', () => {
+  const cfg = loadConfig({ flagLiteral: 'false' })
+  assert.deepEqual(
+    checkPythonWinPackaging(cfg, () => true),
+    []
+  )
+  const py = cfg.win.extraResources.filter((e) => /python-bin/.test(e.from))
+  assert.equal(py.length, 1)
+  assert.equal(py[0].from, 'resources/python-bin/win-x64')
+  assert.equal(py[0].to, 'python-bin/win-x64')
+  assert.ok(py[0].filter.includes('!**/*.pyc') && py[0].filter.includes('!**/__pycache__'))
+  assert.ok(!JSON.stringify(cfg.mac.extraResources).includes('win-x64') && !JSON.stringify(cfg.extraResources).includes('win-x64'))
+  // también con la función de Tareas encendida (no depende de ella)
+  assert.deepEqual(
+    checkPythonWinPackaging(loadConfig({ flagLiteral: 'true' }), () => true),
+    []
+  )
+})
+
+test('Python de Windows: falla sin sello o sin python.exe, y detecta bloques mal puestos', () => {
+  const good = loadConfig({ flagLiteral: 'false' })
+  const clone = () => JSON.parse(JSON.stringify(good))
+  const has = (cfg, re, exists = () => true) => checkPythonWinPackaging(cfg, exists).some((p) => re.test(p))
+  assert.ok(has(good, /falta el sello/, (p) => p !== PYTHON_WIN_SEAL))
+  assert.ok(has(good, /falta resources\/python-bin\/win-x64\/python\/python\.exe/, (p) => p !== PYTHON_WIN_EXE))
+  let c = clone()
+  c.win.extraResources = c.win.extraResources.filter((e) => !/python-bin/.test(e.from))
+  assert.ok(has(c, /debe llevar UN bloque/))
+  c = clone()
+  c.win.extraResources.find((e) => /python-bin/.test(e.from)).filter = ['**/*']
+  assert.ok(has(c, /debe ser to/))
+  c = clone()
+  c.mac.extraResources.push({ from: 'resources/python-bin/win-x64', to: 'python' })
+  assert.ok(has(c, /solo win\.extraResources/))
+  c = clone()
+  c.files = c.files.filter((f) => f !== '!resources/python-bin/**')
+  assert.ok(has(c, /entraría en el \.asar/))
+})
+
 // El script con la función activa exige las dos imágenes de WSL (`resources/wsl-images/`, gitignored, las deja
 // `npm run stage:wsl-bundle`) y `cu-helper.exe` (gitignored, lo compila `build-native.mjs --win-helper`). Ninguno existe
 // en el CI de GitHub (macOS limpio), así que esta prueba de integración se SALTA ahí cuando falte algo. El script no
 // cambia: `npm run package:win` sigue fallando cerrado si faltan. Las pruebas unitarias de arriba sí cubren la regla.
 const flagsSource = readFileSync(join(root, 'src', 'shared', 'feature-flags.ts'), 'utf8')
 const packagingStaged = (() => {
+  // El Python de Windows (fetch-python.mjs, solo se baja en un PC con Windows) también es un artefacto local.
+  if (!fsMod.existsSync(join(root, PYTHON_WIN_SEAL))) return false
   if (!wslBundlePackExpected(flagsSource)) return true
   const pinForStaging = JSON.parse(readFileSync(join(root, 'resources', 'opencode-bin', 'pin.json'), 'utf8'))
   const imagesOk = bundleFilesFromPin(pinForStaging).files.every((f) => fsMod.existsSync(join(root, STAGING_DIR, f.name)))
@@ -145,7 +190,7 @@ test(
   {
     skip: packagingStaged
       ? false
-      : 'función activa pero faltan resources/wsl-images/* o cu-helper.exe (artefactos locales, no están en git)'
+      : 'faltan artefactos locales (no están en git): resources/python-bin/win-x64 (npm run fetch:python en Windows) o, con la función activa, resources/wsl-images/* o cu-helper.exe'
   },
   () => {
     const out = execFileSync(process.execPath, [script, '--config-only'], { encoding: 'utf8' })
