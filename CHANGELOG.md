@@ -4,6 +4,25 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.9] - 2026-11-06
+
+### Primera vez más simple
+
+- **Un solo recorrido**: Bienvenida → «Aceptar todo e instalar» → Permisos → Conectar IA. Lo necesario se descarga de una vez.
+- **Permisos de macOS que sí se reconocen**: la pantalla «Preparando Lazunox» ya no dice «Pendiente» aunque estén dados. Si macOS no registra Grabación de pantalla sola, «Mostrar Lazunox» abre el panel y te muestra la app para agregarla.
+- **Confiar en la firma de Lazunox (opcional)**: un paso con tu contraseña de Mac que hace que macOS recuerde los permisos entre versiones.
+
+### Documentos de mejor calidad
+
+- **Word, Excel, PowerPoint y PDF más cuidados**: la IA sigue guías de diseño por formato, revisa el resultado y ya no entrega presentaciones con textos «pendientes» ni letra diminuta.
+- **PDF con imágenes** y revisión de los PDF generados con script.
+
+### Correcciones
+
+- **Panel derecho**: ya no se queda negro ni pegado al cambiar de chat, y las tarjetas de «Listo» no se cortan.
+- **Indicador «Pensando»** ya no tapa la esquina superior derecha, y el medidor de **Contexto** muestra datos reales.
+- **Tareas**: si marcas «No permitir» al agregar una carpeta, ahora puedes usar «Volver a preguntar a macOS» (antes no pasaba nada).
+
 ## [1.8.8] - 2026-11-04
 
 ### Tareas: revisión a la vista y arreglos de uso

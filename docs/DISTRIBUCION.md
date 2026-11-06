@@ -360,7 +360,7 @@ certificado» y se conservan entre versiones.
    las actualizaciones firmadas con el mismo certificado los conservan. Si se pierde el certificado hay que crear otro y
    se vuelven a pedir.
 4. Sigue sin haber notarización: Gatekeeper en otro Mac rechazará el primer `.dmg` («no se puede abrir porque no se
-   puede verificar al desarrollador»: clic derecho › Abrir). Las actualizaciones hechas por la propia app no pasan por
+   puede verificar al desarrollador»: en macOS 15 o superior se pulsa «Hecho» y luego Ajustes del Sistema › Privacidad y seguridad › «Abrir de todos modos»; el clic derecho › Abrir ya no sirve). Las actualizaciones hechas por la propia app no pasan por
    Gatekeeper (se les quita la cuarentena tras verificarlas).
 
 (Esto lo hace el usuario; las pruebas del repositorio no crean certificados ni firman con uno.)
