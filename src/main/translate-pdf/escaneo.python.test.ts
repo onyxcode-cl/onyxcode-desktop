@@ -16,6 +16,39 @@ const PYTHON = join(ROOT, 'resources', 'python-bin', 'mac-arm64', 'python', 'bin
 const SCRIPT = join(ROOT, 'resources', 'opencode', 'skills', 'pdf', 'scripts', 'translate_pdf.py')
 const tienePython = process.platform === 'darwin' && process.arch === 'arm64' && existsSync(PYTHON)
 
+const FIXTURE_ANGOSTO = `
+import fitz, sys
+out = sys.argv[1]
+# La foto tiene el texto a 11 pt; la capa OCR lo trae un poco más angosto (≈10 pt menos por línea: lo normal en un escaneo), y una raya de tabla cerca.
+src = fitz.open()
+p = src.new_page(width=595, height=842)
+p.insert_textbox(fitz.Rect(60, 100, 535, 160), "The Insurers hereby agree with the Insured that the property is covered against loss.", fontsize=11, fontname="helv")
+p.draw_line((60, 90), (535, 90), width=1)
+pix = p.get_pixmap(dpi=150)
+doc = fitz.open()
+pg = doc.new_page(width=595, height=842)
+pg.insert_image(pg.rect, pixmap=pix)
+for w in p.get_text("words"):
+    pg.insert_text((60 + (w[0] - 60) * 0.97, w[3] - 2), w[4], fontsize=10.4, fontname="helv", render_mode=3)
+doc.save(out)
+`
+
+const MEDIR = `
+import fitz, sys, json
+a = fitz.open(sys.argv[1])[0]; b = fitz.open(sys.argv[2])[0]
+# Tinta a la DERECHA de donde llega la capa OCR de cada línea (hasta 25 pt más allá), antes y después; y tinta de la raya de tabla (y 88-92 pt).
+def tinta(pag, r):
+    pix = pag.get_pixmap(clip=fitz.Rect(*r), dpi=100, colorspace=fitz.csGRAY, alpha=False)
+    return sum(1 for v in pix.samples if v < 128)
+lineas = {}
+for w in a.get_text("words"):
+    k = round(w[1])
+    lineas[k] = max(lineas.get(k, 0), w[2])
+zonas = [(x + 2, y, x + 25, y + 11) for y, x in lineas.items() if y > 95]
+print(json.dumps({"antes": sum(tinta(a, z) for z in zonas), "despues": sum(tinta(b, z) for z in zonas),
+                  "raya_antes": tinta(a, (60, 88, 535, 92)), "raya_despues": tinta(b, (60, 88, 535, 92))}))
+`
+
 const FIXTURE = `
 import fitz, sys
 out, out_dig = sys.argv[1], sys.argv[2]
@@ -96,5 +129,21 @@ describe.skipIf(!tienePython)('translate_pdf.py: hoja escaneada con capa OCR', (
     expect(png.subarray(1, 4).toString('latin1')).toBe('PNG')
     expect(png.length).toBeGreaterThan(1000)
     expect(() => run(['imagen', 'escaneo.pdf', '--pagina', '9', '-o', 'pagina-9.png'])).toThrow()
+  })
+
+  it('tapa también las letras que la capa OCR dejó fuera (cajas más angostas que la foto) sin borrar las rayas de la tabla', () => {
+    execFileSync(PYTHON, ['-c', FIXTURE_ANGOSTO, join(dir, 'angosto.pdf')], { env: { PYTHONDONTWRITEBYTECODE: '1' } })
+    run(['extraer', 'angosto.pdf', '-o', 'seg-ang.json'])
+    const seg = JSON.parse(readFileSync(join(dir, 'seg-ang.json'), 'utf8'))
+    const tr: Record<string, string> = {}
+    for (const sg of seg.segmentos as { id: string }[]) tr[sg.id] = 'Los Aseguradores acuerdan con el Asegurado.'
+    writeFileSync(join(dir, 'tr-ang.json'), JSON.stringify(tr))
+    run(['aplicar', 'angosto.pdf', '-t', 'tr-ang.json', '-o', 'salida-ang.pdf'])
+    const m = JSON.parse(
+      execFileSync(PYTHON, ['-c', MEDIR, join(dir, 'angosto.pdf'), join(dir, 'salida-ang.pdf')], { env: { PYTHONDONTWRITEBYTECODE: '1' }, encoding: 'utf8' })
+    ) as { antes: number; despues: number; raya_antes: number; raya_despues: number }
+    expect(m.antes).toBeGreaterThan(30) // en la foto hay inglés a la derecha de lo que cubre la capa OCR
+    expect(m.despues).toBeLessThan(m.antes * 0.1) // y se tapó
+    expect(m.raya_despues).toBeGreaterThan(m.raya_antes * 0.9) // la raya de la tabla sigue entera
   })
 })

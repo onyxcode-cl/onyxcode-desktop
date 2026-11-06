@@ -361,13 +361,134 @@ def _color_fondo(pag, rect):
         return (1, 1, 1)
 
 
+DPI_TINTA = 100
+
+
+class _MapaTinta:
+    """La hoja escaneada en grises (100 ppp) para medir dónde hay tinta de verdad: las cajas de la capa OCR quedan más angostas y bajas
+    que las letras de la foto (sobre todo en títulos grandes), y por eso tapar solo la caja deja letras sueltas en los bordes."""
+
+    def __init__(self, pag):
+        pix = pag.get_pixmap(dpi=DPI_TINTA, colorspace=fitz.csGRAY, alpha=False)
+        self.w, self.h, self.g = pix.width, pix.height, pix.samples
+        self.sc = DPI_TINTA / 72.0
+        cuentas = {}
+        for v in self.g[:: max(1, len(self.g) // 40000)]:
+            cuentas[v >> 3] = cuentas.get(v >> 3, 0) + 1
+        fondo = (max(cuentas, key=cuentas.get) << 3) + 4
+        self.umbral = max(40, fondo - 70) if fondo > 150 else -1   # fondo oscuro: no se mide (se tapa solo la caja)
+
+    def _col(self, x, y0, y1):
+        if x < 0 or x >= self.w:
+            return 0
+        g, w, t = self.g, self.w, self.umbral
+        return sum(1 for y in range(y0, y1 + 1) if g[y * w + x] < t)
+
+    def _fila(self, y, x0, x1):
+        if y < 0 or y >= self.h:
+            return 0
+        g, w, t = self.g, self.w, self.umbral
+        base = y * w
+        return sum(1 for x in range(x0, x1 + 1) if g[base + x] < t)
+
+    def _tramo_fila(self, y, x0, x1):
+        """Tramo continuo más largo de tinta en la fila y (una raya horizontal tiene uno largo; las letras, tramos cortos)."""
+        if y < 0 or y >= self.h:
+            return 0
+        g, w, t = self.g, self.w, self.umbral
+        base, mejor, cur = y * w, 0, 0
+        for x in range(x0, x1 + 1):
+            if g[base + x] < t:
+                cur += 1
+                mejor = max(mejor, cur)
+            else:
+                cur = 0
+        return mejor
+
+    def _tramo_col(self, x, y0, y1):
+        if x < 0 or x >= self.w:
+            return 0
+        g, w, t = self.g, self.w, self.umbral
+        mejor, cur = 0, 0
+        for y in range(y0, y1 + 1):
+            if g[y * w + x] < t:
+                cur += 1
+                mejor = max(mejor, cur)
+            else:
+                cur = 0
+        return mejor
+
+    def expandir(self, r, max_h_pt=30.0, max_v_frac=0.35):
+        """Rect (en puntos) crecido hasta donde sigue la tinta pegada a él. Las rayas largas (bordes de tabla) no cuentan como letras."""
+        if self.umbral < 0:
+            return r
+        sc = self.sc
+        x0, y0 = max(0, int(r.x0 * sc)), max(0, int(r.y0 * sc))
+        x1, y1 = min(self.w - 1, int(r.x1 * sc)), min(self.h - 1, int(r.y1 * sc))
+        if x1 <= x0 or y1 <= y0:
+            return r
+        alto = y1 - y0 + 1
+        tope_h = int(max_h_pt * sc)
+        salto = max(3, int(0.9 * sc * 4))   # hueco entre palabras que se sigue considerando la misma línea
+
+        def sigue_x(x, d):
+            # ¿hay tinta (que no sea una raya vertical) en las próximas columnas hacia d?
+            for k in range(1, salto + 1):
+                n = self._col(x + d * k, y0, y1)
+                if n:
+                    if alto >= 8 and self._tramo_col(x + d * k, y0, y1) >= 0.85 * alto:
+                        return 0   # raya vertical (borde de tabla): no es una letra
+                    return k
+            return 0
+
+        for d in (1, -1):
+            pasos = 0
+            while pasos < tope_h:
+                x = x1 if d == 1 else x0
+                k = sigue_x(x, d)
+                if not k:
+                    break
+                if d == 1:
+                    x1 = min(self.w - 1, x1 + k)
+                else:
+                    x0 = max(0, x0 - k)
+                pasos += k
+        ancho = x1 - x0 + 1
+        tope_v = max(1, int(max_v_frac * alto))
+        for d in (-1, 1):
+            pasos = 0
+            while pasos < tope_v:
+                y = y0 if d == -1 else y1
+                hallado = 0
+                for k in range(1, 3):
+                    n = self._fila(y + d * k, x0, x1)
+                    if n:
+                        if self._tramo_fila(y + d * k, x0, x1) >= max(24, 0.35 * ancho):
+                            break   # raya horizontal (borde de tabla, subrayado): no es una letra
+                        hallado = k
+                        break
+                if not hallado:
+                    break
+                if d == -1:
+                    y0 = max(0, y0 - hallado)
+                else:
+                    y1 = min(self.h - 1, y1 + hallado)
+                pasos += hallado
+        return fitz.Rect(x0 / sc, y0 / sc, (x1 + 1) / sc, (y1 + 1) / sc) | r
+
+
 def _tapar_original(pag, trabajo):
-    """Tapa con el color del fondo cada línea que se va a traducir (para hojas escaneadas, donde el texto original es una imagen)."""
+    """Tapa con el color del fondo cada línea que se va a traducir (para hojas escaneadas, donde el texto original es una imagen):
+    la caja de la capa OCR, ensanchada 3 pt, y luego crecida hasta donde llega la tinta real de la foto."""
+    mapa = _MapaTinta(pag)
+    rects = []
     for _, s in trabajo:
         for l in s["lines"]:
             sz = max(1.0, s["size"])
-            r = fitz.Rect(l["bbox"]) + (-3.0, -0.2 * sz, 3.0, 0.2 * sz)   # las cajas de la capa OCR quedan 2-4 pt más angostas que las palabras
-            pag.draw_rect(r, color=None, fill=_color_fondo(pag, r), width=0, overlay=True)
+            r = fitz.Rect(l["bbox"]) + (-3.0, -0.06 * sz, 3.0, 0.06 * sz)
+            rects.append(mapa.expandir(r))
+    for r in rects:
+        pag.draw_rect(r, color=None, fill=_color_fondo(pag, r), width=0, overlay=True)
 
 
 # ---------------------------------------------------------------- extraer
