@@ -4,6 +4,31 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.11] - 2026-11-06
+
+### Documentos también en Code
+
+- **Code crea Word, Excel, PowerPoint y PDF**: el agente de Code usa la misma herramienta de documentos que el Chat y Overdrive, con las mismas guías de diseño. Solo trabaja dentro de las carpetas de tus proyectos, pide tu permiso antes de crear y, en modo Plan, no crea nada.
+- **Revisión más fina de lo que se entrega**: antes de dar un documento por bueno, se revisan más detalles de Word (títulos, párrafos larguísimos, listas), PowerPoint (títulos repetidos, láminas cargadas), Excel (porcentajes mal escritos, hojas vacías) y PDF.
+- **Traducir Excel**: además de PDF, la tarjeta de traducción del Chat acepta hojas de Excel.
+
+### Todo se instala solo
+
+- **Sin preguntar**: ArtCraft (el diseñador de documentos), Node.js y uv se descargan solos en segundo plano, en Mac y en Windows. Puedes usar la app mientras tanto; abajo a la izquierda se ve «Preparando herramientas…». Si falla la red, reintenta sola. Cada descarga se verifica antes de usarla.
+- **Solo lo que el sistema exige**: la pantalla «Preparando Lazunox» ya no aparece por esas piezas; queda solo para lo que macOS o Windows piden aprobar a una persona.
+
+### Windows, a la par del Mac
+
+- **Traducir PDF y editar documentos en Windows**: Windows incluye ahora su propio Python, así que traducir PDF y Excel y editar Word, Excel y PowerPoint funcionan igual que en Mac, sin instalar nada.
+- **Textos de Windows**: en Windows ya no se habla de «Mac», Finder ni Llavero, ni en la app ni en la app del celular, que ahora sabe si tu equipo es Mac o PC.
+- **Overdrive abierto como administrador**: si abres Lazunox como administrador, la tarjeta de Overdrive lo explica en simple («Ciérralo y ábrelo de forma normal») en vez de un «no disponible» confuso.
+- **Cerrar la ventana con el acceso desde el celular activo**: la app queda viva en la bandeja, como en Mac.
+- **Descargas del navegador integrado**: Windows las marca como «descargadas de Internet» para que SmartScreen las revise.
+- **Servidores locales y comandos en segundo plano**: ya no usan rutas de Mac en Windows.
+- **Diagnóstico**: avisa si falta Git para Windows.
+- **Vista previa de Word (.docx)** de lo que entrega Overdrive en Windows.
+- **Control del PC**: guía de oficina para Windows.
+
 ## [1.8.10] - 2026-11-06
 
 ### Traducir documentos, mucho mejor (macOS)
