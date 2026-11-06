@@ -631,6 +631,9 @@ export const tasks = {
   'tasks.sandbox.unavailable.title': 'Overdrive en Windows aún no está disponible',
   'tasks.sandbox.unavailable.body':
     'Esta versión todavía no incluye el entorno aislado que Overdrive necesita en Windows. Por seguridad no se ejecuta sin él.',
+  'tasks.sandbox.elevated.title': 'Lazunox está abierto como administrador',
+  'tasks.sandbox.elevated.body':
+    'Abriste Lazunox como administrador. Ciérralo y ábrelo de forma normal para usar Overdrive.',
   'tasks.sandbox.broken.title': 'El entorno de Overdrive necesita atención',
   'tasks.sandbox.broken.payload': 'Faltan archivos del entorno aislado. Puedes repararlo.',
   'tasks.sandbox.broken.repair': 'Reparar',

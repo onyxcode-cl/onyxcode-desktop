@@ -81,6 +81,16 @@ describe('sandboxView', () => {
       expect(sandboxView(st('unsupported', { detail }), 'wsl')).toMatchObject({ kind: 'unavailable', actions: [], blocksStart: true })
     }
   })
+  it('abierto como administrador: explica la causa y cómo arreglarla; las demás puertas siguen con el texto genérico', () => {
+    expect(sandboxView(st('unsupported', { detail: 'elevated' }), 'wsl')).toMatchObject({
+      kind: 'unavailable',
+      title: 'tasks.sandbox.elevated.title',
+      body: 'tasks.sandbox.elevated.body',
+      actions: [],
+      blocksStart: true
+    })
+    expect(sandboxView(st('unsupported', { detail: 'bundle' }), 'wsl')).toMatchObject({ body: 'tasks.sandbox.unavailable.body' })
+  })
   it('roto: reparar solo si es la carga; el resto solo se vuelve a comprobar, con su explicación', () => {
     expect(sandboxView(st('broken', { detail: 'payload' }), 'wsl')).toMatchObject({
       kind: 'broken',
