@@ -17,7 +17,7 @@
  */
 import { homedir } from 'node:os'
 import { isAbsolute, resolve, sep } from 'node:path'
-import type { RemoteText } from '@shared/ipc-remote'
+import { parseHostPlatform, type RemoteText } from '@shared/ipc-remote'
 import { approvalVerdict } from './command-denylist'
 import { cleanDetail, previewText } from './confirm-detail'
 
@@ -1639,7 +1639,7 @@ export function decide(request: PolicyRequest, ctx: PolicyContext): PolicyDecisi
 
 /**
  * Limpia el resultado de un canal antes de enviarlo al celular (mismo recorte que los eventos de `event-trim.ts`):
- *  - `app:info`: sin `userDataPath`.
+ *  - `app:info`: sin `userDataPath` y con `hostPlatform` (`darwin`/`win32`) para los textos del celular.
  *  - `settings:get`: sin `opencodeBin` y con `recentFolders` solo del ámbito.
  *  - `tasks:trusted:list`: solo carpetas del ámbito.
  *  - `tasks:policy`: sin `source` (ruta del archivo) ni `allowedFolderRoots` (rutas de la organización).
@@ -1654,7 +1654,9 @@ export function sanitizeResult(channel: string, data: unknown, inScope: (path: s
   if (channel === 'app:info') {
     const { userDataPath: _omit, ...rest } = o
     void _omit
-    return rest
+    // `hostPlatform`: solo para que el celular diga «PC» o «Mac» (ver `RemoteHostPlatform`); sale de `platform`, nunca de datos del celular.
+    const hostPlatform = parseHostPlatform(o.platform)
+    return hostPlatform ? { ...rest, hostPlatform } : rest
   }
   if (channel === 'settings:get') {
     const { opencodeBin: _bin, recentFolders, ...rest } = o

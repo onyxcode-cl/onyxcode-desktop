@@ -52,6 +52,8 @@ function neededKeys(): string[] {
     if (rel(f).includes('/i18n/es/') || rel(f).includes('/i18n/en/')) continue
     for (const k of keysIn(readFileSync(f, 'utf8'), ALL)) keys.add(k)
   }
+  // Variante `.win` de cada clave pedida (la PWA conectada a un PC la usa en lugar de la base: `platformKey`).
+  for (const k of [...keys]) if (ALL.has(`${k}.win`)) keys.add(`${k}.win`)
   return [...keys].sort()
 }
 

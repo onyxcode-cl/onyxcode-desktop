@@ -9,6 +9,8 @@ export const remote = {
   'remote.unavailable.platform': 'This feature is only on macOS for now.',
   'remote.unavailable.noSafeStorage':
     'Data can’t be stored encrypted on this computer (Keychain access is missing), so the feature is turned off.',
+  'remote.unavailable.noSafeStorage.win':
+    'Data can’t be stored encrypted on this computer (the Windows secure storage is missing), so the feature is turned off.',
   'remote.unavailable.noNetwork': 'I can’t find a private local network. Connect to a Wi-Fi or wired network and try again.',
   'remote.unavailable.noRtc': 'The direct-connection component couldn’t be loaded. Reinstall the app or contact support.',
   'remote.activate': 'Turn on',
@@ -118,19 +120,26 @@ export const remote = {
   'remote.perm.task': 'Launch a subagent',
   'remote.perm.folder': 'Access another folder',
   'remote.perm.mac': 'Control the Mac',
+  'remote.perm.mac.win': 'Control the PC',
   'remote.perm.other': 'Permission requested',
   'remote.perm.approveOnMac': 'Approve it on the Mac',
+  'remote.perm.approveOnMac.win': 'Approve it on the PC',
   'remote.session.untitled': 'Untitled conversation',
   'remote.tray.stop': 'Cut phone access',
   'remote.pwa.missing': 'The phone app isn’t included in this build.',
   'remote.shortcut.stopAll': 'Cut access from the phone',
   'remote.link.disconnected': 'The connection to your Mac was lost. Try again once it reconnects.',
+  'remote.link.disconnected.win': 'The connection to your PC was lost. Try again once it reconnects.',
   'remote.link.forbidden': 'This action is not allowed from the phone.',
   'remote.link.locked': 'The phone is locked. Enter your PIN to continue.',
   'remote.link.denied': 'Declined on the Mac.',
+  'remote.link.denied.win': 'Declined on the PC.',
   'remote.link.expired': 'The confirmation on the Mac expired. Try again.',
+  'remote.link.expired.win': 'The confirmation on the PC expired. Try again.',
   'remote.link.unavailable': 'The Mac cannot handle this right now.',
+  'remote.link.unavailable.win': 'The PC cannot handle this right now.',
   'remote.link.busy': 'The Mac is busy with another confirmation. Try again in a moment.',
+  'remote.link.busy.win': 'The PC is busy with another confirmation. Try again in a moment.',
   'remote.link.rate-limited': 'Too many actions in a row. Wait a moment.',
   'remote.link.too-large': 'The content is too large to send from the phone.',
   'remote.link.bad-request': 'The request is not valid.',
@@ -194,6 +203,7 @@ export const remote = {
     'The link changes every time the tunnel restarts (when the Mac restarts, you quit the app, or the tunnel drops). You then have to link again.',
   'remote.travel.limit.home': 'You must link the phone at home, with the QR code on this screen, before you leave.',
   'remote.travel.limit.mac': 'The Mac must be on, online and with Lazunox open. If it is asleep or off, it will not respond.',
+  'remote.travel.limit.mac.win': 'The PC must be on, online and with Lazunox open. If it is asleep or off, it will not respond.',
   'remote.travel.limit.networks': 'It may not work on some mobile or company networks that block direct connections or this kind of link.',
   'remote.travel.limit.install': 'It cannot be installed as an app on the home screen: the link is temporary. Bookmark it instead.',
   'remote.travel.privacy':
@@ -266,7 +276,8 @@ export const remote = {
   'remote.activity.kind.travel-binary-bad-hash': 'The travel mode tool failed verification',
   'remote.activity.kind.travel-ice-failed': "The phone's network did not allow a direct connection",
   'remote.link.failed': 'Something went wrong talking to your Mac.',
-  // Variantes para Windows (sin «Mac»): solo textos que ve el dueño en el escritorio; la PWA del celular conserva los de siempre.
+  'remote.link.failed.win': 'Something went wrong talking to your PC.',
+  // Variantes para Windows (sin «Mac»): solo textos que ve el dueño en el escritorio; la PWA del celular también los usa cuando el equipo es Windows (`hostPlatform`).
   'remote.qr.hint.win': 'Open the link in your phone’s browser (on this same Wi-Fi network). Then confirm here on this PC.',
   'remote.risk.win':
     'The connection is encrypted between the phone and this PC, and no key travels over the network. Even so, if someone sees or photographs the QR code while it is valid (2 minutes), only the 6-digit code gives them away: check it on both devices before linking.',

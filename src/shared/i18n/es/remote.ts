@@ -6,6 +6,8 @@ export const remote = {
   'remote.unavailable.platform': 'Esta función por ahora solo está en macOS.',
   'remote.unavailable.noSafeStorage':
     'No se puede guardar de forma cifrada en este equipo (falta el acceso al Llavero), así que la función queda desactivada.',
+  'remote.unavailable.noSafeStorage.win':
+    'No se puede guardar de forma cifrada en este equipo (falta el almacén seguro de Windows), así que la función queda desactivada.',
   'remote.unavailable.noNetwork': 'No encuentro una red local privada. Conéctate a una red Wi-Fi o cableada e inténtalo de nuevo.',
   'remote.unavailable.noRtc': 'No se pudo cargar el componente de conexión directa. Reinstala la app o avisa a soporte.',
   'remote.activate': 'Activar',
@@ -115,19 +117,26 @@ export const remote = {
   'remote.perm.task': 'Lanzar un subagente',
   'remote.perm.folder': 'Acceder a otra carpeta',
   'remote.perm.mac': 'Controlar el Mac',
+  'remote.perm.mac.win': 'Controlar el PC',
   'remote.perm.other': 'Permiso solicitado',
   'remote.perm.approveOnMac': 'Apruébalo en el Mac',
+  'remote.perm.approveOnMac.win': 'Apruébalo en el PC',
   'remote.session.untitled': 'Conversación sin título',
   'remote.tray.stop': 'Cortar acceso del celular',
   'remote.pwa.missing': 'La app del celular no está incluida en esta versión.',
   'remote.shortcut.stopAll': 'Cortar el acceso desde el celular',
   'remote.link.disconnected': 'Se perdió la conexión con tu Mac. Vuelve a intentarlo cuando se reconecte.',
+  'remote.link.disconnected.win': 'Se perdió la conexión con tu PC. Vuelve a intentarlo cuando se reconecte.',
   'remote.link.forbidden': 'Esta acción no está permitida desde el celular.',
   'remote.link.locked': 'El celular está bloqueado. Escribe tu PIN para seguir.',
   'remote.link.denied': 'Rechazada en el Mac.',
+  'remote.link.denied.win': 'Rechazada en el PC.',
   'remote.link.expired': 'Caducó la confirmación en el Mac. Vuelve a intentarlo.',
+  'remote.link.expired.win': 'Caducó la confirmación en el PC. Vuelve a intentarlo.',
   'remote.link.unavailable': 'El Mac no puede atender esto ahora mismo.',
+  'remote.link.unavailable.win': 'El PC no puede atender esto ahora mismo.',
   'remote.link.busy': 'El Mac está ocupado con otra confirmación. Inténtalo en un momento.',
+  'remote.link.busy.win': 'El PC está ocupado con otra confirmación. Inténtalo en un momento.',
   'remote.link.rate-limited': 'Demasiadas acciones seguidas. Espera un momento.',
   'remote.link.too-large': 'El contenido es demasiado grande para enviarlo desde el celular.',
   'remote.link.bad-request': 'La petición no es válida.',
@@ -191,6 +200,7 @@ export const remote = {
     'El enlace cambia cada vez que se reinicia el túnel (al reiniciar el Mac, salir de la app o si el túnel se cae). Entonces hay que vincular de nuevo.',
   'remote.travel.limit.home': 'Hay que vincular el celular en casa, con el código QR de esta pantalla, antes de salir.',
   'remote.travel.limit.mac': 'El Mac debe estar encendido, con internet y con Lazunox abierta. Dormido o apagado, no responde.',
+  'remote.travel.limit.mac.win': 'El PC debe estar encendido, con internet y con Lazunox abierta. Dormido o apagado, no responde.',
   'remote.travel.limit.networks':
     'Puede no funcionar en algunas redes móviles o de empresa que bloquean la conexión directa o este tipo de enlaces.',
   'remote.travel.limit.install': 'No se puede instalar como app en la pantalla de inicio: el enlace es temporal. Guárdalo en favoritos.',
@@ -263,7 +273,8 @@ export const remote = {
   'remote.activity.kind.travel-binary-bad-hash': 'La herramienta del modo viaje no pasó la verificación',
   'remote.activity.kind.travel-ice-failed': 'La red del celular no permitió la conexión directa',
   'remote.link.failed': 'Algo falló al hablar con tu Mac.',
-  // Variantes para Windows (sin «Mac»): solo textos que ve el dueño en el escritorio; la PWA del celular conserva los de siempre.
+  'remote.link.failed.win': 'Algo falló al hablar con tu PC.',
+  // Variantes para Windows (sin «Mac»): solo textos que ve el dueño en el escritorio; la PWA del celular también los usa cuando el equipo es Windows (`hostPlatform`).
   'remote.qr.hint.win': 'Abre el enlace en el navegador del celular (conectado a esta misma red Wi-Fi). Luego confirma aquí en este PC.',
   'remote.risk.win':
     'La conexión va cifrada entre el celular y este PC, y ninguna clave viaja por la red. Aun así, si alguien ve o fotografía el código QR mientras está vigente (2 minutos), solo el código de 6 dígitos lo delata: compruébalo en ambos aparatos antes de vincular.',
