@@ -62,6 +62,15 @@ describe('SandboxSetupCard', () => {
     expect(buttons(render({ state: 'policyDisabled' }))).toBe(0)
     expect(buttons(render({ state: 'unsupported', detail: 'report' }))).toBe(0)
   })
+  it('falta WSL: nombra la terminal de administrador y el reinicio, y no ofrece «Preparar ahora»', () => {
+    win()
+    const html = render({ state: 'needsWsl' })
+    expect(html).toContain('data-kind="needsWsl"')
+    expect(html).toContain('terminal de administrador')
+    expect(html).toContain('reinicia')
+    expect(html).not.toContain('Preparar ahora')
+    expect(html).not.toContain('tasks.sandbox.needsWsl')
+  })
   it('el fallo de instalación se explica con texto traducido y ofrece reintentar y comprobar', () => {
     win()
     const html = render({ state: 'needsSetup', setup: { running: false, pct: 0, phase: '', error: 'no-space' } })

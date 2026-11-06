@@ -52,6 +52,19 @@ describe('classifyWslStatus', () => {
     const none: RunResult = { code: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0), error: 'ENOENT' }
     expect(classifyWslStatus({ version: none, list: none }).state).toBe('needsWsl')
   })
+  it('wsl.exe presente pero WSL no instalado (texto de Windows 11, en español e inglés) → needsWsl', () => {
+    // CAPTURAR EL TEXTO REAL en un PC limpio: el texto exacto que imprime wsl.exe sin WSL no se conoce con certeza.
+    // Estos textos son representativos: la prueba fija la clasificación, no la redacción de Windows.
+    const notInstalledEs =
+      'El subsistema de Windows para Linux no está instalado.\r\nCódigo de error: Wsl/WSL_E_WSL_OPTIONAL_COMPONENT_REQUIRED\r\n'
+    const notInstalledEn = 'The Windows Subsystem for Linux is not installed.\r\nError code: Wsl/WSL_E_WSL_OPTIONAL_COMPONENT_REQUIRED\r\n'
+    for (const text of [notInstalledEs, notInstalledEn]) {
+      expect(classifyWslStatus({ version: fail(1, text), list: fail(1, text) }).state).toBe('needsWsl')
+    }
+  })
+  it('código 0x80370102 solo (sin el nombre del error) → needsVirtualization', () => {
+    expect(classifyWslStatus({ version, list: fail(1, 'Error: 0x80370102\r\n') }).state).toBe('needsVirtualization')
+  })
   it('virtualización desactivada (código HCS) → needsVirtualization, en UTF-16LE', () => {
     const r = fail(
       4294967295,
