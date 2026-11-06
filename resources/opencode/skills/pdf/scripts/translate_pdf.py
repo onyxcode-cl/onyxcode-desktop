@@ -5,9 +5,11 @@ Tres pasos (el modelo traduce en el del medio):
   1) extraer  doc.pdf -o segmentos.json            -> lista de textos con su posición
   2) (el modelo escribe traduccion.json: {"<id>": "texto traducido", ...})
   3) aplicar  doc.pdf -t traduccion.json -o doc-en.pdf [--informe informe.json]
+     (el informe avisa de cifras que cambiaron, largos raros, textos que no caben y páginas escaneadas)
 
 Usa PyMuPDF (licencia AGPL-3.0, ver THIRD_PARTY_NOTICES.md). Logos, imágenes, líneas, bordes y numeración se dejan intactos.
-Solo PDF con texto: un PDF escaneado no se puede traducir así (sin OCR).
+Hojas escaneadas: si traen una capa de texto OCR invisible se traducen (se tapa el original de la foto con el color del fondo). Un PDF de solo
+imagen, sin ninguna capa de texto, no se puede traducir (sin OCR). `imagen doc.pdf --pagina N -o hoja.png` dibuja una página para que el modelo la vea.
 """
 from __future__ import annotations
 

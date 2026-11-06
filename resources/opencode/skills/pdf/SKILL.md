@@ -83,27 +83,46 @@ Usa los nombres exactos que muestra `listar`. Casillas: pasa el valor que figure
 `PY scripts/stamp_pdf.py in.pdf -o out.pdf --marca BORRADOR --numerar --titulo "Informe" --autor "Ana"`
 (cualquier combinación; al menos una acción).
 
-### F. Traducir un PDF SIN cambiar el diseño
-Úsalo cuando pidan «traduce este PDF» y quieran que se vea igual (mismas hojas, fuente, tamaño y posiciones). Funciona sobre una COPIA del
-MISMO PDF (nunca el original: la salida lleva el sufijo del idioma, `doc-en.pdf`, y el script se niega si ya existe): cambia solo los textos; logos, imágenes, líneas, resaltados y numeración quedan donde estaban. Solo PDF con texto.
-1. `PY scripts/translate_pdf.py extraer doc.pdf -o segmentos.json` (deja el texto por traducir en un JSON de pares: tú solo traduces texto). Si dice «ESCANEADO» (código 2): no hay OCR, avísalo y para.
-2. Lee `segmentos.json` y escribe `traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en segmentos.json):
+### F. Traducir un PDF (tú, dentro de la conversación)
+Cuando pidan «traduce este PDF»: **hazlo tú aquí, con el modelo de este chat**; no pidas que abran otra ventana ni otra herramienta. Se trabaja sobre una COPIA
+del PDF (nunca el original: la salida lleva el sufijo del idioma, `doc-en.pdf`, y el script se niega si ya existe): cambia solo los textos; logos, imágenes,
+líneas, resaltados y numeración quedan donde estaban. Funciona con PDF con texto y con **hojas escaneadas que traen una capa de texto OCR**.
+Idioma de destino: el que pidan; si no lo dicen, el contrario al idioma del documento.
+
+1. `PY scripts/translate_pdf.py extraer doc.pdf -o segmentos.json`. El JSON trae `clases` (por página: `digital`, `escaneada_ocr` = foto con texto OCR invisible
+   encima, o `escaneada_sin_texto` = solo imagen) y los textos por traducir en un JSON de pares (tú solo traduces texto). Si dice «ESCANEADO» sin ningún texto (código 2): no hay OCR, avísalo y para; no inventes.
+2. **Hojas escaneadas (`escaneada_ocr`)**: los textos vienen de un OCR y pueden traer errores (palabras partidas, «I.» por «l.», líneas fuera de orden).
+   Si puedes ver imágenes, dibuja la hoja con `PY scripts/translate_pdf.py imagen doc.pdf --pagina N -o ./.lazunox/trabajo/pagina-N.png` y MÍRALA antes de
+   traducir esa hoja: úsala para entender el orden y corregir en silencio los errores evidentes del OCR, sin inventar texto que no esté en la hoja.
+3. **Ficha del documento (antes de traducir nada)**: lee `segmentos.json` entero (si es muy largo, el comienzo de cada página) y escribe
+   `./.lazunox/trabajo/ficha.md` con: de qué documento se trata, su tono y un **glosario fijo** de hasta 40 términos (partes del contrato en mayúscula,
+   vocabulario técnico o legal, nombres de producto) con UNA sola traducción cada uno. Úsalo en TODAS las tandas: un mismo término se traduce igual en todo el
+   documento. En documentos legales o de seguros usa la terminología estándar del idioma de destino (español neutro si es español).
+4. Escribe `traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en segmentos.json), por tandas de ~40 segmentos:
    - Traduce TODO el texto con significado; si un texto es un nombre propio, código o cifra, déjalo igual (o no lo incluyas).
-   - Conserva las etiquetas `<b>…</b>` (negrita), `<c=#rrggbb>…</c>` (color) y `<l=N>…</l>` (enlace) alrededor de la parte traducida equivalente (así el enlace sigue funcionando), y los números, fechas y referencias exactos.
-   - Si un segmento trae `"sigue": "p2-0"`, su frase continúa en ese otro id (la hoja cortó la frase): traduce ambos de modo que juntos se lean como una sola frase natural.
+   - Conserva las etiquetas `<b>…</b>` (negrita), `<c=#rrggbb>…</c>` (color) y `<l=N>…</l>` (enlace) alrededor de la parte traducida equivalente (así el enlace sigue funcionando), y los números, fechas, importes y referencias exactos.
+   - Si un segmento trae `"sigue": "p2-0"`, su frase continúa en ese otro id (la hoja o la columna cortó la frase): traduce ambos de modo que juntos se lean como una sola frase natural.
    - Si el segmento trae `"resaltado"`, envuelve en `[[ ]]` la parte traducida que corresponde a lo resaltado (si es «todo», no hace falta).
    - NO traduzcas código, comandos, rutas, URLs, correos, nombres de archivo ni claves de configuración: déjalos idénticos (o no los incluyas).
    - Mantén cada traducción de largo parecido al original; el script reduce la letra si no cabe, pero no inventes texto.
-   - Traduce por tandas de ~40 segmentos y usa el contexto del documento (un mismo término se traduce igual en todo el documento).
-3. `PY scripts/translate_pdf.py aplicar doc.pdf -t traduccion.json -o doc-en.pdf --informe informe.json`
-   El informe lista `sin_traduccion`, `letra_reducida` y `no_cabe`. Código de salida 3 = algo no cabe: revisa esas páginas.
-4. El script termina comparando la estructura con el original (`ESTRUCTURA: idéntica al original`: mismas páginas, tamaños, imágenes y dibujos; también suelto: `PY scripts/../../_shared/comparar_estructura.py doc.pdf doc-en.pdf`). Si dice «CAMBIÓ», no entregues ese PDF.
-5. Verifica como siempre (`check_pdf.py --render`) y **mira las páginas PNG junto al original**: textos que chocan, celdas de tabla
-   apretadas, resaltados mal puestos. Corrige la traducción de esos segmentos (más corta) y vuelve a aplicar con otro nombre de salida.
-Limitaciones conocidas (dilas si aplican): si omites una etiqueta `<l=N>`, ese enlace se quita (el informe lo lista en `enlaces_quitados`);
-texto dentro de imágenes y texto vertical no se traducen; PDF escaneado: sin OCR.
-Idiomas: fuentes Arial/Times/Courier (o Liberation) (Latin: español, inglés, francés, alemán, portugués…). Para chino, árabe, ruso, etc. no hay fuente
-todavía: dilo en vez de entregar un PDF con cuadritos.
+5. `PY scripts/translate_pdf.py aplicar doc.pdf -t traduccion.json -o doc-en.pdf --informe informe.json`. En las hojas escaneadas el script tapa el inglés de la foto
+   con el color del fondo y escribe encima.
+6. **Lee `informe.json` y corrige antes de entregar**: `cifras_distintas` (una cifra, fecha o importe del original no está en tu traducción: corrígela), `largo_raro`
+   (traducción mucho más corta o larga que el original: probable omisión), `sin_traduccion`, `no_cabe` y `letra_reducida` (acorta esos textos). Vuelve a aplicar con otro nombre de salida.
+   Código de salida 3 = algo no cabe. El script termina comparando la estructura (`ESTRUCTURA: idéntica al original`, también suelto:
+   `PY scripts/../../_shared/comparar_estructura.py doc.pdf doc-en.pdf`); si dice «CAMBIÓ» en un PDF digital, no lo entregues.
+7. Mira el resultado con `documentos_renderizar` (si existe) o `check_pdf.py --render`, **junto al original**: textos que chocan, celdas apretadas, restos del idioma
+   original en los bordes, resaltados mal puestos. Corrige la traducción de esos segmentos y vuelve a aplicar.
+8. **Escaneos: versión limpia (opcional)**. Si el documento es 100 % escaneado, ofrece (o hazla si la piden) un PDF NUEVO con el texto traducido, sin la foto del original:
+   escribe un HTML por hoja (títulos, párrafos, tablas; columnas con CSS `column-count`; sin imágenes externas) y créalo con `documentos_crear` tipo `pdf` (guía de diseño de arriba),
+   nombrándolo `doc-limpio-en`. Úsala con el texto ya corregido en el paso 6. Avisa que se pierde el parecido exacto (logos, sellos, líneas de tabla) y que gasta más del modelo.
+9. Entrega: nombre(s) del archivo (fiel y, si la hiciste, limpia), páginas, y en **«Para revisar»** lo que no se pudo resolver.
+
+Limitaciones (dilas si aplican): en un escaneo, las palabras que el OCR no detectó (sellos, firmas, algún rótulo suelto) quedan en el idioma original y los sellos o
+firmas que pasan por debajo del texto pueden quedar dañados al tapar; si el fondo es una foto con color o ruido, revisa que no queden manchas. Si omites una etiqueta
+`<l=N>`, ese enlace se quita (el informe lo lista en `enlaces_quitados`). Texto dentro de imágenes y texto vertical no se traducen. PDF escaneado SIN capa de texto: sin OCR.
+Idiomas: fuentes Arial/Times/Courier incorporadas (Latin: español, inglés, francés, alemán, portugués…). Para chino, árabe, ruso, etc. no hay fuente todavía: dilo en
+vez de entregar un PDF con cuadritos.
 
 ### Verificar (obligatorio antes de entregar)
 Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows y sirve para un archivo que hiciste con `bash`: ruta relativa a la carpeta de la tarea) y corrige todo de una vez.
@@ -117,7 +136,7 @@ Resultado esperado: `RESULTADO: correcto`. Si dice «revisar avisos», explica c
 Resume qué hiciste, nombre del archivo y páginas. Lo no resuelto va en **«Para revisar»**.
 
 ## Limitaciones (dilas siempre que apliquen)
-- **PDF escaneado: sin OCR.** No se puede extraer su texto; no inventes. Pide versión con texto.
+- **PDF escaneado sin capa de texto: sin OCR.** No se puede extraer su texto; no inventes. Pide versión con texto. (Para TRADUCIR, un escaneo que sí trae capa de texto OCR se puede: sección F.)
 - **No se puede modificar el texto de un PDF ya hecho** (cambiar una frase, corregir una cifra), salvo traducirlo entero (sección F). Ofrece **regenerarlo**
   (con `build_pdf.py` a partir del contenido extraído, corregido) o editar la fuente original (Word/Excel) y exportarlo de nuevo.
   El diseño original no se reproduce idéntico al regenerar: avísalo.

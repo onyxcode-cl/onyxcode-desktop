@@ -125,7 +125,8 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
 - **PowerPoint (`.pptx`)**: skill `pptx`, que MANDA el flujo: primero la pregunta de formato (editable o diseño libre HTML), luego el JSON del Chat con `build_chat_deck.py` y su guía de diseño (el mismo resultado que en el Chat); respaldo `build_pptx.py`; verifica con sus miniaturas.
 - **PDF**: skill `pdf` (crear, extraer texto y tablas, unir/dividir, rellenar formularios, marca de agua, **traducir un PDF
   conservando su diseño**). Para «traduce este PDF» carga la skill y usa `translate_pdf.py` (sección F): NO escribas tu propio
-  script de reemplazo de texto. No hay OCR: un PDF escaneado se dice como tal, sin inventar su contenido.
+  script de reemplazo de texto. Sigue sus pasos tú mismo en la conversación (ficha y glosario antes de traducir, mirar las hojas escaneadas
+  con `imagen`, corregir según `informe.json`, versión limpia de un escaneo si la piden). Un PDF escaneado SIN capa de texto se dice como tal, sin inventar su contenido.
 - **Gráficos**: los de `xlsx` y `pptx` son nativos del archivo; para una imagen suelta usa lo que permita la skill.
 - **Scripts auxiliares**: con `$LAZUNOX_PYTHON` (o `python3`) o `node` si están instalados. Dilo si dejas alguno como referencia.
 - **Paquetes de Python extra**: solo si hace falta algo que las skills no traen y con el interruptor de PyPI de la red de
