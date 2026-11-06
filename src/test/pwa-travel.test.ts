@@ -273,7 +273,7 @@ describe('PWA › cliente en modo viaje', () => {
     for (const r of ['travel-link', 'travel-mac', 'travel-ice', 'travel-ended'])
       for (const k of [`fail.title.${r}`, `fail.body.${r}`]) expect(tr(k), k).not.toBe(k)
     expect(tr('fail.title.travel-link')).toBe('El enlace caducó')
-    expect(tr('fail.title.travel-mac')).toBe('El Mac no responde')
+    expect(tr('fail.title.travel-mac')).toBe('El computador no responde')
     expect(tr('fail.title.travel-ice')).toBe('Tu red bloquea la conexión directa')
     expect(tr('idle.travel.noInstall')).toContain('No se puede instalar como app')
   })
