@@ -302,7 +302,7 @@ export function wrapCleanHtml(sections: string[], lang: TranslateLangCode, title
     'body { font-family: Arial, Helvetica, sans-serif; font-size: 11.5px; line-height: 1.45; color: #1a1a1a; margin: 0 }',
     '.page { break-after: page; page-break-after: always } .page:last-child { break-after: auto; page-break-after: auto }',
     'h1 { font-size: 22px; margin: 0 0 10px } h2 { font-size: 16px; margin: 14px 0 6px } h3 { font-size: 13px; margin: 10px 0 4px }',
-    'p { margin: 0 0 7px; text-align: justify } .foot { font-size: 10.5px; color: #555; text-align: left }',
+    'p { margin: 0 0 7px; text-align: left; hyphens: auto } .foot { font-size: 10.5px; color: #555; text-align: left }',
     '.cols2 { column-count: 2; column-gap: 8mm } .cols3 { column-count: 3; column-gap: 7mm }',
     'table { border-collapse: collapse; width: 100%; margin: 6px 0 } th, td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left }',
     'th { background: #eee } tr { break-inside: avoid }'

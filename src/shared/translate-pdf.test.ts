@@ -195,6 +195,7 @@ describe('versión limpia (PDF nuevo)', () => {
     expect(html).toContain('<html lang="es">')
     expect(html).toContain('@page { size: A4; margin: 18mm }')
     expect(html).toContain('<title>A &lt;b&gt; &amp; B</title>')
+    expect(html).not.toContain('justify') // el texto justificado deja huecos enormes en columnas angostas
     expect(html).toContain('<section class="page"><p>a</p></section>')
     expect(fallbackPageHtml([{ texto: 'x < y & z' }])).toBe('<section class="page"><p>x &lt; y &amp; z</p></section>')
   })
