@@ -37,6 +37,38 @@ describe('buildInlineConfig (sidecar principal)', () => {
   })
 })
 
+describe('documentos en Code', () => {
+  const documentsMcp = { type: 'remote', url: 'http://127.0.0.1:1/mcp', headers: { Authorization: 'Bearer x' } }
+  const chatPerm = (o: Parameters<typeof buildInlineConfig>[0]): Record<string, unknown> =>
+    (buildInlineConfig(o) as { agent: { chat: { permission: Record<string, unknown> } } }).agent.chat.permission
+
+  it('`mcp.documentos` solo si hay bloque, junto a los demás', () => {
+    expect(buildInlineConfig({ documentsMcp })).toMatchObject({ mcp: { documentos: documentsMcp } })
+    expect(buildInlineConfig({ documentsMcp: null })).not.toHaveProperty('mcp')
+    const bg = { type: 'local', command: ['/n'] }
+    expect(buildInlineConfig({ documentsMcp, bgshellMcp: bg })).toMatchObject({ mcp: { documentos: documentsMcp, bgshell: bg } })
+    expect((buildInlineConfig({ bgshellMcp: bg }) as { mcp: object }).mcp).not.toHaveProperty('documentos')
+  })
+
+  it('`instructions` solo si no está vacío', () => {
+    expect(buildInlineConfig()).not.toHaveProperty('instructions')
+    expect(buildInlineConfig({ instructions: [] })).not.toHaveProperty('instructions')
+    expect(buildInlineConfig({ instructions: ['/a/code-documentos.md'] })).toMatchObject({ instructions: ['/a/code-documentos.md'] })
+  })
+
+  it('el agente chat sigue en deny y no cambia con la herramienta en la config', () => {
+    const plain = chatPerm({})
+    const withDocs = chatPerm({
+      documentsMcp,
+      instructions: ['/a.md'],
+      permission: { documentos_crear: 'ask', documentos_renderizar: 'allow' }
+    })
+    expect(withDocs).toEqual(plain)
+    expect(withDocs['*']).toBe('deny')
+    expect(withDocs).not.toHaveProperty('documentos_crear')
+  })
+})
+
 describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () => {
   const inline = JSON.stringify(buildInlineConfig())
   const chatMd = readFileSync(resolve(__dirname, '../../../resources/opencode/agents/chat.md'), 'utf8').replace(/\s+/g, ' ')

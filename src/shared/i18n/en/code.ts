@@ -91,6 +91,8 @@ export const code = {
   'code.perm.task': 'launch a subagent',
   'code.perm.doom_loop': 'repeat the same action',
   'code.perm.todowrite': 'update the to-do list',
+  'code.perm.documentos_crear': 'create a document (Word, Excel, PowerPoint or PDF) in the project folder',
+  'code.perm.documentos_renderizar': 'view a document’s pages',
   'code.perm.once': 'Allow once',
   'code.perm.always': 'Always allow',
   'code.perm.protectedPath': 'Protected path: changes how code runs or the AI’s configuration',

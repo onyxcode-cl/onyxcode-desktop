@@ -61,7 +61,7 @@ export function parseSubfolder(raw: unknown): string[] {
   return segs
 }
 
-function isInside(root: string, child: string): boolean {
+export function isInside(root: string, child: string): boolean {
   return child === root || child.startsWith(root.endsWith(sep) ? root : root + sep)
 }
 

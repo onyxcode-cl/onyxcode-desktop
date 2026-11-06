@@ -14,6 +14,7 @@
  */
 import { CHAT_AGENT } from '@shared/types'
 import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
+import { DOCUMENTS_SERVER } from '@shared/documents-permissions'
 
 /**
  * Patrón de `read` que no corresponde a ningún archivo real (ver `permission.read` del agente `chat`). Debe
@@ -38,6 +39,19 @@ export interface InlineConfigOptions {
    */
   bgshellMcp?: Record<string, unknown> | null
   /**
+   * Bloque `mcp.documentos` (herramienta de Word, Excel, PowerPoint y PDF, el MISMO motor de Overdrive) ya resuelto con
+   * `documentsMcp.configFor({ folder: CODE_BINDING_FOLDER, code })`, o null si el MCP no arrancó: el motor arranca igual, sin la herramienta.
+   * Sus permisos van en `permission` (`documentsConfigPermission`) y en el bloque de modo de cada sesión de Code (`documentsSessionRules`).
+   * El agente `chat` conserva `'*': deny`, así que no la puede usar.
+   */
+  documentsMcp?: Record<string, unknown> | null
+  /**
+   * Archivos de instrucciones extra (clave `instructions` del motor, rutas absolutas) que el motor añade al prompt de todos los agentes del
+   * proceso. Vacío o ausente = no se escribe la clave. Los textos deben ser condicionales («solo si tienes la herramienta…»): también los
+   * lee el agente `chat`.
+   */
+  instructions?: string[]
+  /**
    * Subagentes en el Chat (F8-B206): con `true` el agente `chat` puede lanzar `lazunox-chat-helper` (y solo ese) con `task`. Se pasa
    * `engineExperimentsFor(ajustes, 'chat').backgroundSubagents`: la variable de subagentes en segundo plano es POR PROCESO y Chat y
    * Code comparten motor, así que lo que separa al Chat es este permiso, no la variable. Apagado = `task` denegado como siempre.
@@ -59,14 +73,16 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
-    ...(opts.browserMcp || opts.bgshellMcp
+    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp
       ? {
           mcp: {
             ...(opts.browserMcp ? { browser: opts.browserMcp } : {}),
-            ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {})
+            ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {}),
+            ...(opts.documentsMcp ? { [DOCUMENTS_SERVER]: opts.documentsMcp } : {})
           }
         }
       : {}),
+    ...(opts.instructions?.length ? { instructions: [...opts.instructions] } : {}),
     ...(opts.permission && Object.keys(opts.permission).length ? { permission: opts.permission } : {}),
     agent: {
       [CHAT_AGENT]: {

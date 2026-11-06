@@ -71,6 +71,7 @@ vi.mock('./code-mcp-permission', async (orig) => ({
 vi.mock('../tasks/opencode-config', () => ({ getOpencodeEnv: () => ({}) }))
 vi.mock('../embedded-browser/mcp-server', () => ({ embeddedBrowserMcp: { setApi: () => {}, configFor: async () => null } }))
 vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
+vi.mock('../documents', () => ({ documentsMcp: { configFor: async () => null, revokeToken: () => false } }))
 vi.mock('../diagnostics/problem-log', () => ({ recordProblem: () => {} }))
 vi.mock('../util/net', () => ({ getFreePort: async () => 4999, waitForHealth: async () => '1.19.0' }))
 vi.mock('./pids', () => ({ killTree: () => [], killPids: () => {}, trackPid: () => {}, untrackPid: () => {} }))

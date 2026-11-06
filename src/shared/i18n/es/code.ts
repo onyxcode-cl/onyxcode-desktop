@@ -88,6 +88,8 @@ export const code = {
   'code.perm.task': 'lanzar un subagente',
   'code.perm.doom_loop': 'repetir la misma acción',
   'code.perm.todowrite': 'actualizar la lista de tareas',
+  'code.perm.documentos_crear': 'crear un documento (Word, Excel, PowerPoint o PDF) en la carpeta del proyecto',
+  'code.perm.documentos_renderizar': 'ver las páginas de un documento',
   'code.perm.once': 'Permitir una vez',
   'code.perm.always': 'Permitir siempre',
   'code.perm.protectedPath': 'Ruta protegida: cambia cómo se ejecuta código o la configuración de la IA',

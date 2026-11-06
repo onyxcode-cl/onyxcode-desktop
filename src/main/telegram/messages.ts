@@ -22,7 +22,9 @@ const PERMISSION_LABELS: Record<string, MsgKey> = {
   external_directory: 'code.perm.external_directory',
   task: 'code.perm.task',
   doom_loop: 'code.perm.doom_loop',
-  todowrite: 'code.perm.todowrite'
+  todowrite: 'code.perm.todowrite',
+  documentos_crear: 'code.perm.documentos_crear',
+  documentos_renderizar: 'code.perm.documentos_renderizar'
 }
 
 export function permissionLabel(permission: string): string {
