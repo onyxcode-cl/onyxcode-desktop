@@ -25,6 +25,7 @@ import {
   listRuns,
   monotonousLayouts,
   denseBullets,
+  percentMisfits,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -484,6 +485,14 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       )}`
     )
     for (const w of found.filter((x) => x.severity === 'warning').slice(0, 3)) r.note(`${w.sheet}!${w.cell}: ${w.message}`)
+    if (spec.sheets.some((sh) => sh.columnFormats?.includes('percent'))) {
+      const misfits = percentMisfits(spec.sheets)
+      r.check(
+        misfits.length === 0,
+        'Las columnas en porcentaje llevan fracciones (0,22 = 22 %)',
+        `Columnas en porcentaje con cifras mayores que 1,5 (¿quisiste 22 % o 0,22?): ${short(misfits, 4)}. Escribe 0,22 para el 22 %`
+      )
+    }
     // Valor declarado (`value`) contra el que calculó el programa: si el modelo se equivocó en la cuenta, también se equivocará en su resumen.
     const app = (await zip.file('docProps/app.xml')?.async('string')) ?? ''
     if (/<Application>GridCraft<\/Application>/.test(app)) {

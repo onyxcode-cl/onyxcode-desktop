@@ -278,6 +278,31 @@ describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
   })
 })
 
+describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
+  const book = async (): Promise<Buffer> => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file('xl/worksheets/sheet1.xml', '<worksheet><sheetData/></worksheet>')
+    return z.generateAsync({ type: 'nodebuffer' })
+  }
+  const spec = (valor: number) => ({
+    sheets: [{ name: 'Datos', columnFormats: [null, 'percent'], rows: [['Región', 'Cuota'], ['Norte', valor]] }]
+  })
+  it('22 en una columna de porcentaje → ✘ con la cifra', async () => {
+    const r = await reviewDocument('xlsx', await book(), spec(22))
+    expect(bad(r)).toContain('Columnas en porcentaje con cifras mayores que 1,5')
+    expect(bad(r)).toContain('Datos, columna 2 (22)')
+  })
+  it('0,22 pasa y no aparece la línea si no hay columnas de porcentaje', async () => {
+    const ok = await reviewDocument('xlsx', await book(), spec(0.22))
+    expect(bad(ok)).toBe('')
+    expect(ok.items.map((i) => i.text).join(' | ')).toContain('Las columnas en porcentaje llevan fracciones')
+    const sin = { sheets: [{ name: 'Datos', rows: [['a', 'b'], ['x', 22]] }] }
+    expect((await reviewDocument('xlsx', await book(), sin)).items.map((i) => i.text).join(' | ')).not.toContain('porcentaje')
+  })
+})
+
 describe('R8 en PowerPoint: lámina cargada (ℹ)', () => {
   const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
   it('una lámina con 7 viñetas → ℹ con su número; con 6 no', async () => {

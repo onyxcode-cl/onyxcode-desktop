@@ -20,7 +20,8 @@ import {
   blankRuns,
   slideTitleIssues,
   monotonousLayouts,
-  denseBullets
+  denseBullets,
+  percentMisfits
 } from './review-checks'
 
 describe('R7: todo viñetas', () => {
@@ -31,6 +32,17 @@ describe('R7: todo viñetas', () => {
   it('menos de 4 láminas de contenido, o alguna de otro tipo → no', () => {
     expect(monotonousLayouts([undefined, undefined, undefined, undefined])).toBe(false)
     expect(monotonousLayouts([undefined, 'bullets', 'stat', 'bullets', 'bullets'])).toBe(false)
+  })
+})
+
+describe('R9: porcentaje escrito como entero', () => {
+  it('0,22 con formato porcentaje pasa; 22 no; una fórmula o un texto no se juzgan', () => {
+    const sh = (rows: unknown[][]) => [{ name: 'Datos', columnFormats: [null, 'percent'], rows }]
+    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', 0.22]]))).toEqual([])
+    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', 22]]))).toEqual(['Datos, columna 2 (22)'])
+    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', { formula: 'B3*2', value: 44 }], ['Sur', '22']]))).toEqual([])
+    // sin formato de porcentaje, un 22 es normal
+    expect(percentMisfits([{ name: 'Datos', columnFormats: [null, 'integer'], rows: [['a', 'b'], ['x', 22]] }])).toEqual([])
   })
 })
 

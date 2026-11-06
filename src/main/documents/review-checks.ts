@@ -403,6 +403,21 @@ export function monotonousLayouts(layouts: Array<string | undefined>): boolean {
   return content.length >= 4 && content.every((l) => l === undefined || l === 'bullets')
 }
 
+/**
+ * Columnas con formato «porcentaje» que guardan números mayores que 1,5 en sus datos (p. ej. 22 donde se quería 22 %, o sea 0,22). Solo
+ * cuentan los números escritos: una fórmula o un texto no se juzga. Devuelve «hoja, columna n (valor)» por cada columna.
+ */
+export function percentMisfits(sheets: Array<{ name: string; columnFormats?: Array<string | null>; rows: unknown[][] }>): string[] {
+  const out: string[] = []
+  for (const sh of sheets)
+    (sh.columnFormats ?? []).forEach((fmt, c) => {
+      if (fmt !== 'percent') return
+      const big = sh.rows.slice(1).map((r) => r[c]).filter((v): v is number => typeof v === 'number' && v > 1.5)
+      if (big.length) out.push(`${sh.name}, columna ${c + 1} (${big[0]})`)
+    })
+  return out
+}
+
 /** Lámina cargada: más de 6 viñetas, o más de 60 palabras entre todas sus viñetas. */
 export function denseBullets(bullets: string[] | undefined): boolean {
   if (!bullets?.length) return false
