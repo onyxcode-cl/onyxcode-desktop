@@ -15,12 +15,14 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Todo se instala solo
 
 - **Sin preguntar**: ArtCraft (el diseñador de documentos) se descarga solo en segundo plano, en Mac y en Windows; en Mac también Node.js y uv, que usan los conectores locales de correo y calendario. Puedes usar la app mientras tanto; abajo a la izquierda se ve «Preparando herramientas…». Si falla la red, reintenta sola. Cada descarga se verifica antes de usarla.
-- **Solo lo que el sistema exige**: la pantalla «Preparando Lazunox» ya no aparece por esas piezas; queda solo para lo que macOS o Windows piden aprobar a una persona.
+- **Windows**: el entorno aislado de Overdrive también se prepara solo y no necesita administrador. Si Windows pide activar WSL o reiniciar, Overdrive te explica cómo.
+- **Equipos lentos**: si la revisión de arranque tarda, la instalación automática empieza igual cuando termina, sin molestarte.
+- **Solo lo que el sistema exige**: la pantalla «Preparando Lazunox» ya no aparece por esas piezas; queda solo para lo que macOS o Windows piden aprobar a una persona, y sus textos dicen lo que realmente pasa.
 
 ### Windows, a la par del Mac
 
 - **Traducir PDF y editar documentos en Windows**: Windows incluye ahora su propio Python, así que traducir PDF y Excel y editar Word, Excel y PowerPoint funcionan igual que en Mac, sin instalar nada.
-- **Textos de Windows**: en Windows ya no se habla de «Mac», Finder ni Llavero, ni en la app ni en la app del celular, que ahora sabe si tu equipo es Mac o PC.
+- **Textos de Windows**: en Windows ya no se habla de «Mac», Finder ni Llavero, ni en la app ni en la app del celular: antes de conectar dice «tu computador» y, una vez conectada, sabe si es Mac o PC.
 - **Overdrive abierto como administrador**: si abres Lazunox como administrador, la tarjeta de Overdrive lo explica en simple («Ciérralo y ábrelo de forma normal») en vez de un «no disponible» confuso.
 - **Cerrar la ventana con el acceso desde el celular activo**: la app queda viva en la bandeja, como en Mac.
 - **Descargas del navegador integrado**: Windows las marca como «descargadas de Internet» para que SmartScreen las revise.
