@@ -42,7 +42,7 @@ import { registerExtrasHandlers } from './ipc/extras-handlers'
 import { registerRemoteHandlers } from './ipc/remote-handlers'
 import { disposeTelegram, registerTelegramHandlers } from './ipc/telegram-handlers'
 import { disposeRemote, getOrgPolicy, remoteMode, setRemoteWin } from './remote/loader'
-import { shouldQuitWhenAllWindowsClosed } from './remote/lifecycle'
+import { shouldQuitOnMainWindowClosed, shouldQuitWhenAllWindowsClosed } from './remote/lifecycle'
 import { hasTray } from './extras/tray'
 import { resolveRemoteWin } from './remote/remote-win-flag'
 import { registerWindowRole } from './ipc/guard'
@@ -74,9 +74,9 @@ function capsOf(tasksWin: boolean, remoteWin = false, computerWin = false): Retu
   return { ...baseCaps, updater: baseCaps.updater && (process as NodeJS.Process & { windowsStore?: boolean }).windowsStore !== true }
 }
 /**
- * Bandera efectiva `tasksWin` (Tareas en Windows con WSL2): compilación (`TASKS_WIN_BUILD`, apagada) + opción del usuario o
- * `LAZUNOX_TASKS_WIN=1` sin empaquetar + política. Se calcula al arrancar (`whenReady`, con los ajustes ya leídos) y hace falta
- * reiniciar para que cambie. Apagada, Windows queda exactamente como hoy: sin modo Tareas, sin su backend, sin sus canales.
+ * Bandera efectiva `tasksWin` (Tareas en Windows con WSL2): `TASKS_WIN_BUILD` (hoy `true`) y la política; sin variable de entorno.
+ * Se calcula al arrancar (`whenReady`, con los ajustes ya leídos) y hace falta reiniciar para que cambie. Apagada, Windows queda
+ * exactamente como hoy: sin modo Tareas, sin su backend, sin sus canales.
  */
 let tasksWinOn = false
 /** Bandera efectiva `remoteWin` (control remoto en Windows; `remote/remote-win-flag.ts`): apagada por defecto, hace falta reiniciar. */
@@ -206,7 +206,17 @@ function createWindow(): BrowserWindow {
   win.webContents.once('did-finish-load', () => bootMarkers()?.loaded())
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
-    if (process.platform !== 'darwin') app.quit()
+    // Misma regla que `window-all-closed`: Windows con remoto activo y bandeja sigue vivo; durante una actualización se cierra como siempre.
+    if (
+      isUpdating() ||
+      shouldQuitOnMainWindowClosed({
+        platform: process.platform,
+        remoteWinOn,
+        remoteActive: remoteMode() !== 'off',
+        hasTray: hasTray()
+      })
+    )
+      app.quit()
   })
 
   // Enlaces externos → navegador del sistema; cualquier otra navegación fuera de `lazunox://app` (o

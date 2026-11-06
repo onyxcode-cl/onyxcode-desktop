@@ -16,3 +16,8 @@ export function shouldQuitWhenAllWindowsClosed(i: QuitDecisionInput): boolean {
   if (i.platform === 'win32' && i.remoteWinOn && i.remoteActive && i.hasTray) return false
   return true
 }
+
+/** ¿Debe cerrarse la app al cerrarse la ventana principal (`closed`)? Misma regla que `shouldQuitWhenAllWindowsClosed`. Puro. */
+export function shouldQuitOnMainWindowClosed(i: QuitDecisionInput): boolean {
+  return shouldQuitWhenAllWindowsClosed(i)
+}
