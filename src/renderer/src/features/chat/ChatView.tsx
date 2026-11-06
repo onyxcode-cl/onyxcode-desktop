@@ -3,6 +3,7 @@ import { displayTitle } from '@shared/session-title'
 import { BookOpen, Languages, Lightbulb, ListChecks, PenLine, type LucideIcon } from 'lucide-react'
 import { ApprovalNotice } from '../../app/mobile/ApprovalNotice'
 import { ChatComposer } from './ChatComposer'
+import { TranslateJobs } from '../translate-pdf/TranslateJobs'
 import { SessionsBackgroundJobs } from '../code/impl/BackgroundJobsConnectors'
 import { rootOf } from '../code/impl/child-sessions'
 import { ErrorNotice } from '../../components/conversation/ErrorNotice'
@@ -211,6 +212,7 @@ export function ChatView(): React.JSX.Element {
     <>
       <CompareConfirmDialog mode="chat" directory={null} />
       {!hero && <ChatBackgroundJobs sessionId={activeId} />}
+      <TranslateJobs />
       <ChatComposer
         onSend={send}
         onAbort={() => activeId && void abortChat(activeId)}

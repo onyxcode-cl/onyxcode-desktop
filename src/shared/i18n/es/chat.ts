@@ -188,6 +188,8 @@ export const chat = {
   'translate.pdf.cleanNote': 'También se creó una versión limpia, «{name}»: un PDF nuevo con el texto traducido y sin la foto del original (gastó más del modelo).',
   'translate.pdf.openClean': 'Abrir versión limpia',
   'translate.pdf.saveClean': 'Guardar versión limpia…',
+  'translate.pdf.job.title': 'Traduciendo «{name}» a {lang}',
+  'translate.pdf.job.dismiss': 'Quitar',
   'translate.pdf.openFile': 'Abrir',
   'translate.pdf.save': 'Guardar como…',
   'translate.pdf.saved': 'Guardado.',
