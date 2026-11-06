@@ -21,6 +21,7 @@ const KNOWN_ERRORS = [
   'unreadable',
   'encrypted',
   'scanned',
+  'noText',
   'tooLong',
   'noPython',
   'unsupported',
@@ -153,6 +154,7 @@ function Done({
   if (untranslated > 0) notes.push(t('translate.pdf.doneUntranslated', { n: untranslated }))
   if (outcome.pagesWithoutText.length > 0) notes.push(t('translate.pdf.doneNoText', { pages: outcome.pagesWithoutText.join(', ') }))
   if ((r.formatLost ?? 0) > 0) notes.push(t('translate.pdf.doneFormat', { n: r.formatLost ?? 0 }))
+  if ((r.cutOff ?? 0) > 0) notes.push(t('translate.pdf.doneCutOff', { n: r.cutOff ?? 0 }))
   if (r.linksDropped > 0) notes.push(t('translate.pdf.doneLinks', { n: r.linksDropped }))
   const save = (clean: boolean): void => {
     void call('translate:pdfSave', { jobId: outcome.jobId, ...(clean ? { clean: true } : {}) }).then((s) => s.saved && markJobSaved(job.id))
@@ -161,7 +163,7 @@ function Done({
     <>
       <p className="mt-1 break-words text-ui">{t('translate.pdf.doneTitle', { name: outcome.outName })}</p>
       <p className="mt-0.5 text-[12.5px] text-muted">
-        {outcome.kind === 'docx'
+        {outcome.kind === 'docx' || outcome.kind === 'xlsx'
           ? t('translate.pdf.doneStatsDoc', { n: r.translated })
           : t('translate.pdf.doneStats', { n: r.translated, pages: outcome.pages })}
       </p>

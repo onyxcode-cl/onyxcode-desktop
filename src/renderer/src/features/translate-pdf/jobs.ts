@@ -7,7 +7,7 @@
  */
 import { create } from 'zustand'
 import { t as tr } from '@shared/i18n'
-import { DOCX_MIME, type PdfFailReason, type TranslateKind, type TranslateLangCode } from '@shared/translate-pdf'
+import { DOCX_MIME, XLSX_MIME, type PdfFailReason, type TranslateKind, type TranslateLangCode } from '@shared/translate-pdf'
 import { call } from '../../lib/api'
 import { announce } from '../../lib/announce'
 import { useServer } from '../../stores/server'
@@ -52,10 +52,11 @@ export function bytesToBase64(bytes: Uint8Array): string {
   return btoa(bin)
 }
 
-/** PDF o Word según el tipo/extensión del archivo; `null` si no es ninguno. */
+/** PDF, Word o Excel según el tipo/extensión del archivo; `null` si no es ninguno. */
 export function fileKind(f: { type: string; name: string }): TranslateKind | null {
   if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) return 'pdf'
   if (f.type === DOCX_MIME || /\.docx$/i.test(f.name)) return 'docx'
+  if (f.type === XLSX_MIME || /\.xlsx$/i.test(f.name)) return 'xlsx'
   return null
 }
 
