@@ -1,0 +1,456 @@
+{
+  "_nota": "Cuenta permitida de ramas por plataforma por archivo (src/main, src/renderer y src/shared, sin pruebas). Claves: darwin y win32 = literales entre comillas, isMac, usrBin = /usr/bin/, binSh = /bin/sh. Se regenera con UPDATE_PLATFORM_BRANCHES=1 npx vitest run src/test/platform-branches.test.ts, solo después de añadir la fila de paridad en docs/PARIDAD-WINDOWS.json.",
+  "files": {
+    "src/main/background-shell/fs-port.ts": {
+      "win32": 1
+    },
+    "src/main/background-shell/mcp-server.ts": {
+      "win32": 1,
+      "binSh": 2
+    },
+    "src/main/background-shell/process-port.ts": {
+      "win32": 1,
+      "binSh": 1
+    },
+    "src/main/clipboard/paste-files.ts": {
+      "darwin": 1,
+      "win32": 3
+    },
+    "src/main/compare/git.ts": {
+      "win32": 2
+    },
+    "src/main/computer/adhoc.ts": {
+      "darwin": 1,
+      "usrBin": 1
+    },
+    "src/main/computer/app-icons.ts": {
+      "darwin": 1,
+      "win32": 1,
+      "usrBin": 1
+    },
+    "src/main/computer/assist-window.ts": {
+      "darwin": 1
+    },
+    "src/main/computer/computer-win-flag.ts": {
+      "win32": 2
+    },
+    "src/main/computer/grants.ts": {
+      "darwin": 3,
+      "win32": 6
+    },
+    "src/main/computer/mcp-platform-darwin.ts": {
+      "darwin": 2,
+      "usrBin": 9
+    },
+    "src/main/computer/mcp-platform-win32.ts": {
+      "win32": 1
+    },
+    "src/main/computer/mcp-platform.ts": {
+      "darwin": 2,
+      "win32": 3
+    },
+    "src/main/computer/mcp-server.ts": {
+      "darwin": 7,
+      "win32": 6
+    },
+    "src/main/computer/overlay.ts": {
+      "darwin": 2,
+      "isMac": 4
+    },
+    "src/main/computer/service-platform.ts": {
+      "darwin": 3,
+      "win32": 4,
+      "usrBin": 2
+    },
+    "src/main/computer/service.ts": {
+      "darwin": 7,
+      "win32": 3
+    },
+    "src/main/computer/stop-shortcut.ts": {
+      "win32": 1
+    },
+    "src/main/dialog/code-candidates.ts": {
+      "win32": 1
+    },
+    "src/main/dialog/folder-access.ts": {
+      "darwin": 3,
+      "usrBin": 2
+    },
+    "src/main/dialog/service.ts": {
+      "darwin": 1,
+      "win32": 2
+    },
+    "src/main/doctor/doctor.ts": {
+      "darwin": 5,
+      "win32": 1,
+      "usrBin": 2
+    },
+    "src/main/documents/input-path.ts": {
+      "darwin": 1
+    },
+    "src/main/editors/catalog.ts": {
+      "darwin": 1,
+      "win32": 2
+    },
+    "src/main/embedded-browser/downloads.ts": {
+      "darwin": 1,
+      "win32": 1,
+      "usrBin": 1
+    },
+    "src/main/extras/quick-entry.ts": {
+      "darwin": 1,
+      "isMac": 3
+    },
+    "src/main/extras/tray-style.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/extras/windows.ts": {
+      "darwin": 1
+    },
+    "src/main/files/chat-files.ts": {
+      "win32": 1
+    },
+    "src/main/files/fs-ops.ts": {
+      "win32": 1
+    },
+    "src/main/files/gallery-index.ts": {
+      "win32": 1
+    },
+    "src/main/files/watcher.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/host-exec/runner.ts": {
+      "win32": 3,
+      "binSh": 2
+    },
+    "src/main/index.ts": {
+      "darwin": 1,
+      "win32": 8
+    },
+    "src/main/ipc/app.ts": {
+      "win32": 1
+    },
+    "src/main/ipc/code-handlers.ts": {
+      "darwin": 3
+    },
+    "src/main/ipc/flash.ts": {
+      "win32": 1
+    },
+    "src/main/ipc/notify.ts": {
+      "darwin": 2,
+      "win32": 1
+    },
+    "src/main/ipc/pty-shell.ts": {
+      "win32": 1,
+      "usrBin": 1
+    },
+    "src/main/ipc/tasks-computer-wiring.ts": {
+      "darwin": 2
+    },
+    "src/main/ipc/tasks-files-handlers.ts": {
+      "darwin": 1,
+      "win32": 3,
+      "usrBin": 3
+    },
+    "src/main/ipc/telegram-handlers.ts": {
+      "darwin": 1
+    },
+    "src/main/ipc/update.ts": {
+      "win32": 1
+    },
+    "src/main/office/craft/craft-install.ts": {
+      "darwin": 1,
+      "win32": 2,
+      "usrBin": 3
+    },
+    "src/main/office/craft/craft-run.ts": {
+      "win32": 1
+    },
+    "src/main/office/craft/open-external.ts": {
+      "darwin": 2,
+      "win32": 1
+    },
+    "src/main/opencode/motor-app.ts": {
+      "usrBin": 4
+    },
+    "src/main/opencode/pids.ts": {
+      "win32": 1,
+      "binSh": 1
+    },
+    "src/main/opencode/server.ts": {
+      "darwin": 1,
+      "win32": 4
+    },
+    "src/main/opencode/shell-bg-mcp.ts": {
+      "win32": 3
+    },
+    "src/main/opencode/test-launcher.ts": {
+      "win32": 1
+    },
+    "src/main/pr/exec.ts": {
+      "win32": 3
+    },
+    "src/main/preflight/real.ts": {
+      "darwin": 6
+    },
+    "src/main/preflight/service.ts": {
+      "darwin": 1
+    },
+    "src/main/preflight/trust.ts": {
+      "darwin": 1,
+      "usrBin": 3
+    },
+    "src/main/process/child-env.ts": {
+      "win32": 3
+    },
+    "src/main/process/disclaim.ts": {
+      "darwin": 2
+    },
+    "src/main/project-profile/index.ts": {
+      "darwin": 1
+    },
+    "src/main/project-profile/linked.ts": {
+      "win32": 1
+    },
+    "src/main/pty/service.ts": {
+      "win32": 2
+    },
+    "src/main/pty/shell.ts": {
+      "win32": 1,
+      "binSh": 2
+    },
+    "src/main/remote/attention.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/remote/command-denylist.ts": {
+      "win32": 3
+    },
+    "src/main/remote/engine-proxy.ts": {
+      "win32": 1
+    },
+    "src/main/remote/fs-retry.ts": {
+      "win32": 1
+    },
+    "src/main/remote/keep-awake.ts": {
+      "win32": 1
+    },
+    "src/main/remote/lan-ip.ts": {
+      "win32": 2
+    },
+    "src/main/remote/lifecycle.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/remote/loader.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/remote/policy.ts": {
+      "darwin": 1,
+      "win32": 2
+    },
+    "src/main/remote/remote-win-flag.ts": {
+      "win32": 1
+    },
+    "src/main/remote/tunnel/binary.ts": {
+      "darwin": 2,
+      "win32": 5,
+      "usrBin": 4
+    },
+    "src/main/remote/tunnel/cloudflared.ts": {
+      "win32": 4,
+      "binSh": 3
+    },
+    "src/main/remote/tunnel/test-fake.ts": {
+      "binSh": 1
+    },
+    "src/main/runtimes/runtime-install.ts": {
+      "win32": 3
+    },
+    "src/main/scheduler/file-trigger.ts": {
+      "win32": 2
+    },
+    "src/main/security/web-security.ts": {
+      "darwin": 2,
+      "win32": 1,
+      "isMac": 3
+    },
+    "src/main/tasks/auto-mode.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/backends/index.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/tasks/backends/seatbelt.ts": {
+      "darwin": 1,
+      "usrBin": 1
+    },
+    "src/main/tasks/backends/spawn.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/backends/wsl-it-support.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/backends/wsl-real-deps.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/backends/wsl-setup.ts": {
+      "win32": 3
+    },
+    "src/main/tasks/backends/wsl.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/computer-agent.ts": {
+      "win32": 2
+    },
+    "src/main/tasks/files.ts": {
+      "darwin": 1,
+      "win32": 1,
+      "usrBin": 2
+    },
+    "src/main/tasks/folder-policy-win.ts": {
+      "win32": 3
+    },
+    "src/main/tasks/folder-policy.ts": {
+      "win32": 2
+    },
+    "src/main/tasks/manager.ts": {
+      "win32": 14
+    },
+    "src/main/tasks/mcp-tasks.ts": {
+      "win32": 1,
+      "usrBin": 2
+    },
+    "src/main/tasks/policy.ts": {
+      "win32": 4
+    },
+    "src/main/tasks/python-runtime.ts": {
+      "darwin": 1,
+      "win32": 3
+    },
+    "src/main/tasks/restore-points.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/sandbox-profile.ts": {
+      "usrBin": 8
+    },
+    "src/main/tasks/sandbox-service.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/main/tasks/sandbox.ts": {
+      "win32": 2
+    },
+    "src/main/tasks/storage.ts": {
+      "win32": 1,
+      "usrBin": 2
+    },
+    "src/main/tasks/tasks-win-flag.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/ui-path.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/usage-summary.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/zip-args.ts": {
+      "win32": 1
+    },
+    "src/main/translate-pdf/service.ts": {
+      "win32": 1
+    },
+    "src/main/update/boot.ts": {
+      "darwin": 1,
+      "win32": 2
+    },
+    "src/main/update/config.ts": {
+      "darwin": 1,
+      "win32": 2
+    },
+    "src/main/update/installer.ts": {
+      "usrBin": 9
+    },
+    "src/main/update/markers.ts": {
+      "darwin": 2,
+      "win32": 2
+    },
+    "src/main/update/swap.ts": {
+      "binSh": 2
+    },
+    "src/main/util/native-dialog.ts": {
+      "darwin": 1,
+      "usrBin": 1
+    },
+    "src/main/util/paths.ts": {
+      "win32": 3
+    },
+    "src/main/window-glass.ts": {
+      "darwin": 3,
+      "win32": 2
+    },
+    "src/renderer/remote/host-platform.ts": {
+      "win32": 3
+    },
+    "src/renderer/src/features/compare/testkit.ts": {
+      "darwin": 1
+    },
+    "src/renderer/src/features/settings/impl/ShortcutsSection.tsx": {
+      "isMac": 3
+    },
+    "src/renderer/src/lib/page-lang.ts": {
+      "win32": 1
+    },
+    "src/renderer/src/lib/platform.ts": {
+      "darwin": 3,
+      "win32": 1
+    },
+    "src/renderer/src/lib/window-controls.ts": {
+      "win32": 1
+    },
+    "src/shared/catalogo.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/shared/i18n/index.ts": {
+      "win32": 2
+    },
+    "src/shared/ipc-extras.ts": {
+      "win32": 1
+    },
+    "src/shared/ipc-remote.ts": {
+      "darwin": 3,
+      "win32": 3
+    },
+    "src/shared/keybindings.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/shared/mac-permissions.ts": {
+      "darwin": 1
+    },
+    "src/shared/opencode-links.ts": {
+      "win32": 1
+    },
+    "src/shared/platform-caps.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/shared/terminal-command.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/shared/unified-bridge.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/shared/window-chrome.ts": {
+      "darwin": 1,
+      "win32": 2
+    }
+  }
+}
