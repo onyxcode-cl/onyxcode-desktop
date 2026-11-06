@@ -9,6 +9,18 @@ import type { SetTravelKeepRequest, TravelInstallRequest, TravelInstallResult, T
 
 export type RemoteMode = 'off' | 'pairing' | 'active'
 
+/**
+ * Sistema del equipo al que está conectado el celular, solo para elegir los textos («tu Mac» / «tu PC»). Viaja en la respuesta de
+ * `app:info` que ve el celular (campo OPCIONAL: un Mac de una versión anterior no lo manda y el celular conserva los textos de
+ * siempre). No revela nada sensible ni cambia las capacidades.
+ */
+export type RemoteHostPlatform = 'darwin' | 'win32'
+
+/** `'darwin'`/`'win32'` si `v` lo es; cualquier otra cosa (ausente, otro sistema, basura) → `undefined`. */
+export function parseHostPlatform(v: unknown): RemoteHostPlatform | undefined {
+  return v === 'darwin' || v === 'win32' ? v : undefined
+}
+
 /** Días de validez de un celular vinculado desde su último uso (`null` = nunca caduca; solo se elige desde el Mac). */
 export type DeviceTtlDays = 30 | 90 | 365 | null
 export const DEVICE_TTL_OPTIONS: readonly DeviceTtlDays[] = [30, 90, 365, null]

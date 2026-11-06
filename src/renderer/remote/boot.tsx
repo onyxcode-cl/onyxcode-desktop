@@ -10,6 +10,8 @@ import '@renderer/app/globals.css'
 import '@renderer/app/mobile/mobile-tokens.css'
 import { setMissingKeyHandler } from '@shared/i18n'
 import { loadEsRest } from 'virtual:lazunox-es-rest'
+import type { RemoteLink } from '@shared/remote/link'
+import { applyHostPlatform, readCachedHostPlatform, syncHostPlatform } from './host-platform'
 import { mark } from './perf'
 import { loadHljs } from './shims/hljs-deferred'
 
@@ -26,6 +28,8 @@ function idle(fn: () => void): void {
 export function mountRemoteApp(): void {
   document.title = DISPLAY_NAME
   initLang()
+  // Textos «tu PC»/«tu Mac»: lo último que se vio en este celular, para acertar desde el primer cuadro (se confirma abajo).
+  applyHostPlatform(readCachedHostPlatform())
   installModalFocus()
   // Recuerda el tema del Mac (para la capa ligera) y ajusta `theme-color`: ver docs/MOBILE-UI.md.
   watchThemeSync()
@@ -55,6 +59,24 @@ export function mountRemoteApp(): void {
     })
   })
   render()
+  // Sistema del equipo (`app:info.hostPlatform`): si es Windows, las variantes `.win`. Si no se puede leer ahora (bloqueado,
+  // sin conexión), se reintenta cada vez que el enlace vuelve a estar en línea. Un Mac antiguo no manda el campo: nada cambia.
+  const api = (globalThis as { window?: { api?: { invoke?: (c: 'app:info') => Promise<{ ok: boolean; data?: unknown }> } } }).window?.api
+  if (api?.invoke) {
+    const invoke = api.invoke.bind(api)
+    const again = (): void => {
+      n++
+      render()
+    }
+    void syncHostPlatform(invoke, again).then((done) => {
+      if (done) return
+      const link = (globalThis as { __lazunoxLink?: RemoteLink }).__lazunoxLink
+      const off = link?.onStatus((st) => {
+        if (st !== 'online') return
+        void syncHostPlatform(invoke, again).then((ok) => ok && off?.())
+      })
+    })
+  }
   // Avisa al arranque ligero cuando ya pintó (retira su pantalla de carga).
   const g = globalThis as { __lazunoxAppMounted?: () => void }
   requestAnimationFrame(() =>

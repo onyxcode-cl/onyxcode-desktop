@@ -675,6 +675,16 @@ describe('eventos y resultados', () => {
     expect(eventPolicy('opencode:connection')).toBe('sanitize')
     expect(eventPolicy('pty:data')).toBe('deny')
   })
+  it('app:info lleva hostPlatform solo para darwin y win32', () => {
+    expect(sanitizeResult('app:info', { name: 'x', platform: 'win32', userDataPath: 'C:\\u' })).toEqual({
+      name: 'x',
+      platform: 'win32',
+      hostPlatform: 'win32'
+    })
+    expect(sanitizeResult('app:info', { platform: 'darwin' })).toEqual({ platform: 'darwin', hostPlatform: 'darwin' })
+    expect(sanitizeResult('app:info', { platform: 'linux' })).toEqual({ platform: 'linux' })
+    expect(sanitizeResult('app:info', { name: 'x' })).toEqual({ name: 'x' })
+  })
   it('app:info pierde userDataPath', () => {
     const src = { name: 'x', userDataPath: '/Users/me/Library', chatDirectory: '/chat' }
     expect(sanitizeResult('app:info', src)).toEqual({ name: 'x', chatDirectory: '/chat' })
