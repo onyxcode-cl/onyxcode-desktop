@@ -230,3 +230,55 @@ describe('apply / open / save / discard', () => {
     expect(existsSync(join(root, 'jobs', 'suelto.txt'))).toBe(false)
   })
 })
+
+describe('clases de página y imagen de página (hojas escaneadas)', () => {
+  it('extract devuelve la clase de cada página y descarta valores raros', async () => {
+    const run = vi.fn(async (_py: string, _args: string[], cwd: string) => {
+      writeFileSync(
+        join(cwd, 'segmentos.json'),
+        JSON.stringify({
+          paginas: 3,
+          clases: { '1': 'escaneada_ocr', '2': 'digital', '3': 'inventada', '9': 'digital' },
+          segmentos: [{ id: 'p1-0', pagina: 1, texto: 'Hola' }]
+        })
+      )
+      return ok()
+    })
+    const r = await new PdfTranslateService(deps(run)).extract({ name: 'a.pdf', base64: PDF_B64 })
+    expect(r.ok && r.pageClasses).toEqual({ 1: 'escaneada_ocr', 2: 'digital' })
+  })
+
+  it('pageImage pide la página a Python, devuelve el PNG en base64 y repite sin chocar con el archivo anterior', async () => {
+    const png = Buffer.from('\x89PNG\r\n\x1a\nfake')
+    const run = vi.fn(async (_py: string, args: string[], cwd: string) => {
+      if (args[1] === 'imagen') {
+        expect(args.slice(1)).toEqual(['imagen', 'input.pdf', '--pagina', '2', '-o', 'pagina-2.png'])
+        writeFileSync(join(cwd, 'pagina-2.png'), png)
+        return ok()
+      }
+      writeFileSync(join(cwd, 'segmentos.json'), segJson(2))
+      return ok()
+    })
+    const svc = new PdfTranslateService(deps(run))
+    const ex = await svc.extract({ name: 'a.pdf', base64: PDF_B64 })
+    if (!ex.ok) throw new Error('extract')
+    const a = await svc.pageImage(ex.jobId, 2)
+    expect(a).toEqual({ ok: true, mime: 'image/png', base64: png.toString('base64') })
+    expect(await svc.pageImage(ex.jobId, 2)).toMatchObject({ ok: true })
+  })
+
+  it('pageImage rechaza un id ajeno, una página inválida, un Word o un fallo de Python', async () => {
+    const run = vi.fn(async (_py: string, args: string[], cwd: string) => {
+      if (args[1] === 'imagen') return ok({ code: 1 })
+      writeFileSync(join(cwd, 'segmentos.json'), segJson(2))
+      return ok()
+    })
+    const svc = new PdfTranslateService(deps(run))
+    expect(await svc.pageImage('../../etc/passwd', 1)).toEqual({ ok: false })
+    const ex = await svc.extract({ name: 'a.pdf', base64: PDF_B64 })
+    if (!ex.ok) throw new Error('extract')
+    expect(await svc.pageImage(ex.jobId, 0)).toEqual({ ok: false })
+    expect(await svc.pageImage(ex.jobId, 1.5)).toEqual({ ok: false })
+    expect(await svc.pageImage(ex.jobId, 1)).toEqual({ ok: false })
+  })
+})

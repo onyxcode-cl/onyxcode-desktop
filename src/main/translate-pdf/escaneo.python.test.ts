@@ -88,4 +88,13 @@ describe.skipIf(!tienePython)('translate_pdf.py: hoja escaneada con capa OCR', (
     const inf = JSON.parse(readFileSync(join(dir, 'informe2.json'), 'utf8'))
     expect((inf.cifras_distintas ?? []).length).toBeGreaterThanOrEqual(1)
   })
+
+  it('el comando «imagen» dibuja una página como PNG con tope de tamaño y rechaza una página que no existe', () => {
+    const out = run(['imagen', 'escaneo.pdf', '--pagina', '1', '-o', 'pagina-1.png'])
+    expect(out).toContain('OK: página 1')
+    const png = readFileSync(join(dir, 'pagina-1.png'))
+    expect(png.subarray(1, 4).toString('latin1')).toBe('PNG')
+    expect(png.length).toBeGreaterThan(1000)
+    expect(() => run(['imagen', 'escaneo.pdf', '--pagina', '9', '-o', 'pagina-9.png'])).toThrow()
+  })
 })

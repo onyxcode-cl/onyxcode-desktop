@@ -17,6 +17,7 @@ import {
   PDF_JOB_ID_RE,
   TRANSLATE_PDF_MAX_BYTES,
   TRANSLATE_PDF_MAX_CHARS,
+  TRANSLATE_PAGE_IMAGE_MAX_BYTES,
   TRANSLATE_PDF_MAX_SEGMENTS,
   translatedName,
   type PdfApplyReport,
@@ -25,6 +26,8 @@ import {
   type PdfExtractRequest,
   type PdfExtractResult,
   type PdfFailReason,
+  type PdfPageClass,
+  type PdfPageImageResult,
   type PdfSegment,
   type TranslateKind
 } from '@shared/translate-pdf'
@@ -151,7 +154,7 @@ export class PdfTranslateService {
       return fail(
         /contraseña/i.test(r.stderr) ? 'encrypted' : /no se pudo abrir|mupdf|damaged|dañad/i.test(r.stderr) ? 'unreadable' : 'failed'
       )
-    let parsed: { paginas?: number; segmentos?: PdfSegment[] }
+    let parsed: { paginas?: number; segmentos?: PdfSegment[]; clases?: Record<string, string> }
     try {
       parsed = JSON.parse(await readFile(join(dir, 'segmentos.json'), 'utf8')) as typeof parsed
     } catch {
@@ -166,7 +169,32 @@ export class PdfTranslateService {
     const pages = Number.isInteger(parsed.paginas) ? (parsed.paginas as number) : Math.max(...segments.map((s) => s.pagina))
     const withText = new Set(segments.map((s) => s.pagina))
     const pagesWithoutText = Array.from({ length: pages }, (_, i) => i + 1).filter((p) => !withText.has(p))
-    return { ok: true, jobId, pages, segments, pagesWithoutText }
+    const pageClasses: Record<number, PdfPageClass> = {}
+    for (const [k, v] of Object.entries(parsed.clases ?? {})) {
+      const n = Number(k)
+      if (Number.isInteger(n) && n >= 1 && n <= pages && (v === 'digital' || v === 'escaneada_ocr' || v === 'escaneada_sin_texto')) pageClasses[n] = v
+    }
+    return { ok: true, jobId, pages, segments, pagesWithoutText, ...(Object.keys(pageClasses).length ? { pageClasses } : {}) }
+  }
+
+  /** Dibuja una página como PNG para que el modelo la vea (hojas escaneadas). Solo PDF; nada sale de la carpeta del trabajo. */
+  async pageImage(jobId: string, page: number): Promise<PdfPageImageResult> {
+    const python = this.d.python()
+    const dir = this.jobDir(jobId)
+    if (!python || !dir || !Number.isInteger(page) || page < 1) return { ok: false }
+    const meta = await this.meta(dir)
+    if (!meta || meta.kind === 'docx') return { ok: false }
+    const file = `pagina-${page}.png`
+    await rm(join(dir, file), { force: true })
+    const r = await this.d.run(python, [this.d.script('pdf'), 'imagen', 'input.pdf', '--pagina', String(page), '-o', file], dir)
+    if (r.code !== 0 || r.timedOut) return { ok: false }
+    try {
+      const path = join(dir, file)
+      if ((await stat(path)).size > TRANSLATE_PAGE_IMAGE_MAX_BYTES) return { ok: false }
+      return { ok: true, mime: 'image/png', base64: (await readFile(path)).toString('base64') }
+    } catch {
+      return { ok: false }
+    }
   }
 
   async apply(req: PdfApplyRequest): Promise<PdfApplyResult> {

@@ -19,7 +19,7 @@ import { call } from '../../lib/api'
 import { announce } from '../../lib/announce'
 import { useServer } from '../../stores/server'
 import { askModel } from '../code/impl/pr/pr-ai'
-import { chatModelInfo } from './model-info'
+import { chatModelInfo, chatModelSeesImages } from './model-info'
 import { TranslateError, translatePdf, type TranslateDeps, type TranslateOutcome, type TranslateProgress } from './translate'
 
 /** Traducción ya decidida (la tarjeta del compositor): la ventana arranca sola con este PDF e idioma. */
@@ -59,7 +59,8 @@ function realDeps(): TranslateDeps {
     extract: (req) => call('translate:pdfExtract', req),
     apply: (req) => call('translate:pdfApply', req),
     discard: (jobId) => call('translate:pdfDiscard', { jobId }),
-    ask: (prompt, signal) => askModel(dir, prompt, { mode: 'chat', signal, timeoutMs: 240_000 })
+    ask: (prompt, signal, images) => askModel(dir, prompt, { mode: 'chat', signal, timeoutMs: 240_000, images }),
+    pageImage: (req) => call('translate:pdfPageImage', req)
   }
 }
 
@@ -148,7 +149,10 @@ function TranslatePdfDialog(): React.JSX.Element {
         kind: job.kind,
         target: job.target,
         signal: c.signal,
-        onProgress: (progress) => setView({ kind: 'running', progress })
+        onProgress: (progress) => setView({ kind: 'running', progress }),
+        // la IA ve las hojas escaneadas como imagen (si el modelo lee imágenes) y arma una ficha del documento antes de traducir
+        vision: chatModelSeesImages(),
+        card: true
       })
       setView({ kind: 'done', outcome, saved: false })
       announce(tr('translate.pdf.doneTitle', { name: outcome.outName }), 'polite')

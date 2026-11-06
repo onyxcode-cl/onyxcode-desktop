@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   batchSegments,
+  buildCardPrompt,
   buildTranslatePrompt,
   firstJsonObject,
+  glossaryFor,
+  parseCardAnswer,
   parseTranslateAnswer,
   translatedName,
   trimGlossary,
@@ -127,5 +130,44 @@ describe('trimGlossary / translatedName', () => {
     expect(translatedName('../../etc/x.pdf', 'es')).toBe('.._.._etc_x (es).pdf')
     expect(translatedName('', 'fr')).toBe('documento (fr).pdf')
     expect(translatedName('Acta final.DOCX', 'en', 'docx')).toBe('Acta final (en).docx')
+  })
+})
+
+describe('ficha del documento y glosario relevante', () => {
+  it('parseCardAnswer lee la ficha aunque venga con texto alrededor, y devuelve null si no sirve', () => {
+    const c = parseCardAnswer('Claro:\n```json\n{"summary":" Póliza de seguro. ","glossary":{"Insured":"Asegurado","":"x","ok":5}}\n```')
+    expect(c).toEqual({ summary: 'Póliza de seguro.', glossary: { Insured: 'Asegurado' } })
+    expect(parseCardAnswer('no hay json')).toBeNull()
+    expect(parseCardAnswer('{"summary":"","glossary":{}}')).toBeNull()
+  })
+
+  it('buildCardPrompt incluye la muestra y pide solo JSON', () => {
+    const p = buildCardPrompt({ target: 'es', docName: 'poliza.pdf', sample: '[page 1] hello' })
+    expect(p).toContain('into Spanish')
+    expect(p).toContain('poliza.pdf')
+    expect(p.endsWith('[page 1] hello')).toBe(true)
+  })
+
+  it('glossaryFor deja los términos de la ficha y los que aparecen en el lote (sin mayúsculas), no los demás', () => {
+    const g = { Deductible: 'Deducible', Arbitrator: 'Árbitro', Freight: 'Flete' }
+    expect(glossaryFor('The deductible stated', g, { Insured: 'Asegurado' })).toEqual({ Insured: 'Asegurado', Deductible: 'Deducible' })
+    expect(Object.keys(glossaryFor('x', g, {}, 0))).toEqual([])
+  })
+
+  it('el prompt con ficha y glosario relevante incluye el resumen, solo los términos del lote y la nota de la imagen', () => {
+    const p = buildTranslatePrompt({
+      target: 'es',
+      batch: [seg('p1-0', 'The deductible applies.')],
+      glossary: { Deductible: 'Deducible', Arbitrator: 'Árbitro' },
+      docName: 'x.pdf',
+      docCard: { summary: 'Insurance policy.', glossary: { Insured: 'Asegurado' } },
+      relevantGlossary: true,
+      pageImage: true
+    })
+    expect(p).toContain('About this document: Insurance policy.')
+    expect(p).toContain('Deductible → Deducible')
+    expect(p).toContain('Insured → Asegurado')
+    expect(p).not.toContain('Arbitrator')
+    expect(p).toContain('SCANNED page')
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { PdfExtractResult, PdfSegment } from '@shared/translate-pdf'
-import { TranslateError, translatePdf, type TranslateDeps, type TranslateProgress } from './translate'
+import { TranslateError, cardSample, planBatches, translatePdf, type TranslateDeps, type TranslateProgress } from './translate'
 
 const seg = (n: number): PdfSegment => ({ id: `p1-${n}`, pagina: 1, texto: `texto ${n} ` + 'x'.repeat(200) })
 const segs = (n: number): PdfSegment[] => Array.from({ length: n }, (_, i) => seg(i))
@@ -145,5 +145,84 @@ describe('translatePdf', () => {
     const deps = makeDeps({ apply: vi.fn(async () => ({ ok: false as const, reason: 'timeout' as const })) })
     await expect(translatePdf(deps, opts())).rejects.toMatchObject({ reason: 'timeout' })
     expect(deps.discard).toHaveBeenCalled()
+  })
+})
+
+describe('hojas escaneadas y ficha del documento', () => {
+  const scanSeg = (page: number, n: number): PdfSegment => ({ id: `p${page}-${n}`, pagina: page, texto: `texto ${page}.${n}` })
+  const twoPages = (): PdfExtractResult => ({
+    ok: true,
+    jobId: 'aaaaaaaaaaaaaaaa',
+    pages: 3,
+    segments: [scanSeg(1, 0), scanSeg(1, 1), scanSeg(2, 0), scanSeg(3, 0)],
+    pagesWithoutText: [],
+    pageClasses: { 1: 'escaneada_ocr', 2: 'digital', 3: 'escaneada_ocr' }
+  })
+
+  it('planBatches: cada hoja escaneada va en su propio lote con su página; sin visión todo se agrupa como antes', () => {
+    const e = twoPages()
+    if (!e.ok) throw new Error('x')
+    const plan = planBatches(e.segments, e.pageClasses, true)
+    expect(plan.map((p) => [p.scannedPage, p.segments.map((s) => s.id)])).toEqual([
+      [1, ['p1-0', 'p1-1']],
+      [undefined, ['p2-0']],
+      [3, ['p3-0']]
+    ])
+    expect(planBatches(e.segments, e.pageClasses, false)).toHaveLength(1)
+  })
+
+  it('con visión adjunta la imagen solo en los lotes de hojas escaneadas y avisa al modelo', async () => {
+    const calls: { prompt: string; images: number }[] = []
+    const pageImage = vi.fn(async ({ page }: { page: number }) => ({ ok: true as const, mime: 'image/png' as const, base64: `IMG${page}` }))
+    const deps = makeDeps(
+      { ask: vi.fn(async (p: string, _s: AbortSignal, images?: unknown[]) => (calls.push({ prompt: p, images: images?.length ?? 0 }), answerAll(p))), pageImage },
+      twoPages()
+    )
+    await translatePdf(deps, { ...opts(), vision: true })
+    expect(calls.map((c) => c.images)).toEqual([1, 0, 1])
+    expect(calls[0].prompt).toContain('SCANNED page')
+    expect(calls[1].prompt).not.toContain('SCANNED page')
+    expect(pageImage).toHaveBeenCalledTimes(2)
+  })
+
+  it('sin visión no pide ninguna imagen; si la imagen falla se traduce igual, solo con texto', async () => {
+    const pageImage = vi.fn(async () => ({ ok: true as const, mime: 'image/png' as const, base64: 'X' }))
+    const d1 = makeDeps({ pageImage }, twoPages())
+    await translatePdf(d1, opts())
+    expect(pageImage).not.toHaveBeenCalled()
+    const failing = vi.fn(async () => ({ ok: false as const }))
+    const imgs: number[] = []
+    const d2 = makeDeps(
+      { pageImage: failing, ask: vi.fn(async (p: string, _s: AbortSignal, i?: unknown[]) => (imgs.push(i?.length ?? 0), answerAll(p))) },
+      twoPages()
+    )
+    const r = await translatePdf(d2, { ...opts(), vision: true })
+    expect(imgs).toEqual([0, 0, 0])
+    expect(r.failedSegments).toBe(0)
+  })
+
+  it('la ficha se pide primero, su glosario viaja a los lotes y un fallo de la ficha no detiene la traducción', async () => {
+    const prompts: string[] = []
+    const card = JSON.stringify({ summary: 'Insurance policy, formal tone.', glossary: { Insured: 'Asegurado' } })
+    const ask = vi.fn(async (p: string) => (prompts.push(p), p.includes('preparing to translate') ? card : answerAll(p)))
+    await translatePdf(makeDeps({ ask }, twoPages()), { ...opts(), card: true })
+    expect(prompts[0]).toContain('preparing to translate')
+    expect(prompts[1]).toContain('About this document: Insurance policy, formal tone.')
+    expect(prompts[1]).toContain('Insured → Asegurado')
+    const bad = vi.fn(async (p: string) => {
+      if (p.includes('preparing to translate')) throw new Error('boom')
+      return answerAll(p)
+    })
+    const r = await translatePdf(makeDeps({ ask: bad }, twoPages()), { ...opts(), card: true })
+    expect(r.failedSegments).toBe(0)
+  })
+
+  it('cardSample toma el comienzo de cada página y respeta el tope', () => {
+    const segs = [scanSeg(1, 0), scanSeg(1, 1), scanSeg(1, 2), scanSeg(2, 0)]
+    const sample = cardSample(segs)
+    expect(sample).toContain('[page 1] texto 1.0 / texto 1.1')
+    expect(sample).not.toContain('texto 1.2')
+    expect(sample).toContain('[page 2]')
+    expect(cardSample(segs, 20)).toBe('')
   })
 })

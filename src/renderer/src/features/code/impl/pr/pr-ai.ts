@@ -33,6 +33,8 @@ export interface AskOptions {
   timeoutMs?: number
   /** Prueba: sustituye al reloj/espera. */
   sleep?: (ms: number) => Promise<void>
+  /** Imágenes que el modelo debe VER junto al texto (por ejemplo la página escaneada que se traduce). `url` es un data URL. */
+  images?: { mime: string; filename: string; url: string }[]
 }
 
 interface MsgPart {
@@ -85,7 +87,10 @@ export async function askModel(directory: string, prompt: string, opts: AskOptio
       directory,
       agent: CHAT_AGENT,
       model: { providerID: effective.providerID, modelID: effective.modelID },
-      parts: [{ type: 'text', text: prompt }]
+      parts: [
+        { type: 'text', text: prompt },
+        ...(opts.images ?? []).map((i) => ({ type: 'file' as const, mime: i.mime, filename: i.filename, url: i.url }))
+      ]
     })
     if ((sent as { error?: unknown }).error) throw new Error(errorMessage((sent as { error?: unknown }).error))
     for (;;) {

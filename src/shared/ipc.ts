@@ -10,7 +10,14 @@
 import type { AccessLevel, LinkResult, PickLinkedResult, ProjectProfileView, VaultSetView } from './project-profile'
 import type { PasteResult, PasteScope } from './paste-files'
 import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
-import type { PdfApplyRequest, PdfApplyResult, PdfExtractRequest, PdfExtractResult } from './translate-pdf'
+import type {
+  PdfApplyRequest,
+  PdfApplyResult,
+  PdfExtractRequest,
+  PdfExtractResult,
+  PdfPageImageRequest,
+  PdfPageImageResult
+} from './translate-pdf'
 import type {
   AppInfo,
   NotifyTarget,
@@ -150,6 +157,8 @@ export interface IpcInvokeContract {
    */
   'translate:pdfExtract': { req: PdfExtractRequest; res: PdfExtractResult }
   'translate:pdfApply': { req: PdfApplyRequest; res: PdfApplyResult }
+  /** Una hoja escaneada dibujada como imagen (PNG) para que el modelo la vea junto a sus textos. */
+  'translate:pdfPageImage': { req: PdfPageImageRequest; res: PdfPageImageResult }
   'translate:pdfOpen': { req: { jobId: string }; res: { opened: boolean } }
   'translate:pdfSave': { req: { jobId: string }; res: { saved: boolean } }
   'translate:pdfDiscard': { req: { jobId: string }; res: void }
@@ -245,6 +254,7 @@ export const IPC_INVOKE_CHANNELS = [
   'attach:extractOffice',
   'translate:pdfExtract',
   'translate:pdfApply',
+  'translate:pdfPageImage',
   'translate:pdfOpen',
   'translate:pdfSave',
   'translate:pdfDiscard',

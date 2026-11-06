@@ -690,6 +690,29 @@ def _resalta(pag, tramo, y_base, sz, color):
     pag.draw_rect(r, color=None, fill=color, overlay=False)
 
 
+# ---------------------------------------------------------------- imagen de una página
+
+LADO_MAX_PX = 2000   # lado largo máximo de la imagen que ve el modelo (más no mejora la lectura y encarece cada página)
+
+
+def cmd_imagen(a):
+    """Dibuja UNA página como PNG para que el modelo la vea (los textos de una hoja escaneada vienen de una capa OCR que puede
+    traer errores: con la imagen el modelo entiende el orden, las columnas y las palabras mal reconocidas)."""
+    exigir_entrada(a.pdf)
+    exigir_salida_nueva(a.salida)
+    doc = fitz.open(a.pdf)
+    if doc.needs_pass:
+        error("el PDF tiene contraseña; este script no la maneja.")
+    if not 1 <= a.pagina <= len(doc):
+        error("la página %d no existe (el PDF tiene %d)." % (a.pagina, len(doc)))
+    pag = doc[a.pagina - 1]
+    lado = max(pag.rect.width, pag.rect.height)
+    escala = min(LADO_MAX_PX / lado, 4.0)
+    pix = pag.get_pixmap(matrix=fitz.Matrix(escala, escala), colorspace=fitz.csRGB, alpha=False)
+    pix.save(a.salida)
+    print("OK: página %d -> %s (%dx%d px)" % (a.pagina, a.salida, pix.width, pix.height))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -703,6 +726,11 @@ def main():
     p.add_argument("-o", "--salida", required=True)
     p.add_argument("--informe")
     p.set_defaults(fn=cmd_aplicar)
+    i = sub.add_parser("imagen", help="dibuja una página como PNG (para que el modelo la vea)")
+    i.add_argument("pdf")
+    i.add_argument("--pagina", type=int, required=True)
+    i.add_argument("-o", "--salida", required=True)
+    i.set_defaults(fn=cmd_imagen)
     a = ap.parse_args()
     a.fn(a)
 
