@@ -418,6 +418,21 @@ export function percentMisfits(sheets: Array<{ name: string; columnFormats?: Arr
   return out
 }
 
+/**
+ * Forma de las hojas (la primera fila es el encabezado): hojas con solo el encabezado (✘), encabezados de más de 25 caracteres y hojas de
+ * más de 12 columnas (avisos). Devuelve los nombres o textos afectados.
+ */
+export function sheetShapeIssues(sheets: Array<{ name: string; rows: unknown[][] }>): { empty: string[]; longHeader: string[]; wide: string[] } {
+  const out = { empty: [] as string[], longHeader: [] as string[], wide: [] as string[] }
+  for (const sh of sheets) {
+    if (sh.rows.length <= 1) out.empty.push(sh.name)
+    const header = sh.rows[0] ?? []
+    for (const h of header) if (typeof h === 'string' && h.length > 25) out.longHeader.push(`«${h.slice(0, 25)}…» (${sh.name})`)
+    if (header.length > 12) out.wide.push(`${sh.name} (${header.length} columnas)`)
+  }
+  return out
+}
+
 /** Lámina cargada: más de 6 viñetas, o más de 60 palabras entre todas sus viñetas. */
 export function denseBullets(bullets: string[] | undefined): boolean {
   if (!bullets?.length) return false

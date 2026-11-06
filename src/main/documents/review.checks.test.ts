@@ -278,6 +278,28 @@ describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
   })
 })
 
+describe('R10 en Excel: hoja sin datos (✘) y encabezados largos (ℹ)', () => {
+  const book = async (): Promise<Buffer> => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file('xl/worksheets/sheet1.xml', '<worksheet><sheetData/></worksheet>')
+    return z.generateAsync({ type: 'nodebuffer' })
+  }
+  it('una hoja con solo el encabezado → ✘', async () => {
+    const r = await reviewDocument('xlsx', await book(), { sheets: [{ name: 'Datos', rows: [['Región', 'Ventas']] }] })
+    expect(bad(r)).toContain('Hoja sin datos (solo el encabezado): Datos')
+  })
+  it('encabezado de más de 25 caracteres y más de 12 columnas → ℹ, no ✘', async () => {
+    const largo = 'Ventas netas del trimestre con impuestos'
+    const cols = Array.from({ length: 13 }, (_, i) => `C${i + 1}`)
+    const r = await reviewDocument('xlsx', await book(), { sheets: [{ name: 'Datos', rows: [[largo, ...cols.slice(1)], Array(13).fill(1)] }] })
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Encabezado de más de 25 caracteres')
+    expect(notes(r)).toContain('Hoja de más de 12 columnas')
+  })
+})
+
 describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
   const book = async (): Promise<Buffer> => {
     const z = new JSZip()

@@ -21,7 +21,8 @@ import {
   slideTitleIssues,
   monotonousLayouts,
   denseBullets,
-  percentMisfits
+  percentMisfits,
+  sheetShapeIssues
 } from './review-checks'
 
 describe('R7: todo viñetas', () => {
@@ -32,6 +33,25 @@ describe('R7: todo viñetas', () => {
   it('menos de 4 láminas de contenido, o alguna de otro tipo → no', () => {
     expect(monotonousLayouts([undefined, undefined, undefined, undefined])).toBe(false)
     expect(monotonousLayouts([undefined, 'bullets', 'stat', 'bullets', 'bullets'])).toBe(false)
+  })
+})
+
+describe('R10: forma de las hojas', () => {
+  it('hoja con solo encabezado → vacía; encabezado de 26 caracteres → largo; 13 columnas → ancha', () => {
+    const r = sheetShapeIssues([
+      { name: 'Vacía', rows: [['a', 'b']] },
+      { name: 'Larga', rows: [['x'.repeat(26), 'b'], [1, 2]] },
+      { name: 'Ancha', rows: [Array(13).fill('c'), Array(13).fill(1)] }
+    ])
+    expect(r.empty).toEqual(['Vacía'])
+    expect(r.longHeader).toEqual([`«${'x'.repeat(25)}…» (Larga)`])
+    expect(r.wide).toEqual(['Ancha (13 columnas)'])
+  })
+  it('encabezado de 25 caracteres y 12 columnas no avisan', () => {
+    const r = sheetShapeIssues([{ name: 'Ok', rows: [Array(12).fill('c'), Array(12).fill(1)] }])
+    expect(r.longHeader).toEqual([])
+    expect(r.wide).toEqual([])
+    expect(sheetShapeIssues([{ name: 'Ok', rows: [['x'.repeat(25)], [1]] }]).longHeader).toEqual([])
   })
 })
 

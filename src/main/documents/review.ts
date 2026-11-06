@@ -26,6 +26,7 @@ import {
   monotonousLayouts,
   denseBullets,
   percentMisfits,
+  sheetShapeIssues,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -485,6 +486,15 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       )}`
     )
     for (const w of found.filter((x) => x.severity === 'warning').slice(0, 3)) r.note(`${w.sheet}!${w.cell}: ${w.message}`)
+    const shape = sheetShapeIssues(spec.sheets)
+    r.check(
+      shape.empty.length === 0,
+      'Todas las hojas tienen datos además del encabezado',
+      `Hoja sin datos (solo el encabezado): ${short(shape.empty)}. Pon los datos o quita la hoja`
+    )
+    if (shape.longHeader.length)
+      r.note(`Encabezado de más de 25 caracteres: ${short(shape.longHeader, 3)}: en la columna se corta; acórtalo`)
+    if (shape.wide.length) r.note(`Hoja de más de 12 columnas: ${short(shape.wide, 3)}: cuesta leerla en pantalla; reparte en dos hojas`)
     if (spec.sheets.some((sh) => sh.columnFormats?.includes('percent'))) {
       const misfits = percentMisfits(spec.sheets)
       r.check(
