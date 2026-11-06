@@ -1,5 +1,7 @@
 # Tareas en Windows (WSL2): estado, pendiente y pruebas en el PC
 
+> **Estado 2026-11 (2026-11-06).** Tareas (que la interfaz llama Overdrive) funciona hoy en Windows **sin administrador**, con WSL listo (dato verificado ese día). No está apagada: `TASKS_WIN_BUILD = true` (`src/shared/feature-flags.ts`) y la bandera efectiva `tasksWin` la resuelve `src/main/tasks/tasks-win-flag.ts`, que solo la apaga la política `disableWslTasks`. Donde este documento diga «apagada», «DESACTIVADA» o «sin administrador/WSL pendiente» como estado actual, manda esta nota; el resto queda como historia de cada decisión.
+
 Fase 1 del plan: distro dedicada `Lazunox-Tareas` (sin unidades montadas, sin interop), OpenCode de Linux en un espacio de red vacío con Landlock, y todo el tráfico por la stdio de `wsl.exe` hacia los `EgressProxy`/`CredentialProxy` que ya viven en `main`. La clave real nunca entra en la VM. Entrada del changelog: F8-B81. Sección de seguridad: `docs/SEGURIDAD.md` §3 tricies octies.
 
 ## Decisión del 2026-10-07 (tarde): se quita el consentimiento beta — «no quiero nada beta»
@@ -22,15 +24,15 @@ El dueño decidió (2026-10-07, expresamente) ofrecer **Tareas y Control del PC 
 2. **Solo se avanza** de versión de imagen; no se reinstala una anterior (imagen mala: subir `version`).
 3. La URL de `wsl-rootfs` mantiene la forma de URL del repo de la imagen WSL que fija `wsl-pin.ts` (organización D9 pendiente) aunque no esté publicado; **no se relaja `parseWslPin`**. El camino de descarga se conserva (falla cerrado con 404); el predeterminado es la imagen incluida.
 
-Hasta el commit de la bandera (`TASKS_WIN_BUILD = true`, aparte y solo) lo que sigue de este documento describe el estado previo; donde diga «DESACTIVADA» o «apagada», manda este bloque.
+El commit de la bandera (`TASKS_WIN_BUILD = true`, aparte y solo) ya está hecho (ver la nota de Estado 2026-11 al inicio). Lo que sigue de este documento describe el estado previo a esa fecha.
 
-**Estado previo: Tareas en Windows sigue DESACTIVADA**: `capsFor('win32').tasks` es `false` mientras la bandera de producto `tasksWin` esté apagada, y `backends/index.ts` no importa el backend WSL. Nada de esto cambia el comportamiento actual de Windows ni el de macOS.
+**Estado previo (superado en 2026-11; ya no vale): Tareas en Windows estaba DESACTIVADA**: `capsFor('win32').tasks` era `false` mientras la bandera de producto `tasksWin` estuviera apagada, y `backends/index.ts` no importaba el backend WSL. Nada de esto cambia el comportamiento actual de Windows ni el de macOS.
 
 ## Estado (hecho y probado en la Mac, con dobles)
 
 | Pieza                                                                                                                | Dónde                                                                                              |
 | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `tasksSandbox` (`seatbelt`/`wsl`/`none`) y bandera `tasksWin` (apagada)                                              | `src/shared/platform-caps.ts`                                                                      |
+| `tasksSandbox` (`seatbelt`/`wsl`/`none`) y bandera `tasksWin` (encendida en la compilación desde 2026-10; efectiva en `tasks/tasks-win-flag.ts`) | `src/shared/platform-caps.ts`                                                                      |
 | Interfaz `SandboxBackend`, Seatbelt extraído sin cambios, backend `none`, `selectBackend`                            | `src/main/tasks/backends/{types,seatbelt,none,spawn,index}.ts`                                     |
 | Equivalencia byte a byte del lanzamiento Seatbelt (fixture capturado ANTES de extraer, commit `baeb0bd`/`c70fbdb`)   | `sandbox.equivalence.test.ts`, `__fixtures__/seatbelt-before.json`                                 |
 | Rutas Windows ↔ `/win/c/…` (UNC, ADS, `..`, reservados, 8.3, enlaces con `lstat` inyectado)                          | `wsl-paths.ts`                                                                                     |
@@ -56,12 +58,12 @@ Comando: `powershell -NoProfile -ExecutionPolicy Bypass -File C:\onyx\wt\scripts
 
 1. **T-W3 restante**: rootfs reproducible y `scripts/build-wsl-rootfs.*`, clave `wsl-rootfs` en `pin.json`, `setup()` del backend (`wsl --import` con sha256), copiar `resources/wsl/*` a `/opt/lazunox` y `opencode` Linux a `/opt/lazunox/bin/opencode` (el lanzador asume esas rutas y el uid 1000 de `lazunox`), tarjeta «Preparar Tareas en Windows» (es/en) y `tasks:sandboxStatus`/`tasks:sandboxSetup`. Empaquetado: `resources/wsl/**` está excluido del `.asar` (`electron-builder.js`) hasta decidir cómo se entrega.
 2. **T-W4**: activar `tasks-handlers` en win32 con la bandera, mapear rutas en TODOS los consumidores (`files.ts`, `monitor.ts`, adjuntos, puntos de restauración, «Mostrar en el Explorador»), `tasks.linux.md`, `storage.ts` (medir/limpiar `/home/lazunox/xdg/<clave>`), rutinas, política `disableWslTasks`, y un `selectBackend('win32', { wsl })` que importe `wsl.ts` de forma dinámica SOLO con la bandera.
-3. **T-W5**: batería A1–A15 automatizada (`scripts/win/tasks-attack.ps1`) e informe.
+3. **T-W5**: batería A1–A15 automatizada (`scripts/win/tasks-attack.ps1`) e informe. (Estado 2026-11: el script todavía no está en el repositorio, y `tasks-win-report.ts` quedó archivado.)
 4. Datos que `main` aún no tiene en el backend: el binario `opencode` de Linux (`SandboxLaunchSpec.bin` es el del anfitrión y WSL lo ignora), `OPENCODE_CONFIG_CONTENT` con rutas del anfitrión si las hubiera, y el stdout del servidor (no se reenvía; el stderr sí, por `wsl.exe`).
 
 ## Checklist EXACTO de pruebas que requieren el PC Windows
 
-Reglas: `ssh <usuario>@<ip-del-pc-de-pruebas>`, solo bajo `C:\onyx\` (carpetas de prueba `C:\onyx\tareas\…`, distro de prueba en `C:\onyx\wsl\`; la ruta de producto será `%LOCALAPPDATA%\Lazunox\wsl`), `powershell -NoProfile -ExecutionPolicy Bypass -File` con logs en archivo, límite de tiempo en cada paso, sin carga artificial. Nunca `wsl --shutdown`. Al final: `Get-Process wsl*,vmmem*,opencode*,electron*`, `wsl -l -v` (la distro en `Stopped`) y `uptime`. **No hacer nada de esto hasta que el dueño autorice instalar WSL2 (decisión 1).**
+Reglas: `ssh <usuario>@<ip-del-pc-de-pruebas>`, solo bajo `C:\onyx\` (carpetas de prueba `C:\onyx\tareas\…`, distro de prueba en `C:\onyx\wsl\`; la ruta de producto será `%LOCALAPPDATA%\Lazunox\wsl`), `powershell -NoProfile -ExecutionPolicy Bypass -File` con logs en archivo, límite de tiempo en cada paso, sin carga artificial. Nunca `wsl --shutdown`. Al final: `Get-Process wsl*,vmmem*,opencode*,electron*`, `wsl -l -v` (la distro en `Stopped`) y `uptime`. **No hacer nada de esto hasta que el dueño autorice instalar WSL2 (decisión 1).** (Estado 2026-11: WSL ya está listo en el PC de pruebas; la decisión 1 está resuelta.)
 
 **Las dos sesiones.** La sesión SSH del administrador va **elevada** y el fallo abierto de WSL (microsoft/WSL#12443) puede montar las unidades pese a `automount enabled=false` al entrar elevado en una distro en marcha. Repetir 2 a 9 y los ataques **dos veces**: (a) por SSH (elevada) y (b) desde una sesión **NO elevada** (tarea programada interactiva de un solo uso bajo `C:\onyx\`, o el dueño frente al PC). Si `wsl.exe` falla por SSH (Store), usar la tarea programada y borrarla al terminar.
 
@@ -106,4 +108,4 @@ Reglas: `ssh <usuario>@<ip-del-pc-de-pruebas>`, solo bajo `C:\onyx\` (carpetas d
 6. **Ruta visible para el agente** (`/win/c/Users/…`) y la variante de prompts `tasks.linux.md`.
 7. **Fase 2** (AppContainer): spike de un día; si falla, ¿modelo de usuario dedicado (administrador en la instalación) o Windows solo con WSL?
 8. **Política `disableWslTasks`** y si la desinstalación NSIS borra la distro (por defecto sí).
-9. **Activar la bandera `tasksWin`**: solo tras pasar este checklist y A1–A15 en las dos sesiones.
+9. **Activar la bandera `tasksWin`**: solo tras pasar este checklist y A1–A15 en las dos sesiones. (Estado 2026-11: ya está encendida en la compilación desde la decisión del dueño de 2026-10-07 «sin consentimiento beta», ver arriba; esta casilla queda como historia.)

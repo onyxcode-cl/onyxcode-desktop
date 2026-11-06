@@ -1,12 +1,14 @@
 # Control remoto desde el celular en Windows: estado y pruebas en el PC
 
-Objetivo del dueño: «todo igual a Mac, adaptado para Windows». El control remoto (PWA por red local, modo «También fuera de casa» y Modo viaje) existía solo en macOS. Esta rama lo deja listo detrás de la bandera `remoteWin`, **APAGADA por defecto**. Con ella apagada, Windows queda exactamente como antes (`capsFor('win32').remote === false`, sin canales activos, sin sección en Ajustes) y macOS no cambia. **Nada de esto se ha probado en un Windows real**: todo lo hecho se verificó en la Mac con la plataforma inyectada.
+> **Estado 2026-11 (2026-11-06).** `REMOTE_WIN_BUILD = true` desde la decisión del dueño de 2026-10-07: el control remoto en Windows va encendido de entrada (salvo que la política de la organización lo bloquee). Donde este documento diga «APAGADA por defecto» o «literal `false`», describe el estado anterior. Probado en el PC: el servicio arranca y sirve la PWA a otro equipo, y el helper pasó sus pruebas. **Sin probar:** emparejar un celular real, WebRTC y el modo fuera de casa.
+
+Objetivo del dueño: «todo igual a Mac, adaptado para Windows». El control remoto (PWA por red local, modo «También fuera de casa» y Modo viaje) existía solo en macOS. Esta rama lo dejó listo detrás de la bandera `remoteWin` (**encendida desde 2026-10-07**, ver la nota de arriba). Con la bandera apagada, Windows queda exactamente como antes (`capsFor('win32').remote === false`, sin canales activos, sin sección en Ajustes) y macOS no cambia. **Nada de esto se ha probado en un Windows real**: todo lo hecho se verificó en la Mac con la plataforma inyectada.
 
 Garantías de seguridad (AGENTS.md §8, `docs/SEGURIDAD.md`): no se relaja ninguna. Cifrado WebRTC/DTLS, emparejamiento por QR y código, límites de aprobación, política de la organización, auditoría y listas de denegación son los mismos; los cambios de seguridad solo AÑADEN negativas para Windows.
 
 ## La bandera
 
-`remoteWin = win32 && !política.bloquea && (REMOTE_WIN_BUILD || LAZUNOX_REMOTE_WIN=1 sin empaquetar)` (`src/main/remote/remote-win-flag.ts`). `REMOTE_WIN_BUILD` es un literal `false` que solo cambia el dueño, en un commit aparte (una guardia lee el literal). Vive ahí y no en `src/shared/feature-flags.ts` porque esa es zona intocable (AGENTS.md §7). Para probar en el PC: `LAZUNOX_REMOTE_WIN=1 npm run dev`. Viaja al preload como `--lazunox-caps=remoteWin` (`caps-argv.ts`), `main` la fija en `loader.setRemoteWin` y hace falta reiniciar para que cambie.
+`remoteWin = win32 && !política.bloquea && (REMOTE_WIN_BUILD || LAZUNOX_REMOTE_WIN=1 sin empaquetar)` (`src/main/remote/remote-win-flag.ts`). `REMOTE_WIN_BUILD` es un literal que hoy vale `true` (desde 2026-10-07; antes valía `false`) y solo cambia el dueño, en un commit aparte (una guardia lee el literal). Vive ahí y no en `src/shared/feature-flags.ts` porque esa es zona intocable (AGENTS.md §7). Para probar en el PC: `LAZUNOX_REMOTE_WIN=1 npm run dev`. Viaja al preload como `--lazunox-caps=remoteWin` (`caps-argv.ts`), `main` la fija en `loader.setRemoteWin` y hace falta reiniciar para que cambie.
 
 ## Inventario
 

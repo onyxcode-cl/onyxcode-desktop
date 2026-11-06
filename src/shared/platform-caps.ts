@@ -27,11 +27,9 @@ export interface PlatformCaps {
   computerBackend: ComputerBackend
   /** Actualizador automático que sustituye la aplicación. */
   updater: boolean
-  /** El texto de «mantener el equipo despierto» menciona al Mac (solo tiene sentido con Tareas). */
-  keepAwakeText: boolean
   /**
-   * «Vista rápida» de archivos (`qlmanage`) en Tareas. Solo macOS: en Windows no se activa con `tasksWin`
-   * (la tanda W6 la responde con PLATFORM_UNSUPPORTED). Campo nuevo, sin consumidores todavía.
+   * «Vista rápida» de archivos (`qlmanage`) en Tareas. Solo macOS: en Windows es `false` y no hay botón. Lo consume
+   * `Deliverables.tsx` (botón «Vista rápida» de los entregables).
    */
   quickLook: boolean
   /**
@@ -67,16 +65,19 @@ export type ComputerBackend = 'ax' | 'uia' | 'none'
 
 /** Banderas de producto que modulan las capacidades (todas apagadas por defecto; las lee `main`). */
 export interface CapsFlags {
-  /** Tareas (beta) en Windows con WSL2. APAGADA hasta pasar la batería de ataques en el PC (docs/WINDOWS-TAREAS.md). */
+  /**
+   * Tareas en Windows con WSL2. Encendida en la compilación (`TASKS_WIN_BUILD = true`); la bandera efectiva la resuelve
+   * `src/main/tasks/tasks-win-flag.ts`, que también respeta la política `disableWslTasks` (docs/WINDOWS-TAREAS.md).
+   */
   tasksWin?: boolean
   /**
-   * Control del PC en Windows (UI Automation). APAGADA hasta pasar S1–S15 en el PC (plan win-C). Además exige
-   * `tasksWin` (Control total es un modo de Tareas): `computer = win && tasksWin && computerWin`.
+   * Control del PC en Windows (UI Automation). Sin interruptor propio: exige `tasksWin` (Control total es un modo de
+   * Tareas) y que `cu-helper.exe` esté presente (`src/main/computer/computer-win-flag.ts`): `computer = win && tasksWin && computerWin`.
    */
   computerWin?: boolean
   /**
-   * Control remoto desde el celular en Windows. APAGADA hasta que el dueño lo pruebe en el PC (docs/REMOTO-WINDOWS.md). La
-   * resuelve `src/main/remote/remote-win-flag.ts`; no depende de `tasksWin` (el remoto expone Chat y Code; Tareas solo si existe).
+   * Control remoto desde el celular en Windows. Encendida en la compilación (`REMOTE_WIN_BUILD = true`, desde 2026-10-07; la resuelve
+   * `src/main/remote/remote-win-flag.ts`, que respeta la política `blocked`). No depende de `tasksWin` (el remoto expone Chat y Code; Tareas solo si existe).
    */
   remoteWin?: boolean
   /** La ventana puede ser translúcida (vibrancy en macOS, Mica/Acrylic en Windows 11). Solo adorno: la resuelve `main`. */
@@ -95,7 +96,6 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
       computer: false,
       computerBackend: 'none',
       updater: false,
-      keepAwakeText: false,
       quickLook: false,
       remote: false,
       terminal: false,
@@ -117,7 +117,6 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     // macOS: intercambio de la .app. Windows: aviso siempre y, si `installConfig.enabled` (src/main/update/config.ts), intercambio
     // de la carpeta por usuario. La build de la Store lo apaga en `main/index.ts` (process.windowsStore).
     updater: mac || win,
-    keepAwakeText: mac,
     quickLook: mac,
     remote: mac || (win && flags.remoteWin === true),
     terminal: true,
