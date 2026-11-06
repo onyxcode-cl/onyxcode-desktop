@@ -110,7 +110,8 @@ Idioma de destino: el que pidan; si no lo dicen, el contrario al idioma del docu
 6. **Lee `informe.json` y corrige antes de entregar**: `cifras_distintas` (una cifra, fecha o importe del original no está en tu traducción: corrígela), `largo_raro`
    (traducción mucho más corta o larga que el original: probable omisión), `sin_traduccion`, `no_cabe` y `letra_reducida` (acorta esos textos). Vuelve a aplicar con otro nombre de salida.
    Código de salida 3 = algo no cabe. El script termina comparando la estructura (`ESTRUCTURA: idéntica al original`, también suelto:
-   `PY scripts/../../_shared/comparar_estructura.py doc.pdf doc-en.pdf`); si dice «CAMBIÓ» en un PDF digital, no lo entregues.
+   `PY scripts/../../_shared/comparar_estructura.py doc.pdf doc-en.pdf`); si dice «CAMBIÓ» en un PDF digital, no lo entregues. **En una hoja escaneada «CAMBIÓ» es lo normal**
+   (el texto nuevo es texto de verdad sobre una foto: cambian los bloques de texto y los dibujos): no es un error, mira las hojas.
 7. Mira el resultado con `documentos_renderizar` (si existe) o `check_pdf.py --render`, **junto al original**: textos que chocan, celdas apretadas, restos del idioma
    original en los bordes, resaltados mal puestos. Corrige la traducción de esos segmentos y vuelve a aplicar.
 8. **Escaneos: versión limpia (opcional)**. Si el documento es 100 % escaneado, ofrece (o hazla si la piden) un PDF NUEVO con el texto traducido, sin la foto del original:
@@ -118,7 +119,9 @@ Idioma de destino: el que pidan; si no lo dicen, el contrario al idioma del docu
    nombrándolo `doc-limpio-en`. Úsala con el texto ya corregido en el paso 6. Avisa que se pierde el parecido exacto (logos, sellos, líneas de tabla) y que gasta más del modelo.
 9. Entrega: nombre(s) del archivo (fiel y, si la hiciste, limpia), páginas, y en **«Para revisar»** lo que no se pudo resolver.
 
-Limitaciones (dilas si aplican): en un escaneo, las palabras que el OCR no detectó (sellos, firmas, algún rótulo suelto) quedan en el idioma original y los sellos o
+Limitaciones (dilas si aplican): **en un escaneo no se conservan las negritas ni los tamaños grandes de los títulos** (la capa OCR no los declara: los títulos salen en letra normal), y
+los rótulos de formularios que el OCR unió en un solo texto («Policy No Name and address…», «Year of Deductible manufacture») salen como una sola línea; los espacios que añadas en la
+traducción se colapsan, no sirven para separarlos. Si importan los títulos o el formulario, ofrece la versión limpia (paso 8). En un escaneo, las palabras que el OCR no detectó (sellos, firmas, algún rótulo suelto) quedan en el idioma original y los sellos o
 firmas que pasan por debajo del texto pueden quedar dañados al tapar; si el fondo es una foto con color o ruido, revisa que no queden manchas. Si omites una etiqueta
 `<l=N>`, ese enlace se quita (el informe lo lista en `enlaces_quitados`). Texto dentro de imágenes y texto vertical no se traducen. PDF escaneado SIN capa de texto: sin OCR.
 Idiomas: fuentes Arial/Times/Courier incorporadas (Latin: español, inglés, francés, alemán, portugués…). Para chino, árabe, ruso, etc. no hay fuente todavía: dilo en

@@ -479,6 +479,19 @@ class _MapaTinta:
         return fitz.Rect(x0 / sc, y0 / sc, (x1 + 1) / sc, (y1 + 1) / sc) | r
 
 
+def _tam_tipico(segs):
+    """Tamaño de letra típico de la hoja (mediana ponderada por caracteres). En una hoja escaneada la capa OCR a veces declara
+    tamaños muy distintos para párrafos que en la foto miden lo mismo; por eso un párrafo largo no arranca más grande que esto."""
+    pares = sorted((round(s["size"], 1), len(s["text"])) for s in segs if len(s["text"]) >= 40)
+    total = sum(n for _, n in pares)
+    acum = 0
+    for tam, n in pares:
+        acum += n
+        if acum >= total / 2:
+            return tam
+    return None
+
+
 def _tapar_original(pag, trabajo):
     """Tapa con el color del fondo cada línea que se va a traducir (para hojas escaneadas, donde el texto original es una imagen):
     la caja de la capa OCR, ensanchada 3 pt, y luego crecida hasta donde llega la tinta real de la foto."""
@@ -625,6 +638,7 @@ def cmd_aplicar(a):
         if escaneada:
             informe.setdefault("escaneadas", []).append(n + 1)
         segs = segmentos_de_pagina(pag)
+        tipico = _tam_tipico(segs) if escaneada else None
         hl = _resaltados(pag)
         obst = _obstaculos(pag, hl)
         enlaces_orig = pag.get_links()
@@ -721,6 +735,8 @@ def cmd_aplicar(a):
             debajo = [o["bbox"][1] for o in otros if o["bbox"][1] >= y1 - 2 and o["bbox"][0] < derecha and o["bbox"][2] > x0 and o["bbox"][1] > y0 + 2]
             libre = max((min(debajo) - y0 - 1) if debajo else (y1 - y0 + 40), y1 - y0)
             sz = s["size"]
+            if tipico and len(s["text"]) >= 40:
+                sz = min(sz, tipico * 1.05)   # hoja escaneada: un párrafo largo no arranca mucho más grande que el resto de la hoja
             while True:
                 lineas = _envolver(fuentes_s, palabras, sz, w)
                 cabe_ancho = all(_ancho_pal(fuentes_s, p_, sz) <= w + 0.5 for p_ in palabras)   # ninguna palabra se sale de su espacio
@@ -730,7 +746,7 @@ def cmd_aplicar(a):
                 sz -= 0.2
             if not all(_ancho_pal(fuentes_s, p_, sz) <= w + 0.5 for p_ in palabras) or (len(lineas) - 1) * sz * INTERLINEA + sz * 0.95 > libre - 1.0 + 0.01:
                 informe["no_cabe"].append(sid)
-            if sz < s["size"] - 0.01:
+            if sz < s["size"] - 0.01 and not (tipico and len(s["text"]) >= 40 and s["size"] > tipico * 1.05):
                 informe["letra_reducida"].append({"id": sid, "de": round(s["size"], 1), "a": round(sz, 1)})
             rgb = _rgb(s["color"])
             # solo se justifica lo que el original justificaba: todas sus líneas menos la última llegan al mismo borde derecho
