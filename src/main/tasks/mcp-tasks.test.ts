@@ -56,8 +56,7 @@ describe('tasksMcpContribution · prefijo de entorno', () => {
 })
 
 describe('descripción de bgshell_start por plataforma', () => {
-  const cmdOf = (p: NodeJS.Platform): string =>
-    String((toolsFor(p)[0].inputSchema as { properties: { command: { description: string } } }).properties.command.description)
+  const cmdOf = (p: NodeJS.Platform): string => String(toolsFor(p)[0].inputSchema.properties.command.description)
   it('win32 dice cmd.exe /d /s /c; darwin y linux dicen /bin/sh -c', () => {
     expect(shellLabel('win32')).toBe('cmd.exe /d /s /c')
     expect(cmdOf('win32')).toContain('cmd.exe /d /s /c')
