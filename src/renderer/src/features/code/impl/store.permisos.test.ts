@@ -57,8 +57,18 @@ describe('modo de permisos → sesión del motor', () => {
     expect(st().permissionMode).toBe('manual')
     const rules = rulesetFor('manual') ?? []
     const asked = rules.filter((r) => r.action === 'ask' && r.pattern === '*').map((r) => r.permission)
-    // `bgshell_start` (F8-B204) pregunta igual que `bash` y va delante del bloque del modo.
-    expect(asked).toEqual(['bgshell_start', 'edit', 'write', 'bash', 'webfetch', 'websearch', 'external_directory', 'task'])
+    // `bgshell_start` (F8-B204) pregunta igual que `bash` y `documentos_crear` igual que `write`; van delante del bloque del modo.
+    expect(asked).toEqual([
+      'bgshell_start',
+      'documentos_crear',
+      'edit',
+      'write',
+      'bash',
+      'webfetch',
+      'websearch',
+      'external_directory',
+      'task'
+    ])
   })
 
   it('bgshell (F8-B204): sus reglas van ANTES del bloque del modo y la sesión sigue terminando con él', () => {
@@ -71,7 +81,11 @@ describe('modo de permisos → sesión del motor', () => {
         'bgshell_stop',
         'bgshell_list'
       ])
-      expect(rules.slice(5)).toEqual(rulesetForMode(mode))
+      // Después, `documentos` (documentos_crear igual que `write`, renderizar siempre pasa) y por último el bloque del modo.
+      expect(rules.slice(5, 7).map((r) => r.permission)).toEqual(['documentos_crear', 'documentos_renderizar'])
+      expect(rules[5]!.action).toBe(mode === 'manual' || mode === 'plan' ? 'ask' : 'allow')
+      expect(rules[6]!.action).toBe('allow')
+      expect(rules.slice(7)).toEqual(rulesetForMode(mode))
       expect(rules[0]!.action).toBe(mode === 'bypass' ? 'allow' : 'ask')
     }
     expect(approvalKindOf(rulesetFor('auto'))).toBe('auto')

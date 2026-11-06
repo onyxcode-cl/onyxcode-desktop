@@ -743,6 +743,8 @@
  "code.perm.always",
  "code.perm.alwaysTitle",
  "code.perm.bash",
+ "code.perm.documentos_crear",
+ "code.perm.documentos_renderizar",
  "code.perm.doom_loop",
  "code.perm.edit",
  "code.perm.external_directory",
