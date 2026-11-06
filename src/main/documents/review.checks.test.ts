@@ -323,6 +323,33 @@ describe('R11 en PDF: posición fija (✘), familias y encabezados anchos (ℹ)'
   })
 })
 
+describe('R12 en los archivos: restos de plantilla nuevos (✘)', () => {
+  const pdf1 = Buffer.from('%PDF-1.4\n1 0 obj\n<</Type /Pages\n/Count 1\n/Kids []>>\nendobj\n')
+  it('[logo] en un PDF → ✘; TBC en un Word → ✘', async () => {
+    const pdf = reviewPdf(
+      '<html lang="es"><head><style>@page{size:A4;margin:20mm}</style></head><body><p>Cliente [logo]</p></body></html>',
+      pdf1
+    )
+    expect(bad(pdf)).toContain('[logo/firma/imagen]')
+    const word = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', 'Fecha: TBC')))
+    expect(bad(word)).toContain('TBC')
+  })
+  it('N/A como celda entera en una hoja → ✘; «N/A del sistema» dentro de una frase no', async () => {
+    const z = new JSZip()
+    z.file('xl/workbook.xml', '<workbook xmlns:r="r"><sheets><sheet name="Datos" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    z.file('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>')
+    z.file(
+      'xl/worksheets/sheet1.xml',
+      '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>N/A</t></is></c></row>' +
+        '<row r="2"><c r="A2" t="inlineStr"><is><t>N/A del sistema</t></is></c></row></sheetData></worksheet>'
+    )
+    const buf = await z.generateAsync({ type: 'nodebuffer' })
+    const r = await reviewDocument('xlsx', buf)
+    expect(bad(r)).toContain('«N/A» como texto de plantilla (Datos!A1)')
+    expect(bad(r)).not.toContain('A2')
+  })
+})
+
 describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
   const book = async (): Promise<Buffer> => {
     const z = new JSZip()

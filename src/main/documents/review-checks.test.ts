@@ -25,7 +25,8 @@ import {
   sheetShapeIssues,
   fontFamilies,
   wideHeaderRows,
-  hasFixedPosition
+  hasFixedPosition,
+  isNaCell
 } from './review-checks'
 
 describe('R7: todo viñetas', () => {
@@ -182,6 +183,24 @@ describe('restos de plantilla', () => {
   })
   it('no confunde la palabra «todo» ni texto normal con restos', () => {
     expect(templateLeftovers('Lo hicimos todo bien. Todo el equipo participó; el índice [1] y la nota [a].')).toEqual([])
+  })
+})
+
+describe('R12: más restos de plantilla', () => {
+  it('TBC, «to be confirmed», [logo] / [firma] / [imagen] son restos', () => {
+    expect(templateLeftovers('Fecha: TBC')).toContain('TBC')
+    expect(templateLeftovers('Precio to be confirmed')).toContain('to be…')
+    expect(templateLeftovers('Lugar [logo de la empresa]')).toContain('[logo/firma/imagen]')
+    expect(templateLeftovers('Firma: [Firma del cliente]')).toContain('[logo/firma/imagen]')
+  })
+  it('no dispara con texto normal (logo, firma o to be sin el resto)', () => {
+    expect(templateLeftovers('Sin logo en la portada, la firma va al final. Hay que ser to be honest.')).toEqual([])
+  })
+  it('N/A solo cuenta si es toda la celda', () => {
+    expect(isNaCell('N/A')).toBe(true)
+    expect(isNaCell(' n/a ')).toBe(true)
+    expect(isNaCell('N/A del sistema')).toBe(false)
+    expect(isNaCell('0,22')).toBe(false)
   })
 })
 

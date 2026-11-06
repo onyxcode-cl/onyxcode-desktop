@@ -10,6 +10,9 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/lorem ipsum/i, 'lorem ipsum'],
   [/\bTODO\b/, 'TODO'],
   [/\bTBD\b/, 'TBD'],
+  [/\bTBC\b/, 'TBC'],
+  [/\bto be (confirmed|determined|defined)\b/i, 'to be…'],
+  [/\[\s*(logo|firma|imagen)\b[^\]]{0,40}\]/i, '[logo/firma/imagen]'],
   [/\[\s*(insert|insertar|aquí|aqui|nombre|empresa|fecha|título|titulo|texto|cliente)\b[^\]]{0,40}\]/i, '[insertar…]'],
   [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b/i, '[PENDIENTE…]'],
   [/\[\s*(\.{3}|…)\s*\]/, '[…]'],
@@ -20,6 +23,14 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/haga clic para|haz clic para|click to (add|edit)/i, 'texto de plantilla'],
   [/\bx{3,}\b/i, 'xxx']
 ]
+
+/**
+ * Una celda que es solo «N/A» (sin nada más): resto de plantilla en una hoja de cálculo. Se mira celda por celda, porque dentro de un texto
+ * corrido «N/A» puede ser legítimo («N/A del sistema»).
+ */
+export function isNaCell(text: string): boolean {
+  return /^\s*n\/a\s*$/i.test(text)
+}
 
 /** Restos de plantilla encontrados en un texto (sin repetir). */
 export function templateLeftovers(text: string): string[] {

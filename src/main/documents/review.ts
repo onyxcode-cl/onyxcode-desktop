@@ -27,6 +27,7 @@ import {
   denseBullets,
   percentMisfits,
   sheetShapeIssues,
+  isNaCell,
   fontFamilies,
   hasFixedPosition,
   wideHeaderRows,
@@ -424,6 +425,7 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const noValue: string[] = []
   const brokenRefs: string[] = []
   const textAsNumber: string[] = []
+  const naCells: string[] = []
   /** Resultado numérico guardado en el archivo para cada celda con fórmula, por posición de hoja y celda. */
   const computed = new Map<string, number>()
   const known = new Set(sheets.map((x) => x.title.toLowerCase()))
@@ -450,6 +452,7 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       const label = cells.find((c) => c.text && !c.f && TOTAL_LABEL.test(c.text))
       for (const c of cells) {
         if (c.text) allText += ' ' + c.text
+        if (c.text && isNaCell(c.text)) naCells.push(`${sheet}!${c.ref}`)
         // Número escrito como texto en una celda que no es un encabezado ni un código con ceros a la izquierda.
         if (c.text && c.type !== 'n' && !c.f && /^-?[1-9]\d{0,14}([.,]\d+)?$/.test(c.text.trim()) && Number(/\d+/.exec(c.ref)?.[0]) > 1)
           textAsNumber.push(`${sheet}!${c.ref}`)
@@ -477,6 +480,12 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     `Fórmulas con referencias rotas: ${short(brokenRefs)}`
   )
   checkTemplate(r, allText)
+  if (naCells.length)
+    r.check(
+      false,
+      '',
+      `Celdas con «N/A» como texto de plantilla (${short(naCells)}): pon el valor real, «—» o quita la columna`
+    )
   if (isXlsxSpec(spec)) {
     const found = reviewFormulas(spec)
     const errs = found.filter((x) => x.severity === 'error')
