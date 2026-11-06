@@ -105,6 +105,10 @@ export async function runDoctor(d: DoctorDeps, now: () => number = Date.now): Pr
   if (d.platform === 'darwin') {
     const x = await d.run('/usr/bin/xcode-select', ['-p'])
     push({ id: 'git', level: x.code === 0 ? 'ok' : 'warn', fix: x.code === 0 ? undefined : 'xcodeSelect' })
+  } else if (d.platform === 'win32') {
+    // En Windows git viene de Git para Windows: basta con preguntar la versión (no hay instalador que abrir ni botón que ofrecer).
+    const g = await d.run('git', ['--version'])
+    push({ id: 'git', level: g.code === 0 ? 'ok' : 'warn' })
   }
 
   const free = d.freeBytes()

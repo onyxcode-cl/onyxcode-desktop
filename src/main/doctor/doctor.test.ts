@@ -100,7 +100,7 @@ describe('doctor', () => {
     )
     expect(r1.items.some((i) => i.id === 'accessibility')).toBe(false)
     const r2 = await runDoctor(base({ platform: 'win32', keysBin: null, craft: () => ({ state: 'unsupported' }) }))
-    expect(r2.items.some((i) => i.id === 'macos' || i.id === 'git')).toBe(false)
+    expect(r2.items.some((i) => i.id === 'macos')).toBe(false)
   })
 
   it('en Windows no pide Accesibilidad ni Grabación de pantalla (permisos de macOS) aunque el ayudante los dé por no concedidos', async () => {
@@ -125,6 +125,32 @@ describe('doctor', () => {
     await runDoctor(base({ run: async (f) => (calls.push(f), { code: 0, out: 'ok-libs "layout"' }) }))
     expect(calls.some((c) => c.endsWith('/git'))).toBe(false)
     expect(calls).toContain('/usr/bin/xcode-select')
+  })
+
+  it('Windows con Git instalado: git ok y sin arreglo', async () => {
+    const r = await runDoctor(base({ platform: 'win32', run: async () => ({ code: 0, out: 'git version 2.45.0.windows.1' }) }))
+    expect(r.items.find((i) => i.id === 'git')).toMatchObject({ level: 'ok' })
+    expect(r.items.find((i) => i.id === 'git')?.fix).toBeUndefined()
+  })
+
+  it('Windows sin Git: aviso (no fallo), sin botón de herramientas de Apple, y se pregunta `git --version`', async () => {
+    const calls: Array<[string, string[]]> = []
+    const r = await runDoctor(
+      base({
+        platform: 'win32',
+        run: async (f, a) => (calls.push([f, a]), f === 'git' ? { code: -1, out: 'spawn git ENOENT' } : { code: 0, out: 'ok-libs' })
+      })
+    )
+    expect(calls).toContainEqual(['git', ['--version']])
+    expect(r.items.find((i) => i.id === 'git')).toMatchObject({ level: 'warn' })
+    expect(r.items.find((i) => i.id === 'git')?.fix).toBeUndefined()
+    expect(r.overall).toBe('warn')
+  })
+
+  it('en Mac no se pregunta `git --version`', async () => {
+    const calls: Array<[string, string[]]> = []
+    await runDoctor(base({ run: async (f, a) => (calls.push([f, a]), { code: 0, out: 'ok-libs "layout"' }) }))
+    expect(calls.some(([, a]) => a.includes('--version'))).toBe(false)
   })
 })
 

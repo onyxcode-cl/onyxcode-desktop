@@ -407,6 +407,8 @@ export const settings = {
   'settings.doctor.item.git.title': 'Herramientas de línea de comandos de Apple',
   'settings.doctor.item.git.ok': 'Herramientas instaladas',
   'settings.doctor.item.git.warn': 'Faltan las herramientas de línea de comandos de Apple (necesarias para git)',
+  'settings.doctor.item.git.title.win': 'Git',
+  'settings.doctor.item.git.warn.win': 'Falta Git para Windows (necesario para los cambios y el historial)',
   'settings.doctor.item.disk.title': 'Espacio en disco',
   'settings.doctor.item.disk.ok': 'Espacio suficiente',
   'settings.doctor.item.disk.warn': 'Queda poco espacio en disco',
