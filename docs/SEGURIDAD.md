@@ -585,7 +585,7 @@ hostiles, 0 fallos.
 
 **No verificado:** `tar.exe` de Windows con un ZIP de estos scripts (las pruebas usan el bsdtar de macOS); el reemplazo con la app
 real completa; el instalador NSIS por usuario con una actualización encima; Defender, SmartScreen y Smart App Control; Authenticode
-(no hay certificado). `UPDATE_PUBLIC_KEY` sigue sin definir, así que el actualizador está apagado en las dos plataformas.
+(no hay certificado). `UPDATE_PUBLIC_KEY` ya está definida (`src/shared/brand.ts`), así que el actualizador está encendido en las dos plataformas (**Estado 2026-11-06, 1.8.11**; la frase original decía lo contrario).
 
 ## 3 octies. Puntos de restauración de Tareas
 
