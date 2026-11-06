@@ -188,6 +188,23 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
     )
     expect(notes(bien)).not.toContain('Salto de nivel')
   })
+  it('título con punto final y encabezado en mayúsculas → ℹ, no ✘', async () => {
+    const r = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'RESUMEN EJECUTIVO') + para('Heading2', 'Ventas de 2026.') + para('Normal', 'Texto.'))
+    )
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('«RESUMEN EJECUTIVO» va en mayúsculas')
+    expect(notes(r)).toContain('«Ventas de 2026.» termina en punto')
+  })
+  it('encabezado normal y siglas cortas no avisan', async () => {
+    const r = await reviewDocument(
+      'docx',
+      await docxWithStyles(TITLE + para('Heading1', 'Resumen ejecutivo') + para('Heading2', 'KPI Q3 2026') + para('Normal', 'Texto.'))
+    )
+    expect(notes(r)).not.toContain('mayúsculas')
+    expect(notes(r)).not.toContain('punto')
+  })
 })
 
 describe('resumen para el agente', () => {

@@ -18,6 +18,7 @@ import {
   docxSmallRuns,
   formulaSheetRefs,
   headingJumps,
+  headingStyleIssue,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -135,6 +136,15 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
     r.note(
       `Salto de nivel en «${hs[i].text.slice(0, 30)}» (nivel ${hs[i].key.slice(7)} después de nivel ${hs[i - 1].key.slice(7)}): falta un encabezado de nivel ${Number(hs[i - 1].key.slice(7)) + 1} antes`
     )
+  for (const p of paras.filter((x) => x.key === 'title' || /^heading\d$/.test(x.key))) {
+    const issue = headingStyleIssue(p.text)
+    if (issue)
+      r.note(
+        issue === 'punto'
+          ? `El título «${p.text.trim().slice(0, 30)}» termina en punto: los títulos no llevan punto final`
+          : `El título «${p.text.trim().slice(0, 30)}» va en mayúsculas sostenidas: úsalas solo para siglas`
+      )
+  }
   const manual = paras
     .filter((p) => !/^(list|heading|title)/.test(p.key) && !p.numbered && HAND_BULLET.test(p.text))
     .map((p) => p.text.slice(0, 30))

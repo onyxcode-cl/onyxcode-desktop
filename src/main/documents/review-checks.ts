@@ -355,3 +355,15 @@ export function headingJumps(levels: number[]): number[] {
   for (let i = 1; i < levels.length; i++) if (levels[i] - levels[i - 1] > 1) out.push(i)
   return out
 }
+
+/**
+ * Título o encabezado con forma de texto pegado: termina en punto, o va en mayúsculas sostenidas (4 letras o más, sin cifras; «KPI» y
+ * «Q3 2026» no cuentan). Devuelve el motivo o `null`.
+ */
+export function headingStyleIssue(text: string): 'punto' | 'mayusculas' | null {
+  const t = text.trim()
+  if (/\.$/.test(t)) return 'punto'
+  const letters = t.replace(/[^\p{L}]/gu, '')
+  if (letters.length >= 4 && !/\d/.test(t) && letters === letters.toUpperCase() && letters !== letters.toLowerCase()) return 'mayusculas'
+  return null
+}

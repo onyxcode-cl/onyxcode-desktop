@@ -13,7 +13,8 @@ import {
   textNearEdge,
   specGapCells,
   gapCells,
-  headingJumps
+  headingJumps,
+  headingStyleIssue
 } from './review-checks'
 
 describe('R1: salto de nivel de encabezado', () => {
@@ -25,6 +26,21 @@ describe('R1: salto de nivel de encabezado', () => {
   })
   it('bajar de nivel (3 → 1) no es un salto', () => {
     expect(headingJumps([1, 2, 3, 1])).toEqual([])
+  })
+})
+
+describe('R2: título con punto final o en mayúsculas sostenidas', () => {
+  it('termina en punto o va en MAYÚSCULAS (4 letras o más) → aviso', () => {
+    expect(headingStyleIssue('Resumen ejecutivo.')).toBe('punto')
+    expect(headingStyleIssue('RESUMEN EJECUTIVO')).toBe('mayusculas')
+    expect(headingStyleIssue('ÁREAS CLAVE')).toBe('mayusculas')
+  })
+  it('no dispara con siglas cortas, cifras ni títulos normales', () => {
+    expect(headingStyleIssue('KPI')).toBeNull()
+    expect(headingStyleIssue('Q3 2026')).toBeNull()
+    expect(headingStyleIssue('ROI Q3 2026')).toBeNull()
+    expect(headingStyleIssue('Resumen ejecutivo')).toBeNull()
+    expect(headingStyleIssue('2026')).toBeNull()
   })
 })
 
