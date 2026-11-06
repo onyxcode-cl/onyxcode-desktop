@@ -1,8 +1,10 @@
 /**
- * Capacidades que dependen de la plataforma. Lazunox v1 en Windows cubre Chat, Code, Rutinas en modo
- * Code, Ajustes, cuentas, Diagnóstico, MCP, puntos de restauración/Git y accesibilidad. Quedan solo en
- * macOS (y desactivadas limpiamente en el resto, sin cargar su código): modo Tareas (Seatbelt y proxy
- * de credenciales), Control del PC (helper nativo), actualizador automático en su versión de macOS (intercambio de la .app; el de Windows cambia la carpeta de instalación y solo actúa en instalaciones por usuario, `src/main/update/swap-win.ts`).
+ * Capacidades que dependen de la plataforma. Lazunox en Windows cubre Chat, Code, Rutinas en modo
+ * Code, Ajustes, cuentas, Diagnóstico, MCP, puntos de restauración/Git y accesibilidad. Tareas (Overdrive)
+ * funciona en Windows con WSL cuando la app se abre sin administrador (`tasksWin`); Control del PC depende de
+ * `tasksWin` y del helper nativo (`computerWin`). Quedan solo en macOS (y desactivadas limpiamente en el resto):
+ * traducir PDF y editar documentos con Python incluido, y el actualizador en su versión de macOS (intercambio de
+ * la .app; el de Windows cambia la carpeta de instalación y solo actúa en instalaciones por usuario, `src/main/update/swap-win.ts`).
  * Además existe la superficie `remote` (PWA del celular, F8-B56): la misma interfaz React corriendo en el navegador del
  * celular, sin ventana nativa. Reutiliza este mismo mecanismo de degradación: oculta Control del PC, actualizador, ajustes del
  * propio puente, terminal (pty), diálogos nativos, abrir enlaces/editores del Mac y la vista nativa del navegador. Mac y
