@@ -41,7 +41,7 @@ Hechos con las mismas librerías que usan nuestras skills (`python-docx`, `openp
 
 - **Sin comparar con LibreOffice**: no estaba instalado en el equipo de pruebas. «Fiel» aquí significa «se ve bien a ojo», no «igual que Word».
 - **Solo 3 documentos pequeños y hechos por programa.** Nada creado por Word real, con gráficos complejos, SmartArt, macros, comentarios, cambios con control de cambios ni documentos largos.
-- **Solo macOS.** Windows (donde wordcraft avisa de cuelgues en algunas tarjetas AMD con la versión con ventana) no se probó.
+- **Solo macOS (prueba original).** **Estado 2026-11-06 (1.8.11):** ArtCraft se instala y funciona en Windows, según la prueba manual en el PC de pruebas ese día. Sigue sin probarse la versión con ventana en tarjetas AMD, donde wordcraft avisa de cuelgues.
 - **No se probó que una IA los use de punta a punta** (crear un documento desde cero con el MCP y revisarlo).
 - Las cifras de «% de Word» y «clean-room» son afirmaciones de los autores, sin verificación independiente.
 

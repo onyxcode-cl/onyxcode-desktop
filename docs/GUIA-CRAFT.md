@@ -118,7 +118,7 @@ Diferencias concretas:
 - `#NAME?` con una función que está en el catálogo de GridCraft aunque no la calcule: cae a LibreOffice. Si la función no está en el catálogo, el `#NAME?` se acepta tal cual.
 - `=DATE(2024,1,31)` y `=TIME(12,0,0)` en el recálculo dan el número de serie (45322, 0,5); LibreOffice con formato de fecha da fecha/hora.
 - Render: tipografía propia (no la de Office), separadores en formato inglés y el número de páginas coincidió en el libro de prueba (3 y 3). No se ha comparado la paginación de libros largos ni con gráficos, formato condicional o validaciones.
-- No probado: Windows (el binario es solo macOS), modo Sandbox de Tareas y libros con más de unas pocas hojas.
+- No probado: Windows (el binario era solo macOS; **Estado 2026-11-06 (1.8.11):** ArtCraft se instala y funciona en Windows, según la prueba manual en el PC de pruebas ese día), modo Sandbox de Tareas y libros con más de unas pocas hojas.
 
 Dónde está: `resources/opencode/skills/_shared/render_grid.py` (búsqueda `LAZUNOX_GRIDCRAFT` → `$LAZUNOX_BIN_DIR/craft-*/*/gridcraft-cli` con su marca) y pruebas `_shared/tests/test_craft_grid.py` (con un `gridcraft-cli` falso; la real necesita `GRIDCRAFT_CLI=ruta`).
 

@@ -13,6 +13,8 @@ Objetivo: que el MISMO motor del Chat arme el archivo en Chat, Code y Overdrive,
 Verificado el 2026-10-29 en el PC Windows de pruebas: una tarea de Word y de presentación salió por el respaldo de Python, con encabezados de tabla casi ilegibles,
 sin render para verificar y páginas de más; el motor del Chat no pudo correr en el Linux aislado (sin Node ni DeckCraft, a propósito).
 
+**Estado 2026-11-06 (1.8.11).** Code ya recibe la herramienta de documentos: `documentsBlock()` en `src/main/opencode/server.ts` la añade a su configuración, igual que en Tareas. En Windows, el Python incluido se enciende si el intérprete está en el paquete (`pythonWin`, `src/main/tasks/python-runtime.ts`; el paquete lo lleva si se ejecuta `fetch:python` para win32-x64). Lo de arriba describe la prueba del 2026-10-29 y se conserva como historia.
+
 ## 1. Arquitectura propuesta (y por qué es la mínima)
 Un servidor MCP «documentos» que vive en el proceso principal (main, fuera del sandbox), calcado de `src/main/embedded-browser/mcp-server.ts`:
 JSON-RPC por HTTP en 127.0.0.1, `Bearer` de 32 bytes POR ATADURA (servidor de Tareas o sidecar de Code), `Origin` → 403, cuerpo ≤ 1 MiB.
