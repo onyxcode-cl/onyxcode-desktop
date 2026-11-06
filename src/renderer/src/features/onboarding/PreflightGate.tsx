@@ -34,6 +34,7 @@ import { PreflightScreen } from './PreflightScreen'
 import { waitForMacPerms } from './perms-wait'
 import { runInstall, type InstallApi } from './preflight-run'
 import { runtimesApi, runtimesPct } from '../settings/impl/runtimes-view'
+import { raceReport, type ReportRace } from './preflight-late'
 import { PREFLIGHT_OPEN_EVENT } from './preflight-open'
 import { AutoInstallPill } from './AutoInstallPill'
 import {
@@ -67,10 +68,10 @@ function saveDismissed(report: PreflightReport): void {
   }
 }
 
-async function fetchReport(): Promise<PreflightReport | null> {
-  if (!hasTasksBridge()) return null
-  const timeout = new Promise<null>((r) => setTimeout(() => r(null), PREFLIGHT_TIMEOUT_MS))
-  return Promise.race([cw('preflight:run').catch(() => null), timeout])
+/** Pide el informe con plazo. Si vence, `late` sigue esperando ese mismo pedido (ver `preflight-late.ts`). */
+async function fetchReport(): Promise<ReportRace<PreflightReport>> {
+  if (!hasTasksBridge()) return { report: null, timedOut: false, late: Promise.resolve(null) }
+  return raceReport(cw('preflight:run'), PREFLIGHT_TIMEOUT_MS)
 }
 
 type Phase = 'checking' | 'show' | 'clear'
@@ -151,9 +152,23 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
 
   /** Revisa y decide: mostrar la pantalla o dejar pasar. Con `keepOnClear` (revisión manual) no se cierra sola si no hay nada. */
   const check = useCallback(async (): Promise<void> => {
-    const r = await fetchReport()
+    const race = await fetchReport()
     if (!alive.current) return
-    if (!r) return setPhase('clear')
+    const r = race.report
+    if (!r) {
+      setPhase('clear')
+      // Plazo vencido: la app ya entró; si el informe llega tarde solo se arranca la instalación automática, sin abrir la pantalla.
+      if (race.timedOut)
+        void race.late.then((late) => {
+          if (late && alive.current)
+            maybeStartAuto(
+              late,
+              () => alive.current,
+              () => void check()
+            )
+        })
+      return
+    }
     setReport(r)
     // Lo instalable lo instala la app sola, en segundo plano; la pantalla solo enseña lo que exige a una persona (permisos, firma, motor…).
     // Abierta a pedido desde Ajustes (`forced`) enseña todo, con sus casillas, como siempre.
