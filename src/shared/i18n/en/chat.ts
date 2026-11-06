@@ -189,7 +189,7 @@ export const chat = {
   'translate.pdf.cleanNote': 'A clean version was also created, “{name}”: a new PDF with the translated text and without the original scan (it used more of the model).',
   'translate.pdf.openClean': 'Open clean version',
   'translate.pdf.saveClean': 'Save clean version…',
-  'translate.pdf.job.title': 'Translating “{name}” into {lang}',
+  'translate.pdf.job.title': 'Translation of “{name}” into {lang}',
   'translate.pdf.job.dismiss': 'Dismiss',
   'translate.pdf.openFile': 'Open',
   'translate.pdf.save': 'Save as…',
