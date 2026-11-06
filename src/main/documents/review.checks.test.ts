@@ -205,6 +205,19 @@ describe('R1 en Word: salto de encabezado (ℹ)', () => {
     const justo = await reviewDocument('docx', await docxWithStyles(TITLE + para('Normal', Array(140).fill('palabra').join(' '))))
     expect(notes(justo)).not.toContain('más de 140 palabras')
   })
+  it('lista de 8 ítems con el mismo numId → ℹ; de 7 no; ítem de más de 30 palabras → ℹ', async () => {
+    const item = (id: string, text: string): string =>
+      `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="${id}"/></w:numPr></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`
+    const ocho = Array.from({ length: 8 }, (_, i) => item('1', `Ítem ${i + 1}`)).join('')
+    const largo = await reviewDocument('docx', await docxWithStyles(TITLE + ocho + para('Normal', 'Fin.')))
+    expect(bad(largo)).toBe('')
+    expect(notes(largo)).toContain('Lista de 8 ítems seguidos')
+    const siete = Array.from({ length: 7 }, (_, i) => item('1', `Ítem ${i + 1}`)).join('')
+    expect(notes(await reviewDocument('docx', await docxWithStyles(TITLE + siete + para('Normal', 'Fin.'))))).not.toContain('ítems seguidos')
+    const palabras = Array(31).fill('palabra').join(' ')
+    const ancho = await reviewDocument('docx', await docxWithStyles(TITLE + item('2', palabras)))
+    expect(notes(ancho)).toContain('ítem(s) de lista de más de 30 palabras')
+  })
   it('encabezado normal y siglas cortas no avisan', async () => {
     const r = await reviewDocument(
       'docx',

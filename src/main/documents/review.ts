@@ -20,6 +20,7 @@ import {
   headingJumps,
   headingStyleIssue,
   countWords,
+  listRuns,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -110,7 +111,9 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
       const id = /<w:pStyle w:val="([^"]+)"/.exec(xml)?.[1] ?? ''
       const style = names.get(id) ?? id
       // Word guarda el nombre del estilo en minúsculas («heading 1», «title», «list paragraph»): se compara sin mayúsculas ni espacios.
-      return { style, key: style.toLowerCase().replace(/\s+/g, ''), text: textOf(xml), numbered: /<w:numPr>/.test(xml), xml }
+      const numbered = /<w:numPr>/.test(xml)
+      const numId = numbered ? (/<w:numId w:val="(\d+)"/.exec(xml)?.[1] ?? null) : null
+      return { style, key: style.toLowerCase().replace(/\s+/g, ''), text: textOf(xml), numbered, numId, xml }
     })
     .filter((p) => p.text.trim())
   if (!paras.length) {
@@ -137,6 +140,11 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
     r.note(
       `Salto de nivel en «${hs[i].text.slice(0, 30)}» (nivel ${hs[i].key.slice(7)} después de nivel ${hs[i - 1].key.slice(7)}): falta un encabezado de nivel ${Number(hs[i - 1].key.slice(7)) + 1} antes`
     )
+  const runs = listRuns(paras.map((p) => p.numId)).filter((n) => n > 7)
+  if (runs.length) r.note(`Lista de ${runs.join(' y ')} ítems seguidos (más de 7): divide la lista en grupos con un título o usa una tabla`)
+  const wordy = paras.filter((p) => p.numbered && countWords(p.text) > 30)
+  if (wordy.length)
+    r.note(`${wordy.length} ítem(s) de lista de más de 30 palabras (${short(wordy.map((p) => `«${p.text.trim().slice(0, 24)}…»`), 3)}): acórtalos o pásalos a párrafos`)
   const long = paras.filter((p) => !/^(list|heading|title)/.test(p.key) && countWords(p.text) > 140)
   if (long.length)
     r.note(

@@ -15,8 +15,18 @@ import {
   gapCells,
   headingJumps,
   headingStyleIssue,
-  countWords
+  countWords,
+  listRuns
 } from './review-checks'
+
+describe('R4: listas largas', () => {
+  it('cuenta tramos seguidos del mismo numId; otro párrafo los corta', () => {
+    expect(listRuns(['1', '1', '1'])).toEqual([3])
+    expect(listRuns(['1', '1', null, '1'])).toEqual([2, 1])
+    expect(listRuns(['1', '2', '2'])).toEqual([1, 2])
+    expect(listRuns([null, null])).toEqual([])
+  })
+})
 
 describe('R3: párrafo de cuerpo de más de 140 palabras', () => {
   it('cuenta palabras y deja pasar 140 exactas', () => {

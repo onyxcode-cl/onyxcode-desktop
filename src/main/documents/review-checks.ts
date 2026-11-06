@@ -356,6 +356,24 @@ export function headingJumps(levels: number[]): number[] {
   return out
 }
 
+/**
+ * Longitud de cada tramo de ítems seguidos con el mismo `numId` de lista (`null` = párrafo que no es ítem: corta el tramo). Sirve para
+ * avisar de listas demasiado largas, que cansan y suelen pedir una tabla o dos listas.
+ */
+export function listRuns(numIds: Array<string | null>): number[] {
+  const lengths: number[] = []
+  let cur = 0
+  numIds.forEach((id, i) => {
+    if (id && id === numIds[i - 1]) cur++
+    else {
+      if (cur) lengths.push(cur)
+      cur = id ? 1 : 0
+    }
+  })
+  if (cur) lengths.push(cur)
+  return lengths
+}
+
 /** Palabras de un texto (separadas por espacios). */
 export function countWords(text: string): number {
   const t = text.trim()
