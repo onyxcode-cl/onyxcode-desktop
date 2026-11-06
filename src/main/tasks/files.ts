@@ -7,6 +7,7 @@ import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
 import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
+import JSZip from 'jszip'
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { isInside, samePath } from '../util/paths'
 
@@ -35,6 +36,11 @@ const TEXT_EXT = new Set([
 /** Documentos de texto enriquecido: se previsualizan convertidos a texto con `textutil`. */
 const TEXTUTIL_EXT = new Set(['.docx', '.doc', '.rtf', '.odt'])
 const TEXTUTIL_TIMEOUT_MS = 10_000
+/** Límites del lector de .docx en Windows (archivos no confiables). */
+const DOCX_MAX_FILE_BYTES = 25 * 1024 * 1024
+const DOCX_MAX_ENTRIES = 5000
+const DOCX_MAX_XML_BYTES = 16 * 1024 * 1024
+const DOCX_TIMEOUT_MS = 10_000
 const IMAGE_MIME: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -113,6 +119,76 @@ export function describeDeliverable(path: string, root: string): TasksDeliverabl
   return { path, relPath: relative(root, path) || basename(path), size: st.size, mtime: st.mtimeMs }
 }
 
+function decodeXmlText(s: string): string {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, h: string) => safeCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_m, d: string) => safeCodePoint(parseInt(d, 10)))
+    .replace(/&amp;/g, '&')
+}
+function safeCodePoint(n: number): string {
+  return Number.isFinite(n) && n >= 0 && n <= 0x10ffff ? String.fromCodePoint(n) : ''
+}
+
+/** Extrae el texto de `word/document.xml` (etiquetas w:t; salto por cada w:p, tabulador y salto de línea). */
+export function docxXmlToText(xml: string): string {
+  const out: string[] = []
+  const re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\s*\/>|<w:br\s*\/?>|<\/w:p>/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(xml))) {
+    if (m[1] !== undefined) out.push(decodeXmlText(m[1]))
+    else if (m[0].startsWith('<w:tab')) out.push('\t')
+    else out.push('\n')
+  }
+  return out.join('').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** Lee un .docx con jszip (sin shell): rechaza zips enormes o con bomba de descompresión y corta por tiempo. */
+async function docxToText(path: string, size: number): Promise<string> {
+  const fail = (): Error => new Error(t('merr.files.readFailed'))
+  if (size > DOCX_MAX_FILE_BYTES) throw fail()
+  let timer: NodeJS.Timeout | undefined
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(t('merr.files.convertTimeout'))), DOCX_TIMEOUT_MS)
+  })
+  const work = (async (): Promise<string> => {
+    const zip = await JSZip.loadAsync(readFileSync(path))
+    const names = Object.keys(zip.files)
+    if (names.length > DOCX_MAX_ENTRIES) throw fail()
+    const entry = zip.file('word/document.xml')
+    if (!entry) throw fail()
+    // Tamaño declarado (si lo hay) y, sobre todo, conteo real durante la descompresión.
+    const declared = (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize
+    if (typeof declared === 'number' && declared > DOCX_MAX_XML_BYTES) throw fail()
+    const xml = await new Promise<string>((resolve, reject) => {
+      const chunks: Buffer[] = []
+      let total = 0
+      const stream = entry.nodeStream('nodebuffer')
+      stream.on('data', (c: Buffer) => {
+        total += c.length
+        if (total > DOCX_MAX_XML_BYTES) {
+          stream.pause()
+          reject(fail())
+          return
+        }
+        chunks.push(c)
+      })
+      stream.on('error', () => reject(fail()))
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    })
+    return docxXmlToText(xml)
+  })()
+  work.catch(() => undefined)
+  try {
+    return await Promise.race([work, timeout])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
 /** Convierte un documento (docx, doc, rtf, odt) a texto plano con `/usr/bin/textutil` (sin shell, 10 s). */
 function textutilToText(path: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -152,7 +228,8 @@ async function previewDocument(path: string, size: number, maxBytes: number): Pr
   if (ext === '.rtf' && head.subarray(0, 5).toString('latin1') !== '{\\rtf') return { path, size, kind: 'unsupported' }
   let text: string
   try {
-    text = await textutilToText(path)
+    // En Windows solo .docx tiene vista previa (jszip); .rtf/.odt/.doc quedan sin ella.
+    text = process.platform === 'win32' && ext === '.docx' ? await docxToText(path, size) : await textutilToText(path)
   } catch {
     // Documento dañado o formato no reconocible: sin vista previa (se puede abrir con su app).
     return { path, size, kind: 'unsupported' }
