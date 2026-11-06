@@ -141,6 +141,20 @@ describe('buildCodeMcpPermission', () => {
     expect(p.bgshell_start).toBe('ask')
   })
 
+  it('documentos: servidor de reglas fijas; sin regla general y la huella no cambia si el motor lo reporta', () => {
+    const fixed = { bgshell_start: 'ask', documentos_crear: 'ask', documentos_renderizar: 'allow' } as const
+    const input = { trusted: [], internal, fixed, fixedServers: ['bgshell', 'documentos'] }
+    const sin = buildCodeMcpPermission({ ...input, servers: ['crm'] })
+    const con = buildCodeMcpPermission({ ...input, servers: ['crm', 'documentos', 'bgshell'] })
+    expect(con['documentos_*']).toBeUndefined()
+    expect(con.documentos_crear).toBe('ask')
+    expect(con.documentos_renderizar).toBe('allow')
+    expect(permissionFingerprint(con)).toBe(permissionFingerprint(sin))
+    // Una regla más estricta del usuario sobre la herramienta gana al suelo.
+    const user = buildCodeMcpPermission({ ...input, servers: [], base: { documentos_renderizar: 'deny' } })
+    expect(user.documentos_renderizar).toBe('deny')
+  })
+
   it('una regla global del usuario (base) con la misma clave más estricta gana', () => {
     const p = buildCodeMcpPermission({
       servers: [],

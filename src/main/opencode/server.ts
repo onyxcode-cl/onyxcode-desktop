@@ -20,6 +20,9 @@ import { APP_SLUG, MOTOR_APP_NAME } from '@shared/brand'
 import { installedMotorCurrent, motorHomeDir, motorPaths } from './motor-app'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
+import { bearerOf } from '../util/loopback-mcp'
+import { CODE_BINDING_FOLDER, DOCUMENTS_SERVER, documentsConfigPermission } from '@shared/documents-permissions'
+import { codeDocsInstructions } from './code-docs-instructions'
 import { cachedCliVersion, pickOpencode, warmCliVersion, type ResolvedOpencode } from './binary'
 import { killPids, killTree, trackPid, untrackPid } from './pids'
 import { EXTRA_PATH_DIRS, minimalEnv } from '../process/child-env'
@@ -87,6 +90,10 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private appliedInline: string | null = null
   /** Despertador de `bgshell` (aviso de fin al modelo) del proceso actual; vive y muere con la conexión (F8-B204). */
   private shellBgWake: ShellBgWake | null = null
+  /** Token real de la herramienta `documentos` de este arranque: se revoca al parar, al caerse el proceso o al relanzar. */
+  private documentsToken: string | null = null
+  /** Servidor de `documentos` con el que se emitió ese token (import perezoso: `../documents` arrastra Electron y el motor de documentos). */
+  private documentsApi: { revokeToken(token: string): boolean } | null = null
 
   constructor(private readonly options: OpencodeServerOptions) {
     super()
@@ -135,8 +142,10 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // Lo que el motor fusiona ANTES de la inline: config global y archivo de conectores de la app (en ese orden).
       base: { ...global.permission, ...readAppPermission() },
       // `bgshell` (F8-B204): `bgshell_start` pregunta como `bash`, el resto pasa; el bloque de modo de cada sesión lo ajusta después.
-      fixed: bgshellConfigPermission(),
-      fixedServers: [SHELL_BG_SERVER]
+      // `documentos` (Word/Excel/PowerPoint/PDF): `documentos_crear` pregunta (como escribir un archivo) y `documentos_renderizar` pasa; no es
+      // «interno» (eso sería `allow` total). El bloque de modo de cada sesión de Code lo ajusta (`documentsSessionRules`).
+      fixed: { ...bgshellConfigPermission(), ...documentsConfigPermission() },
+      fixedServers: [SHELL_BG_SERVER, DOCUMENTS_SERVER]
     })
   }
 
@@ -203,6 +212,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   async stop(): Promise<void> {
     this.stopping = true
     this.stopShellBgWake()
+    this.revokeDocumentsToken()
     if (this.restartTimer) {
       clearTimeout(this.restartTimer)
       this.restartTimer = null
@@ -237,6 +247,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   killSync(): void {
     this.stopping = true
     this.stopShellBgWake()
+    this.revokeDocumentsToken()
     if (this.child) killTree(this.child.pid, 'SIGKILL')
   }
 
@@ -273,6 +284,10 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // Sin Node incluido o sin el `.cjs`, el motor arranca igual sin `bgshell`.
       this.stopShellBgWake()
       const shellBg = prepareMainShellBg()
+      // Herramienta `documentos` en Code: carpeta de salida = un proyecto abierto en Code (validada en cada llamada), nunca elegida por el token.
+      // Si el MCP no arranca (`configFor` devuelve null), el motor arranca igual sin ella. Un arranque nuevo trae token nuevo: el viejo deja de valer.
+      this.revokeDocumentsToken()
+      const documents = await this.documentsBlock()
       // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
       const permission = this.codeMcpPermission()
       const chatSubagents = this.chatSubagents()
@@ -295,7 +310,14 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(
-          buildInlineConfig({ browserMcp, bgshellMcp: shellBg?.block ?? null, permission, chatSubagents })
+          buildInlineConfig({
+            browserMcp,
+            bgshellMcp: shellBg?.block ?? null,
+            documentsMcp: documents,
+            permission,
+            chatSubagents,
+            instructions: codeDocsInstructions()
+          })
         )
       })
       const child = spawn(exec.command, exec.args, {
@@ -355,6 +377,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const child = this.child
       this.child = null
       if (child) killTree(child.pid, 'SIGKILL')
+      this.revokeDocumentsToken()
       this.setStatus({ state: 'error', error })
       throw new Error(error)
     }
@@ -372,6 +395,25 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     this.shellBgWake = wake
   }
 
+  /** Bloque `mcp.documentos` del sidecar (y guarda su token para revocarlo); `null` si no arranca: el motor sigue sin la herramienta. */
+  private async documentsBlock(): Promise<Record<string, unknown> | null> {
+    try {
+      const { documentsMcp } = await import('../documents')
+      this.documentsApi = documentsMcp
+      const block = await documentsMcp.configFor({ folder: CODE_BINDING_FOLDER, code: { roots: () => openCodeFolders() } })
+      this.documentsToken = bearerOf(block)
+      return block
+    } catch (err) {
+      console.warn('[opencode] documentos no disponible:', err instanceof Error ? err.message : err)
+      return null
+    }
+  }
+
+  private revokeDocumentsToken(): void {
+    if (this.documentsToken) this.documentsApi?.revokeToken(this.documentsToken)
+    this.documentsToken = null
+  }
+
   private stopShellBgWake(): void {
     this.shellBgWake?.stop()
     this.shellBgWake = null
@@ -381,6 +423,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     console.log(`[opencode] proceso terminó code=${code} signal=${signal}`)
     if (this.child !== child) return // ya reemplazado o detenido intencionalmente
     this.stopShellBgWake()
+    this.revokeDocumentsToken()
     this.child = null
     this.connection = null
     if (this.stopping) return
@@ -419,6 +462,15 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private log(chunk: string): void {
     if (process.env.OPENCODE_SIDECAR_LOG) process.stdout.write(`[opencode] ${chunk}`)
     this.logRing.push(chunk)
+  }
+}
+
+/** Proyectos abiertos en Code (`recentFolders`): las únicas carpetas donde `documentos_crear` puede escribir. Nunca lanza. */
+function openCodeFolders(): string[] {
+  try {
+    return [...settingsStore.get().recentFolders]
+  } catch {
+    return []
   }
 }
 
