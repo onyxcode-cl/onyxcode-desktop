@@ -261,6 +261,23 @@ describe('R6 en PowerPoint: título repetido o con punto (ℹ)', () => {
   })
 })
 
+describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
+  const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  const slides = Array.from({ length: 5 }, (_, i) => [T(`Lámina ${i + 1}`)])
+  it('cuatro láminas de contenido sin variar el tipo → ℹ', async () => {
+    // La portada sin viñetas (si no, la exigencia del subtítulo de portada se aplicaría al archivo de prueba).
+    const spec = { slides: Array.from({ length: 5 }, (_, i) => ({ title: `Lámina ${i + 1}`, ...(i ? { bullets: ['Punto'] } : {}) })) }
+    const r = await reviewDocument('pptx', await pptxSlides(slides), spec)
+    expect(bad(r)).toBe('')
+    expect(notes(r)).toContain('Las 4 láminas de contenido son todas de viñetas')
+  })
+  it('si una lámina es «stat» o sin spec, no avisa', async () => {
+    const spec = { slides: [{ title: 'Portada' }, { title: 'A', bullets: ['x'] }, { title: 'B', layout: 'stat' }, { title: 'C' }, { title: 'D' }] }
+    expect(notes(await reviewDocument('pptx', await pptxSlides(slides), spec))).not.toContain('todas de viñetas')
+    expect(notes(await reviewDocument('pptx', await pptxSlides(slides)))).not.toContain('todas de viñetas')
+  })
+})
+
 describe('resumen para el agente', () => {
   it('incluye los avisos ℹ y la lista ✔/✘ nueva', async () => {
     const z = new JSZip()

@@ -394,6 +394,15 @@ export function slideTitleIssues(titles: Array<string | null>): { repeated: stri
   }
 }
 
+/**
+ * ¿Toda la presentación son viñetas? Con 4 o más láminas de contenido (sin contar la portada, `layouts[0]`) y todas con diseño ausente o
+ * `bullets`, el lector ve una pared de viñetas: conviene variar el tipo de lámina.
+ */
+export function monotonousLayouts(layouts: Array<string | undefined>): boolean {
+  const content = layouts.slice(1)
+  return content.length >= 4 && content.every((l) => l === undefined || l === 'bullets')
+}
+
 /** Cuántos tramos de dos o más `true` seguidos hay en `flags` (p. ej. párrafos vacíos seguidos). */
 export function blankRuns(flags: boolean[]): number {
   let runs = 0

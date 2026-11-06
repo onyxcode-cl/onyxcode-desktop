@@ -18,8 +18,20 @@ import {
   countWords,
   listRuns,
   blankRuns,
-  slideTitleIssues
+  slideTitleIssues,
+  monotonousLayouts
 } from './review-checks'
+
+describe('R7: todo viñetas', () => {
+  it('4 o más láminas de contenido, todas de viñetas o sin diseño → sí; la portada no cuenta', () => {
+    expect(monotonousLayouts([undefined, undefined, 'bullets', undefined, undefined])).toBe(true)
+    expect(monotonousLayouts(['stat', 'bullets', 'bullets', 'bullets', 'bullets'])).toBe(true)
+  })
+  it('menos de 4 láminas de contenido, o alguna de otro tipo → no', () => {
+    expect(monotonousLayouts([undefined, undefined, undefined, undefined])).toBe(false)
+    expect(monotonousLayouts([undefined, 'bullets', 'stat', 'bullets', 'bullets'])).toBe(false)
+  })
+})
 
 describe('R6: títulos de diapositiva repetidos o con punto', () => {
   it('el mismo título (sin distinguir mayúsculas) en 2 diapositivas se marca; uno solo no', () => {

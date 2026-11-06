@@ -23,6 +23,7 @@ import {
   countWords,
   slideTitleIssues,
   listRuns,
+  monotonousLayouts,
   overlappingPairs,
   pptxBackground,
   pptxContrastProblems,
@@ -349,6 +350,11 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     `Contraste bajo (WCAG) en ${short(lowContrast.map(ratioText))}: cambia el color del texto o del fondo`
   )
   checkTemplate(r, allText)
+  const specSlides = spec && typeof spec === 'object' && Array.isArray((spec as PptxSpec).slides) ? (spec as PptxSpec).slides : null
+  if (specSlides && monotonousLayouts(specSlides.map((s) => s.layout)))
+    r.note(
+      `Las ${specSlides.length - 1} láminas de contenido son todas de viñetas: varía el tipo de lámina (cifras, pasos, tarjetas, tabla o gráfico) donde el contenido lo pida`
+    )
   const titleIssues = slideTitleIssues(titles)
   if (titleIssues.repeated.length)
     r.note(`Título repetido en varias diapositivas: ${short(titleIssues.repeated.map((t) => `«${t.slice(0, 30)}»`), 3)}: cada lámina necesita su propio título`)
