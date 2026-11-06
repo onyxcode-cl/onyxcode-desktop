@@ -344,6 +344,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
         permsStalled={permsStalled}
         permsWaiting={permsWaiting}
         unchecked={unchecked}
+        mode={forced.current ? 'manual' : firstRun ? 'firstRun' : 'startup'}
         stage={guided ? stage : undefined}
         stepLabel={guided ? stepLabel : undefined}
         onAcceptAll={guided ? acceptAll : undefined}

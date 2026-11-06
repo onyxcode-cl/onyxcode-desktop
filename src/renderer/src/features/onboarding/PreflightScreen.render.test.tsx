@@ -257,3 +257,31 @@ describe('pantalla «Preparando»: Acceso a tus archivos (opcional, F8-B210)', (
     expect(render(report(files({ reason: 'unknown' })))).toContain('No se pudo comprobar el Acceso total al disco')
   })
 })
+
+describe('texto de arriba según el modo (C1)', () => {
+  const base = (): PreflightComponent[] => [c('storage'), c('disk'), c('engine')]
+  const firma = (): PreflightComponent[] => [...base(), c('trust', { ok: false, reason: 'untrusted', installable: true })]
+  const ayudante = (): PreflightComponent[] => [...base(), c('helper', { ok: false, reason: 'missing', installable: false })]
+  const guiado = { stage: 'install' as const, onAcceptAll: noop }
+
+  it('primer uso con solo «firma»: dice que lo demás baja en segundo plano', () => {
+    const html = render(report(firma()), { ...guiado, mode: 'firstRun' })
+    expect(html).toContain('ya está descargando en segundo plano')
+    expect(html).not.toContain('Un clic y')
+  })
+  it('abierta a mano (Ajustes): «Un clic y…» como siempre', () => {
+    const html = render(report(firma()), { ...guiado, mode: 'manual' })
+    expect(html).toContain('Un clic y Lazunox descarga e instala todo lo que necesita')
+    expect(html).not.toContain('en segundo plano')
+  })
+  it('sin etapa y sin casillas (solo el ayudante pendiente): no dice «marca»', () => {
+    const html = render(report(ayudante()), { mode: 'startup' })
+    expect(html).toContain('Queda algo pendiente que no es imprescindible')
+    expect(html).not.toContain('marca lo que quieras')
+    expect(html).not.toMatch(/marca /)
+  })
+  it('sin etapa y con la casilla de firma: dice «marca»', () => {
+    const html = render(report(firma()), { mode: 'startup' })
+    expect(html).toContain('marca lo que quieras e instálalo ahora')
+  })
+})

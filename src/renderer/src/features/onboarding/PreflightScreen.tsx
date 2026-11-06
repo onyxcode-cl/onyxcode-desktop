@@ -52,6 +52,11 @@ export interface PreflightScreenProps {
   unchecked: readonly PreflightId[]
   /** Primer uso: «Paso 2 de 4 · …» sobre el título. */
   stepLabel?: string
+  /**
+   * Por qué se abrió la pantalla: `firstRun` (asistente sin terminar), `manual` (desde Ajustes › Diagnóstico) o `startup` (arranque
+   * posterior). Solo cambia el texto de arriba; sin ella, con «Aceptar todo» sale el texto de siempre (`manual`).
+   */
+  mode?: 'firstRun' | 'manual' | 'startup'
   /** Etapa del recorrido (instalar / permisos). Sin ella, la pantalla de siempre con todo junto (revisión de arranque). */
   stage?: PreflightStage
   /** «Aceptar todo e instalar»: instala todo lo instalable sin mirar casillas (nunca los permisos). */
@@ -140,8 +145,10 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
             : block.length > 0
               ? t('preflight.subtitle.blocking', { app: DISPLAY_NAME })
               : guided
-                ? t('preflight.acceptAll.subtitle', { app: DISPLAY_NAME })
-                : t('preflight.subtitle.optional', { app: DISPLAY_NAME })}
+                ? t(p.mode === 'firstRun' ? 'preflight.firstRun.subtitle' : 'preflight.acceptAll.subtitle', { app: DISPLAY_NAME })
+                : t(showPicks && choices.length > 0 ? 'preflight.subtitle.optional.pick' : 'preflight.subtitle.optional', {
+                    app: DISPLAY_NAME
+                  })}
         </p>
 
         <ul className="mt-6 w-full space-y-2 text-left" aria-live="polite">

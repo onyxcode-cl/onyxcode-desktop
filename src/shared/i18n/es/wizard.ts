@@ -90,7 +90,9 @@ export const wizard = {
   'wizard.permissions.review': 'Puedes revisarlos o quitarlos en Ajustes del Sistema › Privacidad y seguridad.',
   'wizard.stepTitle.setup': 'Todo listo',
   'wizard.setup.lead':
-    'Lo que dejaste para más tarde (ArtCraft, Node.js y uv, permisos) lo instalas o activas cuando quieras desde Ajustes › Diagnóstico › «Instalar o activar piezas». Ya puedes empezar.',
+    'Las herramientas que faltan se terminan de instalar solas mientras usas {app}. Lo que dejaste para más tarde (como los permisos) lo activas desde Ajustes › Diagnóstico › «Instalar o activar piezas». Ya puedes empezar.',
+  'wizard.setup.lead.win':
+    'Las herramientas que faltan se terminan de instalar solas mientras usas {app}. Si algo queda pendiente, lo ves en Ajustes › Diagnóstico › «Instalar o activar piezas». Ya puedes empezar.',
   'wizard.welcome.title': 'Bienvenido a {app}',
   'wizard.welcome.tagline': 'Un asistente de IA que conversa contigo y hace tareas en tu propio computador.',
   'wizard.welcome.madeBy': 'Hecho por {maker}',
@@ -118,6 +120,10 @@ export const wizard = {
   'preflight.acceptAll.subtitle': 'Un clic y {app} descarga e instala todo lo que necesita. Si prefieres, elige qué instalar.',
   'preflight.acceptAll.size':
     'Se descargarán unos {size} en total, de GitHub y nodejs.org; se comprueba que sean auténticos y no pide contraseña de administrador.',
+  'preflight.acceptAll.size.win':
+    'Se descargarán unos {size} en total, de GitHub; se comprueba que sean auténticos y no pide contraseña de administrador.',
+  'preflight.firstRun.subtitle':
+    '{app} ya está descargando en segundo plano lo que necesita (verás el avance abajo). Aquí solo queda lo que necesita tu aprobación.',
   'preflight.acceptAll.progress': 'Listas {done} de {total}',
   'preflight.custom.show': 'Elegir qué instalar',
   'preflight.custom.hide': 'Volver al botón único',
@@ -141,7 +147,9 @@ export const wizard = {
   'preflight.title': 'Preparando {app}',
   'preflight.subtitle.blocking': 'Falta algo imprescindible para que {app} funcione. Aquí puedes arreglarlo.',
   'preflight.subtitle.optional':
-    'Ya puedes usar {app}. Estas piezas son opcionales: marca las que quieras e instálalas ahora, o déjalas para más tarde (también están en Ajustes).',
+    'Ya puedes usar {app}. Queda algo pendiente que no es imprescindible: resuélvelo ahora o déjalo para más tarde (también está en Ajustes › Diagnóstico).',
+  'preflight.subtitle.optional.pick':
+    'Ya puedes usar {app}. Esto es opcional: marca lo que quieras e instálalo ahora, o déjalo para más tarde (también está en Ajustes › Diagnóstico).',
   'preflight.checking': 'Revisando tu equipo…',
   'preflight.size': 'Se descargarán unos {size}.',
   'preflight.size.none': 'No hay nada marcado: no se descargará nada.',
