@@ -10,6 +10,12 @@ import * as dialogService from '../dialog/service'
 import { checkFolderAccess, PANE_ALL_FILES, PANE_FILES_AND_FOLDERS, resetFolderPermission, tccServicesFor } from '../dialog/folder-access'
 import { ENGINE_PROBE_TIMEOUT_MS, probeFolderAsEngine, type RunResult } from '../dialog/engine-folder-probe'
 import { findOpencodeBinary } from '../opencode/server'
+import { readGlobalOpencodeConfig } from '../opencode/code-mcp-permission'
+import { readAppMcpConfig } from '../extras/mcp-config'
+import { scanProjectConfig } from '../code/project-scan'
+import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
+import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
+import { DOCUMENTS_SERVER } from '@shared/documents-permissions'
 import { withDisclaim } from '../process/disclaim'
 import { execFile } from 'node:child_process'
 import { access, constants as fsConstants } from 'node:fs/promises'
@@ -152,6 +158,25 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     const path = await dialogService.openFolder(parent, r ?? {})
     if (path) settingsStore.addRecentFolder(path)
     return path
+  })
+  // W-A2: qué trae la carpeta, leído de disco (nunca el motor) antes de abrirla. Plazo total de 2,8 s; lo que no alcanza queda «no revisado».
+  on(ipcMain, 'project:scan', (r) => {
+    const path = req(r, 'req').path
+    let appServers: string[] = []
+    let globalServers: string[] = []
+    try {
+      appServers = Object.keys(readAppMcpConfig().servers)
+    } catch {
+      /* sin archivo de conectores de la app */
+    }
+    try {
+      globalServers = readGlobalOpencodeConfig().servers
+    } catch {
+      /* sin config global */
+    }
+    // Conectores que la app o la persona ya tienen: una carpeta que redefine uno de ellos hereda su permiso, así que se marca.
+    const known = [...appServers, ...globalServers, ...CODE_INTERNAL_MCP, SHELL_BG_SERVER, DOCUMENTS_SERVER]
+    return scanProjectConfig(path, { known, deadline: Date.now() + 2800 })
   })
   on(ipcMain, 'dialog:revealInFinder', (r) => dialogService.revealInFinder(req(r, 'req').path))
   // Sin caché: cada llamada vuelve a leer la carpeta (la persona puede haber activado el permiso entre dos intentos).
