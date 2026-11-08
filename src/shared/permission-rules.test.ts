@@ -175,7 +175,15 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
     'git log --oneline -5',
     'git branch',
     'git branch -a',
-    'git branch --list feat/*',
+    'git branch -r',
+    'git branch -v',
+    'git branch --show-current',
+    'git status --porcelain',
+    'git diff --stat',
+    'git show HEAD^',
+    'git log --format=%h',
+    'git log --oneline src/shared/permission-rules.ts',
+    'Get-ChildItem -Recurse src/shared',
     'git show HEAD',
     'git rev-parse --show-toplevel',
     'Get-ChildItem',
@@ -418,6 +426,46 @@ describe('1.8.12: cierre de R1 y R4', () => {
 })
 
 // RI de W-A1 (rondas 1 y 2): git con opciones que escriben o ejecutan, comillas, redirecciones, difftool y `.git` como archivo.
+// RI4 de W-A1: lista blanca de caracteres (comillas tipográficas de PowerShell, `^`, ancho completo, control) y `git branch` sin argumentos libres.
+describe('aprobación automática: lista blanca de caracteres y git branch', () => {
+  const U = (...c: number[]): string => String.fromCodePoint(...c)
+  const MALOS = [
+    `git log --ou${U(0x2018, 0x2019)}tput=.git/config`,
+    `git log --ou${U(0x201c, 0x201d)}tput=opencode.json`,
+    `git log -${U(0x201c, 0x201d)}-output=opencode.json`,
+    `git log --ou${U(0x201e, 0x201a)}tput=x`,
+    `git log ${U(0x2013)}${U(0x2013)}output=x`,
+    `git log ${U(0x2014)}c a=b`,
+    `git log --o^utput=x`,
+    'git log -^-output=x',
+    'git log --ex^t-diff',
+    `git log ${U(0xff0d, 0xff0d)}output=x`,
+    `git log --output${U(0xff1d)}x`,
+    'git log\r-1',
+    'git log\t-1',
+    `git log${U(0xa0)}-1`,
+    `git log${U(0x200b)}-1`,
+    'git log \u0000-1',
+    'git log ^HEAD',
+    'git log ^',
+    'git log *.ts',
+    'ls sub\\carpeta',
+    'git branch --list --no-list -D victim',
+    'git branch --list --no-l -M a b',
+    'git branch --list feat/*',
+    'git branch --list',
+    'git branch --list --no-list nueva',
+    'git branch --set-upstream-to=main otra'
+  ]
+  it.each(MALOS)('«%j» NO se aprueba sola', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(false)
+    expect(isAutoApprovableCommand('plan', c)).toBe(false)
+  })
+  it.each(['git show HEAD^', 'git show HEAD^2', 'git diff HEAD~1', 'git log --format=%h -3', 'git log --oneline -5'])('«%s» sí', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(true)
+  })
+})
+
 describe('git con opciones que escriben o ejecutan', () => {
   const RIESGOSOS = [
     'git log -1 --output=.git/config',

@@ -42,21 +42,28 @@ const READ_ONLY_COMMANDS = [
   'Get-ChildItem',
   'Get-Location'
 ]
-/** `git branch` solo se aprueba para LISTAR: con otros argumentos crea, borra o renombra ramas. */
-const GIT_BRANCH_LIST = /^git branch(?:\s+(?:-a|-r|-v|-vv|--show-current|--list(?:\s+\S+)*))*\s*$/
+/**
+ * `git branch` solo se aprueba en sus formas de listado SIN argumentos libres. Ya no vale `--list <patrón>` (RI4 de W-A1): `--list --no-list
+ * -D x` borra ramas, y un comodín mete nombres de archivo como opciones.
+ */
+const GIT_BRANCH_LIST = /^git branch(?:\s+(?:-a|-r|-v|-vv|--show-current))*\s*$/
 
 type ApprovalKind = 'auto' | 'plan'
 
 const withBoundary = (c: string): RegExp => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')}(?:\\s|$)`)
 const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
-/** Cualquier cosa que encadene, redirija, sustituya o cambie de línea: el comando deja de ser «uno solo y simple». */
-/*
- * Incluye los comodines del shell (`*`, `?`, `[`, `]`) y `!`/`#`: el shell expande `git log *` a los NOMBRES de archivo de la carpeta, y la IA
- * puede haber creado antes (sin tarjeta) archivos llamados `--output=opencode.json` o `--format=…` (RI3 de W-A1). NO se bloquean `~`, `^`,
- * `%` ni `@` (no expanden a archivos en medio de una palabra y romperían `HEAD~1`, `HEAD^`, `--format=%h`); costo: `ls *.ts` pide tarjeta.
+/**
+ * LISTA BLANCA de caracteres (RI4 de W-A1): solo ASCII «aburrido» (letras, números, espacio, `. _ / : = , @ % ^ ~ + -`). Todo lo demás hace que
+ * el comando deje de ser «uno solo y simple» y pregunte el motor: encadenado, redirecciones, sustituciones, comillas (también las tipográficas
+ * U+2018-201E que PowerShell trata como comillas y recompone `--ou‘’tput`), llaves, comodines del shell (`*`, `?`, `[`, `]`: `git log *` se
+ * expande a NOMBRES de archivo que la IA pudo crear, como `--output=opencode.json`), `!`, `#`, `\`, tabuladores, retornos de carro, caracteres
+ * de control y de ancho completo. Costo: `ls *.ts` y las rutas con `\` de Windows piden tarjeta. `~` queda (`HEAD~1`), igual que `^` solo
+ * detrás de letra o número (`HEAD^`): `^HEAD` es un comodín de zsh con `extendedglob` y `^` es el escape de cmd.exe.
  */
-const SHELL_META_BASE = /[><|;&`$\\(){}'"!#\n\r]|--output|--exec/
-const SHELL_GLOB = /[*?[\]]/
+const SAFE_CHARS = /^[A-Za-z0-9 ._/:=,@%^~+-]+$/
+const BAD_CARET = /(?:^|[^A-Za-z0-9])\^/
+/** Mismas búsquedas de siempre (`--output`, `--exec`), sobre el comando sin `^` (defensa en profundidad contra `--o^utput` de cmd). */
+const WRITE_OPTS = /--output|--exec/
 /**
  * Opciones de `git` que escriben archivos, ejecutan programas o cambian dónde/con qué configuración trabaja (1.8.12, RI de W-A1):
  * `--output=<archivo>` (git 2.54 rechaza las abreviaturas `--ou=`/`--outp=`, pero bloquear `--out…` es inocuo), `--ext-diff`, `--textconv`, `-c clave=valor`, `-C <dir>`, `--git-dir`,
@@ -74,11 +81,11 @@ const hasRiskyGitOption = (cmd: string): boolean =>
 export function isAutoApprovableCommand(_kind: ApprovalKind, command: string | undefined): boolean {
   if (typeof command !== 'string') return false
   const cmd = command.trim()
-  if (!cmd || cmd.length > 500 || SHELL_META_BASE.test(cmd)) return false
-  if (hasRiskyGitOption(cmd)) return false
-  // `git branch --list <patrón>` conserva el comodín (verificado: mezclado con -D/-m/-c/--set-upstream-to git solo da «usage», no toca nada).
-  if (cmd.startsWith('git branch')) return GIT_BRANCH_LIST.test(cmd)
-  if (SHELL_GLOB.test(cmd)) return false
+  if (!cmd || cmd.length > 500 || !SAFE_CHARS.test(cmd) || BAD_CARET.test(cmd)) return false
+  // Defensa en profundidad: las comprobaciones de opciones miran el comando SIN `^` y sin nada fuera de ASCII (con la lista blanca ya no llegan).
+  const plain = cmd.replace(/\^/g, '').replace(/[^\x20-\x7e]/g, '')
+  if (WRITE_OPTS.test(plain) || hasRiskyGitOption(plain)) return false
+  if (plain.startsWith('git branch')) return GIT_BRANCH_LIST.test(plain)
   return READ_ONLY_RES.some((re) => re.test(cmd))
 }
 
