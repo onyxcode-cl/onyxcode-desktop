@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   EMPTY_HOOKS_TEXT,
   ENV_HOOKS_FILE,
+  HOOK_EVENTS,
   HOOKS_EXAMPLE,
   HOOKS_MAX_COMMAND,
   HOOKS_MAX_FILE_BYTES,
+  HOOKS_MAX_IF,
   HOOKS_MAX_MATCHER,
   HOOKS_MAX_PER_EVENT,
   leerConfig,
@@ -156,5 +158,112 @@ describe('servidores de Tareas', () => {
   it('con Control total (sin sandbox) reciben solo el archivo', () => {
     expect(userHooksEnvForTasksServer(env, true)).toEqual({ [ENV_HOOKS_FILE]: '/u/hooks/hooks.json' })
     expect(userHooksEnvForTasksServer({}, true)).toEqual({})
+  })
+})
+
+/** Los 14 eventos de `leerConfig` del motor (`packages/opencode/src/plugin/lazunox-ganchos.ts`), en su orden. */
+const EVENTOS_MOTOR = [
+  'PreToolUse',
+  'PostToolUse',
+  'PreCompact',
+  'PostCompact',
+  'Stop',
+  'SessionStart',
+  'UserPromptSubmit',
+  'SubagentStop',
+  'PostToolUseFailure',
+  'PermissionDenied',
+  'PermissionRequest',
+  'SubagentStart',
+  'Interrupt',
+  'PostToolBatch'
+]
+
+describe('14 eventos del motor (W-A5)', () => {
+  it('HOOK_EVENTS son exactamente los 14 eventos del motor, en su orden', () => {
+    expect([...HOOK_EVENTS]).toEqual(EVENTOS_MOTOR)
+  })
+
+  it('el tope de «if» es el del motor (IF_MAX = 300)', () => {
+    expect(HOOKS_MAX_IF).toBe(300)
+  })
+
+  it('cada uno de los 14 eventos se acepta al validar (ya no sale «evento desconocido»)', () => {
+    const hooks = Object.fromEntries(EVENTOS_MOTOR.map((e) => [e, [hook()]]))
+    expect(validateHooksText(doc(hooks))).toMatchObject({ ok: true, count: 14 })
+  })
+
+  it('paridad con el motor: un archivo con los 14 eventos, «if» y «onFailure» da lo mismo que el motor (resultado escrito a mano)', () => {
+    const texto = doc({
+      PreToolUse: [hook({ matcher: 'bash', timeout: 5, if: 'Bash(git *)', onFailure: 'block' })],
+      PostToolUse: [hook({ matcher: 'edit', if: 'Edit(*.ts)' })],
+      PreCompact: [hook()],
+      PostCompact: [hook({ timeout: 60 })],
+      Stop: [hook()],
+      SessionStart: [hook()],
+      UserPromptSubmit: [hook({ onFailure: 'block' })],
+      SubagentStop: [hook()],
+      PostToolUseFailure: [hook({ if: 'Bash' })],
+      PermissionDenied: [hook()],
+      PermissionRequest: [hook({ onFailure: 'block', if: 'Bash(rm *)' })],
+      SubagentStart: [hook()],
+      Interrupt: [hook()],
+      PostToolBatch: [hook()]
+    })
+    expect(validateHooksText(texto)).toMatchObject({ ok: true, count: 14 })
+    const cfg = leerConfig(texto)
+    // Lo que el motor deja en cada lista (su `leerConfig` copia command, matcher, timeout, if y onFailure "block").
+    expect(Object.keys(cfg)).toEqual(EVENTOS_MOTOR)
+    expect(cfg.PreToolUse).toEqual([{ command: 'echo hola', matcher: 'bash', timeout: 5, if: 'Bash(git *)', onFailure: 'block' }])
+    expect(cfg.PostToolUse).toEqual([{ command: 'echo hola', matcher: 'edit', if: 'Edit(*.ts)' }])
+    expect(cfg.PostCompact).toEqual([{ command: 'echo hola', timeout: 60 }])
+    expect(cfg.UserPromptSubmit).toEqual([{ command: 'echo hola', onFailure: 'block' }])
+    expect(cfg.PostToolUseFailure).toEqual([{ command: 'echo hola', if: 'Bash' }])
+    expect(cfg.PermissionRequest).toEqual([{ command: 'echo hola', onFailure: 'block', if: 'Bash(rm *)' }])
+    for (const e of [
+      'PreCompact',
+      'Stop',
+      'SessionStart',
+      'SubagentStop',
+      'PermissionDenied',
+      'SubagentStart',
+      'Interrupt',
+      'PostToolBatch'
+    ] as const) {
+      expect(cfg[e], e).toEqual([{ command: 'echo hola' }])
+    }
+  })
+
+  it('leerConfig descarta igual que el motor un «if» vacío o demasiado largo, y un «onFailure» distinto de «block»', () => {
+    const cfg = leerConfig(
+      doc({
+        PreToolUse: [
+          hook({ if: '   ' }),
+          hook({ if: 'x'.repeat(HOOKS_MAX_IF + 1) }),
+          hook({ if: 'x'.repeat(HOOKS_MAX_IF) }),
+          hook({ onFailure: 'allow' })
+        ]
+      })
+    )
+    expect(cfg.PreToolUse.map((g) => g.if?.length)).toEqual([undefined, undefined, HOOKS_MAX_IF, undefined])
+    expect(cfg.PreToolUse.map((g) => g.onFailure)).toEqual([undefined, undefined, undefined, undefined])
+  })
+
+  it('el validador rechaza un «if» que no es texto, vacío o demasiado largo (con código propio)', () => {
+    expect(codes(doc({ PreToolUse: [hook({ if: 5 })] }))).toEqual(['badIf'])
+    expect(codes(doc({ PreToolUse: [hook({ if: '   ' })] }))).toEqual(['badIf'])
+    expect(codes(doc({ PreToolUse: [hook({ if: 'x'.repeat(HOOKS_MAX_IF + 1) })] }))).toEqual(['badIf'])
+    expect(codes(doc({ PreToolUse: [hook({ if: 'x'.repeat(HOOKS_MAX_IF) })] }))).toEqual([])
+    expect(codes(doc({ PreToolUse: [hook({ if: 'Bash(git *)' })] }))).toEqual([])
+  })
+
+  it('el validador solo acepta «onFailure» con el valor «block» (con código propio)', () => {
+    expect(codes(doc({ PreToolUse: [hook({ onFailure: 'allow' })] }))).toEqual(['badOnFailure'])
+    expect(codes(doc({ PreToolUse: [hook({ onFailure: true })] }))).toEqual(['badOnFailure'])
+    expect(codes(doc({ PreToolUse: [hook({ onFailure: 'block' })] }))).toEqual([])
+  })
+
+  it('un evento desconocido sigue rechazándose', () => {
+    expect(codes(doc({ Despues: [hook()] }))).toEqual(['unknownEvent'])
   })
 })

@@ -158,4 +158,69 @@ describe('UserHooksBlock', () => {
     await act(async () => btn(/^Save$/).click())
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('The text is not valid JSON.')
   })
+
+  it('la ayuda nombra los 14 eventos del motor', async () => {
+    await mount()
+    const eventos = [
+      'PreToolUse',
+      'PostToolUse',
+      'PreCompact',
+      'PostCompact',
+      'Stop',
+      'SessionStart',
+      'UserPromptSubmit',
+      'SubagentStop',
+      'PostToolUseFailure',
+      'PermissionDenied',
+      'PermissionRequest',
+      'SubagentStart',
+      'Interrupt',
+      'PostToolBatch'
+    ]
+    for (const e of eventos) expect(host.textContent, e).toContain(e)
+  })
+
+  it('PermissionRequest se explica como solo negar, nunca aprobar', async () => {
+    await mount()
+    expect(host.textContent).toContain('solo puede negarlo, nunca aprobarlo')
+  })
+
+  it('un SessionStart ya se guarda (ya no sale «evento desconocido»)', async () => {
+    await mount()
+    const text = JSON.stringify({ hooks: { SessionStart: [{ command: 'echo inicio' }] } })
+    type(area(), text)
+    await act(async () => btn(/^Guardar$/).click())
+    expect(callMock).toHaveBeenCalledWith('settings:hooksWrite', { text })
+    expect(host.querySelector('[role="alert"]')).toBeNull()
+  })
+
+  it('un evento que no existe se rechaza y el aviso manda a mirar la lista de arriba', async () => {
+    await mount()
+    type(area(), JSON.stringify({ hooks: { Despues: [{ command: 'echo x' }] } }))
+    await act(async () => btn(/^Guardar$/).click())
+    const txt = host.querySelector('[role="alert"]')!.textContent!
+    expect(txt).toContain('Evento desconocido «Despues». Mira la lista de eventos de arriba.')
+    expect(txt).not.toContain('PreToolUse, PostToolUse')
+    expect(callMock).not.toHaveBeenCalledWith('settings:hooksWrite', expect.anything())
+  })
+
+  it('un «if» demasiado largo se explica con su tope', async () => {
+    await mount()
+    type(area(), JSON.stringify({ hooks: { PreToolUse: [{ command: 'echo x', if: 'x'.repeat(301) }] } }))
+    await act(async () => btn(/^Guardar$/).click())
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
+      'PreToolUse, gancho 1: «if» debe ser un texto de 1 a 300 caracteres.'
+    )
+    expect(callMock).not.toHaveBeenCalledWith('settings:hooksWrite', expect.anything())
+  })
+
+  it('en inglés: los 14 eventos y la explicación de PermissionRequest, y el aviso de evento desconocido', async () => {
+    applyLangPref('en')
+    await mount()
+    expect(host.textContent).toContain('PostToolBatch')
+    expect(host.textContent).toContain('the hook can only deny it, never approve it')
+    type(area(), JSON.stringify({ hooks: { Despues: [{ command: 'echo x' }] } }))
+    await act(async () => btn(/^Save$/).click())
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Unknown event “Despues”. See the list of events above.')
+  })
 })

@@ -17,16 +17,38 @@ export const HOOKS_MAX_FILE_BYTES = 64 * 1024
 export const HOOKS_MAX_PER_EVENT = 20
 export const HOOKS_MAX_COMMAND = 2000
 export const HOOKS_MAX_MATCHER = 300
+/** Tope del filtro `if` (`IF_MAX` del motor, `ganchos-if.ts`). */
+export const HOOKS_MAX_IF = 300
 export const HOOKS_TIMEOUT_MIN = 1
 export const HOOKS_TIMEOUT_MAX = 60
 
-export const HOOK_EVENTS = ['PreToolUse', 'PostToolUse', 'PreCompact', 'PostCompact', 'Stop'] as const
+/** Los 14 eventos que ejecuta el motor (`lazunox-ganchos.ts`, `Config`), en su mismo orden. */
+export const HOOK_EVENTS = [
+  'PreToolUse',
+  'PostToolUse',
+  'PreCompact',
+  'PostCompact',
+  'Stop',
+  'SessionStart',
+  'UserPromptSubmit',
+  'SubagentStop',
+  'PostToolUseFailure',
+  'PermissionDenied',
+  'PermissionRequest',
+  'SubagentStart',
+  'Interrupt',
+  'PostToolBatch'
+] as const
 export type HookEvent = (typeof HOOK_EVENTS)[number]
 
 export interface UserHook {
   matcher?: string
   command: string
   timeout?: number
+  /** Filtro de una regla con la sintaxis de permisos (`Bash(git *)`). Solo lo usan los eventos de herramienta y de permisos. */
+  if?: string
+  /** `"block"`: si el gancho falla, la acción se bloquea (PreToolUse, UserPromptSubmit, PermissionRequest). */
+  onFailure?: 'block'
 }
 export type UserHooksConfig = Record<HookEvent, UserHook[]>
 
@@ -47,7 +69,22 @@ export const HOOKS_EXAMPLE = `{
 }
 `
 
-const VACIO = (): UserHooksConfig => ({ PreToolUse: [], PostToolUse: [], PreCompact: [], PostCompact: [], Stop: [] })
+const VACIO = (): UserHooksConfig => ({
+  PreToolUse: [],
+  PostToolUse: [],
+  PreCompact: [],
+  PostCompact: [],
+  Stop: [],
+  SessionStart: [],
+  UserPromptSubmit: [],
+  SubagentStop: [],
+  PostToolUseFailure: [],
+  PermissionDenied: [],
+  PermissionRequest: [],
+  SubagentStart: [],
+  Interrupt: [],
+  PostToolBatch: []
+})
 
 /** Réplica de `leerConfig` del motor (mismas cotas, mismo descarte silencioso). Nunca lanza. Sirve para comprobar que la app y el motor coinciden. */
 export function leerConfig(text: string): UserHooksConfig {
@@ -76,7 +113,9 @@ export function leerConfig(text: string): UserHooksConfig {
         timeout:
           typeof g.timeout === 'number' && Number.isFinite(g.timeout)
             ? Math.min(HOOKS_TIMEOUT_MAX, Math.max(HOOKS_TIMEOUT_MIN, Math.floor(g.timeout)))
-            : undefined
+            : undefined,
+        if: typeof g.if === 'string' && g.if.trim() && g.if.length <= HOOKS_MAX_IF ? g.if : undefined,
+        onFailure: g.onFailure === 'block' ? ('block' as const) : undefined
       }))
       .slice(0, HOOKS_MAX_PER_EVENT)
   return {
@@ -84,7 +123,16 @@ export function leerConfig(text: string): UserHooksConfig {
     PostToolUse: lista(hooks.PostToolUse),
     PreCompact: lista(hooks.PreCompact),
     PostCompact: lista(hooks.PostCompact),
-    Stop: lista(hooks.Stop)
+    Stop: lista(hooks.Stop),
+    SessionStart: lista(hooks.SessionStart),
+    UserPromptSubmit: lista(hooks.UserPromptSubmit),
+    SubagentStop: lista(hooks.SubagentStop),
+    PostToolUseFailure: lista(hooks.PostToolUseFailure),
+    PermissionDenied: lista(hooks.PermissionDenied),
+    PermissionRequest: lista(hooks.PermissionRequest),
+    SubagentStart: lista(hooks.SubagentStart),
+    Interrupt: lista(hooks.Interrupt),
+    PostToolBatch: lista(hooks.PostToolBatch)
   }
 }
 
@@ -153,6 +201,13 @@ export function validateHooksText(raw: string): HooksValidation {
           }
         }
       }
+      // «if»: el motor descarta en silencio lo que no sea texto no vacío de hasta IF_MAX (y el gancho correría sin filtro); aquí se avisa.
+      if (g.if !== undefined) {
+        if (typeof g.if !== 'string' || g.if.trim().length === 0 || g.if.length > HOOKS_MAX_IF)
+          add('badIf', { event, n, max: HOOKS_MAX_IF })
+      }
+      // «onFailure»: el motor solo entiende «block»; cualquier otro valor se ignoraría sin avisar.
+      if (g.onFailure !== undefined && g.onFailure !== 'block') add('badOnFailure', { event, n })
       if (g.timeout !== undefined) {
         const tm = g.timeout
         if (typeof tm !== 'number' || !Number.isInteger(tm) || tm < HOOKS_TIMEOUT_MIN || tm > HOOKS_TIMEOUT_MAX) {

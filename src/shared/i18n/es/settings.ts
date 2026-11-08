@@ -485,7 +485,7 @@ export const settings = {
     'Apagado por defecto. Al cambiarlo, el motor se reinicia cuando no haya nada en curso; editar los ganchos con el interruptor encendido no lo reinicia. No se aplican en el sandbox de Overdrive (solo en Chat, Code y Overdrive con Control total).',
   'settings.engine.hooks.editorLabel': 'Archivo de ganchos (JSON)',
   'settings.engine.hooks.editorHelp':
-    'Eventos: PreToolUse (antes de una herramienta; el código de salida 2 la bloquea), PostToolUse, PreCompact (antes de compactar la conversación), PostCompact (después de compactarla; lo que imprima con código 0, hasta 4000 caracteres, se suma al contexto que se conserva) y Stop. «matcher» es una expresión regular sobre el nombre de la herramienta; «timeout» va de 1 a 60 segundos. Máximo 20 ganchos por evento, comando de hasta 2000 caracteres y 64 KB en total.',
+    'Eventos: PreToolUse (antes de una herramienta; el código de salida 2 la bloquea), PostToolUse (después de una herramienta), PreCompact (antes de compactar la conversación), PostCompact (después de compactarla; lo que imprima con código 0, hasta 4000 caracteres, se suma al contexto que se conserva), Stop (cuando la IA va a terminar; si devuelve la decisión «block», la hace seguir), SessionStart (al empezar una sesión; lo que imprima con código 0 se suma a sus instrucciones), UserPromptSubmit (cada mensaje tuyo; con código 2 se rechaza), SubagentStop (un ayudante quedó ocioso; informativo), PostToolUseFailure (una herramienta falló; solo informa), PermissionDenied (una regla o un plugin negó un permiso; solo informa), PermissionRequest (antes de preguntarte por un permiso; el gancho solo puede negarlo, nunca aprobarlo), SubagentStart (nació un ayudante; informativo), Interrupt (detuviste la sesión; informativo) y PostToolBatch (terminó un lote de herramientas; informativo). «matcher» es una expresión regular sobre el nombre de la herramienta; «if» (opcional, hasta 300 caracteres) limita el gancho a una herramienta y un patrón, como Bash(git *); «onFailure»: «block» bloquea la acción si el gancho falla (solo en PreToolUse, UserPromptSubmit y PermissionRequest). «timeout» va de 1 a 60 segundos. Máximo 20 ganchos por evento, comando de hasta 2000 caracteres y 64 KB en total.',
   'settings.engine.hooks.exampleTitle': 'Ejemplo: bloquear «rm -rf»',
   'settings.engine.hooks.useExample': 'Usar el ejemplo',
   'settings.engine.hooks.save': 'Guardar',
@@ -496,7 +496,7 @@ export const settings = {
   'settings.engine.hooks.err.badJson': 'El texto no es un JSON válido.',
   'settings.engine.hooks.err.noHooks': 'Falta el objeto «hooks» en la raíz del JSON.',
   'settings.engine.hooks.err.tooBig': 'El archivo pesa más de {kb} KB.',
-  'settings.engine.hooks.err.unknownEvent': 'Evento desconocido «{event}». Usa PreToolUse, PostToolUse, PreCompact, PostCompact o Stop.',
+  'settings.engine.hooks.err.unknownEvent': 'Evento desconocido «{event}». Mira la lista de eventos de arriba.',
   'settings.engine.hooks.err.notList': '{event} debe ser una lista de ganchos.',
   'settings.engine.hooks.err.tooMany': '{event} tiene demasiados ganchos (máximo {max}).',
   'settings.engine.hooks.err.notObject': '{event}, gancho {n}: debe ser un objeto con «command».',
@@ -506,6 +506,8 @@ export const settings = {
   'settings.engine.hooks.err.matcherTooLong': '{event}, gancho {n}: «matcher» supera los {max} caracteres.',
   'settings.engine.hooks.err.matcherInvalid': '{event}, gancho {n}: «matcher» no es una expresión regular válida.',
   'settings.engine.hooks.err.badTimeout': '{event}, gancho {n}: «timeout» debe ser un número entero de {min} a {max}.',
+  'settings.engine.hooks.err.badIf': '{event}, gancho {n}: «if» debe ser un texto de 1 a {max} caracteres.',
+  'settings.engine.hooks.err.badOnFailure': '{event}, gancho {n}: «onFailure» solo puede valer «block».',
   'settings.engine.hooks.err.writeFailed': 'No se pudo escribir el archivo en este equipo.',
   'settings.engine.limits.title': 'Límites',
   'settings.engine.limits.desc':
