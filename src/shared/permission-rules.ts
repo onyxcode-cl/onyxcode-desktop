@@ -41,10 +41,11 @@ const READ_ONLY_COMMANDS = [
   'Get-ChildItem',
   'Get-Location'
 ]
-/** Solo «Automático»: pruebas y scripts del proyecto (ya estaban en la lista conservadora anterior). */
-const PROJECT_COMMANDS = ['npm run', 'npm test']
-/** La lista de «Automático» de antes (prefijos con comodín), que Comparar sigue pidiendo al motor. */
-const LEGACY_AUTO_ALLOW = ['git status*', 'git diff*', 'git log*', 'npm run*', 'npm test*']
+/**
+ * La lista de «Automático» que Comparar pide al propio motor (prefijos con comodín). Ya NO lleva `npm run*` ni `npm test*` (1.8.12, R1):
+ * esas órdenes ejecutan código del proyecto (scripts, archivos de prueba, configuración) que «Automático» deja editar sin preguntar.
+ */
+const LEGACY_AUTO_ALLOW = ['git status*', 'git diff*', 'git log*']
 /** `git branch` solo se aprueba para LISTAR: con otros argumentos crea, borra o renombra ramas. */
 const GIT_BRANCH_LIST = /^git branch(?:\s+(?:-a|-r|-v|-vv|--show-current|--list(?:\s+\S+)*))*\s*$/
 
@@ -52,30 +53,28 @@ type ApprovalKind = 'auto' | 'plan'
 
 const withBoundary = (c: string): RegExp => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')}(?:\\s|$)`)
 const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
-const PROJECT_RES = PROJECT_COMMANDS.map(withBoundary)
 /** Cualquier cosa que encadene, redirija, sustituya o cambie de línea: el comando deja de ser «uno solo y simple». */
 const SHELL_META = /[><|;&`$\\()\n\r]|--output|--exec/
 
 /**
- * ¿La app puede aprobar sola este comando completo? Solo si es UN comando simple de la lista de solo lectura (y, en «Automático», de
- * pruebas del proyecto), sin redirecciones, tuberías, encadenado, sustituciones ni salidas a archivo. Si no, queda la pregunta del motor.
+ * ¿La app puede aprobar sola este comando completo? Solo si es UN comando simple de la lista de solo lectura, sin redirecciones, tuberías,
+ * encadenado, sustituciones ni salidas a archivo. Si no, queda la pregunta del motor. `npm test`/`npm run` NUNCA se aprueban solos
+ * (1.8.12, R1): ejecutan código del proyecto que «Automático» deja editar. `kind` se conserva por compatibilidad con quien la llama.
  */
-export function isAutoApprovableCommand(kind: ApprovalKind, command: string | undefined): boolean {
+export function isAutoApprovableCommand(_kind: ApprovalKind, command: string | undefined): boolean {
   if (typeof command !== 'string') return false
   const cmd = command.trim()
   if (!cmd || cmd.length > 500 || SHELL_META.test(cmd)) return false
   if (cmd.startsWith('git branch')) return GIT_BRANCH_LIST.test(cmd)
-  if (READ_ONLY_RES.some((re) => re.test(cmd))) return true
-  return kind === 'auto' && PROJECT_RES.some((re) => re.test(cmd))
+  return READ_ONLY_RES.some((re) => re.test(cmd))
 }
 
 /**
  * Marcas del bloque: las mismas órdenes en forma de regla `ask` (redundantes con `bash * ask`). Sirven para que la app reconozca por las
  * reglas de la SESIÓN con qué bloque está (los de «Automático» y «Editar sin preguntar» serían idénticos sin ellas).
  */
-function approvalMarks(kind: ApprovalKind): PermissionRuleLike[] {
-  const list = kind === 'auto' ? [...READ_ONLY_COMMANDS, ...PROJECT_COMMANDS] : READ_ONLY_COMMANDS
-  return list.map((c) => rule('bash', `${c} *`, 'ask'))
+function approvalMarks(): PermissionRuleLike[] {
+  return READ_ONLY_COMMANDS.map((c) => rule('bash', `${c} *`, 'ask'))
 }
 
 /** Lectura: permitida, pero los `.env` siguen preguntando (política del motor; «Todo sin preguntar» la levanta como hasta ahora). */
@@ -98,6 +97,14 @@ function readRules(protectEnv: boolean): PermissionRuleLike[] {
  */
 const GIT_CONFIG_PATTERNS = ['.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
 const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
+
+/**
+ * Configuración que el motor CARGA y ejecuta (1.8.12, R1 añadido C): `opencode.json`/`opencode.jsonc` del proyecto y de sus carpetas
+ * superiores pueden declarar un conector MCP con `command` que se arranca la próxima vez que se carga el proyecto. Si la IA pudiera
+ * escribirlos sin preguntar (modos «Editar sin preguntar» y «Automático»), sería ejecución de comandos sin tarjeta. Igual que `GIT_CONFIG_ASK`.
+ */
+const EXEC_CONFIG_PATTERNS = ['opencode.json', '*/opencode.json', 'opencode.jsonc', '*/opencode.jsonc']
+const EXEC_CONFIG_ASK: PermissionRuleLike[] = EXEC_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /** Carpetas fuera del proyecto: preguntan en todos los modos menos «Todo sin preguntar». */
 const EXTERNAL_ASK = rule('external_directory', '*', 'ask')
@@ -176,6 +183,7 @@ export function rulesetForMode(
         rule('edit', '*', 'allow'),
         rule('write', '*', 'allow'),
         ...GIT_CONFIG_ASK,
+        ...EXEC_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
         rule('webfetch', '*', 'ask'),
@@ -193,9 +201,10 @@ export function rulesetForMode(
         rule('write', '.opencode/plans/*.md', 'allow'),
         ...readRules(true),
         rule('bash', '*', 'ask'),
-        ...approvalMarks('plan'),
-        rule('webfetch', '*', 'allow'),
-        rule('websearch', '*', 'allow'),
+        ...approvalMarks(),
+        // 1.8.12 (R4): «Solo explorar» también pregunta por la web (una página puede traer instrucciones o recibir datos de la sesión).
+        rule('webfetch', '*', 'ask'),
+        rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,
         ...linked,
         rule('task', '*', 'ask'),
@@ -206,10 +215,11 @@ export function rulesetForMode(
         rule('edit', '*', 'allow'),
         rule('write', '*', 'allow'),
         ...GIT_CONFIG_ASK,
+        ...EXEC_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
-        // Comparar no tiene quién apruebe en la interfaz: allí las cinco órdenes de siempre las permite el propio motor.
-        ...(opts.engineAllowReadOnly ? LEGACY_AUTO_ALLOW.map((p) => rule('bash', p, 'allow')) : approvalMarks('auto')),
+        // Comparar no tiene quién apruebe en la interfaz: allí solo las tres órdenes de lectura de git las permite el propio motor.
+        ...(opts.engineAllowReadOnly ? LEGACY_AUTO_ALLOW.map((p) => rule('bash', p, 'allow')) : approvalMarks()),
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,

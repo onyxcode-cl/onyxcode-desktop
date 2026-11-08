@@ -209,13 +209,16 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
     expect(isAutoApprovableCommand('auto', c)).toBe(false)
     expect(isAutoApprovableCommand('plan', c)).toBe(false)
   })
-  it('las pruebas del proyecto (npm test / npm run) solo en Automático y sin encadenar', () => {
-    expect(isAutoApprovableCommand('auto', 'npm test')).toBe(true)
-    expect(isAutoApprovableCommand('auto', 'npm run build')).toBe(true)
-    expect(isAutoApprovableCommand('plan', 'npm test')).toBe(false)
+  it('1.8.12 (R1): npm test / npm run NUNCA se aprueban solos, tampoco en Automático', () => {
+    for (const kind of ['auto', 'plan'] as const) {
+      for (const c of ['npm test', 'npm run build', 'npm run', 'npm test -- --watch', 'npm install', 'pnpm test', 'yarn test']) {
+        expect(isAutoApprovableCommand(kind, c), `${kind} ${c}`).toBe(false)
+      }
+    }
     expect(isAutoApprovableCommand('auto', 'npm run build && npm publish')).toBe(false)
-    expect(isAutoApprovableCommand('auto', 'npm install')).toBe(false)
     expect(isAutoApprovableCommand('auto', undefined)).toBe(false)
+    // lo de solo lectura sigue igual
+    expect(isAutoApprovableCommand('auto', 'git status')).toBe(true)
   })
 })
 
@@ -307,5 +310,107 @@ describe('editar la configuración de git', () => {
     expect(isAutoApprovableCommand('auto', 'git status')).toBe(true)
     expect(isAutoApprovableCommand('auto', 'git -c core.fsmonitor=touch status')).toBe(false)
     expect(isAutoApprovableCommand('auto', 'git config core.fsmonitor "touch x"')).toBe(false)
+  })
+})
+
+// 1.8.12 (R1/R4): «Automático» y «Comparar» no ejecutan código del proyecto sin tarjeta; opencode.json(c) pregunta; «Solo explorar» pregunta por la web.
+describe('1.8.12: cierre de R1 y R4', () => {
+  const wild = (pattern: string, text: string): boolean =>
+    new RegExp(
+      '^' +
+        pattern
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.') +
+        '$'
+    ).test(text)
+  const last = (rules: ReturnType<typeof rulesetForMode>, permission: 'edit' | 'write', path: string): string | null =>
+    rules.filter((r) => r.permission === permission && wild(r.pattern, path)).at(-1)?.action ?? null
+
+  it('Automático (con o sin permiso de solo lectura del motor) no contiene npm', () => {
+    for (const opts of [{}, { engineAllowReadOnly: true }]) {
+      const rules = rulesetForMode('auto', opts)
+      expect(rules.filter((r) => /npm/.test(r.pattern))).toEqual([])
+      expect(evaluate('bash', 'npm test', BUILD, rules)).toBe('ask')
+      expect(evaluate('bash', 'npm run build', BUILD, rules)).toBe('ask')
+    }
+    // Comparar conserva solo la lectura de git
+    expect(evaluate('bash', 'git status', BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('allow')
+  })
+
+  it.each(['acceptEdits', 'auto'] as const)('%s: editar opencode.json(c) pregunta; un archivo normal sigue permitido', (mode) => {
+    const rules = rulesetForMode(mode)
+    for (const permission of ['edit', 'write'] as const) {
+      for (const p of ['opencode.json', 'sub/opencode.jsonc', 'a/b/opencode.json', 'opencode.jsonc']) {
+        expect(last(rules, permission, p), `${mode} ${permission} ${p}`).toBe('ask')
+      }
+      expect(last(rules, permission, 'src/a.ts')).toBe('allow')
+    }
+    expect(evaluate('edit', 'opencode.json', BUILD, rules)).toBe('ask')
+    expect(evaluate('edit', 'sub/opencode.jsonc', BUILD, rules)).toBe('ask')
+    expect(evaluate('edit', 'src/a.ts', BUILD, rules)).toBe('allow')
+  })
+
+  it('«Solo explorar»: la web pregunta', () => {
+    const rules = rulesetForMode('plan')
+    expect(evaluate('webfetch', 'https://example.com', BUILD, rules)).toBe('ask')
+    expect(evaluate('websearch', 'algo', BUILD, rules)).toBe('ask')
+  })
+
+  it('approvalKindOf reconoce auto y plan y no confunde auto con acceptEdits', () => {
+    expect(approvalKindOf(rulesetForMode('auto'))).toBe('auto')
+    expect(approvalKindOf(rulesetForMode('plan'))).toBe('plan')
+    expect(approvalKindOf(rulesetForMode('acceptEdits'))).toBeNull()
+    expect(approvalKindOf(rulesetForMode('manual'))).toBeNull()
+    expect(approvalKindOf(rulesetForMode('bypass'))).toBeNull()
+    expect(approvalKindOf([...rulesetForMode('auto'), ...rulesetForMode('acceptEdits')])).toBeNull()
+    expect(approvalKindOf([...rulesetForMode('acceptEdits'), ...rulesetForMode('auto')])).toBe('auto')
+  })
+
+  it('una sesión con el bloque «auto» VIEJO (con npm) ya no se reconoce como auto (lado seguro: más tarjetas, nada aprobado de más)', () => {
+    const a = (
+      permission: string,
+      pattern: string,
+      action: 'allow' | 'ask' | 'deny'
+    ): { permission: string; pattern: string; action: typeof action } => ({
+      permission,
+      pattern,
+      action
+    })
+    const marks = [
+      'ls',
+      'dir',
+      'pwd',
+      'git branch',
+      'git show',
+      'git rev-parse',
+      'git status',
+      'git diff',
+      'git log',
+      'Get-ChildItem',
+      'Get-Location',
+      'npm run',
+      'npm test'
+    ]
+    const viejo = [
+      a('edit', '*', 'allow'),
+      a('write', '*', 'allow'),
+      ...['.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules'].flatMap((p) => [
+        a('edit', p, 'ask'),
+        a('write', p, 'ask')
+      ]),
+      a('read', '*', 'allow'),
+      a('read', '*.env', 'ask'),
+      a('read', '*.env.*', 'ask'),
+      a('read', '*.env.example', 'allow'),
+      a('read', 'mcp:*', 'ask'),
+      a('bash', '*', 'ask'),
+      ...marks.map((c) => a('bash', `${c} *`, 'ask')),
+      a('webfetch', '*', 'ask'),
+      a('websearch', '*', 'ask'),
+      a('external_directory', '*', 'ask'),
+      a('task', '*', 'allow')
+    ]
+    expect(approvalKindOf(viejo)).toBeNull()
   })
 })
