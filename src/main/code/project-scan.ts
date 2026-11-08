@@ -293,12 +293,13 @@ class Scan {
     if (c.size > MAX_JSON_BYTES) return this.unreviewed(file, 'too-big', true)
     const text = await readCapped(c.real, MAX_JSON_BYTES)
     if (text === null) return this.unreviewed(file, 'too-big', true)
-    // El motor sustituye `{env:X}` (y `{file:…}`) en el TEXTO CRUDO antes de interpretarlo, también en claves y fuera de comillas; una variable
-    // que no existe vale "". Se hace lo mismo para ver lo que el motor ve. Cualquiera de los dos marcadores deja el archivo «no revisado del todo»
-    // (lista incompleta) y su texto crudo entra en la huella; el contenido de los `{file:…}` no se lee (queda como residual).
-    const raw = text.replace(/^﻿/, '')
-    const substituted = raw.replace(ENV_TOKEN_RE, (_m, v: string) => process.env[v] || '')
-    if (DYNAMIC_RE.test(raw)) this.unreviewed(file, 'dynamic', true, sha(`${raw}\0${substituted}`))
+    // El motor sustituye `{env:X}` (y `{file:…}`) en el TEXTO CRUDO antes de interpretarlo, también en claves y fuera de comillas. Aquí NO se
+    // reproduce su sustitución (su entorno no es el de esta app): cualquier marcador se trata como DINÁMICO. El archivo queda «no revisado del
+    // todo» (lista incompleta → regla de respaldo) y su texto crudo entra en la huella. Para localizar `mcp` aunque un marcador forme parte de
+    // una clave, los `{env:}` se vuelven "" solo para interpretar: así NUNCA se lee ni se muestra el valor de una variable.
+    const raw = text.replace(/^\ufeff/, '')
+    const substituted = raw.replace(ENV_TOKEN_RE, '')
+    if (DYNAMIC_RE.test(raw)) this.unreviewed(file, 'dynamic', true, sha(raw))
     let data: unknown
     try {
       data = JSON.parse(stripJsonc(substituted))

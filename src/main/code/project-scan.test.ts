@@ -380,19 +380,23 @@ describe('lo que ve el motor: sustitución {env:…} / {file:…} del texto crud
     expect(r.complete).toBe(false)
   })
 
-  it('la variable que SÍ existe se sustituye (se ve el programa real) y el texto crudo entra en la huella', async () => {
-    process.env.LZX_SCAN_TEST_PROG = 'programa-real'
+  it('NUNCA se muestra el valor de una variable existente (ni en el programa, ni en el host, ni en el nombre) y el texto crudo entra en la huella', async () => {
+    process.env.LZX_SCAN_TEST_VALOR = 'valor-que-no-debe-verse'
     try {
       const a = mk()
       const b = mk()
-      w(join(a, 'opencode.json'), '{ "mcp": { "x": { "type": "local", "command": ["{env:LZX_SCAN_TEST_PROG}"] } } }')
-      w(join(b, 'opencode.json'), '{ "mcp": { "x": { "type": "local", "command": ["programa-real"] } } }')
+      w(
+        join(a, 'opencode.json'),
+        '{ "mcp": { "x{env:LZX_SCAN_TEST_VALOR}": { "type": "local", "command": ["{env:LZX_SCAN_TEST_VALOR}"] }, "r": { "type": "remote", "url": "https://{env:LZX_SCAN_TEST_VALOR}.ejemplo.com" } } }'
+      )
+      w(join(b, 'opencode.json'), '{ "mcp": { "x": { "type": "local", "command": [""] } } }')
       const ra = await scanProjectConfig(a)
       const rb = await scanProjectConfig(b)
-      expect(mcpOf(ra)[0]!.detail).toBe('programa-real')
+      expect(JSON.stringify(ra)).not.toContain('valor-que-no-debe-verse')
+      expect(ra.complete).toBe(false)
       expect(ra.huella).not.toBe(rb.huella)
     } finally {
-      delete process.env.LZX_SCAN_TEST_PROG
+      delete process.env.LZX_SCAN_TEST_VALOR
     }
   })
 })
