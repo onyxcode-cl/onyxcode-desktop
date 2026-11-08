@@ -3,7 +3,7 @@
  * Es TEXTO NO CONFIABLE (lo produce un modelo que lee contenido del proyecto, incluidos los patrones que escribe el agente) y solo
  * informa: nunca aprueba, preselecciona, reordena ni da foco a un botón. Aquí se lee de forma estricta y se limpia otra vez.
  */
-import { isExecOrGitConfigPath } from './permission-rules'
+import { isAutoApprovableCommand, isExecOrGitConfigPath } from './permission-rules'
 
 export type PermissionSuggestionValue = 'permitir' | 'negar' | 'preguntar'
 export type PermissionSuggestion = { value: PermissionSuggestionValue; reason: string }
@@ -18,6 +18,9 @@ const VALUES: ReadonlySet<string> = new Set(['permitir', 'negar', 'preguntar'])
 const CONTROL_RE = /[\p{Cc}\p{Zl}\p{Zp}]/gu
 const INVISIBLE_RE = /[\p{Cf}\p{Co}\p{Cn}\uFE00-\uFE0F\u{E0100}-\u{E01EF}\u034F\u115F\u1160\u3164\uFFA0]/gu
 
+const TLDS =
+  'com|net|org|io|dev|app|xyz|ru|cn|info|biz|co|me|sh|tk|top|site|online|club|cc|ly|to|ai|gg|zip|mov|link|click|live|store|cloud|pw|ws'
+
 /** Una línea de texto plano: sin control, sin marcas de dirección, sin enlaces, sin Markdown ni etiquetas, con tope por puntos de código. */
 export function cleanSuggestionReason(text: unknown): string {
   if (typeof text !== 'string') return ''
@@ -31,6 +34,9 @@ export function cleanSuggestionReason(text: unknown): string {
     .replace(/[`*_~#>\[\]()<>{}|\\]/g, '')
     .replace(/\S*:\/\/\S*/g, ' ')
     .replace(/\bwww\.\S*/gi, ' ')
+    // Esquemas sin «//» y dominios sin esquema (`algo.com/ruta`, `algo.io:8080`), también con punto ideográfico.
+    .replace(/\b(?:javascript|data|mailto|vbscript|file|tel):\S*/gi, ' ')
+    .replace(new RegExp(`\\S*[.。](?:${TLDS})\\b\\S*`, 'gi'), ' ')
     .replace(/\s+/g, ' ')
     .trim()
   return Array.from(limpio).slice(0, SUGGESTION_REASON_MAX).join('').trim()
@@ -52,7 +58,40 @@ export type SuggestionOptions = {
 // Solo estas acciones pueden llevar sugerencia; todo lo demás (external_directory, conectores MCP, task, documentos…) la oculta.
 const SUGGESTIBLE: ReadonlySet<string> = new Set(['bash', 'webfetch', 'websearch', 'edit', 'write', 'read'])
 
+/** El modelo pequeño del motor solo ve 5 patrones de 500 caracteres: si hay más, no vio todo lo que la persona aprueba. */
+const MAX_PATTERNS = 5
+const MAX_PATTERN_LEN = 500
+
 const ENV_RE = /(^|[\\/])[^\\/]*\.env(\.[^\\/]*)?$/i
+
+// Nombres que el motor protege (rutas-protegidas.ts) y configuración global del motor: se ocultan por nombre aunque falte la marca.
+const SENSITIVE_SEGMENTS: ReadonlySet<string> = new Set(['.mcp.json', '.gitconfig', '.vscode', '.claude', '.idea', '.husky', '.opencode'])
+
+/** Segmentos de una ruta tal como los vería Windows: sin espacios ni puntos finales, sin flujo `::$DATA`. */
+function segmentsOf(path: string): string[] {
+  return path
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((x) =>
+      x
+        .trim()
+        .replace(/::?\$data$/i, '')
+        .replace(/[. ]+$/, '')
+        .toLowerCase()
+    )
+    .filter((x) => x && x !== '.')
+}
+
+/** ¿Ruta de configuración que se ejecuta, protegida por el motor o con forma de nombre corto 8.3? Ante la duda, sí. */
+export function isSensitiveEditPath(path: string): boolean {
+  const segs = segmentsOf(path)
+  if (segs.some((x) => /~\d/.test(x) || SENSITIVE_SEGMENTS.has(x))) return true
+  for (let i = 0; i < segs.length - 1; i++) {
+    if (segs[i] === 'opencode' && (segs[i + 1] === 'config.json' || segs[i + 1].startsWith('plugin'))) return true
+  }
+  const norm = segs.join('/')
+  return isExecOrGitConfigPath(norm) || isExecOrGitConfigPath('/' + norm)
+}
 
 function pathsOf(req: SuggestionRequest): string[] {
   const out = [...req.patterns]
@@ -67,10 +106,24 @@ export function suggestionHiddenFor(req: SuggestionRequest, opts: SuggestionOpti
   if (opts.protectedPath || opts.isChild) return true
   if (req.api !== 'v1') return true // en v2 el motor no descarta una clave puesta por la herramienta
   if (!SUGGESTIBLE.has(req.permission)) return true
+  if (req.patterns.length > MAX_PATTERNS || req.patterns.some((p) => typeof p !== 'string' || p.length > MAX_PATTERN_LEN)) return true
   const paths = pathsOf(req)
-  if (req.permission === 'edit' || req.permission === 'write') return paths.some((p) => isExecOrGitConfigPath(p))
+  if (req.permission === 'edit' || req.permission === 'write') return paths.some((p) => isSensitiveEditPath(p))
   if (req.permission === 'read') return paths.some((p) => ENV_RE.test(p) || p.startsWith('mcp:'))
   return false
+}
+
+/**
+ * «permitir» solo se acepta cuando es coherente con lo que se aprueba: en bash, si TODAS las órdenes (y `metadata.command`) son de solo
+ * lectura según la app; nunca en webfetch/websearch (canal de salida de datos). Si no, se oculta; «negar» y «preguntar» no empujan a aprobar.
+ */
+function allowIsCoherent(req: SuggestionRequest): boolean {
+  if (req.permission === 'webfetch' || req.permission === 'websearch') return false
+  if (req.permission !== 'bash') return true
+  const md = req.metadata as Record<string, unknown>
+  const command = md.command
+  if (command !== undefined && !isAutoApprovableCommand('auto', typeof command === 'string' ? command : undefined)) return false
+  return req.patterns.length > 0 && req.patterns.every((p) => isAutoApprovableCommand('auto', p))
 }
 
 /**
@@ -87,5 +140,6 @@ export function readPermissionSuggestion(req: SuggestionRequest, opts: Suggestio
   if (typeof sugerencia !== 'string' || !VALUES.has(sugerencia)) return null
   const reason = cleanSuggestionReason(motivo)
   if (!reason) return null
+  if (sugerencia === 'permitir' && !allowIsCoherent(req)) return null
   return { value: sugerencia as PermissionSuggestionValue, reason }
 }
