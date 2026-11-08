@@ -123,7 +123,16 @@ function readRules(protectEnv: boolean): PermissionRuleLike[] {
  * Mismo riesgo con los hooks (`.git/hooks/*`), `.gitattributes` (filtros/textconv) y `.gitmodules`. Rutas relativas al proyecto; `*` casa
  * también con «/». No afecta a `.gitignore` ni a `.github/`.
  */
-const GIT_CONFIG_PATTERNS = ['.git', '*/.git', '.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
+export const GIT_CONFIG_PATTERNS = [
+  '.git',
+  '*/.git',
+  '.git/*',
+  '*/.git/*',
+  '.gitattributes',
+  '*/.gitattributes',
+  '.gitmodules',
+  '*/.gitmodules'
+]
 const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /**
@@ -131,7 +140,7 @@ const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => 
  * superiores pueden declarar un conector MCP con `command` que se arranca la próxima vez que se carga el proyecto. Si la IA pudiera
  * escribirlos sin preguntar (modos «Editar sin preguntar» y «Automático»), sería ejecución de comandos sin tarjeta. Igual que `GIT_CONFIG_ASK`.
  */
-const EXEC_CONFIG_PATTERNS = [
+export const EXEC_CONFIG_PATTERNS = [
   'opencode.json',
   '*/opencode.json',
   'opencode.jsonc',
@@ -142,6 +151,20 @@ const EXEC_CONFIG_PATTERNS = [
   '.opencode/*',
   '*/.opencode/*'
 ]
+/** ¿La ruta casa con la configuración de git o la que el motor carga y ejecuta? (mismas listas de arriba; `*` casa también con «/»). */
+export function isExecOrGitConfigPath(path: string): boolean {
+  const p = path.replace(/\\/g, '/').toLowerCase()
+  return [...GIT_CONFIG_PATTERNS, ...EXEC_CONFIG_PATTERNS].some((g) => {
+    const re = new RegExp(
+      `^${g
+        .toLowerCase()
+        .replace(/[.+?^${}()|[\]\\-]/g, '\\$&')
+        .replace(/\*/g, '.*')}$`
+    )
+    return re.test(p)
+  })
+}
+
 const EXEC_CONFIG_ASK: PermissionRuleLike[] = EXEC_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /** Carpetas fuera del proyecto: preguntan en todos los modos menos «Todo sin preguntar». */

@@ -18,6 +18,7 @@ import {
   type PermAction
 } from '../../../components/permission/PermissionShell'
 import { isProtectedPermission } from '@shared/protected-path'
+import { readPermissionSuggestion } from '@shared/permission-suggestion'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
@@ -73,6 +74,8 @@ export function PermissionCardDesk({
   const md = request.metadata
   // Ruta protegida del motor: el motor ya manda `always: []`; aquí tampoco se ofrece «Permitir siempre» y se avisa con una línea clara.
   const protectedPath = isProtectedPermission(md)
+  // Solo informa: texto plano, sin tocar botones, foco ni orden; en ruta protegida no se muestra.
+  const suggestion = readPermissionSuggestion(request, { protectedPath, isChild: sub.child })
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''
@@ -146,6 +149,12 @@ export function PermissionCardDesk({
         <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
           <p className="text-caption font-medium text-subtle">{t('code.perm.aiDesc')}</p>
           <p className="mt-0.5 text-ui text-muted">{description}</p>
+        </div>
+      )}
+      {suggestion && (
+        <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
+          <p className="text-ui text-muted">{t(`code.perm.suggestion.${suggestion.value}` as MsgKey, { reason: suggestion.reason })}</p>
+          <p className="mt-0.5 text-caption text-subtle">{t('code.perm.suggestion.note')}</p>
         </div>
       )}
       {root && (

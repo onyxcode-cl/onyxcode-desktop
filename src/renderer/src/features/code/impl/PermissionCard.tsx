@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { FilePen, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
+import { readPermissionSuggestion } from '@shared/permission-suggestion'
 import { QuestionCard as SharedQuestionCard } from '../../../components/QuestionCard'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -76,6 +77,7 @@ function MobilePermissionCard({
 
   const md = request.metadata
   const protectedPath = isProtectedPermission(md)
+  const suggestion = readPermissionSuggestion(request, { protectedPath, isChild: sub.child })
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''
@@ -155,6 +157,12 @@ function MobilePermissionCard({
         </pre>
       )}
       {diff && <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80 border-t border-border" />}
+      {suggestion && (
+        <div className="border-t border-border px-3.5 py-2 text-[13px] text-muted">
+          <p>{t(`code.perm.suggestion.${suggestion.value}` as MsgKey, { reason: suggestion.reason })}</p>
+          <p className="mt-0.5 text-xs text-subtle">{t('code.perm.suggestion.note')}</p>
+        </div>
+      )}
       {protectedPath && (
         <div role="note" className="flex items-start gap-2 border-t border-border bg-warning/10 px-3.5 py-2.5 text-[13px]">
           <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
