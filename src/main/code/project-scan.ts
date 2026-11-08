@@ -461,8 +461,8 @@ class Scan {
     this.add({ kind: 'package', name: 'package.json', where: this.rel(file), risky: true, digest: await hashFile(c.real, c.size, mtime) })
   }
 
-  /** Ayudantes de `.claude/agents` (solo nombres). */
-  private async dotClaude(dir: string, base: string): Promise<void> {
+  /** Ayudantes del ayudante externo que el motor también lee (ver `ConfigAgent.loadClaude` en el motor): solo nombres. */
+  private async externalAgentsDir(dir: string, base: string): Promise<void> {
     const real = await realpathWithin(dir, base)
     if (real === null) return this.unreviewed(dir, 'symlink', false)
     const l = await listDir(real)
@@ -486,7 +486,7 @@ class Scan {
     const dot = join(dir, '.opencode')
     if (await exists(dot)) await this.dotOpencode(dot, base)
     const cl = join(dir, '.claude')
-    if (await exists(cl)) await this.dotClaude(cl, base)
+    if (await exists(cl)) await this.externalAgentsDir(cl, base)
     await this.docFile(dir, 'AGENTS.md')
     await this.docFile(dir, 'CLAUDE.md')
   }
