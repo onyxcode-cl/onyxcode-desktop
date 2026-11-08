@@ -77,7 +77,7 @@ function MobilePermissionCard({
 
   const md = request.metadata
   const protectedPath = isProtectedPermission(md)
-  const suggestion = readPermissionSuggestion(md, protectedPath)
+  const suggestion = readPermissionSuggestion(request, { protectedPath, isChild: sub.child })
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''

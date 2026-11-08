@@ -75,7 +75,7 @@ export function PermissionCardDesk({
   // Ruta protegida del motor: el motor ya manda `always: []`; aquí tampoco se ofrece «Permitir siempre» y se avisa con una línea clara.
   const protectedPath = isProtectedPermission(md)
   // Solo informa: texto plano, sin tocar botones, foco ni orden; en ruta protegida no se muestra.
-  const suggestion = readPermissionSuggestion(md, protectedPath)
+  const suggestion = readPermissionSuggestion(request, { protectedPath, isChild: sub.child })
   const diff = typeof md.diff === 'string' ? md.diff : ''
   const command = typeof md.command === 'string' ? md.command : ''
   const description = typeof md.description === 'string' ? md.description : ''

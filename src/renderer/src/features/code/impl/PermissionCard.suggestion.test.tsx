@@ -86,4 +86,22 @@ describe('sugerencia de permisos en la tarjeta', () => {
     const mob = renderToStaticMarkup(<PermissionCard request={perm({ ...meta, lazunoxSugerencia: SUG })} root="/proj" />)
     expect(mob).not.toContain('Sugerencia de la IA')
   })
+  it('configuración que se ejecuta (opencode.json), external_directory y canal v2 → igual que sin sugerencia', () => {
+    g.window = { api: { platform: 'darwin' } }
+    const casos: Partial<PendingPermission>[] = [
+      { permission: 'edit', patterns: ['opencode.json'], metadata: { filepath: '/proj/opencode.json' } },
+      { permission: 'write', patterns: ['.git/config'], metadata: { filepath: '/proj/.git/config' } },
+      { permission: 'external_directory', patterns: ['/Users/x/.ssh/*'], metadata: {} },
+      { permission: 'bash', patterns: ['ls'], metadata: { command: 'ls' }, api: 'v2' }
+    ]
+    for (const c of casos) {
+      const base = { ...perm({}), ...c }
+      const con = renderToStaticMarkup(
+        <PermissionCardDesk request={{ ...base, metadata: { ...base.metadata, lazunoxSugerencia: SUG } }} root="/proj" />
+      )
+      const sin = renderToStaticMarkup(<PermissionCardDesk request={base} root="/proj" />)
+      expect(con).not.toContain('Sugerencia de la IA')
+      expect(con).toBe(sin)
+    }
+  })
 })
