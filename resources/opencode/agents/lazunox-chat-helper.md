@@ -1,6 +1,8 @@
 ---
 description: Ayudante del Chat para investigar en la web (buscar y leer páginas) y devolver un resumen, sin acceso a archivos ni terminal
 mode: subagent
+# inherit a propósito: `small` puede ser de pago aunque la conversación sea gratis; ver PLAN-OLA-A §2.6
+model: inherit
 temperature: 0.3
 permission:
   # EXACTAMENTE los permisos del agente `chat` que lo lanza, sin `question`: si tuviera algo más, el guardián de subagentes

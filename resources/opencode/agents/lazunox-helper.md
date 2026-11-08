@@ -1,6 +1,8 @@
 ---
 description: Ayudante de solo lectura para investigar archivos de la carpeta de trabajo sin modificar nada
 mode: subagent
+# inherit a propósito: `small` puede ser de pago aunque la conversación sea gratis; ver PLAN-OLA-A §2.6
+model: inherit
 temperature: 0.2
 permission:
   "*": deny
