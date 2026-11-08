@@ -11,6 +11,7 @@
 //     simbólicos (`TMPDIR=/private/var/tmp/... nice -n 19 node …`); Linux: contenedor sin red en el VPS.
 //   PROBE_ONLY=umbral | minimos | resumen | todo-deps | ganchos3 | cambios | respaldo | heredado | sugerencia | unicode | paralelo | bifurcar   Ola 6 del motor
 //     lazunox.12 (checks-ola6.mjs), una familia por vez; `PROBE_ONLY=no-verificable` lista lo que no se puede comprobar sin modelo real.
+//   PROBE_ONLY=olaA   Ola A de la app 1.8.12 (checks-olaA.mjs): línea base con el motor lazunox.14 (R1/R2/R4, `general`, websearch, AGENTS.md grande, respaldo, huella de ganchos).
 //   PROBE_MCP_MANY=<n>  herramientas extra del conector de las comprobaciones `tool-search` (defecto 40).
 //   PROBE_FORCE_TOOL_SEARCH=1  corre las `tool-search` aunque el motor no traiga `LAZUNOX_TOOL_SEARCH` (para ver POR QUÉ fallan).
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
@@ -24,6 +25,7 @@ import { registrarOla2 } from './checks-ola2.mjs'
 import { registrarOla3 } from './checks-ola3.mjs'
 import { NO_VERIFICABLE, registrarOla6 } from './checks-ola6.mjs'
 import { FAMILIAS as FAMILIAS_OLA7, registrarOla7 } from './checks-ola7.mjs'
+import { FAMILIAS as FAMILIAS_OLAA, registrarOlaA } from './checks-olaA.mjs'
 import { runEngine } from './harness.mjs'
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -484,7 +486,8 @@ check(
 
 // ── Plugin lazunox-session (F8-B205): texto REAL de `sessionPluginSource()` ───────────────────────────────────────
 const src = readFileSync(join(repo, 'src', 'main', 'tasks', 'opencode-config.ts'), 'utf8')
-const m = /export function sessionPluginSource\(\): string \{\n  return `([\s\S]*?)`\n\}/.exec(src)
+// La función ya no es `sessionPluginSource(): string`: tiene parámetro `unified` y una rama `if (unified) return …Unified()` antes del texto (modo no unificado).
+const m = /export function sessionPluginSource\([^\n]*\): string \{\n(?:  if \(unified\) return [^\n]*\n)?  return `([\s\S]*?)`\n\s*\}/.exec(src)
 if (!m || m[1].includes('${')) throw new Error('no se pudo extraer el texto del plugin lazunox-session')
 const sessionPlugin = { 'lazunox-session.js': m[1] }
 const injected = (r) => {
@@ -1104,6 +1107,8 @@ const FAMILIAS_OLA3 = registrarOla3({ bin, checkRun, runEngine })
 // `PROBE_ONLY=no-verificable` imprime lo que este probe no puede comprobar sin modelo real.
 const FAMILIAS_OLA6 = registrarOla6({ bin, checkRun, runEngine })
 registrarOla7({ bin, checkRun, runEngine })
+// Ola A de la app 1.8.12 (checks-olaA.mjs): línea base con el motor lazunox.14, ocho comprobaciones. PROBE_ONLY=olaA.
+registrarOlaA({ bin, checkRun, runEngine, tsModule, repo })
 
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).
 const only = process.env.PROBE_ONLY
@@ -1117,7 +1122,7 @@ if (only === 'no-verificable') {
   for (const [que, porque] of NO_VERIFICABLE) console.log(`NO VERIFICABLE ${que}\n      → ${porque}`)
   process.exit(0)
 }
-const selectedAll = only ? checks.filter((x) => (x.familia ? x.familia === only : x.name.includes(only) && !FAMILIAS_OLA3.includes(only) && !FAMILIAS_OLA6.includes(only) && !FAMILIAS_OLA7.includes(only))) : checks
+const selectedAll = only ? checks.filter((x) => (x.familia ? x.familia === only : x.name.includes(only) && !FAMILIAS_OLA3.includes(only) && !FAMILIAS_OLA6.includes(only) && !FAMILIAS_OLA7.includes(only) && !FAMILIAS_OLAA.includes(only))) : checks
 // PROBE_SLICE=a-b: corre solo las comprobaciones a..b-1 (para repartir la corrida larga de Windows en tramos con tiempo máximo cada uno).
 const selected = process.env.PROBE_SLICE ? selectedAll.slice(...process.env.PROBE_SLICE.split('-').map(Number)) : selectedAll
 if (process.env.PROBE_COUNT) { console.log(selectedAll.length); process.exit(0) }
