@@ -44,8 +44,10 @@ function TrustItemRow({ item }: { item: ProjectScanItem }): React.JSX.Element {
         <span className="min-w-0 truncate font-medium text-fg">{item.name}</span>
         <span className="shrink-0 text-subtle">{te(KIND_KEY[item.kind])}</span>
       </div>
-      {item.detail && <div className="truncate font-mono text-[11px] text-subtle">{item.detail}</div>}
-      {item.overrides && <div className="text-[11px] text-warning">{te('code.trust.overrides', { name: item.overrides })}</div>}
+      {item.detail && <div className="truncate font-mono text-[11px] desk:text-meta text-subtle">{item.detail}</div>}
+      {item.overrides && (
+        <div className="text-[11px] desk:text-meta text-warning">{te('code.trust.overrides', { name: item.overrides })}</div>
+      )}
     </li>
   )
 }
@@ -65,7 +67,7 @@ function TrustItemList({ p }: { p: PendingTrust }): React.JSX.Element {
           <TrustItemRow key={item.id} item={item} />
         ))}
       </ul>
-      {hidden > 0 && <p className="mt-1 text-[11px] text-subtle">{te('code.trust.more', { count: hidden })}</p>}
+      {hidden > 0 && <p className="mt-1 text-[11px] desk:text-meta text-subtle">{te('code.trust.more', { count: hidden })}</p>}
     </div>
   )
 }

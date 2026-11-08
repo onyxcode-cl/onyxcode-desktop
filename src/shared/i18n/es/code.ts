@@ -304,7 +304,7 @@ export const code = {
   'code.trust.kind.formatter': 'Programa de formato',
   'code.trust.kind.lsp': 'Servidor de lenguaje',
   'code.trust.kind.shell': 'Intérprete de comandos propio',
-  'code.trust.kind.provider': 'Proveedor con dirección propia',
+  'code.trust.kind.provider': 'Servicio de IA con dirección propia',
   'code.trust.kind.permission': 'Regla de permiso que abre',
   'code.trust.kind.instructions': 'Instrucciones que se bajan de internet',
   'code.trust.kind.agent': 'Ayudante',

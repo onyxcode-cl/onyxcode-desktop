@@ -416,6 +416,9 @@
       "darwin": 1,
       "win32": 1
     },
+    "src/shared/engine-lastmile-env.ts": {
+      "win32": 1
+    },
     "src/shared/i18n/index.ts": {
       "win32": 2
     },

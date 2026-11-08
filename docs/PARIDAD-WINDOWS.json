@@ -905,6 +905,18 @@
           "win32": false
         }
       }
+    },
+    {
+      "id": "N03",
+      "funcion": "Política de administrador del motor (motor-policy.json)",
+      "estado": "IGUAL",
+      "evidencia": [
+        "src/shared/engine-lastmile-env.ts:45",
+        "src/shared/engine-lastmile-env.ts:48",
+        "docs/POLITICA-ORGANIZACION.md:76"
+      ],
+      "nota": "Mac: /Library/Application Support/Lazunox/motor-policy.json. Windows: %ProgramData%\\Lazunox\\motor-policy.json. Solo si existe; sin archivo = sin política. W-A4 (1.8.12). Sin probar en un PC Windows real: ver SEGURIDAD.md.",
+      "comprobacion": null
     }
   ]
 }
