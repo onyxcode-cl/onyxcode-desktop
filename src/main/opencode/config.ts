@@ -334,6 +334,32 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           ...(opts.chatSubagents ? { task: { '*': 'deny', [CHAT_HELPER_AGENT]: 'allow' } } : {})
         }
       },
+      // Ayudante `general` en Code (1.8.12, W-A3, decisión D5=A). COMENTARIO LARGO A PROPÓSITO: es una zona de seguridad.
+      //  - El motor hace `general` con `'*': allow` y fusiona lo que declara esta config AL FINAL de su permiso (agent.ts: `Permission.merge(item.permission, declarado)`),
+      //    así que lo de aquí GANA sobre sus `allow`. Una hija `general` solo hereda del padre las reglas `deny` y `external_directory` de su sesión.
+      //  - El guardián de subagentes (`subagent-guard.ts`, zona intocable) bloquea el `task` si la hija tendría MÁS libertad que el padre
+      //    (agente + sesión). Con `'*': allow`, `general` quedaba bloqueado en todos los modos que preguntan (probado con el motor real, W-A0).
+      //  - Aquí `general` DECLARA «preguntar» en lo que cambia el mundo (editar, escribir, shell, web, carpetas externas) y en leer `.env`
+      //    y los recursos de conectores (`read mcp:*`, que el padre pregunta por `permission-rules.ts`). Así nunca tiene más libertad que un padre
+      //    que pregunta, el guardián lo deja pasar, y cada acción de la hija sale como tarjeta de la SESIÓN HIJA. Precio: pregunta aunque el padre
+      //    esté en «Editar sin preguntar»/«Automático»/«Todo sin preguntar».
+      //  - Si el padre tiene MENOS libertad (Solo explorar: `edit` en deny; Chat: todo en deny), la declaración sigue siendo más libertad y el guardián
+      //    sigue BLOQUEANDO: este bloque no puede abrir nada, falla cerrado. `lazunox-helper`, `explore` y los demás agentes no cambian.
+      //  - `task: deny`: un ayudante no lanza ayudantes. `todowrite` lo conserva el motor (`allow`, su propia lista de la hija).
+      //  - Las protecciones de la sesión del padre (`.git`, `opencode.json`, `.opencode/*` en `ask`) NO se heredan (solo `deny`), pero aquí `edit`/`write`
+      //    ya son `ask` para todo, así que preguntan igual.
+      general: {
+        permission: {
+          edit: 'ask',
+          write: 'ask',
+          bash: 'ask',
+          webfetch: 'ask',
+          websearch: 'ask',
+          read: { '*': 'allow', '*.env': 'ask', '*.env.*': 'ask', '*.env.example': 'allow', 'mcp:*': 'ask' },
+          external_directory: 'ask',
+          task: 'deny'
+        }
+      },
       computer: { disable: true }
     }
   }
