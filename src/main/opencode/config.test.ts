@@ -177,3 +177,25 @@ describe('Chat: subagentes (F8-B206)', () => {
     expect(CHAT_HELPER_AGENT).toBe('lazunox-chat-helper')
   })
 })
+
+describe('ayudante general en Code (W-A3, D5=A)', () => {
+  const general = (): Record<string, unknown> =>
+    (buildInlineConfig() as { agent: { general: { permission: Record<string, unknown> } } }).agent.general.permission
+
+  it('declara «preguntar» en editar, escribir, shell, web y carpetas externas, y no lanza más ayudantes', () => {
+    const p = general()
+    for (const k of ['edit', 'write', 'bash', 'webfetch', 'websearch', 'external_directory']) expect(p[k], k).toBe('ask')
+    expect(p.task).toBe('deny')
+  })
+
+  it('lectura libre salvo .env y recursos de conectores (`read mcp:*`, que el padre también pregunta)', () => {
+    expect(general().read).toEqual({ '*': 'allow', '*.env': 'ask', '*.env.*': 'ask', '*.env.example': 'allow', 'mcp:*': 'ask' })
+  })
+
+  it('no hay ningún `allow` fuera de `read` ni se tocan otros agentes nativos (explore, plan, build)', () => {
+    const p = general()
+    for (const [k, v] of Object.entries(p)) if (k !== 'read') expect(v, k).not.toBe('allow')
+    const agents = (buildInlineConfig() as { agent: Record<string, unknown> }).agent
+    for (const nombre of ['explore', 'plan', 'build', 'lazunox-helper']) expect(agents).not.toHaveProperty(nombre)
+  })
+})

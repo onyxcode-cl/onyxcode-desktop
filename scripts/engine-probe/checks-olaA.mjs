@@ -3,13 +3,14 @@
 // Una comprobación «NO SE REPRODUCE» hace fallar la corrida (código 1): no es un error del arnés, es que el motor ya no se comporta
 // como dijo la auditoría. W-A3 y W-M2 dan la vuelta a las comprobaciones 1, 6 y 7 cuando arreglen lo que describen.
 //   PROBE_ONLY=olaA node scripts/engine-probe/run.mjs [ruta/al/opencode]
-//   1  `general` lanzado por `task` desde Code (padre build + reglas de sesión de cada modo + guardián real): bloqueado salvo en «bypass»
+//   1  `general` lanzado por `task` desde Code (padre build + reglas de sesión de cada modo + guardián real + config inline real, W-A3): PASA en
+//      los cuatro modos preguntando antes de editar/ejecutar (sesión hija), respeta las protecciones de W-A1, y sigue BLOQUEADO en «Solo explorar»
 //   2  R2: el `command` de un conector del opencode.json de una carpeta se ARRANCA con solo `GET /mcp?directory=<carpeta>`
 //   3  R2: en modo «manual» las herramientas de ese conector se usan sin `permission.asked`
-//   4  R4: en el bloque «plan» (Solo explorar) `webfetch` no pregunta
+//   4  R4 (cerrado por W-A1): en el bloque «plan» (Solo explorar) `webfetch` PREGUNTA
 //   5  `websearch` solo aparece con proveedor `opencode` o con `OPENCODE_ENABLE_EXA=1`
-//   6  AGENTS.md de 100 KB: el sistema de la primera petición lo trae entero (sin tope de 32 KB)
-//   7  `respaldo` solo en OPENCODE_CONFIG_CONTENT: no conmuta ante un 429 de cuota (control: en la config global sí)
+//   6  (PENDIENTE DE lazunox.15: W-M2 la dará la vuelta) AGENTS.md de 100 KB: el sistema de la primera petición lo trae entero (sin tope de 32 KB)
+//   7  (PENDIENTE DE lazunox.15: W-M2 la dará la vuelta) `respaldo` solo en OPENCODE_CONFIG_CONTENT: no conmuta ante un 429 de cuota (control: en la config global sí)
 //   8  `LAZUNOX_HOOKS_SHA256` de otro contenido: el gancho PreToolUse no se ejecuta (control: con la huella correcta sí)
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -55,6 +56,9 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     (modulos ??= {
       ...(await tsModule('src/main/opencode/config.ts')),
       ...(await tsModule('src/main/opencode/subagent-guard.ts')),
+      ...(await tsModule('src/main/opencode/code-mcp-permission.ts')),
+      ...(await tsModule('src/shared/shell-bg-permissions.ts')),
+      ...(await tsModule('src/shared/documents-permissions.ts')),
       ...(await tsModule('src/renderer/src/features/code/impl/permission-rules.ts'))
     })
 
@@ -69,55 +73,133 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     }
   }
 
-  // ── 1. `general` desde Code ───────────────────────────────────────────────────────────────────────────────────
-  const MODOS = [
-    ['manual', 'Preguntar siempre', true],
-    ['acceptEdits', 'Editar sin preguntar', true],
-    ['auto', 'Automático', true],
-    ['bypass', 'Todo sin preguntar', false]
-  ]
-  for (const [modo, etiqueta, bloqueado] of MODOS) {
-    checkRun(`olaA 1 (${modo}, ${etiqueta}): task general que escribe x.txt ${bloqueado ? 'queda BLOQUEADO' : 'PASA'}`, async () => {
-      const m = await reales()
-      const { agent } = m.buildInlineConfig({})
-      const r = await motor({
-        agent: 'build',
-        agentsDir,
-        git: true,
-        plugins: { 'lazunox-subagent-guard.js': m.subagentGuardPluginSource() },
-        inline: { agent },
-        sessionBody: { permission: m.rulesetFor(modo) },
-        // Padre: lanza `task general` pidiendo escribir x.txt; hija (si llega a existir): hace el `write`.
-        decide: ({ tools, toolTexts, userTexts }) => {
-          if (toolTexts.length) return null
-          if (userTexts.at(-1) === 'ESCRIBE_X' && tools.includes('write'))
-            return { name: 'write', args: { filePath: 'x.txt', content: 'x' } }
-          if (userTexts.at(-1) === 'hola' && tools.includes('task'))
-            return { name: 'task', args: { subagent_type: 'general', description: 'escribir', prompt: 'ESCRIBE_X' } }
-          return null
-        },
-        call: { name: 'task', args: {} },
-        // La carpeta del proyecto se borra al terminar: el archivo se mira aquí, con la sesión ya usada.
-        http: async (h) => ({ existe: existsSync(join(h.proj, 'x.txt')) })
+  // ── 1. `general` desde Code (W-A3, D5=A: `general` declara «preguntar» y el guardián lo deja pasar) ─────────────────────────────────
+  // Config inline como la de la app: bloque `agent` real + `permission` de bgshell y documentos (server.ts: `codeMcpPermission`).
+  const configReal = (m) => {
+    const permission = m.buildCodeMcpPermission({
+      servers: [],
+      trusted: [],
+      internal: [],
+      base: {},
+      fixed: { ...m.bgshellConfigPermission(), ...m.documentsConfigPermission() },
+      fixedServers: [m.SHELL_BG_SERVER, m.DOCUMENTS_SERVER]
+    })
+    return m.buildInlineConfig({ permission })
+  }
+  // Acciones que la hija intenta (el padre le pasa el nombre en el prompt: `HIJA:<acción>`).
+  const ACCIONES = {
+    escribir: { name: 'write', args: { filePath: 'x.txt', content: 'x' }, archivo: 'x.txt', permiso: 'write' },
+    config: { name: 'write', args: { filePath: 'opencode.json', content: '{}' }, archivo: 'opencode.json', permiso: 'write' },
+    git: { name: 'write', args: { filePath: '.git/config', content: '[core]\n' }, archivo: null, permiso: 'write' },
+    opencode: { name: 'write', args: { filePath: '.opencode/x.md', content: 'x' }, archivo: '.opencode/x.md', permiso: 'write' },
+    shell: { name: 'bash', args: { command: 'echo hola > y.txt', description: 'escribe y.txt' }, archivo: 'y.txt', permiso: 'bash' }
+  }
+  /** Lanza `task general` desde un padre `build` con las reglas de sesión de `modo`; la hija hace `accion`. Contesta `respuesta` a lo que pregunte. */
+  const hija = async (modo, accion, respuesta, agente = 'build') => {
+    const m = await reales()
+    const a = ACCIONES[accion]
+    const preguntas = []
+    const r = await motor({
+      agent: agente,
+      agentsDir,
+      git: true,
+      plugins: { 'lazunox-subagent-guard.js': m.subagentGuardPluginSource() },
+      inline: configReal(m),
+      sessionBody: { permission: m.rulesetFor(modo) },
+      decide: ({ tools, toolTexts, userTexts }) => {
+        if (toolTexts.length) return null
+        const u = userTexts.at(-1)
+        if (u === 'HIJA:' + accion && tools.includes(a.name)) return { name: a.name, args: a.args }
+        if (u === 'hola' && tools.includes('task'))
+          return { name: 'task', args: { subagent_type: 'general', description: 'trabajo', prompt: 'HIJA:' + accion } }
+        return null
+      },
+      call: { name: 'task', args: {} },
+      reply: async (props, { proj }) => {
+        // Se anota si el archivo ya existía en el instante de la pregunta (debe ser que no) y de qué sesión viene.
+        preguntas.push({
+          permission: props.permission,
+          patterns: props.patterns,
+          sessionID: props.sessionID,
+          existiaAlPreguntar: a.archivo ? existsSync(join(proj, a.archivo)) : false
+        })
+        return respuesta(props)
+      },
+      http: async (h) => ({
+        existe: a.archivo ? existsSync(join(h.proj, a.archivo)) : false,
+        gitConfig: readFileSync(join(h.proj, '.git', 'config'), 'utf8'),
+        padre: h.sessionID,
+        hijas: ((await J(await h.q(`/session/${h.sessionID}/children`))) || []).map((x) => x.id)
       })
-      const tp = r.toolParts.find((p) => p.tool === 'task')
-      if (!tp) throw new Error(`el padre no llegó a llamar a task. Herramientas ofrecidas: ${corto(r.toolsOffered)}`)
-      const existe = r.http?.existe === true
-      const salida = `${tp.status}: ${tp.output.replace(/\s+/g, ' ').slice(0, 300)}`
-      if (bloqueado) {
-        if (tp.status === 'error' && !existe) {
-          confirmado(`bloqueado (${salida}); x.txt no existe`)
-          return true
-        }
-        noSeReproduce(`se esperaba bloqueo y: task=${salida}; x.txt existe=${existe}; preguntas=${corto(r.asked)}`)
-      }
-      if (tp.status === 'completed' && existe) {
-        confirmado('pasa: task completada y x.txt existe')
+    })
+    const tp = r.toolParts.find((p) => p.tool === 'task')
+    if (!tp) throw new Error(`el padre no llegó a llamar a task. Herramientas ofrecidas: ${corto(r.toolsOffered)}`)
+    return { tp, preguntas, http: r.http, a }
+  }
+  const resumen = (tp) => `${tp.status}: ${tp.output.replace(/\s+/g, ' ').slice(0, 300)}`
+
+  // Los cuatro modos: el guardián deja pasar a `general`; en todos la hija PREGUNTA antes de escribir (permission.asked de la sesión hija) y,
+  // contestando «una vez», escribe; no existe antes de contestar.
+  for (const [modo, etiqueta] of [
+    ['manual', 'Preguntar siempre'],
+    ['acceptEdits', 'Editar sin preguntar'],
+    ['auto', 'Automático'],
+    ['bypass', 'Todo sin preguntar']
+  ]) {
+    checkRun(
+      `olaA 1 (${modo}, ${etiqueta}): task general PASA el guardián y su write pregunta (sesión hija); x.txt solo existe tras «una vez»`,
+      async () => {
+        const x = await hija(modo, 'escribir', () => 'once')
+        const pw = x.preguntas.filter((q) => q.permission === 'edit' || q.permission === 'write')
+        if (x.tp.status !== 'completed' || !x.http.existe)
+          noSeReproduce(
+            `se esperaba que pasara y escribiera tras «una vez»: task=${resumen(x.tp)}; x.txt=${x.http.existe}; preguntas=${corto(x.preguntas)}`
+          )
+        if (pw.length !== 1) noSeReproduce(`se esperaba UNA pregunta de edición de la hija y hubo ${pw.length}: ${corto(x.preguntas)}`)
+        if (pw[0].existiaAlPreguntar) noSeReproduce('x.txt ya existía al preguntar: el ayudante escribió antes de preguntar')
+        if (!x.http.hijas.includes(pw[0].sessionID) || pw[0].sessionID === x.http.padre)
+          noSeReproduce(
+            `la pregunta no es de la sesión HIJA: pregunta=${pw[0].sessionID}, padre=${x.http.padre}, hijas=${corto(x.http.hijas)}`
+          )
+        confirmado(
+          `pasa; pregunta ${pw[0].permission} ${corto(pw[0].patterns)} de la sesión hija ${pw[0].sessionID} (padre ${x.http.padre}); x.txt aparece solo tras «una vez»`
+        )
         return true
       }
-      noSeReproduce(`se esperaba que pasara y: task=${salida}; x.txt existe=${existe}; preguntas=${corto(r.asked)}`)
+    )
+  }
+
+  // Tope del padre y protecciones de W-A1 en «Automático» (el modo más libre que antes dejaba editar solo): la hija NO hereda los `ask` de .git,
+  // opencode.json y .opencode/* (el motor solo hereda `deny`), pero su `edit/write` es `ask` para todo: pregunta y, rechazado, no se crea nada.
+  for (const accion of ['config', 'git', 'opencode', 'shell']) {
+    checkRun(`olaA 1 (auto): la hija que intenta «${accion}» PREGUNTA y, rechazada, no cambia nada`, async () => {
+      const x = await hija('auto', accion, () => 'reject')
+      const q = x.preguntas.filter((p) => p.permission === x.a.permiso || (x.a.permiso === 'write' && p.permission === 'edit'))
+      if (!q.length) noSeReproduce(`la hija no preguntó por «${accion}»: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`)
+      if (!q.every((p) => x.http.hijas.includes(p.sessionID))) noSeReproduce(`una pregunta no es de la sesión hija: ${corto(x.preguntas)}`)
+      if (x.http.existe) noSeReproduce(`«${accion}» se ejecutó pese al rechazo (${x.a.archivo})`)
+      if (accion === 'git' && x.http.gitConfig.includes('[core]\n') && x.http.gitConfig.trim() === '[core]')
+        noSeReproduce('.git/config fue sobrescrito pese al rechazo')
+      confirmado(`pregunta ${q[0].permission} ${corto(q[0].patterns)}; rechazada, nada cambió`)
+      return true
     })
   }
+
+  // «Solo explorar» (sesión con el bloque plan) sigue sin dejar trabajar a `general`: aquí lo para la regla `task general deny` del propio bloque
+  // (permission-rules.ts); el guardián, por su parte, deja pasar la sesión porque la hija heredaría el `edit deny` (el motor copia los deny).
+  checkRun('olaA 1 (plan, Solo explorar): task general sigue BLOQUEADO (regla task general deny) y no escribe nada', async () => {
+    const x = await hija('plan', 'escribir', () => 'reject')
+    if (
+      x.tp.status === 'error' &&
+      /prevents you from using this specific tool call|bloqueado por Lazunox/.test(x.tp.output) &&
+      !x.http.existe &&
+      !x.preguntas.length
+    ) {
+      confirmado(`bloqueado (${resumen(x.tp)})`)
+      return true
+    }
+    noSeReproduce(`se esperaba bloqueo: task=${resumen(x.tp)}; x.txt=${x.http.existe}; preguntas=${corto(x.preguntas)}`)
+  })
 
   // ── 2 y 3. R2: conector declarado en el opencode.json de la carpeta ─────────────────────────────────────────────
   const MARCA = 'MARCA-R2'
@@ -178,32 +260,34 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
   })
 
   // ── 4. R4: web en el bloque «plan» ───────────────────────────────────────────────────────────────────────────────
-  checkRun('olaA 4 (R4): con el bloque plan (Solo explorar) webfetch a un servidor local NO genera permission.asked', async () => {
-    const m = await reales()
-    const web = http.createServer((_q, res) => res.writeHead(200, { 'content-type': 'text/plain' }).end('hola desde el servidor falso'))
-    await new Promise((ok) => web.listen(0, '127.0.0.1', ok))
-    try {
-      const url = `http://127.0.0.1:${web.address().port}/`
-      const llamada = { name: 'webfetch', args: { url, format: 'text' } }
-      const r = await motor({ agent: 'build', sessionBody: { permission: m.rulesetFor('plan') }, call: llamada })
-      // Control: si la regla fuera «preguntar», el arnés sí vería la pregunta (así la prueba no pasa en vacío).
-      const c = await motor({
-        agent: 'build',
-        sessionBody: { permission: [...m.rulesetFor('plan'), { permission: 'webfetch', pattern: '*', action: 'ask' }] },
-        call: llamada
-      })
-      if (!c.asked.some((a) => a.permission === 'webfetch'))
-        throw new Error(`control: con webfetch=ask tampoco hubo pregunta (prueba en vacío): ${corto(c.asked)}`)
-      const tp = r.toolParts.find((p) => p.tool === 'webfetch')
-      if (tp?.status === 'completed' && !r.asked.some((a) => a.permission === 'webfetch')) {
-        confirmado('webfetch ejecutado sin preguntar con el bloque plan (el control con ask sí pregunta)')
+  checkRun(
+    'olaA 4 (R4, cerrado por W-A1): con el bloque plan (Solo explorar) webfetch a un servidor local SÍ genera permission.asked',
+    async () => {
+      const m = await reales()
+      const web = http.createServer((_q, res) => res.writeHead(200, { 'content-type': 'text/plain' }).end('hola desde el servidor falso'))
+      await new Promise((ok) => web.listen(0, '127.0.0.1', ok))
+      try {
+        const url = `http://127.0.0.1:${web.address().port}/`
+        const llamada = { name: 'webfetch', args: { url, format: 'text' } }
+        // El arnés rechaza por defecto lo que se pregunta: sin respuesta «una vez» la página no se descarga.
+        const r = await motor({ agent: 'build', sessionBody: { permission: m.rulesetFor('plan') }, call: llamada })
+        // Control (la prueba no pasa en vacío): con «una vez» la misma llamada sí se completa, y la pregunta es la misma.
+        const c = await motor({ agent: 'build', sessionBody: { permission: m.rulesetFor('plan') }, call: llamada, reply: 'once' })
+        const tp = r.toolParts.find((p) => p.tool === 'webfetch')
+        const tc = c.toolParts.find((p) => p.tool === 'webfetch')
+        if (!r.asked.some((a) => a.permission === 'webfetch'))
+          noSeReproduce(
+            `se esperaba una pregunta de webfetch en Solo explorar y no hubo: webfetch=${tp?.status ?? 'sin parte'}; preguntas=${corto(r.asked)}`
+          )
+        if (tp?.status === 'completed') noSeReproduce('webfetch se completó pese a rechazar la pregunta')
+        if (tc?.status !== 'completed') throw new Error(`control: con «una vez» webfetch no se completó (${tc?.status}): ${corto(c.asked)}`)
+        confirmado('webfetch pregunta en Solo explorar; rechazado no descarga y con «una vez» sí (control)')
         return true
+      } finally {
+        web.close()
       }
-      noSeReproduce(`webfetch=${tp?.status ?? 'sin parte'} ${tp?.output.slice(0, 200) ?? ''}; preguntas=${corto(r.asked)}`)
-    } finally {
-      web.close()
     }
-  })
+  )
 
   // ── 5. websearch con proveedor que no es opencode ───────────────────────────────────────────────────────────────
   checkRun(
