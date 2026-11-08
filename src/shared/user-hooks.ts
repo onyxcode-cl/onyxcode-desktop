@@ -2,8 +2,9 @@
  * Ganchos de usuario (Ajustes › Funciones experimentales › «Ganchos»): comandos de la persona que el motor propio ejecuta antes o después de
  * una herramienta (como los hooks de otros asistentes). Este módulo, puro y compartido por main y renderer, decide dos cosas:
  *
- *  1. La variable que se le pasa al motor: `LAZUNOX_HOOKS_FILE` (ruta absoluta de `userData/hooks/hooks.json`), SOLO con el ajuste
- *     `userHooksEnabled` encendido (defecto: APAGADO, porque ejecuta comandos de la persona). Nunca al sandbox de Tareas (ver `onlyUserHooksEnv`).
+ *  1. Las variables que se le pasan al motor: `LAZUNOX_HOOKS_FILE` (ruta absoluta de `userData/hooks/hooks.json`) y `LAZUNOX_HOOKS_SHA256` (huella
+ *     del archivo que guardó la app; sin ella no se pasa ninguna), SOLO con el ajuste `userHooksEnabled` encendido (defecto: APAGADO, porque ejecuta
+ *     comandos de la persona). Nunca al sandbox de Tareas (ver `onlyUserHooksEnv`).
  *  2. La validación del archivo, con las MISMAS cotas que el motor (`packages/opencode/src/plugin/lazunox-ganchos.ts`, `leerConfig`): el
  *     motor descarta en silencio lo inválido; la app lo RECHAZA con un mensaje claro para que nada se pierda sin que la persona se entere.
  *
@@ -11,6 +12,12 @@
  */
 
 export const ENV_HOOKS_FILE = 'LAZUNOX_HOOKS_FILE'
+/** Huella (sha256 en hexadecimal) del archivo aprobado; el motor no ejecuta nada si el archivo no la cumple (motor: `lazunox-ganchos.ts`, `hashEsperado`). */
+export const ENV_HOOKS_SHA256 = 'LAZUNOX_HOOKS_SHA256'
+
+/** Carpeta y archivo de los ganchos dentro de `userData` (los usan main y la migración de `store.ts`). */
+export const HOOKS_DIR_NAME = 'hooks'
+export const HOOKS_FILE_NAME = 'hooks.json'
 
 /** Cotas del motor (`lazunox-ganchos.ts`). Si cambian allí, cambian aquí. */
 export const HOOKS_MAX_FILE_BYTES = 64 * 1024
@@ -219,7 +226,13 @@ export function validateHooksText(raw: string): HooksValidation {
   return issues.length > 0 ? { ok: false, issues } : { ok: true, text, count }
 }
 
-type SettingsLike = { userHooksEnabled?: boolean }
+type SettingsLike = { userHooksEnabled?: boolean; userHooksSha256?: string | null }
+
+/** ¿Huella con forma válida? Exactamente 64 caracteres hexadecimales (el motor trata cualquier otra cosa como «no ejecutes nada»). */
+export const isHooksSha256 = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-fA-F]{64}$/.test(v)
+
+/** Huella normalizada (minúsculas) o `null` si no tiene forma válida. */
+export const normalizeHooksSha256 = (v: unknown): string | null => (isHooksSha256(v) ? v.toLowerCase() : null)
 
 /** ¿Están encendidos los ganchos? Solo `true` exacto (defecto: apagado). */
 export const userHooksOn = (settings: SettingsLike): boolean => settings.userHooksEnabled === true
@@ -227,20 +240,28 @@ export const userHooksOn = (settings: SettingsLike): boolean => settings.userHoo
 /** Ruta absoluta de POSIX o de Windows, sin bytes nulos. */
 const isAbsoluteLike = (p: string): boolean => /^(\/|[A-Za-z]:[\\/]|\\\\)/.test(p) && !p.includes('\0') && p.length <= 4096
 
-/** Variable EXACTA para el motor; `{}` si está apagado o no hay una ruta absoluta válida. */
+/**
+ * Variables EXACTAS para el motor; `{}` si está apagado, no hay una ruta absoluta válida o NO hay una huella con forma válida.
+ * Sin huella no se pasa tampoco el archivo (falla cerrado): un archivo sin huella sería un archivo que nadie aprobó. La huella la guarda
+ * la app al guardar desde la pantalla de Ganchos (`user-hooks-store.ts`) o, una sola vez, al actualizar con ganchos ya activos (`store.ts`).
+ */
 export function userHooksEnvFor(settings: SettingsLike, file: string | null | undefined): Record<string, string> {
   if (!userHooksOn(settings) || !file || !isAbsoluteLike(file)) return {}
-  return { [ENV_HOOKS_FILE]: file }
+  const sha = normalizeHooksSha256(settings.userHooksSha256)
+  if (!sha) return {}
+  return { [ENV_HOOKS_FILE]: file, [ENV_HOOKS_SHA256]: sha }
 }
 
 /**
- * Filtro de defensa en profundidad para el entorno extra de Tareas: solo `LAZUNOX_HOOKS_FILE`, con ruta absoluta. Solo se usa en servidores de
+ * Filtro de defensa en profundidad para el entorno extra de Tareas: solo `LAZUNOX_HOOKS_FILE` (ruta absoluta) JUNTO CON
+ * `LAZUNOX_HOOKS_SHA256` (64 hex). Una sin la otra no pasa nada: un archivo sin huella no se ejecuta. Solo se usa en servidores de
  * Control total (SIN sandbox). Al servidor con sandbox NO se le pasa: un gancho es un comando que corre con los permisos de la persona, fuera de
  * lo que el sandbox permite (y userData está denegado dentro del sandbox), así que dejarlo entrar rompería el aislamiento de Overdrive.
  */
 export function onlyUserHooksEnv(env: Record<string, string>): Record<string, string> {
   const file = env[ENV_HOOKS_FILE]
-  return typeof file === 'string' && isAbsoluteLike(file) ? { [ENV_HOOKS_FILE]: file } : {}
+  const sha = normalizeHooksSha256(env[ENV_HOOKS_SHA256])
+  return typeof file === 'string' && isAbsoluteLike(file) && sha ? { [ENV_HOOKS_FILE]: file, [ENV_HOOKS_SHA256]: sha } : {}
 }
 
 /** Entorno de ganchos de un servidor de Tareas: solo con Control total (sin sandbox); con sandbox SIEMPRE vacío. */

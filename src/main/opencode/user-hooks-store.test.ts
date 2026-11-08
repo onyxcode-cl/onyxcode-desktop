@@ -1,11 +1,15 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createHash } from 'node:crypto'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ app: { getPath: () => '/no/se/usa' } }))
+// Los Ajustes reales no se tocan: el guardado de la huella se comprueba contra este doble.
+const setMock = vi.hoisted(() => vi.fn())
+vi.mock('../store', () => ({ settingsStore: { set: setMock } }))
 
-import { hooksDir, hooksFile, readHooks, writeHooks } from './user-hooks-store'
+import { hooksDir, hooksFile, readHooks, sha256Hex, writeHooks } from './user-hooks-store'
 
 const dirs: string[] = []
 const tmp = (): string => {
@@ -13,6 +17,7 @@ const tmp = (): string => {
   dirs.push(d)
   return d
 }
+beforeEach(() => setMock.mockReset())
 afterEach(() => {
   vi.restoreAllMocks()
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
@@ -93,5 +98,50 @@ describe('archivo de ganchos', () => {
     mkdirSync(hooksDir(u), { recursive: true })
     writeFileSync(hooksFile(u), 'x'.repeat(70 * 1024))
     expect(readHooks(u)).toEqual({ text: '', exists: true })
+  })
+})
+
+describe('huella de los ganchos (R6)', () => {
+  const sha = (b: Buffer | string): string => createHash('sha256').update(b).digest('hex')
+
+  it('guardar calcula el sha256 de los BYTES escritos y lo guarda en Ajustes (apagando el aviso de revisión)', () => {
+    const u = tmp()
+    expect(writeHooks(OK, u)).toEqual({ ok: true })
+    const enDisco = readFileSync(hooksFile(u))
+    expect(setMock).toHaveBeenCalledTimes(1)
+    expect(setMock).toHaveBeenCalledWith({ userHooksSha256: sha(enDisco), userHooksReview: false })
+    expect(setMock.mock.calls[0][0].userHooksSha256).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('con texto no ASCII (UTF-8 de varios bytes) la huella es la de los bytes, no la de los caracteres', () => {
+    const u = tmp()
+    const texto = JSON.stringify({ hooks: { Stop: [{ command: 'echo ñandú 日本 😀' }] } })
+    expect(writeHooks(texto, u)).toEqual({ ok: true })
+    expect(setMock.mock.calls[0][0].userHooksSha256).toBe(sha(readFileSync(hooksFile(u))))
+    expect(sha256Hex(Buffer.from('abc'))).toBe(sha('abc'))
+  })
+
+  it('editar el archivo a mano deja de coincidir con la huella guardada', () => {
+    const u = tmp()
+    writeHooks(OK, u)
+    const guardada = setMock.mock.calls[0][0].userHooksSha256 as string
+    writeFileSync(hooksFile(u), readFileSync(hooksFile(u), 'utf8').replace('listo', 'otra cosa'))
+    expect(sha(readFileSync(hooksFile(u)))).not.toBe(guardada)
+  })
+
+  it('un contenido rechazado NO toca la huella', () => {
+    const u = tmp()
+    expect(writeHooks('{', u).ok).toBe(false)
+    expect(setMock).not.toHaveBeenCalled()
+  })
+
+  it('si guardar la huella falla devuelve writeFailed (los ganchos no corren con la huella vieja: falla cerrado)', () => {
+    const u = tmp()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    setMock.mockImplementation(() => {
+      throw Object.assign(new Error('disco'), { code: 'ENOSPC' })
+    })
+    expect(writeHooks(OK, u)).toEqual({ ok: false, issues: [{ code: 'writeFailed' }] })
+    expect(JSON.stringify(spy.mock.calls)).toContain('ENOSPC')
   })
 })

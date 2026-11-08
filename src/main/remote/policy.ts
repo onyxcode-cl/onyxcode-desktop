@@ -200,6 +200,12 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   rememberAlways: 'X',
   // «Activar ganchos»: ejecuta comandos de la persona en el Mac; el celular NO lo enciende.
   userHooksEnabled: 'X',
+  // 1.8.12: huella de los ganchos (la escribe main; nunca desde fuera), aviso de revisión, búsqueda web con un tercero (Exa) y sugerencia en
+  // tarjetas: todo solo en el Mac. Ninguno es escribible desde el celular.
+  userHooksSha256: 'X',
+  userHooksReview: 'X',
+  webSearchAnyProvider: 'X',
+  permissionSuggestions: 'X',
   // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
   codeTrustedMcp: 'X',
   modoPlan: 'X', // bandera experimental del modo plan: solo el Mac

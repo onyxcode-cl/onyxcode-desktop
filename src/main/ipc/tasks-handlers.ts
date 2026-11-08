@@ -104,7 +104,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
       ...engineFlagEnvFor(settingsStore.get(), 'tasks'),
       ...engineLimitEnvFor(settingsStore.get()),
       ...permissionPersistEnvFor(settingsStore.get(), permissionDir()),
-      // Ganchos: el manager SOLO los pasa a servidores de Control total (sin sandbox); ver `onlyUserHooksEnv`.
+      // Ganchos (archivo + huella): el manager SOLO los pasa a servidores de Control total (sin sandbox), y solo si vienen las dos; ver
+      // `onlyUserHooksEnv`. Búsqueda web, sugerencia y política del administrador (`engineLastMileEnv`) NO se pasan a Overdrive en la 1.8.12.
       ...userHooksEnvFor(settingsStore.get(), hooksFile())
     })
   })

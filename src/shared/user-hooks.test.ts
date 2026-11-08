@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   EMPTY_HOOKS_TEXT,
   ENV_HOOKS_FILE,
+  ENV_HOOKS_SHA256,
   HOOK_EVENTS,
   HOOKS_EXAMPLE,
   HOOKS_MAX_COMMAND,
@@ -9,7 +10,9 @@ import {
   HOOKS_MAX_IF,
   HOOKS_MAX_MATCHER,
   HOOKS_MAX_PER_EVENT,
+  isHooksSha256,
   leerConfig,
+  normalizeHooksSha256,
   onlyUserHooksEnv,
   userHooksEnvFor,
   userHooksEnvForTasksServer,
@@ -125,38 +128,76 @@ describe('leerConfig (réplica del motor)', () => {
   })
 })
 
-describe('variable LAZUNOX_HOOKS_FILE', () => {
+describe('variables LAZUNOX_HOOKS_FILE y LAZUNOX_HOOKS_SHA256', () => {
   const FILE = '/u/hooks/hooks.json'
+  const SHA = 'ab'.repeat(32)
+  const on = { userHooksEnabled: true, userHooksSha256: SHA }
   it('apagado por defecto: ausente o cualquier cosa que no sea true exacto no pasa nada', () => {
     for (const v of [undefined, false, 'true', 1, null]) {
       expect(userHooksOn({ userHooksEnabled: v as boolean }), String(v)).toBe(false)
-      expect(userHooksEnvFor({ userHooksEnabled: v as boolean }, FILE)).toEqual({})
+      expect(userHooksEnvFor({ userHooksEnabled: v as boolean, userHooksSha256: SHA }, FILE)).toEqual({})
     }
     expect(userHooksEnvFor({}, FILE)).toEqual({})
   })
-  it('encendido pasa SOLO la ruta absoluta del archivo', () => {
-    expect(userHooksEnvFor({ userHooksEnabled: true }, FILE)).toEqual({ [ENV_HOOKS_FILE]: FILE })
-    expect(userHooksEnvFor({ userHooksEnabled: true }, 'C:\\Users\\x\\hooks\\hooks.json')).toEqual({
-      [ENV_HOOKS_FILE]: 'C:\\Users\\x\\hooks\\hooks.json'
+  it('encendido y con huella pasa SOLO la ruta absoluta del archivo y la huella', () => {
+    expect(userHooksEnvFor(on, FILE)).toEqual({ [ENV_HOOKS_FILE]: FILE, [ENV_HOOKS_SHA256]: SHA })
+    expect(userHooksEnvFor(on, 'C:\\Users\\x\\hooks\\hooks.json')).toEqual({
+      [ENV_HOOKS_FILE]: 'C:\\Users\\x\\hooks\\hooks.json',
+      [ENV_HOOKS_SHA256]: SHA
     })
   })
-  it('sin ruta o con ruta relativa/rara no pasa nada', () => {
-    for (const f of [undefined, null, '', 'hooks.json', '../x', '/a\0b']) expect(userHooksEnvFor({ userHooksEnabled: true }, f)).toEqual({})
+  it('la huella se pasa en minúsculas (el motor acepta ambas, pero la app emite una sola forma)', () => {
+    expect(userHooksEnvFor({ userHooksEnabled: true, userHooksSha256: SHA.toUpperCase() }, FILE)[ENV_HOOKS_SHA256]).toBe(SHA)
   })
-  it('onlyUserHooksEnv deja solo esa clave y exige ruta absoluta', () => {
-    expect(onlyUserHooksEnv({ [ENV_HOOKS_FILE]: FILE, OTRA: 'x', LAZUNOX_PERMISSION_PERSIST: '1' })).toEqual({ [ENV_HOOKS_FILE]: FILE })
-    expect(onlyUserHooksEnv({ [ENV_HOOKS_FILE]: 'relativa.json' })).toEqual({})
+  it('SIN huella válida no se pasa NADA, tampoco el archivo (un archivo sin huella sería uno que nadie aprobó)', () => {
+    const malas = [undefined, null, '', 'xyz', SHA.slice(1), `${SHA}0`, `${SHA.slice(0, 63)}g`, ` ${SHA}`, `${SHA}\n`, 12345, {}, [SHA]]
+    for (const h of malas) {
+      expect(userHooksEnvFor({ userHooksEnabled: true, userHooksSha256: h as string }, FILE), JSON.stringify(h)).toEqual({})
+    }
+    expect(userHooksEnvFor({ userHooksEnabled: true }, FILE)).toEqual({})
+  })
+  it('sin ruta o con ruta relativa/rara no pasa nada', () => {
+    for (const f of [undefined, null, '', 'hooks.json', '../x', '/a\0b']) expect(userHooksEnvFor(on, f)).toEqual({})
+  })
+  it('isHooksSha256 / normalizeHooksSha256: 64 hexadecimales exactos', () => {
+    expect(isHooksSha256(SHA)).toBe(true)
+    expect(isHooksSha256(SHA.toUpperCase())).toBe(true)
+    expect(isHooksSha256(`${SHA}a`)).toBe(false)
+    expect(normalizeHooksSha256('AB'.repeat(32))).toBe(SHA)
+    expect(normalizeHooksSha256('no')).toBeNull()
+    expect(normalizeHooksSha256(undefined)).toBeNull()
+  })
+  it('onlyUserHooksEnv deja solo el archivo y la huella, y exige ruta absoluta Y huella válida', () => {
+    expect(onlyUserHooksEnv({ [ENV_HOOKS_FILE]: FILE, [ENV_HOOKS_SHA256]: SHA, OTRA: 'x', LAZUNOX_PERMISSION_PERSIST: '1' })).toEqual({
+      [ENV_HOOKS_FILE]: FILE,
+      [ENV_HOOKS_SHA256]: SHA
+    })
+    expect(onlyUserHooksEnv({ [ENV_HOOKS_FILE]: 'relativa.json', [ENV_HOOKS_SHA256]: SHA })).toEqual({})
+    // El archivo sin huella (o con huella mal formada) no pasa; la huella sin archivo, tampoco.
+    expect(onlyUserHooksEnv({ [ENV_HOOKS_FILE]: FILE })).toEqual({})
+    expect(onlyUserHooksEnv({ [ENV_HOOKS_FILE]: FILE, [ENV_HOOKS_SHA256]: 'xyz' })).toEqual({})
+    expect(onlyUserHooksEnv({ [ENV_HOOKS_SHA256]: SHA })).toEqual({})
     expect(onlyUserHooksEnv({})).toEqual({})
+  })
+  it('onlyUserHooksEnv NO deja pasar las variables de la «última milla» (búsqueda web, sugerencia, política)', () => {
+    const env = {
+      [ENV_HOOKS_FILE]: FILE,
+      [ENV_HOOKS_SHA256]: SHA,
+      OPENCODE_ENABLE_EXA: '1',
+      LAZUNOX_SUGERENCIA_PERMISOS: '1',
+      LAZUNOX_POLICY_FILE: '/Library/Application Support/Lazunox/motor-policy.json'
+    }
+    expect(Object.keys(onlyUserHooksEnv(env)).sort()).toEqual([ENV_HOOKS_FILE, ENV_HOOKS_SHA256].sort())
   })
 })
 
 describe('servidores de Tareas', () => {
-  const env = { [ENV_HOOKS_FILE]: '/u/hooks/hooks.json', LAZUNOX_PERMISSION_PERSIST: '1' }
+  const env = { [ENV_HOOKS_FILE]: '/u/hooks/hooks.json', [ENV_HOOKS_SHA256]: 'cd'.repeat(32), LAZUNOX_PERMISSION_PERSIST: '1' }
   it('con sandbox nunca reciben ganchos, aunque el ajuste esté encendido', () => {
     expect(userHooksEnvForTasksServer(env, false)).toEqual({})
   })
-  it('con Control total (sin sandbox) reciben solo el archivo', () => {
-    expect(userHooksEnvForTasksServer(env, true)).toEqual({ [ENV_HOOKS_FILE]: '/u/hooks/hooks.json' })
+  it('con Control total (sin sandbox) reciben solo el archivo y su huella', () => {
+    expect(userHooksEnvForTasksServer(env, true)).toEqual({ [ENV_HOOKS_FILE]: '/u/hooks/hooks.json', [ENV_HOOKS_SHA256]: 'cd'.repeat(32) })
     expect(userHooksEnvForTasksServer({}, true)).toEqual({})
   })
 })

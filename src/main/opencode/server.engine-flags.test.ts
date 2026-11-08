@@ -314,3 +314,111 @@ describe('sidecar principal: bgshell (F8-B204)', () => {
     expect((cfg.permission as Record<string, string>).bgshell_start).toBe('ask')
   })
 })
+
+describe('sidecar principal: «última milla» de la Ola A (búsqueda web, sugerencia, política del administrador) y huella de ganchos', () => {
+  const prevBin = process.env.OPENCODE_BIN
+  const prevPolicy = process.env.LAZUNOX_MOTOR_POLICY
+  let tmp: string
+  const SHA = 'ab'.repeat(32)
+  beforeEach(() => {
+    process.env.OPENCODE_BIN = process.execPath
+    tmp = mkdtempSync(join(tmpdir(), 'lazunox-lastmile-'))
+    // Hermético: la política del administrador de ESTA máquina (si la hubiera) no entra en las pruebas.
+    process.env.LAZUNOX_MOTOR_POLICY = join(tmp, 'no-existe.json')
+  })
+  afterEach(() => {
+    if (prevBin === undefined) delete process.env.OPENCODE_BIN
+    else process.env.OPENCODE_BIN = prevBin
+    if (prevPolicy === undefined) delete process.env.LAZUNOX_MOTOR_POLICY
+    else process.env.LAZUNOX_MOTOR_POLICY = prevPolicy
+    rmSync(tmp, { recursive: true, force: true })
+  })
+
+  async function envWith(extra: Record<string, unknown>): Promise<Record<string, string>> {
+    state.settings = { engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS, language: 'es', ...extra }
+    state.spawnEnv = null
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    await server.start()
+    return state.spawnEnv as unknown as Record<string, string>
+  }
+
+  it('por defecto (settings.json viejo sin las claves) no lleva ninguna de las variables nuevas y el motor arranca', async () => {
+    const env = await envWith({})
+    for (const k of [
+      'OPENCODE_ENABLE_EXA',
+      'LAZUNOX_SUGERENCIA_PERMISOS',
+      'LAZUNOX_POLICY_FILE',
+      'LAZUNOX_HOOKS_FILE',
+      'LAZUNOX_HOOKS_SHA256'
+    ]) {
+      expect(env[k], k).toBeUndefined()
+    }
+  })
+
+  it('búsqueda web encendida: solo OPENCODE_ENABLE_EXA=1 (y no se hereda del entorno de quien lanza la app)', async () => {
+    const prev = process.env.OPENCODE_ENABLE_EXA
+    process.env.OPENCODE_ENABLE_EXA = '1'
+    try {
+      expect((await envWith({})).OPENCODE_ENABLE_EXA).toBeUndefined()
+    } finally {
+      if (prev === undefined) delete process.env.OPENCODE_ENABLE_EXA
+      else process.env.OPENCODE_ENABLE_EXA = prev
+    }
+    const env = await envWith({ webSearchAnyProvider: true })
+    expect(env.OPENCODE_ENABLE_EXA).toBe('1')
+    expect(env.LAZUNOX_SUGERENCIA_PERMISOS).toBeUndefined()
+  })
+
+  it('sugerencia encendida: solo LAZUNOX_SUGERENCIA_PERMISOS=1', async () => {
+    const env = await envWith({ permissionSuggestions: true })
+    expect(env.LAZUNOX_SUGERENCIA_PERMISOS).toBe('1')
+    expect(env.OPENCODE_ENABLE_EXA).toBeUndefined()
+  })
+
+  it('ganchos encendidos: lleva el archivo Y la huella; sin huella no lleva ninguno', async () => {
+    const env = await envWith({ userHooksEnabled: true, userHooksSha256: SHA })
+    expect(env.LAZUNOX_HOOKS_FILE).toMatch(/hooks[\\/]hooks\.json$/)
+    expect(env.LAZUNOX_HOOKS_SHA256).toBe(SHA)
+    const sin = await envWith({ userHooksEnabled: true, userHooksSha256: null })
+    expect(sin.LAZUNOX_HOOKS_FILE).toBeUndefined()
+    expect(sin.LAZUNOX_HOOKS_SHA256).toBeUndefined()
+    const mala = await envWith({ userHooksEnabled: true, userHooksSha256: 'no-es-un-hash' })
+    expect(mala.LAZUNOX_HOOKS_FILE).toBeUndefined()
+    expect(mala.LAZUNOX_HOOKS_SHA256).toBeUndefined()
+  })
+
+  it('política del administrador: la variable solo va si el archivo existe; si no, el motor arranca sin política', async () => {
+    const archivo = join(tmp, 'motor-policy.json')
+    process.env.LAZUNOX_MOTOR_POLICY = archivo // override de desarrollo (app.isPackaged es false en esta prueba)
+    expect((await envWith({})).LAZUNOX_POLICY_FILE).toBeUndefined()
+    writeFileSync(archivo, '{"version":1,"deny":{"mcp":["prueba"]}}')
+    expect((await envWith({})).LAZUNOX_POLICY_FILE).toBe(archivo)
+  })
+
+  it('lo que la persona tenga exportado en su terminal NO llega al motor (ni la política, ni su interruptor de emergencia, ni las banderas)', async () => {
+    const previos = [
+      'LAZUNOX_POLICY_FILE',
+      'LAZUNOX_POLITICAS',
+      'OPENCODE_ENABLE_EXA',
+      'LAZUNOX_SUGERENCIA_PERMISOS',
+      'LAZUNOX_HOOKS_SHA256'
+    ]
+    const guardado = previos.map((k) => process.env[k])
+    process.env.LAZUNOX_POLICY_FILE = '/tmp/mia.json'
+    process.env.LAZUNOX_POLITICAS = '0'
+    process.env.OPENCODE_ENABLE_EXA = '1'
+    process.env.LAZUNOX_SUGERENCIA_PERMISOS = '1'
+    process.env.LAZUNOX_HOOKS_SHA256 = SHA
+    try {
+      const env = await envWith({})
+      for (const k of previos) expect(env[k], k).toBeUndefined()
+    } finally {
+      previos.forEach((k, i) => (guardado[i] === undefined ? delete process.env[k] : (process.env[k] = guardado[i])))
+    }
+  })
+
+  it('el override de desarrollo se ignora si no es una ruta absoluta (nunca llega al motor una ruta relativa)', async () => {
+    process.env.LAZUNOX_MOTOR_POLICY = 'relativa/motor-policy.json'
+    expect(String((await envWith({})).LAZUNOX_POLICY_FILE ?? '')).not.toContain('relativa')
+  })
+})

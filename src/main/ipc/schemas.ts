@@ -726,6 +726,11 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     engineLimits: engineLimitsShape,
     rememberAlways: bool,
     userHooksEnabled: bool,
+    // 1.8.12: búsqueda web con cualquier IA y sugerencia en las tarjetas de permiso (ambas apagadas por defecto).
+    // `userHooksSha256` y `userHooksReview` NO se aceptan desde el renderer: la huella de los ganchos solo la escribe main al guardar el archivo
+    // (`user-hooks-store.ts`) o al migrar (`store.ts`); si el renderer pudiera escribirla, «aprobar» un archivo no pasaría por la app.
+    webSearchAnyProvider: bool,
+    permissionSuggestions: bool,
     // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
     codeTrustedMcp: arr(mcpName, 200),
     modoPlan: bool

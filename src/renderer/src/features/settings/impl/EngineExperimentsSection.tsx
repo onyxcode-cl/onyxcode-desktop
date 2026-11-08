@@ -3,11 +3,12 @@
  * subagentes en segundo plano. Solo escribe `Settings.engineExperiments` (objeto completo); aplicar el cambio
  * (reinicio del motor cuando no hay nada en curso) lo hace el proceso principal.
  */
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { normalizeEngineExperiments, type EngineExperimentMode } from '@shared/engine-experiments'
 import { t as tr, type MsgKey } from '@shared/i18n'
 import { MODE_LABELS } from '@shared/labels'
 import type { CodeExtrasFlags, EngineExperiments } from '@shared/types'
+import { call } from '../../../lib/api'
 import { useT } from '../../../lib/i18n'
 import { useSettings } from '../../../stores/settings'
 import { EngineLimitsBlock } from './EngineLimitsBlock'
@@ -249,6 +250,125 @@ function CodeExtrasBlock(): React.JSX.Element {
   )
 }
 
+/** Sha256 (hexadecimal) del texto en UTF-8, o `null` si este entorno no tiene WebCrypto. */
+async function sha256OfText(text: string): Promise<string | null> {
+  try {
+    const subtle = globalThis.crypto?.subtle
+    if (!subtle) return null
+    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(text))
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Avisos de confianza de los ganchos (1.8.12). El motor solo ejecuta el archivo cuya huella guardó la app; aquí se le dice a la persona:
+ *  - «Revisa tus ganchos»: al actualizar, la app dio por buenos los ganchos que ya estaban activos (decisión D11); se quita al guardar.
+ *  - «Los ganchos no se están ejecutando»: el archivo ya no coincide con lo último que se guardó desde la pantalla (editado a mano o por otro
+ *    programa) o nunca se guardó; el motor no ejecuta ninguno.
+ * Es solo información: quien aplica la regla es el motor. Si este entorno no puede calcular la huella, no se muestra el segundo aviso.
+ */
+function HooksTrustNotice(): React.JSX.Element | null {
+  const t = useT()
+  const enabled = useSettings((s) => s.settings.userHooksEnabled === true)
+  const sha = useSettings((s) => s.settings.userHooksSha256 ?? null)
+  const review = useSettings((s) => s.settings.userHooksReview === true)
+  const [differs, setDiffers] = useState(false)
+
+  useEffect(() => {
+    if (!enabled) return
+    let alive = true
+    const check = (): void => {
+      let pending: Promise<{ text: string; exists: boolean }>
+      try {
+        pending = call('settings:hooksRead')
+      } catch {
+        return
+      }
+      pending
+        .then(async (r) => {
+          const actual = r.exists ? await sha256OfText(r.text) : null
+          // Sin archivo no hay nada que ejecutar; sin WebCrypto no se puede comparar.
+          if (alive && r.exists && actual !== null) setDiffers(sha === null || sha.toLowerCase() !== actual)
+          else if (alive) setDiffers(false)
+        })
+        .catch(() => undefined)
+    }
+    check()
+    // El archivo se puede editar fuera de la app mientras esta pantalla está abierta: se vuelve a mirar al volver a la ventana.
+    window.addEventListener('focus', check)
+    return () => {
+      alive = false
+      window.removeEventListener('focus', check)
+    }
+  }, [enabled, sha])
+
+  if (!enabled) return null
+  if (differs) {
+    return (
+      <div role="status" className="mb-3 rounded-md border border-border px-3 py-2 text-xs leading-relaxed">
+        <p className="font-semibold">{t('settings.engine.hooks.trust.changed.title')}</p>
+        <p className="mt-1 text-muted">{t('settings.engine.hooks.trust.changed.body')}</p>
+      </div>
+    )
+  }
+  if (review) {
+    return (
+      <div role="status" className="mb-3 rounded-md border border-border px-3 py-2 text-xs leading-relaxed">
+        <p className="font-semibold">{t('settings.engine.hooks.trust.review.title')}</p>
+        <p className="mt-1 text-muted">{t('settings.engine.hooks.trust.review.body')}</p>
+      </div>
+    )
+  }
+  return null
+}
+
+type LastMileKey = 'webSearchAnyProvider' | 'permissionSuggestions'
+
+/**
+ * Un interruptor único (no por modo) con su aviso siempre visible: «Búsqueda web con cualquier IA» y «Sugerencia en las tarjetas de permiso».
+ * Ambos APAGADOS por defecto; cambiarlos reinicia el motor principal cuando no hay nada en curso. Overdrive no los recibe.
+ */
+function LastMileSwitch({
+  setting,
+  title,
+  desc,
+  warn,
+  toggle
+}: {
+  setting: LastMileKey
+  title: string
+  desc: string
+  warn: string
+  toggle: string
+}): React.JSX.Element {
+  const id = useId()
+  const on = useSettings((s) => s.settings[setting] === true)
+  const update = useSettings((s) => s.update)
+  return (
+    <section aria-labelledby={`${id}-t`} aria-describedby={`${id}-d`} className="mb-8">
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <h3 id={`${id}-t`} className="text-sm font-semibold">
+          {title}
+        </h3>
+        <Badge tone="muted">{tr('settings.engine.experimental')}</Badge>
+      </div>
+      <p id={`${id}-d`} className="mb-2 text-sm leading-relaxed text-muted">
+        {desc}
+      </p>
+      <p role="note" className="mb-3 rounded-md border border-border px-3 py-2 text-xs font-medium leading-relaxed">
+        {warn}
+      </p>
+      <Card>
+        <Row label={toggle}>
+          <Toggle checked={on} onChange={(v) => void update({ [setting]: v })} label={toggle} />
+        </Row>
+      </Card>
+    </section>
+  )
+}
+
 export function EngineExperimentsSection(): React.JSX.Element {
   const t = useT()
   return (
@@ -272,8 +392,23 @@ export function EngineExperimentsSection(): React.JSX.Element {
       <ToolSearchBlock />
       <FormsBlock />
       <CodeExtrasBlock />
+      <LastMileSwitch
+        setting="webSearchAnyProvider"
+        title={t('settings.engine.lastmile.web.title')}
+        desc={t('settings.engine.lastmile.web.desc')}
+        warn={t('settings.engine.lastmile.web.warn')}
+        toggle={t('settings.engine.lastmile.web.toggle')}
+      />
+      <LastMileSwitch
+        setting="permissionSuggestions"
+        title={t('settings.engine.lastmile.suggest.title')}
+        desc={t('settings.engine.lastmile.suggest.desc')}
+        warn={t('settings.engine.lastmile.suggest.warn')}
+        toggle={t('settings.engine.lastmile.suggest.toggle')}
+      />
       <RememberAlwaysBlock />
       <AlwaysRulesBlock />
+      <HooksTrustNotice />
       <UserHooksBlock />
       <EngineLimitsBlock />
       <p className="text-xs leading-relaxed text-muted">{t('settings.engine.sharedNote')}</p>

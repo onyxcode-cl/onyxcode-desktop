@@ -94,6 +94,29 @@ export interface Settings {
    * Ver `user-hooks.ts`. El celular no lo escribe.
    */
   userHooksEnabled: boolean
+  /**
+   * Huella (sha256 en hexadecimal, 64 caracteres) del archivo de ganchos que la persona guardó desde la pantalla de Ganchos, calculada sobre los
+   * bytes que escribió la app (1.8.12). Se pasa al motor (`LAZUNOX_HOOKS_SHA256`): si el archivo cambia por otra vía (edición a mano, otro
+   * programa), el motor no ejecuta ningún gancho hasta que se guarde de nuevo. `null` = ninguna aprobada: sin huella tampoco se pasa el
+   * archivo. Solo main la escribe (`user-hooks-store.ts`, `store.ts`); no se acepta desde el renderer ni desde el celular.
+   */
+  userHooksSha256: string | null
+  /**
+   * `true` cuando la huella de arriba la puso la MIGRACIÓN de la 1.8.12 (ganchos que ya estaban activos al actualizar: se confió en el archivo de
+   * ese día, una sola vez, decisión D11) y la persona todavía no los ha vuelto a guardar. Ajustes muestra «Revisa tus ganchos» mientras sea
+   * `true`; guardar desde la pantalla de Ganchos lo apaga. Solo main la escribe.
+   */
+  userHooksReview: boolean
+  /**
+   * «Búsqueda web con cualquier IA» (1.8.12, decisión D7): ofrece la herramienta de búsqueda web aunque la IA no sea OpenCode. Las búsquedas
+   * salen a Exa, un buscador externo. APAGADA por defecto; solo `true` exacto la enciende. Reinicia el motor al cambiar. El celular no la escribe.
+   */
+  webSearchAnyProvider: boolean
+  /**
+   * «Sugerencia de una IA en las tarjetas de permiso» (1.8.12): el motor añade una sugerencia a la tarjeta (nunca aprueba sola; hasta unos
+   * segundos más de espera; usa el modelo pequeño del servicio de la persona). APAGADA por defecto. Reinicia el motor al cambiar. El celular no la escribe.
+   */
+  permissionSuggestions: boolean
   /** Marca de la migración de 1.6.0: los ayudantes en segundo plano pasan a estar encendidos por defecto, también para quien ya tenía guardado «todo apagado». Se hace una sola vez. */
   engineBgMigrated?: boolean
   /**
@@ -129,6 +152,10 @@ export const DEFAULT_SETTINGS: Settings = {
   engineLimits: {},
   rememberAlways: true,
   userHooksEnabled: false,
+  userHooksSha256: null,
+  userHooksReview: false,
+  webSearchAnyProvider: false,
+  permissionSuggestions: false,
   codeTrustedMcp: [],
   modoPlan: false
 }
