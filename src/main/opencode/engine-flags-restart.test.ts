@@ -4,11 +4,21 @@ import type { EngineLimits } from '@shared/engine-limits'
 import type { EngineExperiments, ServerState } from '@shared/types'
 import { installEngineFlagsRestart, type EngineFlagsLiveServer, type EngineFlagsRestartDeps } from './engine-flags-restart'
 
+// El disco real (¿existe la política del administrador en esta máquina?) no entra en las pruebas: se controla aquí.
+const policy = vi.hoisted(() => ({ exists: false }))
+vi.mock('./engine-lastmile', async () => {
+  const lm = await import('@shared/engine-lastmile-env')
+  return { engineLastMileEnv: (s: object) => lm.engineLastMileEnvFor(s, { platform: 'darwin', exists: policy.exists }) }
+})
+
 type S = {
   engineExperiments: EngineExperiments
   engineLimits?: EngineLimits
   rememberAlways?: boolean
   userHooksEnabled?: boolean
+  userHooksSha256?: string | null
+  webSearchAnyProvider?: boolean
+  permissionSuggestions?: boolean
   recentFolders?: string[]
   theme?: string
 }
@@ -56,7 +66,7 @@ function harness(
     listeners.forEach((l) => l(next))
     await vi.advanceTimersByTimeAsync(0)
   }
-  return { server, tasks, isIdle, notify, idle, change, dispose }
+  return { server, tasks, isIdle, notify, idle, change, dispose, handle: dispose }
 }
 
 beforeEach(() => {
@@ -363,7 +373,13 @@ describe('reinicio al cambiar «Recordar mis siempre» (rememberAlways)', () => 
 
 describe('reinicio al cambiar «Activar ganchos» (userHooksEnabled)', () => {
   const HF = '/u/hooks/hooks.json'
-  const hk = (userHooksEnabled: boolean | undefined): S => ({ ...base, userHooksEnabled })
+  const SHA = 'ab'.repeat(32)
+  // Con la huella guardada (sin ella el motor no recibe ni el archivo, y el interruptor por sí solo no cambia nada).
+  const hk = (userHooksEnabled: boolean | undefined, userHooksSha256: string | null = SHA): S => ({
+    ...base,
+    userHooksEnabled,
+    userHooksSha256
+  })
 
   it('encenderlo reinicia el sidecar principal (ocioso) y avisa; apagarlo reinicia de nuevo', async () => {
     const h = harness(base, { hooksFile: HF })
@@ -405,6 +421,101 @@ describe('reinicio al cambiar «Activar ganchos» (userHooksEnabled)', () => {
     const h = harness(base)
     await h.change(hk(true))
     expect(h.server.restart).not.toHaveBeenCalled()
+  })
+
+  it('encendido SIN huella no cambia el entorno (no se pasa ni el archivo): no reinicia', async () => {
+    const h = harness(base, { hooksFile: HF })
+    await h.change(hk(true, null))
+    expect(h.server.restart).not.toHaveBeenCalled()
+  })
+
+  it('guardar otros ganchos cambia la huella: reinicia (con ganchos encendidos); con ganchos apagados no', async () => {
+    const h = harness(hk(true), { hooksFile: HF })
+    await h.change(hk(true, 'cd'.repeat(32)))
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    const h2 = harness(hk(false), { hooksFile: HF })
+    await h2.change(hk(false, 'cd'.repeat(32)))
+    expect(h2.server.restart).not.toHaveBeenCalled()
+  })
+
+  it('la misma huella en mayúsculas o una huella mal formada no cambian nada', async () => {
+    const h = harness(hk(true), { hooksFile: HF })
+    await h.change(hk(true, SHA.toUpperCase()))
+    expect(h.server.restart).not.toHaveBeenCalled()
+    await h.change(hk(true, 'xyz'))
+    // una huella mal formada deja al motor sin archivo ni huella: eso SÍ es un cambio de entorno (los ganchos dejan de pasarse)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+  })
+
+  it('con turnos en curso, la huella nueva espera (los ganchos no corren hasta el reinicio)', async () => {
+    const h = harness(hk(true), { idle: false, hooksFile: HF })
+    await h.change(hk(true, 'cd'.repeat(32)))
+    expect(h.server.restart).not.toHaveBeenCalled()
+    expect(h.notify).toHaveBeenLastCalledWith('pending')
+  })
+})
+
+describe('reinicio al cambiar la búsqueda web, la sugerencia o la política del administrador (1.8.12)', () => {
+  const live: EngineFlagsLiveServer[] = [
+    { folder: '/p', directory: '/p', fullAccess: false, baseUrl: 'http://t', authorization: 'b', startedAt: 1 },
+    { folder: '/q', directory: '/q', fullAccess: true, baseUrl: 'http://t2', authorization: 'b', startedAt: 1 }
+  ]
+  beforeEach(() => {
+    policy.exists = false
+  })
+
+  it.each([['webSearchAnyProvider'], ['permissionSuggestions']] as const)(
+    'encender y apagar «%s» reinicia el sidecar principal; ausente y false son lo mismo',
+    async (key) => {
+      const h = harness(base)
+      await h.change({ ...base, [key]: false })
+      await h.change({ ...base, [key]: undefined })
+      expect(h.server.restart).not.toHaveBeenCalled()
+      await h.change({ ...base, [key]: true })
+      expect(h.server.restart).toHaveBeenCalledTimes(1)
+      expect(h.notify).toHaveBeenCalledWith('restarted')
+      await h.change({ ...base, [key]: false })
+      expect(h.server.restart).toHaveBeenCalledTimes(2)
+    }
+  )
+
+  it.each([['webSearchAnyProvider'], ['permissionSuggestions']] as const)(
+    '«%s» no relanza Overdrive (ni el sandbox ni Control total)',
+    async (key) => {
+      const h = harness(base, { live })
+      await h.change({ ...base, [key]: true })
+      expect(h.server.restart).toHaveBeenCalledTimes(1)
+      expect(h.tasks.restartSandbox).not.toHaveBeenCalled()
+    }
+  )
+
+  it('un valor que no es true exacto (basura en disco) no cuenta como encendido', async () => {
+    const h = harness(base)
+    await h.change({ ...base, webSearchAnyProvider: 'true' as unknown as boolean, permissionSuggestions: 1 as unknown as boolean })
+    expect(h.server.restart).not.toHaveBeenCalled()
+  })
+
+  it('con turnos en curso espera y reinicia al quedar ocioso', async () => {
+    const h = harness(base, { idle: false })
+    await h.change({ ...base, webSearchAnyProvider: true })
+    expect(h.server.restart).not.toHaveBeenCalled()
+    expect(h.notify).toHaveBeenLastCalledWith('pending')
+    h.idle.value = true
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+  })
+
+  it('aparece o desaparece el archivo de política del administrador: recheck() reinicia el sidecar principal, no Overdrive', async () => {
+    const h = harness(base, { live })
+    policy.exists = true
+    h.handle.recheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(h.server.restart).toHaveBeenCalledTimes(1)
+    expect(h.tasks.restartSandbox).not.toHaveBeenCalled()
+    policy.exists = false
+    h.handle.recheck()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(h.server.restart).toHaveBeenCalledTimes(2)
   })
 })
 

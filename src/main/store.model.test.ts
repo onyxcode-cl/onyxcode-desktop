@@ -1,8 +1,10 @@
 // F8-B42: el modelo elegido sobrevive a normalize, a escrituras de otros ajustes y a reabrir (releer settings.json).
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 
 const dirs: string[] = []
 const userData = (): string => {
@@ -322,5 +324,157 @@ describe('settings: userHooksEnabled (ganchos de usuario)', () => {
     store.set({ userHooksEnabled: true })
     store.set({ theme: 'dark' })
     expect((await openStore(dir)).get().userHooksEnabled).toBe(true)
+  })
+})
+
+describe('settings: ajustes nuevos de la 1.8.12 (búsqueda web, sugerencia, huella de ganchos)', () => {
+  const SHA = 'ab'.repeat(32)
+  it('un settings.json viejo SIN las claves arranca con los valores por defecto (apagado, sin huella)', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ theme: 'dark', rememberAlways: true }))
+    const s = (await openStore(dir)).get()
+    expect(s.webSearchAnyProvider).toBe(false)
+    expect(s.permissionSuggestions).toBe(false)
+    expect(s.userHooksSha256).toBeNull()
+    expect(s.userHooksReview).toBe(false)
+    expect(s.theme).toBe('dark')
+  })
+  it('sin settings.json tampoco rompe', async () => {
+    const s = (await openStore(userData())).get()
+    expect([s.webSearchAnyProvider, s.permissionSuggestions, s.userHooksSha256, s.userHooksReview]).toEqual([false, false, null, false])
+  })
+  it('búsqueda web y sugerencia: solo `true` exacto las enciende', async () => {
+    for (const raw of ['true', 1, 'yes', {}, null, []]) {
+      const dir = userData()
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ webSearchAnyProvider: raw, permissionSuggestions: raw }))
+      const s = (await openStore(dir)).get()
+      expect([s.webSearchAnyProvider, s.permissionSuggestions], String(raw)).toEqual([false, false])
+    }
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ webSearchAnyProvider: true, permissionSuggestions: true }))
+    const s = (await openStore(dir)).get()
+    expect([s.webSearchAnyProvider, s.permissionSuggestions]).toEqual([true, true])
+  })
+  it('se guardan y releen de disco', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ webSearchAnyProvider: true, permissionSuggestions: true })
+    store.set({ theme: 'dark' })
+    const s = (await openStore(dir)).get()
+    expect([s.webSearchAnyProvider, s.permissionSuggestions]).toEqual([true, true])
+  })
+  it('la huella solo se acepta con 64 hexadecimales (se normaliza a minúsculas); basura = null', async () => {
+    for (const raw of ['xyz', SHA.slice(1), `${SHA}0`, 5, {}, ` ${SHA}`]) {
+      const dir = userData()
+      writeFileSync(join(dir, 'settings.json'), JSON.stringify({ userHooksEnabled: true, userHooksSha256: raw, userHooksReview: true }))
+      const s = (await openStore(dir)).get()
+      expect(s.userHooksSha256, String(raw)).toBeNull()
+      expect(s.userHooksReview, 'el aviso no tiene sentido sin huella').toBe(false)
+    }
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ userHooksEnabled: true, userHooksSha256: SHA.toUpperCase() }))
+    expect((await openStore(dir)).get().userHooksSha256).toBe(SHA)
+  })
+})
+
+describe('settings: migración de la huella de ganchos (1.8.12, decisión D11 = a)', () => {
+  const sha = (b: Buffer | string): string => createHash('sha256').update(b).digest('hex')
+  const HOOKS = '{"hooks":{"Stop":[{"command":"echo hola"}]}}\n'
+  function conGanchos(settings: Record<string, unknown>, contenido: string | Buffer | null = HOOKS): string {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify(settings))
+    if (contenido !== null) {
+      mkdirSync(join(dir, 'hooks'), { recursive: true })
+      writeFileSync(join(dir, 'hooks', 'hooks.json'), contenido)
+    }
+    return dir
+  }
+
+  it('ganchos ACTIVOS, sin la clave de huella y con archivo: se guarda la huella del archivo de hoy y se enciende el aviso «Revisa tus ganchos»', async () => {
+    const dir = conGanchos({ userHooksEnabled: true })
+    const s = (await openStore(dir)).get()
+    expect(s.userHooksSha256).toBe(sha(HOOKS))
+    expect(s.userHooksReview).toBe(true)
+    // Persistida YA (si no, cada arranque volvería a confiar en el archivo de ese momento).
+    const disco = JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8'))
+    expect(disco.userHooksSha256).toBe(sha(HOOKS))
+    expect(disco.userHooksReview).toBe(true)
+  })
+
+  it('la migración guarda el JSON crudo: no pierde claves que otras migraciones de datos viejos aún necesiten leer', async () => {
+    const dir = conGanchos({ userHooksEnabled: true, claveDeUnaVersionVieja: { a: 1 }, theme: 'dark' })
+    await openStore(dir).then((st) => st.get())
+    const disco = JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8'))
+    expect(disco.claveDeUnaVersionVieja).toEqual({ a: 1 })
+    expect(disco.theme).toBe('dark')
+    expect(disco.userHooksSha256).toBe(sha(HOOKS))
+  })
+
+  it('UNA sola vez: si el archivo cambia después, el siguiente arranque NO vuelve a confiar en él', async () => {
+    const dir = conGanchos({ userHooksEnabled: true })
+    const primera = (await openStore(dir)).get().userHooksSha256
+    writeFileSync(join(dir, 'hooks', 'hooks.json'), '{"hooks":{"Stop":[{"command":"echo cambiado"}]}}\n')
+    const segunda = (await openStore(dir)).get().userHooksSha256
+    expect(primera).toBe(sha(HOOKS))
+    expect(segunda).toBe(primera)
+    expect(segunda).not.toBe(sha('{"hooks":{"Stop":[{"command":"echo cambiado"}]}}\n'))
+  })
+
+  it('ganchos activos pero SIN archivo: no hay nada que aprobar (huella null, sin aviso)', async () => {
+    const s = (await openStore(conGanchos({ userHooksEnabled: true }, null))).get()
+    expect(s.userHooksSha256).toBeNull()
+    expect(s.userHooksReview).toBe(false)
+  })
+
+  it('ganchos APAGADOS: no se aprueba nada (enciende los ganchos después y tendrá que guardar desde la pantalla)', async () => {
+    const dir = conGanchos({ userHooksEnabled: false })
+    const s = (await openStore(dir)).get()
+    expect(s.userHooksSha256).toBeNull()
+    expect(s.userHooksReview).toBe(false)
+    const store = await openStore(dir)
+    store.set({ userHooksEnabled: true })
+    expect((await openStore(dir)).get().userHooksSha256).toBeNull()
+  })
+
+  it('si el settings.json ya tiene la clave (aunque sea null) no se migra de nuevo', async () => {
+    const dir = conGanchos({ userHooksEnabled: true, userHooksSha256: null })
+    expect((await openStore(dir)).get().userHooksSha256).toBeNull()
+    const otra = 'cd'.repeat(32)
+    const dir2 = conGanchos({ userHooksEnabled: true, userHooksSha256: otra, userHooksReview: false })
+    const s = (await openStore(dir2)).get()
+    expect(s.userHooksSha256).toBe(otra)
+    expect(s.userHooksReview).toBe(false)
+  })
+
+  it('un archivo de ganchos que pesa más que el tope del motor (64 KB) no se aprueba', async () => {
+    const s = (await openStore(conGanchos({ userHooksEnabled: true }, Buffer.alloc(HOOKS_MAX_FILE_BYTES + 1, 0x20)))).get()
+    expect(s.userHooksSha256).toBeNull()
+  })
+
+  it('un enlace simbólico en lugar del archivo no se sigue (no se aprueba)', async () => {
+    if (process.platform === 'win32') return
+    const dir = conGanchos({ userHooksEnabled: true }, null)
+    const fuera = userData()
+    writeFileSync(join(fuera, 'otro.json'), HOOKS)
+    mkdirSync(join(dir, 'hooks'), { recursive: true })
+    symlinkSync(join(fuera, 'otro.json'), join(dir, 'hooks', 'hooks.json'))
+    expect((await openStore(dir)).get().userHooksSha256).toBeNull()
+  })
+
+  it('una carpeta `hooks` que es un enlace a otro sitio tampoco se sigue', async () => {
+    if (process.platform === 'win32') return
+    const dir = conGanchos({ userHooksEnabled: true }, null)
+    const fuera = userData()
+    writeFileSync(join(fuera, 'hooks.json'), HOOKS)
+    symlinkSync(fuera, join(dir, 'hooks'))
+    expect((await openStore(dir)).get().userHooksSha256).toBeNull()
+  })
+
+  it('un settings.json ilegible no migra nada ni rompe el arranque', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), '{no es json')
+    const s = (await openStore(dir)).get()
+    expect(s.userHooksSha256).toBeNull()
+    expect(s.userHooksEnabled).toBe(false)
   })
 })

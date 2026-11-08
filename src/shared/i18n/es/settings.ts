@@ -482,15 +482,35 @@ export const settings = {
   'settings.engine.hooks.warning': 'Los ganchos ejecutan comandos con tus permisos. Solo pon aquí lo que tú entiendas.',
   'settings.engine.hooks.toggle': 'Activar ganchos',
   'settings.engine.hooks.toggleDesc':
-    'Apagado por defecto. Al cambiarlo, el motor se reinicia cuando no haya nada en curso; editar los ganchos con el interruptor encendido no lo reinicia. No se aplican en el sandbox de Overdrive (solo en Chat, Code y Overdrive con Control total).',
+    'Apagado por defecto. Al cambiarlo, o al guardar ganchos nuevos, el motor se reinicia cuando no haya nada en curso (hasta entonces los ganchos nuevos no se ejecutan). El motor solo ejecuta el archivo que guardaste desde esta pantalla: si se edita a mano, deja de ejecutar ganchos. No se aplican en el sandbox de Overdrive (solo en Chat, Code y Overdrive con Control total).',
   'settings.engine.hooks.editorLabel': 'Archivo de ganchos (JSON)',
   'settings.engine.hooks.editorHelp':
     'Eventos: PreToolUse (antes de una herramienta; el código de salida 2 la bloquea), PostToolUse (después de una herramienta), PreCompact (antes de compactar la conversación), PostCompact (después de compactarla; lo que imprima con código 0, hasta 4000 caracteres, se suma al contexto que se conserva), Stop (cuando la IA va a terminar; si devuelve la decisión «block», la hace seguir), SessionStart (al empezar una sesión; lo que imprima con código 0 se suma a sus instrucciones), UserPromptSubmit (cada mensaje tuyo; con código 2 se rechaza), SubagentStop (un ayudante quedó ocioso; informativo), PostToolUseFailure (una herramienta falló; solo informa), PermissionDenied (una regla o un plugin negó un permiso; solo informa), PermissionRequest (antes de preguntarte por un permiso; el gancho solo puede negarlo, nunca aprobarlo), SubagentStart (nació un ayudante; informativo), Interrupt (detuviste la sesión; informativo) y PostToolBatch (terminó un lote de herramientas; informativo). «matcher» es una expresión regular sobre el nombre de la herramienta; «if» (opcional, hasta 300 caracteres) limita el gancho a una herramienta y un patrón, como Bash(git *); «onFailure»: «block» bloquea la acción si el gancho falla (solo en PreToolUse, UserPromptSubmit y PermissionRequest). «timeout» va de 1 a 60 segundos. Máximo 20 ganchos por evento, comando de hasta 2000 caracteres y 64 KB en total.',
   'settings.engine.hooks.exampleTitle': 'Ejemplo: bloquear «rm -rf»',
   'settings.engine.hooks.useExample': 'Usar el ejemplo',
   'settings.engine.hooks.save': 'Guardar',
-  'settings.engine.hooks.saved': 'Guardado. El motor lo relee solo; no hace falta reiniciar.',
-  'settings.engine.hooks.savedCount': 'Guardado. Ganchos configurados: {n}. El motor lo relee solo; no hace falta reiniciar.',
+  'settings.engine.hooks.saved':
+    'Guardado. Para aplicarlo, el motor se reinicia solo cuando no haya nada en curso; hasta entonces los ganchos no se ejecutan.',
+  'settings.engine.hooks.savedCount':
+    'Guardado. Ganchos configurados: {n}. Para aplicarlo, el motor se reinicia solo cuando no haya nada en curso; hasta entonces los ganchos no se ejecutan.',
+  'settings.engine.hooks.trust.review.title': 'Revisa tus ganchos',
+  'settings.engine.hooks.trust.review.body':
+    'Al actualizar, Lazunox dio por buenos los ganchos que ya tenías activos, tal como estaban ese día. Léelos y pulsa «Guardar» para confirmarlos; este aviso se quita al guardar.',
+  'settings.engine.hooks.trust.changed.title': 'Los ganchos no se están ejecutando',
+  'settings.engine.hooks.trust.changed.body':
+    'El archivo de ganchos no coincide con lo último que guardaste desde esta pantalla (por ejemplo, se editó a mano o con otro programa), o todavía no has guardado ninguno. Por seguridad el motor no ejecuta ningún gancho hasta que lo revises y pulses «Guardar».',
+  'settings.engine.lastmile.web.title': 'Búsqueda web con cualquier IA',
+  'settings.engine.lastmile.web.desc':
+    'Por defecto la búsqueda web solo está disponible con los servicios de OpenCode. Al encenderla, el agente puede buscar en internet con cualquier IA que hayas conectado.',
+  'settings.engine.lastmile.web.warn':
+    'Las búsquedas se envían a Exa, un buscador externo que no es parte de Lazunox ni de tu servicio de IA. No pidas buscar nada que no quieras compartir con un tercero. Si usas OpenCode, sus búsquedas pasan a ir solo a Exa. En el Chat las búsquedas no piden permiso; en Code, según el modo de permisos, pueden pedirlo. No afecta a Overdrive.',
+  'settings.engine.lastmile.web.toggle': 'Búsqueda web con cualquier IA',
+  'settings.engine.lastmile.suggest.title': 'Sugerencia en las tarjetas de permiso',
+  'settings.engine.lastmile.suggest.desc':
+    'Una IA lee lo que se te pide permitir y añade una sugerencia a la tarjeta, para ayudarte a decidir.',
+  'settings.engine.lastmile.suggest.warn':
+    'Nunca aprueba por ti. Cada tarjeta puede tardar unos segundos más en salir. Usa el modelo pequeño que elija el motor entre los de tu servicio, que podría tener costo aunque la conversación use un modelo gratuito. No afecta a Overdrive.',
+  'settings.engine.lastmile.suggest.toggle': 'Sugerencia de una IA en las tarjetas de permiso',
   'settings.engine.hooks.loadFailed': 'No se pudo leer el archivo de ganchos.',
   'settings.engine.hooks.errorsTitle': 'No se guardó. Corrige esto:',
   'settings.engine.hooks.err.badJson': 'El texto no es un JSON válido.',

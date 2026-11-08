@@ -4,12 +4,13 @@
  * modo 0600 + rename). El contenido no se registra: los errores de aquí solo llevan el código del sistema, nunca el texto.
  */
 import { app } from 'electron'
-import { chmodSync, closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { chmodSync, closeSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { HOOKS_MAX_FILE_BYTES, validateHooksText, type HooksIssue } from '@shared/user-hooks'
+import { HOOKS_DIR_NAME, HOOKS_FILE_NAME, HOOKS_MAX_FILE_BYTES, validateHooksText, type HooksIssue } from '@shared/user-hooks'
+import { settingsStore } from '../store'
 
-export const HOOKS_DIR_NAME = 'hooks'
-export const HOOKS_FILE_NAME = 'hooks.json'
+export { HOOKS_DIR_NAME, HOOKS_FILE_NAME }
 
 export const hooksDir = (userData: string = app.getPath('userData')): string => join(userData, HOOKS_DIR_NAME)
 export const hooksFile = (userData: string = app.getPath('userData')): string => join(hooksDir(userData), HOOKS_FILE_NAME)
@@ -28,8 +29,27 @@ export function readHooks(userData: string = app.getPath('userData')): { text: s
 
 export type WriteHooksResult = { ok: true } | { ok: false; issues: HooksIssue[] }
 
-/** Valida (misma lógica que en la ventana) y escribe de forma atómica. Un fallo de disco devuelve el código `writeFailed`. */
-export function writeHooks(text: string, userData: string = app.getPath('userData')): WriteHooksResult {
+/** Huella sha256 (hexadecimal) de unos bytes. */
+export const sha256Hex = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex')
+
+/**
+ * Guarda la huella de lo que la persona acaba de guardar y apaga el aviso «Revisa tus ganchos». Es la ÚNICA vía (junto a la migración de
+ * `store.ts`) por la que una huella llega a los Ajustes: el renderer no puede escribirla.
+ */
+const saveTrustInSettings = (sha: string): void => {
+  settingsStore.set({ userHooksSha256: sha, userHooksReview: false })
+}
+
+/**
+ * Valida (misma lógica que en la ventana) y escribe de forma atómica. Luego guarda la huella (sha256) de los bytes escritos: el motor solo ejecuta
+ * un archivo que coincida con ella. Un fallo de disco, o de guardar la huella, devuelve el código `writeFailed` (con la huella vieja los ganchos
+ * simplemente no corren hasta que se guarde de nuevo: falla cerrado).
+ */
+export function writeHooks(
+  text: string,
+  userData: string = app.getPath('userData'),
+  saveTrust: (sha: string) => void = saveTrustInSettings
+): WriteHooksResult {
   const v = validateHooksText(text)
   if (!v.ok) return { ok: false, issues: v.issues }
   const dir = hooksDir(userData)
@@ -40,15 +60,18 @@ export function writeHooks(text: string, userData: string = app.getPath('userDat
     chmodSync(dir, 0o700)
     // `wx` + 0600: el temporal nace privado; un temporal viejo de otro arranque se descarta antes.
     rmSync(tmp, { force: true })
+    // La huella se calcula sobre ESTOS bytes, los mismos que se escriben (y que el motor leerá).
+    const bytes = Buffer.from(v.text, 'utf8')
     const fd = openSync(tmp, 'wx', 0o600)
     try {
-      writeSync(fd, v.text)
+      writeFileSync(fd, bytes)
       fsyncSync(fd)
     } finally {
       closeSync(fd)
     }
     renameSync(tmp, file)
     chmodSync(file, 0o600)
+    saveTrust(sha256Hex(bytes))
     return { ok: true }
   } catch (err) {
     try {

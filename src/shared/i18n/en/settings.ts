@@ -484,15 +484,35 @@ export const settings = {
   'settings.engine.hooks.warning': 'Hooks run commands with your permissions. Only put here what you understand.',
   'settings.engine.hooks.toggle': 'Turn on hooks',
   'settings.engine.hooks.toggleDesc':
-    'Off by default. When you change it, the engine restarts once nothing is in progress; editing the hooks while the switch is on does not restart it. They do not apply in the Overdrive sandbox (only in Chat, Code and Overdrive with Full control).',
+    'Off by default. When you change it, or save new hooks, the engine restarts once nothing is in progress (until then the new hooks do not run). The engine only runs the file you saved from this screen: if it is edited by hand, it stops running hooks. They do not apply in the Overdrive sandbox (only in Chat, Code and Overdrive with Full control).',
   'settings.engine.hooks.editorLabel': 'Hooks file (JSON)',
   'settings.engine.hooks.editorHelp':
     'Events: PreToolUse (before a tool; exit code 2 blocks it), PostToolUse (after a tool), PreCompact (before the conversation is compacted), PostCompact (after it is compacted; what it prints with exit code 0, up to 4000 characters, is added to the context that is kept), Stop (when the AI is about to finish; if it returns the decision “block”, it keeps working), SessionStart (when a session starts; what it prints with exit code 0 is added to its instructions), UserPromptSubmit (each message you send; exit code 2 rejects it), SubagentStop (a helper went idle; informational), PostToolUseFailure (a tool failed; informational), PermissionDenied (a rule or a plugin denied a permission; informational), PermissionRequest (before asking you about a permission; the hook can only deny it, never approve it), SubagentStart (a helper starts; informational), Interrupt (you stopped the session; informational) and PostToolBatch (a batch of tools finished; informational). “matcher” is a regular expression on the tool name; “if” (optional, up to 300 characters) limits the hook to a tool and a pattern, such as Bash(git *); “onFailure”: “block” blocks the action if the hook fails (only in PreToolUse, UserPromptSubmit and PermissionRequest). “timeout” is 1 to 60 seconds. At most 20 hooks per event, a command of up to 2000 characters and 64 KB in total.',
   'settings.engine.hooks.exampleTitle': 'Example: block “rm -rf”',
   'settings.engine.hooks.useExample': 'Use the example',
   'settings.engine.hooks.save': 'Save',
-  'settings.engine.hooks.saved': 'Saved. The engine rereads it by itself; no restart needed.',
-  'settings.engine.hooks.savedCount': 'Saved. Hooks configured: {n}. The engine rereads it by itself; no restart needed.',
+  'settings.engine.hooks.saved':
+    'Saved. To apply it, the engine restarts by itself once nothing is in progress; until then the hooks do not run.',
+  'settings.engine.hooks.savedCount':
+    'Saved. Hooks configured: {n}. To apply it, the engine restarts by itself once nothing is in progress; until then the hooks do not run.',
+  'settings.engine.hooks.trust.review.title': 'Review your hooks',
+  'settings.engine.hooks.trust.review.body':
+    'When updating, Lazunox accepted the hooks you already had on, exactly as they were that day. Read them and press “Save” to confirm them; this notice goes away when you save.',
+  'settings.engine.hooks.trust.changed.title': 'Your hooks are not running',
+  'settings.engine.hooks.trust.changed.body':
+    'The hooks file does not match what you last saved from this screen (for example, it was edited by hand or with another program), or you have not saved any yet. For safety the engine runs no hook until you review it and press “Save”.',
+  'settings.engine.lastmile.web.title': 'Web search with any AI',
+  'settings.engine.lastmile.web.desc':
+    'By default web search is only available with OpenCode services. When you turn it on, the agent can search the internet with any AI you have connected.',
+  'settings.engine.lastmile.web.warn':
+    'Searches are sent to Exa, an external search engine that is not part of Lazunox or of your AI service. Do not ask it to search for anything you do not want to share with a third party. If you use OpenCode, its searches will go only to Exa. In Chat, searches do not ask for permission; in Code, depending on the permission mode, they may ask first. It does not affect Overdrive.',
+  'settings.engine.lastmile.web.toggle': 'Web search with any AI',
+  'settings.engine.lastmile.suggest.title': 'Suggestion on permission cards',
+  'settings.engine.lastmile.suggest.desc':
+    'An AI reads what you are being asked to allow and adds a suggestion to the card, to help you decide.',
+  'settings.engine.lastmile.suggest.warn':
+    'It never approves for you. Each card may take a few seconds longer to appear. It uses the small model the engine picks among those of your service, which may cost money even if the conversation uses a free model. It does not affect Overdrive.',
+  'settings.engine.lastmile.suggest.toggle': 'AI suggestion on permission cards',
   'settings.engine.hooks.loadFailed': 'Could not read the hooks file.',
   'settings.engine.hooks.errorsTitle': 'Not saved. Fix this:',
   'settings.engine.hooks.err.badJson': 'The text is not valid JSON.',

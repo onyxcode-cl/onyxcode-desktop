@@ -609,6 +609,25 @@ describe('settings:set userHooksEnabled y canales de ganchos', () => {
     expect(v({ userHooksEnabled: true })).toEqual({ userHooksEnabled: true })
     for (const bad of ['true', 1, {}, []]) expect(() => v({ userHooksEnabled: bad })).toThrow()
   })
+  it('1.8.12: búsqueda web y sugerencia solo aceptan booleanos', () => {
+    const v = IPC_SCHEMAS['settings:set']
+    expect(v({ webSearchAnyProvider: true, permissionSuggestions: false })).toEqual({
+      webSearchAnyProvider: true,
+      permissionSuggestions: false
+    })
+    for (const k of ['webSearchAnyProvider', 'permissionSuggestions']) {
+      for (const bad of ['true', 1, {}, []]) expect(() => v({ [k]: bad }), `${k}=${String(bad)}`).toThrow()
+    }
+  })
+  it('1.8.12: la huella de los ganchos y su aviso NO se pueden escribir desde el renderer (solo main)', () => {
+    const v = IPC_SCHEMAS['settings:set']
+    expect(() => v({ userHooksSha256: 'ab'.repeat(32) })).toThrow()
+    expect(() => v({ userHooksSha256: null })).toThrow()
+    expect(() => v({ userHooksReview: false })).toThrow()
+    expect(() => v({ userHooksEnabled: true, userHooksSha256: 'ab'.repeat(32) })).toThrow()
+    // Ni siquiera junto a un campo permitido.
+    expect(() => v({ theme: 'dark', userHooksSha256: 'ab'.repeat(32) })).toThrow()
+  })
   it('hooksRead no lleva parámetros', () => {
     const f = IPC_SCHEMAS['settings:hooksRead']
     expect(() => f(undefined)).not.toThrow()

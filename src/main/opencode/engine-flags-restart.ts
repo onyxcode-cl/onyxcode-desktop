@@ -6,7 +6,7 @@
  *  - sidecar principal (Chat + Code comparten proceso): `engineFlagEnvForMainSidecar`;
  *  - Overdrive (Tareas, sandbox): `engineFlagEnvFor(_, 'tasks')`.
  * A ese entorno se suman los límites de Modo código y del shell en segundo plano (`engineLimitEnvFor`, solo los cambiados) y las
- * variables de los ganchos de usuario (`LAZUNOX_HOOKS_FILE`, solo el sidecar principal: el sandbox de Tareas nunca los recibe) y las de «Recordar mis "siempre"» (`permissionPersistEnvFor`: el motor las lee una sola vez al lanzar, así que el interruptor reinicia).
+ * variables de los ganchos de usuario (`LAZUNOX_HOOKS_FILE` y su huella `LAZUNOX_HOOKS_SHA256`, solo el sidecar principal: el sandbox de Tareas nunca los recibe), las de la «última milla» (`engineLastMileEnv`: búsqueda web, sugerencia de permisos y política del administrador, solo el sidecar principal) y las de «Recordar mis "siempre"» (`permissionPersistEnvFor`: el motor las lee una sola vez al lanzar, así que el interruptor reinicia).
  * Solo si cambió el entorno de una familia se reinicia ESA familia, y nunca a mitad de un turno: se espera a que todas las
  * sesiones estén ociosas (se avisa una vez a la persona y se reintenta). Cambiar otra cosa de Ajustes no reinicia nada.
  *
@@ -22,11 +22,23 @@ import { engineExperimentsFor, engineFlagEnvFor, engineFlagEnvForMainSidecar } f
 import { engineLimitEnvFor } from '@shared/engine-limits'
 import { permissionPersistEnvFor } from '@shared/permission-persist'
 import { userHooksEnvFor } from '@shared/user-hooks'
+import { engineLastMileEnv } from './engine-lastmile'
 import type { OpencodeConnection, ServerStatus, Settings } from '@shared/types'
 
 type Env = Record<string, string>
 type SettingsLike = Pick<Settings, 'engineExperiments'> &
-  Partial<Pick<Settings, 'recentFolders' | 'engineLimits' | 'rememberAlways' | 'userHooksEnabled'>>
+  Partial<
+    Pick<
+      Settings,
+      | 'recentFolders'
+      | 'engineLimits'
+      | 'rememberAlways'
+      | 'userHooksEnabled'
+      | 'userHooksSha256'
+      | 'webSearchAnyProvider'
+      | 'permissionSuggestions'
+    >
+  >
 
 export interface EngineFlagsServer {
   restart(): Promise<unknown>
@@ -92,7 +104,9 @@ function mainFlagsOf(s: SettingsLike, permissionDir?: string, hooksFile?: string
     ...engineFlagEnvForMainSidecar(s),
     ...engineLimitEnvFor(s),
     ...permissionPersistEnvFor(s, permissionDir),
-    ...userHooksEnvFor(s, hooksFile)
+    ...userHooksEnvFor(s, hooksFile),
+    // Búsqueda web con cualquier IA, sugerencia en tarjetas y política del administrador (solo si su archivo existe): también se leen una vez al lanzar.
+    ...engineLastMileEnv(s)
   }
   return engineExperimentsFor(s, 'chat').backgroundSubagents ? { ...env, 'chat:subagents': 'on' } : env
 }

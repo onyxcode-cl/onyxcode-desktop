@@ -2,9 +2,17 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS, type EngineExperiments } from '@shared/types'
+import { createHash } from 'node:crypto'
+import { DEFAULT_SETTINGS, type EngineExperiments, type Settings } from '@shared/types'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+// El archivo de ganchos que «lee» la pantalla (`settings:hooksRead`); el resto de canales no se usa aquí.
+const hooksFile = vi.hoisted(() => ({ value: { text: '', exists: false } as { text: string; exists: boolean } }))
+vi.mock('../../../lib/api', () => ({
+  call: vi.fn(async (channel: string) => (channel === 'settings:hooksRead' ? hooksFile.value : { ok: true })),
+  api: { on: () => () => undefined }
+}))
 
 import { EngineExperimentsSection } from './EngineExperimentsSection'
 import { useSettings } from '../../../stores/settings'
@@ -31,6 +39,7 @@ function mount(
 }
 
 beforeEach(() => {
+  hooksFile.value = { text: '', exists: false }
   vi.unstubAllGlobals()
   host = document.createElement('div')
   document.body.appendChild(host)
@@ -184,6 +193,135 @@ describe('EngineExperimentsSection', () => {
           codeExtras: { goal: false, budget: false, review: true }
         }
       })
+    })
+  })
+  describe('1.8.12: búsqueda web con cualquier IA y sugerencia en las tarjetas de permiso', () => {
+    const own = (title: string): HTMLElement =>
+      [...host.querySelectorAll('section')].find((x) => x.querySelector('h3')?.textContent === title)!
+    const mountWith = (extra: Partial<Settings>): void => {
+      update = vi.fn(async () => undefined)
+      useSettings.setState({ settings: { ...DEFAULT_SETTINGS, ...extra }, update })
+      act(() => root.render(createElement(EngineExperimentsSection)))
+    }
+
+    it('la búsqueda web está APAGADA por defecto, nombra a Exa y a «un tercero» en un aviso siempre visible', () => {
+      mount()
+      const sec = own('Búsqueda web con cualquier IA')
+      const sw = sec.querySelector<HTMLButtonElement>('button[role="switch"]')!
+      expect(sw.getAttribute('aria-checked')).toBe('false')
+      expect(sw.getAttribute('aria-label')).toBe('Búsqueda web con cualquier IA')
+      const note = sec.querySelector('[role="note"]')!.textContent!
+      expect(note).toContain('Exa')
+      expect(note).toContain('se envían')
+      expect(note).toContain('tercero')
+      expect(note).toContain('No afecta a Overdrive')
+    })
+
+    it('encender y apagar la búsqueda web envía solo ese ajuste', () => {
+      mount()
+      act(() => own('Búsqueda web con cualquier IA').querySelector<HTMLButtonElement>('button[role="switch"]')!.click())
+      expect(update).toHaveBeenLastCalledWith({ webSearchAnyProvider: true })
+      mountWith({ webSearchAnyProvider: true })
+      const sw = own('Búsqueda web con cualquier IA').querySelector<HTMLButtonElement>('button[role="switch"]')!
+      expect(sw.getAttribute('aria-checked')).toBe('true')
+      act(() => sw.click())
+      expect(update).toHaveBeenLastCalledWith({ webSearchAnyProvider: false })
+    })
+
+    it('la sugerencia está APAGADA por defecto y avisa: nunca aprueba, tarda más y puede costar', () => {
+      mount()
+      const sec = own('Sugerencia en las tarjetas de permiso')
+      const sw = sec.querySelector<HTMLButtonElement>('button[role="switch"]')!
+      expect(sw.getAttribute('aria-checked')).toBe('false')
+      expect(sw.getAttribute('aria-label')).toBe('Sugerencia de una IA en las tarjetas de permiso')
+      const note = sec.querySelector('[role="note"]')!.textContent!
+      expect(note).toContain('Nunca aprueba por ti')
+      expect(note).toContain('segundos más')
+      expect(note).toContain('costo')
+      act(() => sw.click())
+      expect(update).toHaveBeenLastCalledWith({ permissionSuggestions: true })
+    })
+
+    it('los dos interruptores nuevos tienen nombre accesible distinto y no cambian el recuento de los grupos por modo', () => {
+      mount()
+      expect(host.querySelectorAll('section[role="group"]')).toHaveLength(3)
+      expect(switches()).toHaveLength(8)
+    })
+
+    it('en inglés, textos propios y el aviso nombra a Exa', async () => {
+      const { applyLangPref } = await import('../../../lib/i18n')
+      applyLangPref('en')
+      try {
+        mount()
+        const sec = own('Web search with any AI')
+        expect(sec.querySelector('[role="note"]')!.textContent).toContain('sent to Exa')
+        expect(own('Suggestion on permission cards').textContent).toContain('It never approves for you')
+      } finally {
+        applyLangPref('es')
+      }
+    })
+  })
+
+  describe('1.8.12: avisos de confianza de los ganchos', () => {
+    const SHA = (t: string): string => createHash('sha256').update(Buffer.from(t, 'utf8')).digest('hex')
+    const TXT = '{"hooks":{"Stop":[{"command":"echo hola"}]}}\n'
+    const mountHooks = async (extra: Partial<Settings>): Promise<void> => {
+      update = vi.fn(async () => undefined)
+      useSettings.setState({ settings: { ...DEFAULT_SETTINGS, ...extra }, update })
+      await act(async () => root.render(createElement(EngineExperimentsSection)))
+      await act(async () => undefined)
+    }
+    const notice = (): string => host.querySelector('[role="status"]')?.textContent ?? ''
+
+    it('con ganchos apagados no hay aviso, aunque la huella no coincida', async () => {
+      hooksFile.value = { text: TXT, exists: true }
+      await mountHooks({ userHooksEnabled: false, userHooksSha256: SHA('otra cosa') })
+      expect(notice()).toBe('')
+    })
+
+    it('migrados al actualizar (decisión D11): «Revisa tus ganchos» mientras no se guarden de nuevo', async () => {
+      hooksFile.value = { text: TXT, exists: true }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: SHA(TXT), userHooksReview: true })
+      expect(notice()).toContain('Revisa tus ganchos')
+      expect(notice()).toContain('Guardar')
+    })
+
+    it('la huella coincide y nada que revisar: sin aviso', async () => {
+      hooksFile.value = { text: TXT, exists: true }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: SHA(TXT), userHooksReview: false })
+      expect(notice()).toBe('')
+    })
+
+    it('editado a mano (no coincide con la huella): dice que los ganchos NO se están ejecutando', async () => {
+      hooksFile.value = { text: TXT.replace('hola', 'otra cosa'), exists: true }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: SHA(TXT), userHooksReview: false })
+      expect(notice()).toContain('no se están ejecutando')
+      expect(notice()).toContain('a mano')
+    })
+
+    it('el aviso de «no se ejecutan» manda sobre el de «revísalos»', async () => {
+      hooksFile.value = { text: TXT.replace('hola', 'otra cosa'), exists: true }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: SHA(TXT), userHooksReview: true })
+      expect(notice()).toContain('no se están ejecutando')
+      expect(notice()).not.toContain('Revisa tus ganchos')
+    })
+
+    it('archivo que existe y ninguna huella guardada: no se ejecuta, y lo dice', async () => {
+      hooksFile.value = { text: TXT, exists: true }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: null })
+      expect(notice()).toContain('no se están ejecutando')
+    })
+
+    it('sin archivo no hay nada que ejecutar ni que avisar', async () => {
+      hooksFile.value = { text: '', exists: false }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: null })
+      expect(notice()).toBe('')
+    })
+
+    it('la huella en mayúsculas cuenta como la misma', async () => {
+      hooksFile.value = { text: TXT, exists: true }
+      await mountHooks({ userHooksEnabled: true, userHooksSha256: SHA(TXT).toUpperCase() })
+      expect(notice()).toBe('')
     })
   })
 })

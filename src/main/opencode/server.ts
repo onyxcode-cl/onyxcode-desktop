@@ -36,6 +36,7 @@ import { permissionPersistEnvFor } from '@shared/permission-persist'
 import { ensurePermissionDir, permissionDir } from './permission-store'
 import { hooksFile } from './user-hooks-store'
 import { userHooksEnvFor } from '@shared/user-hooks'
+import { engineLastMileEnv } from './engine-lastmile'
 import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
@@ -306,7 +307,11 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         // «Recordar mis siempre»: el motor guarda los permisos «siempre» por carpeta en `userData/permisos-siempre` (0700) solo si va encendido.
         ...persistEnv,
         // Ganchos de usuario: solo con «Activar ganchos» (apagado por defecto); el motor lee `userData/hooks/hooks.json` y relee si cambia.
+        // Con la huella (`LAZUNOX_HOOKS_SHA256`) del archivo que la persona guardó: si el archivo cambia por otra vía, el motor no ejecuta ningún gancho.
         ...userHooksEnvFor(settingsStore.get(), hooksFile()),
+        // Búsqueda web con cualquier IA (D7, apagada), sugerencia en tarjetas (apagada) y política de empresa del motor (solo si existe el archivo del
+        // administrador, D12). Solo el sidecar principal: Overdrive no recibe nada de esto (ver `manager.ts`).
+        ...engineLastMileEnv(settingsStore.get()),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(

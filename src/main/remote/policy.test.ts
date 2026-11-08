@@ -7,6 +7,7 @@ import { TASKS_EVENT_CHANNELS, TASKS_INVOKE_CHANNELS } from '@shared/ipc-tasks'
 import { IPC_EXTRAS_EVENT_CHANNELS, IPC_EXTRAS_INVOKE_CHANNELS } from '@shared/ipc-extras'
 import { BROWSER_EVENT_CHANNELS, BROWSER_INVOKE_CHANNELS } from '@shared/ipc-browser'
 import { REMOTE_EVENT_CHANNELS, REMOTE_INVOKE_CHANNELS } from '@shared/ipc-remote'
+import { DEFAULT_SETTINGS } from '@shared/types'
 import { IPC_SCHEMAS, missingSchemas } from '../ipc/schemas'
 import {
   CELULAR_EVENTS,
@@ -440,6 +441,20 @@ describe('settings:set y setters por campos', () => {
     expect(cls(ipc('settings:set', { theme: 'dark', userHooksEnabled: false }))).toBe('deny:field-forbidden:userHooksEnabled')
     expect(cls(ipc('settings:hooksRead', undefined))).toMatch(/^deny/)
     expect(cls(ipc('settings:hooksWrite', { text: '{"hooks":{}}' }))).toMatch(/^deny/)
+  })
+  it('1.8.12: cada ajuste nuevo (búsqueda web con un tercero, sugerencia, huella de ganchos y su aviso) es X para el celular', () => {
+    for (const k of ['webSearchAnyProvider', 'permissionSuggestions', 'userHooksSha256', 'userHooksReview']) {
+      expect(cls(ipc('settings:set', { [k]: k === 'userHooksSha256' ? 'ab'.repeat(32) : true })), k).toBe(`deny:field-forbidden:${k}`)
+      expect(cls(ipc('settings:set', { theme: 'dark', [k]: false })), k).toBe(`deny:field-forbidden:${k}`)
+    }
+  })
+  it('TODA clave de Settings tiene clase explícita: solo defaultModel, theme, language y tasksGlobalInstructions pasan; ninguna se cuela por olvido', () => {
+    const permitidas = new Set(['defaultModel', 'theme', 'language', 'tasksGlobalInstructions'])
+    for (const k of Object.keys(DEFAULT_SETTINGS)) {
+      const r = cls(ipc('settings:set', { [k]: (DEFAULT_SETTINGS as unknown as Record<string, unknown>)[k] }))
+      if (permitidas.has(k)) expect(r, k).not.toMatch(/^deny/)
+      else expect(r, k).toBe(`deny:field-forbidden:${k}`)
+    }
   })
   it('settings:set{codeTrustedMcp} es X: el celular no marca conectores como de confianza en Code', () => {
     expect(cls(ipc('settings:set', { codeTrustedMcp: ['gmail'] }))).toBe('deny:field-forbidden:codeTrustedMcp')
