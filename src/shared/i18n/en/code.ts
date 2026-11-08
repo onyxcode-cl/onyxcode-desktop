@@ -119,11 +119,12 @@ export const code = {
   'code.mode.acceptEdits.hint': 'Edits files without asking; asks about commands, the web and folders outside the project',
   'code.mode.acceptEdits.short': 'Edit',
   'code.mode.plan': 'Explore only',
-  'code.mode.plan.hint': 'Only reads and proposes a plan; does not edit files and asks about any command that is not read-only',
+  'code.mode.plan.hint':
+    'Only reads and proposes a plan; does not edit files, and asks before running any command that is not read-only or using the web',
   'code.mode.plan.short': 'Explore',
   'code.mode.auto': 'Automatic',
   'code.mode.auto.hint':
-    'Edits and reads without asking and lets read-only commands (ls, git status…) and tests through; asks about the rest',
+    'Edits and reads without asking and lets read-only commands (ls, git status…) through; asks about all other commands (tests too), the web and folders outside the project',
   'code.mode.auto.short': 'Auto',
   'code.mode.bypass': 'Allow everything',
   'code.mode.bypass.hint':

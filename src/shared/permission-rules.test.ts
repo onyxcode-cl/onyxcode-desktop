@@ -13,13 +13,22 @@ import {
 } from './permission-rules'
 
 /** Simulador del motor 1.19.0 (verificado en el motor real): comodines en permiso y patrón, gana la ÚLTIMA regla; sin coincidencia, pregunta. */
-function wild(text: string, pattern: string): boolean {
-  let re = '^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
+function wildTP(text: string, pattern: string): boolean {
+  // Como el motor: las barras invertidas de Windows se normalizan a «/» antes de comparar (y se distingue mayúsculas de minúsculas).
+  text = text.replace(/\\/g, '/')
+  pattern = pattern.replace(/\\/g, '/')
+  let re =
+    '^' +
+    pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.') +
+    '$'
   if (re.endsWith(' .*$')) re = re.slice(0, -4) + '( .*)?$'
   return new RegExp(re, 's').test(text)
 }
 function evaluate(permission: string, pattern: string, ...sets: PermissionRuleLike[][]): RuleAction {
-  const hit = sets.flat().findLast((r) => wild(permission, r.permission) && wild(pattern, r.pattern))
+  const hit = sets.flat().findLast((r) => wildTP(permission, r.permission) && wildTP(pattern, r.pattern))
   return hit?.action ?? 'ask'
 }
 /** Reglas del agente `build` del motor (valores por defecto que ve la sesión antes de las suyas). */
@@ -166,7 +175,15 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
     'git log --oneline -5',
     'git branch',
     'git branch -a',
-    'git branch --list feat/*',
+    'git branch -r',
+    'git branch -v',
+    'git branch --show-current',
+    'git status --porcelain',
+    'git diff --stat',
+    'git show HEAD^',
+    'git log --format=%h',
+    'git log --oneline src/shared/permission-rules.ts',
+    'Get-ChildItem -Recurse src/shared',
     'git show HEAD',
     'git rev-parse --show-toplevel',
     'Get-ChildItem',
@@ -209,13 +226,16 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
     expect(isAutoApprovableCommand('auto', c)).toBe(false)
     expect(isAutoApprovableCommand('plan', c)).toBe(false)
   })
-  it('las pruebas del proyecto (npm test / npm run) solo en Automático y sin encadenar', () => {
-    expect(isAutoApprovableCommand('auto', 'npm test')).toBe(true)
-    expect(isAutoApprovableCommand('auto', 'npm run build')).toBe(true)
-    expect(isAutoApprovableCommand('plan', 'npm test')).toBe(false)
+  it('1.8.12 (R1): npm test / npm run NUNCA se aprueban solos, tampoco en Automático', () => {
+    for (const kind of ['auto', 'plan'] as const) {
+      for (const c of ['npm test', 'npm run build', 'npm run', 'npm test -- --watch', 'npm install', 'pnpm test', 'yarn test']) {
+        expect(isAutoApprovableCommand(kind, c), `${kind} ${c}`).toBe(false)
+      }
+    }
     expect(isAutoApprovableCommand('auto', 'npm run build && npm publish')).toBe(false)
-    expect(isAutoApprovableCommand('auto', 'npm install')).toBe(false)
     expect(isAutoApprovableCommand('auto', undefined)).toBe(false)
+    // lo de solo lectura sigue igual
+    expect(isAutoApprovableCommand('auto', 'git status')).toBe(true)
   })
 })
 
@@ -223,15 +243,7 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
 // el `read: * allow` de cada modo las dejaba pasar sin tarjeta. «Todo sin preguntar» (bypass) lo levanta como siempre.
 describe('recursos de conectores MCP (read con patrón mcp:<servidor>:*)', () => {
   // Misma semántica del motor: gana la ÚLTIMA regla que coincide; `*` casa con cualquier texto (también con «:»).
-  const wild = (pattern: string, text: string): boolean =>
-    new RegExp(
-      '^' +
-        pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*')
-          .replace(/\?/g, '.') +
-        '$'
-    ).test(text)
+  const wild = (pattern: string, text: string): boolean => wildTP(text, pattern)
   const actionFor = (mode: Parameters<typeof rulesetForMode>[0], text: string): string | null => {
     const hit = rulesetForMode(mode)
       .filter((r) => r.permission === 'read' && wild(r.pattern, text))
@@ -265,15 +277,7 @@ describe('agentes empaquetados: recursos de conectores', () => {
 // Editar la config de git pregunta en los modos que dejan editar sin preguntar: `core.fsmonitor` en `.git/config` hace que un `git status`
 // (aprobado solo por la app como «solo lectura» en Automático) EJECUTE un comando.
 describe('editar la configuración de git', () => {
-  const wild = (pattern: string, text: string): boolean =>
-    new RegExp(
-      '^' +
-        pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*')
-          .replace(/\?/g, '.') +
-        '$'
-    ).test(text)
+  const wild = (pattern: string, text: string): boolean => wildTP(text, pattern)
   const lastAction = (mode: Parameters<typeof rulesetForMode>[0], permission: 'edit' | 'write', path: string): string | null =>
     rulesetForMode(mode)
       .filter((r) => r.permission === permission && wild(r.pattern, path))
@@ -307,5 +311,282 @@ describe('editar la configuración de git', () => {
     expect(isAutoApprovableCommand('auto', 'git status')).toBe(true)
     expect(isAutoApprovableCommand('auto', 'git -c core.fsmonitor=touch status')).toBe(false)
     expect(isAutoApprovableCommand('auto', 'git config core.fsmonitor "touch x"')).toBe(false)
+  })
+})
+
+// 1.8.12 (R1/R4): «Automático» y «Comparar» no ejecutan código del proyecto sin tarjeta; opencode.json(c) pregunta; «Solo explorar» pregunta por la web.
+describe('1.8.12: cierre de R1 y R4', () => {
+  const wild = (pattern: string, text: string): boolean => wildTP(text, pattern)
+  const last = (rules: ReturnType<typeof rulesetForMode>, permission: 'edit' | 'write', path: string): string | null =>
+    rules.filter((r) => r.permission === permission && wild(r.pattern, path)).at(-1)?.action ?? null
+
+  it('Automático (con o sin permiso de solo lectura del motor) no contiene npm', () => {
+    for (const opts of [{}, { engineAllowReadOnly: true }]) {
+      const rules = rulesetForMode('auto', opts)
+      expect(rules.filter((r) => /npm/.test(r.pattern))).toEqual([])
+      expect(evaluate('bash', 'npm test', BUILD, rules)).toBe('ask')
+      expect(evaluate('bash', 'npm run build', BUILD, rules)).toBe('ask')
+    }
+  })
+
+  it.each(['acceptEdits', 'auto'] as const)('%s: editar opencode.json(c) pregunta; un archivo normal sigue permitido', (mode) => {
+    const rules = rulesetForMode(mode)
+    for (const permission of ['edit', 'write'] as const) {
+      for (const p of ['opencode.json', 'sub/opencode.jsonc', 'a/b/opencode.json', 'opencode.jsonc']) {
+        expect(last(rules, permission, p), `${mode} ${permission} ${p}`).toBe('ask')
+      }
+      expect(last(rules, permission, 'src/a.ts')).toBe('allow')
+    }
+    expect(evaluate('edit', 'opencode.json', BUILD, rules)).toBe('ask')
+    expect(evaluate('edit', 'sub/opencode.jsonc', BUILD, rules)).toBe('ask')
+    expect(evaluate('edit', 'src/a.ts', BUILD, rules)).toBe('allow')
+  })
+
+  it('Automático: opencode.json con barras de Windows o dentro de .opencode/ también pregunta', () => {
+    for (const mode of ['acceptEdits', 'auto'] as const) {
+      const rules = rulesetForMode(mode)
+      for (const p of ['sub\\opencode.json', 'a\\b\\opencode.jsonc', '.opencode/opencode.json']) {
+        expect(evaluate('edit', p, BUILD, rules), `${mode} edit ${p}`).toBe('ask')
+        expect(evaluate('write', p, BUILD, rules), `${mode} write ${p}`).toBe('ask')
+      }
+    }
+  })
+
+  // RESIDUAL CONOCIDO (pendiente en el motor, lazunox.15): el comodín distingue mayúsculas y APFS/NTFS no, así que estas rutas llegan al
+  // mismo archivo y hoy NO preguntan desde la app. Esta prueba documenta el hueco: cuando el motor lo cubra, se cambia a 'ask'.
+  it.each(['OPENCODE.JSON', 'OpenCode.json', 'sub/Opencode.jsonc'])(
+    'residual conocido: «%s» no se puede cubrir desde la app (distingue mayúsculas)',
+    (p) => {
+      expect(evaluate('write', p, BUILD, rulesetForMode('auto'))).toBe('allow')
+    }
+  )
+
+  it('«Solo explorar»: la web pregunta', () => {
+    const rules = rulesetForMode('plan')
+    expect(evaluate('webfetch', 'https://example.com', BUILD, rules)).toBe('ask')
+    expect(evaluate('websearch', 'algo', BUILD, rules)).toBe('ask')
+  })
+
+  it('approvalKindOf reconoce auto y plan y no confunde auto con acceptEdits', () => {
+    expect(approvalKindOf(rulesetForMode('auto'))).toBe('auto')
+    expect(approvalKindOf(rulesetForMode('plan'))).toBe('plan')
+    expect(approvalKindOf(rulesetForMode('acceptEdits'))).toBeNull()
+    expect(approvalKindOf(rulesetForMode('manual'))).toBeNull()
+    expect(approvalKindOf(rulesetForMode('bypass'))).toBeNull()
+    expect(approvalKindOf([...rulesetForMode('auto'), ...rulesetForMode('acceptEdits')])).toBeNull()
+    expect(approvalKindOf([...rulesetForMode('acceptEdits'), ...rulesetForMode('auto')])).toBe('auto')
+  })
+
+  it('una sesión con el bloque «auto» VIEJO (con npm) ya no se reconoce como auto (lado seguro: más tarjetas, nada aprobado de más)', () => {
+    const a = (
+      permission: string,
+      pattern: string,
+      action: 'allow' | 'ask' | 'deny'
+    ): { permission: string; pattern: string; action: typeof action } => ({
+      permission,
+      pattern,
+      action
+    })
+    const marks = [
+      'ls',
+      'dir',
+      'pwd',
+      'git branch',
+      'git show',
+      'git rev-parse',
+      'git status',
+      'git diff',
+      'git log',
+      'Get-ChildItem',
+      'Get-Location',
+      'npm run',
+      'npm test'
+    ]
+    const viejo = [
+      a('edit', '*', 'allow'),
+      a('write', '*', 'allow'),
+      ...['.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules'].flatMap((p) => [
+        a('edit', p, 'ask'),
+        a('write', p, 'ask')
+      ]),
+      a('read', '*', 'allow'),
+      a('read', '*.env', 'ask'),
+      a('read', '*.env.*', 'ask'),
+      a('read', '*.env.example', 'allow'),
+      a('read', 'mcp:*', 'ask'),
+      a('bash', '*', 'ask'),
+      ...marks.map((c) => a('bash', `${c} *`, 'ask')),
+      a('webfetch', '*', 'ask'),
+      a('websearch', '*', 'ask'),
+      a('external_directory', '*', 'ask'),
+      a('task', '*', 'allow')
+    ]
+    expect(approvalKindOf(viejo)).toBeNull()
+  })
+})
+
+// RI de W-A1 (rondas 1 y 2): git con opciones que escriben o ejecutan, comillas, redirecciones, difftool y `.git` como archivo.
+// RI4 de W-A1: lista blanca de caracteres (comillas tipográficas de PowerShell, `^`, ancho completo, control) y `git branch` sin argumentos libres.
+// RI5 de W-A1: `%` solo dentro de --format=/--pretty=/--date= (cmd.exe expande %VAR% antes de que git vea el comando).
+describe('aprobación automática: el % solo en --format/--pretty/--date', () => {
+  it.each([
+    'git log --o%X%put=x',
+    'git log %VAR%',
+    'git log --ou%VAR:~0,2%tput=x',
+    'git log %VAR:~0,2%',
+    'git log %',
+    'git log -%X%-output=x',
+    'git log --format=%h %VAR%',
+    'git log 100%'
+  ])('«%s» NO se aprueba sola', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(false)
+  })
+  it.each([
+    'git log --format=%h',
+    'git log --pretty=format:%h',
+    'git log --date=short',
+    'git log --format=%h -3',
+    'git log --pretty=format:%H%n%s'
+  ])('«%s» sí', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(true)
+  })
+})
+
+describe('aprobación automática: lista blanca de caracteres y git branch', () => {
+  const U = (...c: number[]): string => String.fromCodePoint(...c)
+  const MALOS = [
+    `git log --ou${U(0x2018, 0x2019)}tput=.git/config`,
+    `git log --ou${U(0x201c, 0x201d)}tput=opencode.json`,
+    `git log -${U(0x201c, 0x201d)}-output=opencode.json`,
+    `git log --ou${U(0x201e, 0x201a)}tput=x`,
+    `git log ${U(0x2013)}${U(0x2013)}output=x`,
+    `git log ${U(0x2014)}c a=b`,
+    `git log --o^utput=x`,
+    'git log -^-output=x',
+    'git log --ex^t-diff',
+    `git log ${U(0xff0d, 0xff0d)}output=x`,
+    `git log --output${U(0xff1d)}x`,
+    'git log\r-1',
+    'git log\t-1',
+    `git log${U(0xa0)}-1`,
+    `git log${U(0x200b)}-1`,
+    'git log \u0000-1',
+    'git log ^HEAD',
+    'git log ^',
+    'git log *.ts',
+    'ls sub\\carpeta',
+    'git branch --list --no-list -D victim',
+    'git branch --list --no-l -M a b',
+    'git branch --list feat/*',
+    'git branch --list',
+    'git branch --list --no-list nueva',
+    'git branch --set-upstream-to=main otra'
+  ]
+  it.each(MALOS)('«%j» NO se aprueba sola', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(false)
+    expect(isAutoApprovableCommand('plan', c)).toBe(false)
+  })
+  it.each(['git show HEAD^', 'git show HEAD^2', 'git diff HEAD~1', 'git log --format=%h -3', 'git log --oneline -5'])('«%s» sí', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(true)
+  })
+})
+
+describe('git con opciones que escriben o ejecutan', () => {
+  const RIESGOSOS = [
+    'git log -1 --output=.git/config',
+    'git log --output opencode.json',
+    'git diff --out=x',
+    'git log --ext-diff',
+    'git diff --textconv',
+    'git status -c core.fsmonitor=touch',
+    'git -c core.fsmonitor=touch status',
+    'git log -C /tmp',
+    'git diff --git-dir=/tmp/x',
+    'git status --work-tree=/tmp',
+    'git log -ofoo',
+    'git log --namespace=x',
+    // comillas: el shell las quita y git recibe la opción
+    'git log "--out=x"',
+    "git log '-c' a=b",
+    "git log --out'put'=x",
+    // redirecciones y encadenados
+    'git log -1 > f',
+    'git log -1 >> f',
+    'git status | tee f',
+    'git status; ls',
+    // otros programas con prefijo parecido
+    'git difftool -y',
+    'git diff-tree -p HEAD',
+    'git diff-index HEAD',
+    'git statusx',
+    'git logs',
+    // comodines del shell: se expanden a nombres de archivo que la IA pudo crear (`--output=opencode.json`)
+    'git log *',
+    'git diff *',
+    'git show *',
+    'git log ?',
+    'git log ?*',
+    'git log [a]*',
+    'git log [-]*',
+    'ls *',
+    'git log !x',
+    'git log #x'
+  ]
+  it.each(RIESGOSOS)('Comparar: «%s» pregunta (ninguna regla del motor la deja pasar)', (c) => {
+    expect(evaluate('bash', c, BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('ask')
+  })
+  it.each(RIESGOSOS)('Automático: «%s» no la aprueba sola la app', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(false)
+    expect(isAutoApprovableCommand('plan', c)).toBe(false)
+  })
+  it('Comparar no lleva ninguna regla bash allow (costo asumido: git status también pide tarjeta allí)', () => {
+    const r = rulesetForMode('auto', { engineAllowReadOnly: true })
+    expect(r.filter((x) => x.permission === 'bash' && x.action === 'allow')).toEqual([])
+    expect(evaluate('bash', 'git status', BUILD, r)).toBe('ask')
+  })
+  it.each([
+    'git status',
+    'git status -s',
+    'git status --porcelain',
+    'git diff HEAD~1',
+    'git log --oneline -5',
+    'git log --stat',
+    'git diff --color',
+    'git log --cc'
+  ])('Automático sigue aprobando solo «%s» (aprobación de la app)', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(true)
+  })
+  it('Comparar: npm sigue pidiendo tarjeta', () => {
+    const r = rulesetForMode('auto', { engineAllowReadOnly: true })
+    expect(evaluate('bash', 'npm test', BUILD, r)).toBe('ask')
+    expect(evaluate('bash', 'npm run build', BUILD, r)).toBe('ask')
+  })
+  it.each(['acceptEdits', 'auto'] as const)('%s: plugins, herramientas y todo .opencode/ preguntan; los archivos normales no', (mode) => {
+    const rules = rulesetForMode(mode)
+    for (const permission of ['edit', 'write'] as const) {
+      for (const p of [
+        '.opencode/plugin/x.ts',
+        '.opencode/plugins/x.js',
+        '.opencode/tool/x.ts',
+        '.opencode/tools/x.js',
+        '.opencode/agents/a.md',
+        'sub/.opencode/plugin/x.ts',
+        'sub\\.opencode\\tools\\x.js'
+      ]) {
+        expect(evaluate(permission, p, BUILD, rules), `${mode} ${permission} ${p}`).toBe('ask')
+      }
+      for (const p of ['src/opencode/x.ts', 'docs/opencode.md', 'src/a.ts']) expect(evaluate(permission, p, BUILD, rules)).toBe('allow')
+    }
+  })
+  it('«Solo explorar» sigue pudiendo escribir su plan en .opencode/plans/*.md', () => {
+    expect(evaluate('write', '.opencode/plans/uno.md', BUILD, rulesetForMode('plan'))).toBe('allow')
+    expect(evaluate('write', '.opencode/plugin/x.ts', BUILD, rulesetForMode('plan'))).toBe('deny')
+  })
+  it.each(['acceptEdits', 'auto'] as const)('%s: un ARCHIVO llamado .git también pregunta', (mode) => {
+    for (const permission of ['edit', 'write'] as const) {
+      for (const p of ['.git', 'sub/.git', 'a\\b\\.git']) {
+        expect(evaluate(permission, p, BUILD, rulesetForMode(mode)), `${mode} ${permission} ${p}`).toBe('ask')
+      }
+    }
   })
 })

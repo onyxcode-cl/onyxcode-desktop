@@ -4,8 +4,9 @@
  * Cómo se comporta el motor (OpenCode 1.19.0, verificado con el motor real, `docs/estudio-competencia/permisos-arreglo.md`):
  * - `session.update({ permission })` AÑADE las reglas al final de las que la sesión ya tenía; no las reemplaza.
  * - Gana la ÚLTIMA regla que coincide (permiso y patrón, ambos con comodines).
- * - En una orden compuesta (`ls && ls > f`, `ls | ls > f`) el motor evalúa cada subcomando POR SEPARADO y SIN su redirección: una regla
- *   `allow` para `ls` deja pasar `ls > f`. Por eso los comandos de solo lectura NO se permiten con reglas del motor: el motor
+ * - En una orden compuesta (`ls && ls > f`, `ls | ls > f`) el motor evalúa cada subcomando POR SEPARADO (una regla `allow` para `ls`
+ *   dejó pasar `ls > f` en la prueba original; en el motor 1.19.0 el patrón de una sentencia con redirección incluye la redirección, y un
+ *   comodín final como `git log*` la casa: tampoco sirve). Por eso los comandos de solo lectura NO se permiten con reglas del motor: el motor
  *   pregunta y la app aprueba sola solo si ella misma comprueba el comando completo (`isAutoApprovableCommand`).
  * Cada bloque es AUTOSUFICIENTE: empieza fijando, para cada permiso que la app gestiona, un valor explícito con patrón `*`
  * (anula lo que dejaran bloques anteriores) y recién después añade las excepciones. El resultado para esos permisos solo depende del
@@ -41,41 +42,67 @@ const READ_ONLY_COMMANDS = [
   'Get-ChildItem',
   'Get-Location'
 ]
-/** Solo «Automático»: pruebas y scripts del proyecto (ya estaban en la lista conservadora anterior). */
-const PROJECT_COMMANDS = ['npm run', 'npm test']
-/** La lista de «Automático» de antes (prefijos con comodín), que Comparar sigue pidiendo al motor. */
-const LEGACY_AUTO_ALLOW = ['git status*', 'git diff*', 'git log*', 'npm run*', 'npm test*']
-/** `git branch` solo se aprueba para LISTAR: con otros argumentos crea, borra o renombra ramas. */
-const GIT_BRANCH_LIST = /^git branch(?:\s+(?:-a|-r|-v|-vv|--show-current|--list(?:\s+\S+)*))*\s*$/
+/**
+ * `git branch` solo se aprueba en sus formas de listado SIN argumentos libres. Ya no vale `--list <patrón>` (RI4 de W-A1): `--list --no-list
+ * -D x` borra ramas, y un comodín mete nombres de archivo como opciones.
+ */
+const GIT_BRANCH_LIST = /^git branch(?:\s+(?:-a|-r|-v|-vv|--show-current))*\s*$/
 
 type ApprovalKind = 'auto' | 'plan'
 
 const withBoundary = (c: string): RegExp => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')}(?:\\s|$)`)
 const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
-const PROJECT_RES = PROJECT_COMMANDS.map(withBoundary)
-/** Cualquier cosa que encadene, redirija, sustituya o cambie de línea: el comando deja de ser «uno solo y simple». */
-const SHELL_META = /[><|;&`$\\()\n\r]|--output|--exec/
+/**
+ * LISTA BLANCA de caracteres (RI4 de W-A1): solo ASCII «aburrido» (letras, números, espacio, `. _ / : = , @ % ^ ~ + -`). Todo lo demás hace que
+ * el comando deje de ser «uno solo y simple» y pregunte el motor: encadenado, redirecciones, sustituciones, comillas (también las tipográficas
+ * U+2018-201E que PowerShell trata como comillas y recompone `--ou‘’tput`), llaves, comodines del shell (`*`, `?`, `[`, `]`: `git log *` se
+ * expande a NOMBRES de archivo que la IA pudo crear, como `--output=opencode.json`), `!`, `#`, `\`, tabuladores, retornos de carro, caracteres
+ * de control y de ancho completo. Costo: `ls *.ts` y las rutas con `\` de Windows piden tarjeta. `~` queda (`HEAD~1`), igual que `^` solo
+ * detrás de letra o número (`HEAD^`): `^HEAD` es un comodín de zsh con `extendedglob` y `^` es el escape de cmd.exe.
+ */
+const SAFE_CHARS = /^[A-Za-z0-9 ._/:=,@%^~+-]+$/
+const BAD_CARET = /(?:^|[^A-Za-z0-9])\^/
+/**
+ * `%` solo dentro de un token `--format=…`, `--pretty=…` o `--date=…` (RI5). Con cmd.exe como shell, `%VAR%`/`%VAR:~0,2%` se expanden ANTES
+ * de que git vea el comando y podrían recomponer una opción prohibida partida en trozos. Este filtro solo REDUCE ese riesgo, no lo impide:
+ * dentro del valor de `--format=`, `%VAR:~n,m%` aún puede reconstruir otra opción. PowerShell (el shell por defecto del motor en Windows:
+ * pwsh → powershell → Git Bash → cmd) no expande `%VAR%`. Residual (no se puede saber desde esta capa): con cmd.exe configurado a mano la
+ * aprobación automática NO protege del todo (además cmd busca `git.bat` en la carpeta actual antes que en el PATH).
+ */
+const BAD_PERCENT = (cmd: string): boolean => cmd.split(' ').some((t) => t.includes('%') && !/^--(?:format|pretty|date)=/.test(t))
+/** Mismas búsquedas de siempre (`--output`, `--exec`), sobre el comando sin `^` (defensa en profundidad contra `--o^utput` de cmd). */
+const WRITE_OPTS = /--output|--exec/
+/**
+ * Opciones de `git` que escriben archivos, ejecutan programas o cambian dónde/con qué configuración trabaja (1.8.12, RI de W-A1):
+ * `--output=<archivo>` (git 2.54 rechaza las abreviaturas `--ou=`/`--outp=`, pero bloquear `--out…` es inocuo), `--ext-diff`, `--textconv`, `-c clave=valor`, `-C <dir>`, `--git-dir`,
+ * `--work-tree`, `--exec-path`, `--config-env`, `--namespace`. Con ellas un `git log`/`git diff` «de lectura» puede escribir `.git/config` u `opencode.json`.
+ */
+const GIT_RISKY_LONG = /^--(?:out|ext|text|git-dir|work-tree|exec-path|config-env|namespace)/
+const hasRiskyGitOption = (cmd: string): boolean =>
+  cmd.startsWith('git') && cmd.split(/\s+/).some((t) => GIT_RISKY_LONG.test(t) || /^-[cCo]/.test(t))
 
 /**
- * ¿La app puede aprobar sola este comando completo? Solo si es UN comando simple de la lista de solo lectura (y, en «Automático», de
- * pruebas del proyecto), sin redirecciones, tuberías, encadenado, sustituciones ni salidas a archivo. Si no, queda la pregunta del motor.
+ * ¿La app puede aprobar sola este comando completo? Solo si es UN comando simple de la lista de solo lectura, sin redirecciones, tuberías,
+ * encadenado, sustituciones ni salidas a archivo. Si no, queda la pregunta del motor. `npm test`/`npm run` NUNCA se aprueban solos
+ * (1.8.12, R1): ejecutan código del proyecto que «Automático» deja editar. `kind` se conserva por compatibilidad con quien la llama.
  */
-export function isAutoApprovableCommand(kind: ApprovalKind, command: string | undefined): boolean {
+export function isAutoApprovableCommand(_kind: ApprovalKind, command: string | undefined): boolean {
   if (typeof command !== 'string') return false
   const cmd = command.trim()
-  if (!cmd || cmd.length > 500 || SHELL_META.test(cmd)) return false
-  if (cmd.startsWith('git branch')) return GIT_BRANCH_LIST.test(cmd)
-  if (READ_ONLY_RES.some((re) => re.test(cmd))) return true
-  return kind === 'auto' && PROJECT_RES.some((re) => re.test(cmd))
+  if (!cmd || cmd.length > 500 || !SAFE_CHARS.test(cmd) || BAD_CARET.test(cmd) || BAD_PERCENT(cmd)) return false
+  // Defensa en profundidad: las comprobaciones de opciones miran el comando SIN `^` y sin nada fuera de ASCII (con la lista blanca ya no llegan).
+  const plain = cmd.replace(/\^/g, '').replace(/[^\x20-\x7e]/g, '')
+  if (WRITE_OPTS.test(plain) || hasRiskyGitOption(plain)) return false
+  if (plain.startsWith('git branch')) return GIT_BRANCH_LIST.test(plain)
+  return READ_ONLY_RES.some((re) => re.test(cmd))
 }
 
 /**
  * Marcas del bloque: las mismas órdenes en forma de regla `ask` (redundantes con `bash * ask`). Sirven para que la app reconozca por las
  * reglas de la SESIÓN con qué bloque está (los de «Automático» y «Editar sin preguntar» serían idénticos sin ellas).
  */
-function approvalMarks(kind: ApprovalKind): PermissionRuleLike[] {
-  const list = kind === 'auto' ? [...READ_ONLY_COMMANDS, ...PROJECT_COMMANDS] : READ_ONLY_COMMANDS
-  return list.map((c) => rule('bash', `${c} *`, 'ask'))
+function approvalMarks(): PermissionRuleLike[] {
+  return READ_ONLY_COMMANDS.map((c) => rule('bash', `${c} *`, 'ask'))
 }
 
 /** Lectura: permitida, pero los `.env` siguen preguntando (política del motor; «Todo sin preguntar» la levanta como hasta ahora). */
@@ -96,8 +123,26 @@ function readRules(protectEnv: boolean): PermissionRuleLike[] {
  * Mismo riesgo con los hooks (`.git/hooks/*`), `.gitattributes` (filtros/textconv) y `.gitmodules`. Rutas relativas al proyecto; `*` casa
  * también con «/». No afecta a `.gitignore` ni a `.github/`.
  */
-const GIT_CONFIG_PATTERNS = ['.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
+const GIT_CONFIG_PATTERNS = ['.git', '*/.git', '.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
 const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
+
+/**
+ * Configuración que el motor CARGA y ejecuta (1.8.12, R1 añadido C): `opencode.json`/`opencode.jsonc` del proyecto y de sus carpetas
+ * superiores pueden declarar un conector MCP con `command` que se arranca la próxima vez que se carga el proyecto. Si la IA pudiera
+ * escribirlos sin preguntar (modos «Editar sin preguntar» y «Automático»), sería ejecución de comandos sin tarjeta. Igual que `GIT_CONFIG_ASK`.
+ */
+const EXEC_CONFIG_PATTERNS = [
+  'opencode.json',
+  '*/opencode.json',
+  'opencode.jsonc',
+  '*/opencode.jsonc',
+  // Todo `.opencode/`: el motor carga y EJECUTA `.opencode/plugin(s)/*.{ts,js}` y `.opencode/tool(s)/*`, además de agentes, comandos y skills.
+  // La app escribe `.opencode/agents` (Ajustes › Ayudantes) y `.opencode/skills` (habilidades aprendidas) desde el proceso principal con
+  // `fs`, NO por la IA, así que estas reglas no las afectan. «Solo explorar» conserva su `allow` de `.opencode/plans/*.md` (otro bloque).
+  '.opencode/*',
+  '*/.opencode/*'
+]
+const EXEC_CONFIG_ASK: PermissionRuleLike[] = EXEC_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /** Carpetas fuera del proyecto: preguntan en todos los modos menos «Todo sin preguntar». */
 const EXTERNAL_ASK = rule('external_directory', '*', 'ask')
@@ -154,7 +199,11 @@ const withoutLinked = (rules: readonly PermissionRuleLike[]): PermissionRuleLike
 /** Bloque completo de un modo. Siempre una lista (nunca `undefined`): «Solo explorar» también tiene que anular lo que dejó el modo anterior. */
 export function rulesetForMode(
   mode: PermissionModeId,
-  opts: { engineAllowReadOnly?: boolean; linked?: readonly LinkedFolderRule[] } = {}
+  opts: {
+    /** SIN EFECTO desde la 1.8.12 (se conserva solo porque `src/main/compare/engine.ts` aún lo pasa y ese archivo no es de este paquete): Comparar usa el mismo bloque. */
+    engineAllowReadOnly?: boolean
+    linked?: readonly LinkedFolderRule[]
+  } = {}
 ): PermissionRuleLike[] {
   const linked = linkedFolderRules(opts.linked)
   switch (mode) {
@@ -176,6 +225,7 @@ export function rulesetForMode(
         rule('edit', '*', 'allow'),
         rule('write', '*', 'allow'),
         ...GIT_CONFIG_ASK,
+        ...EXEC_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
         rule('webfetch', '*', 'ask'),
@@ -193,9 +243,10 @@ export function rulesetForMode(
         rule('write', '.opencode/plans/*.md', 'allow'),
         ...readRules(true),
         rule('bash', '*', 'ask'),
-        ...approvalMarks('plan'),
-        rule('webfetch', '*', 'allow'),
-        rule('websearch', '*', 'allow'),
+        ...approvalMarks(),
+        // 1.8.12 (R4): «Solo explorar» también pregunta por la web (una página puede traer instrucciones o recibir datos de la sesión).
+        rule('webfetch', '*', 'ask'),
+        rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,
         ...linked,
         rule('task', '*', 'ask'),
@@ -206,10 +257,13 @@ export function rulesetForMode(
         rule('edit', '*', 'allow'),
         rule('write', '*', 'allow'),
         ...GIT_CONFIG_ASK,
+        ...EXEC_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
-        // Comparar no tiene quién apruebe en la interfaz: allí las cinco órdenes de siempre las permite el propio motor.
-        ...(opts.engineAllowReadOnly ? LEGACY_AUTO_ALLOW.map((p) => rule('bash', p, 'allow')) : approvalMarks('auto')),
+        // Comparar usa el MISMO bloque (`engineAllowReadOnly` ya no hace nada; antes el motor permitía `git status*`/`git diff*`/`git log*` con comodín,
+        // que casa con redirecciones, `git difftool`, opciones entre comillas…; RI de W-A1). Todo comando pregunta; la columna de Comparar
+        // muestra la tarjeta. Costo: `git status` también pide permiso allí.
+        ...approvalMarks(),
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,

@@ -116,11 +116,12 @@ export const code = {
   'code.mode.acceptEdits.hint': 'Edita archivos sin preguntar; los comandos, la web y las carpetas fuera del proyecto te los pregunta',
   'code.mode.acceptEdits.short': 'Editar',
   'code.mode.plan': 'Solo explorar',
-  'code.mode.plan.hint': 'Solo lee y propone un plan; no edita archivos y los comandos que no son de lectura te los pregunta',
+  'code.mode.plan.hint':
+    'Solo lee y propone un plan; no edita archivos, y los comandos que no son de lectura y el uso de la web te los pregunta',
   'code.mode.plan.short': 'Explorar',
   'code.mode.auto': 'Automático',
   'code.mode.auto.hint':
-    'Edita y lee sin preguntar y deja pasar comandos de solo lectura (ls, git status…) y las pruebas; el resto te lo pregunta',
+    'Edita y lee sin preguntar y deja pasar comandos de solo lectura (ls, git status…); los demás comandos (también las pruebas), la web y las carpetas fuera del proyecto te los pregunta',
   'code.mode.auto.short': 'Auto',
   'code.mode.bypass': 'Todo sin preguntar',
   'code.mode.bypass.hint':
