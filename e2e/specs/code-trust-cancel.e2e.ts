@@ -78,6 +78,8 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       expect(await dlg.textContent()).not.toContain('writeFileSync')
       expect(await dlg.textContent()).not.toContain('MARCA-R2')
       expect(existsSync(marker)).toBe(false)
+      // Con el diálogo abierto el motor (falso) no recibió ninguna petición de esa carpeta.
+      expect((await a.fake.requests({ limit: 1000 })).filter((r) => r.directory === repoG)).toEqual([])
 
       await a.page.getByRole('button', { name: 'Cancelar' }).click()
       await expectCount(dlg, 0)
@@ -85,6 +87,7 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       // carpeta ya confiada de una prueba anterior).
       expect(await storeState(a.page, 'useCode', 'directory')).toBe(before)
       expect(existsSync(marker)).toBe(false)
+      expect((await a.fake.requests({ limit: 1000 })).filter((r) => r.directory === repoG)).toEqual([])
     } finally {
       rmTemp(repoG)
     }
