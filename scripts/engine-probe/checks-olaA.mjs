@@ -52,8 +52,23 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
 
   // Módulos reales de la app (empaquetados con esbuild): config inline, guardián y reglas de sesión de Code.
   let modulos = null
-  const reales = async () =>
-    (modulos ??= {
+  // El módulo de reglas de Code (renderer) importa el almacén de ajustes, que toca `window`/`localStorage` al cargarse. Aquí no hay navegador:
+  // se pone un entorno mínimo ANTES de importarlo (solo afecta a este proceso de prueba).
+  const entornoDeNavegador = () => {
+    if (typeof globalThis.window === 'undefined') globalThis.window = globalThis
+    if (typeof globalThis.localStorage === 'undefined') {
+      const memoria = new Map()
+      globalThis.localStorage = {
+        getItem: (k) => (memoria.has(k) ? memoria.get(k) : null),
+        setItem: (k, v) => void memoria.set(k, String(v)),
+        removeItem: (k) => void memoria.delete(k),
+        clear: () => memoria.clear()
+      }
+    }
+  }
+  const reales = async () => {
+    entornoDeNavegador()
+    return (modulos ??= {
       ...(await tsModule('src/main/opencode/config.ts')),
       ...(await tsModule('src/main/opencode/subagent-guard.ts')),
       ...(await tsModule('src/main/opencode/code-mcp-permission.ts')),
@@ -61,6 +76,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       ...(await tsModule('src/shared/documents-permissions.ts')),
       ...(await tsModule('src/renderer/src/features/code/impl/permission-rules.ts'))
     })
+  }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   const espera = async (fn, ms = 12_000, paso = 250) => {
