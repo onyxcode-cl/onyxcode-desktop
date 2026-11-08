@@ -7,10 +7,10 @@
 //      los cuatro modos preguntando antes de editar/ejecutar (sesión hija), respeta las protecciones de W-A1, y sigue BLOQUEADO en «Solo explorar»
 //   2  R2: el `command` de un conector del opencode.json de una carpeta se ARRANCA con solo `GET /mcp?directory=<carpeta>`
 //   3  R2: en modo «manual» las herramientas de ese conector se usan sin `permission.asked`
-//   4  R4: en el bloque «plan» (Solo explorar) `webfetch` no pregunta
+//   4  R4 (cerrado por W-A1): en el bloque «plan» (Solo explorar) `webfetch` PREGUNTA
 //   5  `websearch` solo aparece con proveedor `opencode` o con `OPENCODE_ENABLE_EXA=1`
-//   6  AGENTS.md de 100 KB: el sistema de la primera petición lo trae entero (sin tope de 32 KB)
-//   7  `respaldo` solo en OPENCODE_CONFIG_CONTENT: no conmuta ante un 429 de cuota (control: en la config global sí)
+//   6  (PENDIENTE DE lazunox.15: W-M2 la dará la vuelta) AGENTS.md de 100 KB: el sistema de la primera petición lo trae entero (sin tope de 32 KB)
+//   7  (PENDIENTE DE lazunox.15: W-M2 la dará la vuelta) `respaldo` solo en OPENCODE_CONFIG_CONTENT: no conmuta ante un 429 de cuota (control: en la config global sí)
 //   8  `LAZUNOX_HOOKS_SHA256` de otro contenido: el gancho PreToolUse no se ejecuta (control: con la huella correcta sí)
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -260,32 +260,34 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
   })
 
   // ── 4. R4: web en el bloque «plan» ───────────────────────────────────────────────────────────────────────────────
-  checkRun('olaA 4 (R4): con el bloque plan (Solo explorar) webfetch a un servidor local NO genera permission.asked', async () => {
-    const m = await reales()
-    const web = http.createServer((_q, res) => res.writeHead(200, { 'content-type': 'text/plain' }).end('hola desde el servidor falso'))
-    await new Promise((ok) => web.listen(0, '127.0.0.1', ok))
-    try {
-      const url = `http://127.0.0.1:${web.address().port}/`
-      const llamada = { name: 'webfetch', args: { url, format: 'text' } }
-      const r = await motor({ agent: 'build', sessionBody: { permission: m.rulesetFor('plan') }, call: llamada })
-      // Control: si la regla fuera «preguntar», el arnés sí vería la pregunta (así la prueba no pasa en vacío).
-      const c = await motor({
-        agent: 'build',
-        sessionBody: { permission: [...m.rulesetFor('plan'), { permission: 'webfetch', pattern: '*', action: 'ask' }] },
-        call: llamada
-      })
-      if (!c.asked.some((a) => a.permission === 'webfetch'))
-        throw new Error(`control: con webfetch=ask tampoco hubo pregunta (prueba en vacío): ${corto(c.asked)}`)
-      const tp = r.toolParts.find((p) => p.tool === 'webfetch')
-      if (tp?.status === 'completed' && !r.asked.some((a) => a.permission === 'webfetch')) {
-        confirmado('webfetch ejecutado sin preguntar con el bloque plan (el control con ask sí pregunta)')
+  checkRun(
+    'olaA 4 (R4, cerrado por W-A1): con el bloque plan (Solo explorar) webfetch a un servidor local SÍ genera permission.asked',
+    async () => {
+      const m = await reales()
+      const web = http.createServer((_q, res) => res.writeHead(200, { 'content-type': 'text/plain' }).end('hola desde el servidor falso'))
+      await new Promise((ok) => web.listen(0, '127.0.0.1', ok))
+      try {
+        const url = `http://127.0.0.1:${web.address().port}/`
+        const llamada = { name: 'webfetch', args: { url, format: 'text' } }
+        // El arnés rechaza por defecto lo que se pregunta: sin respuesta «una vez» la página no se descarga.
+        const r = await motor({ agent: 'build', sessionBody: { permission: m.rulesetFor('plan') }, call: llamada })
+        // Control (la prueba no pasa en vacío): con «una vez» la misma llamada sí se completa, y la pregunta es la misma.
+        const c = await motor({ agent: 'build', sessionBody: { permission: m.rulesetFor('plan') }, call: llamada, reply: 'once' })
+        const tp = r.toolParts.find((p) => p.tool === 'webfetch')
+        const tc = c.toolParts.find((p) => p.tool === 'webfetch')
+        if (!r.asked.some((a) => a.permission === 'webfetch'))
+          noSeReproduce(
+            `se esperaba una pregunta de webfetch en Solo explorar y no hubo: webfetch=${tp?.status ?? 'sin parte'}; preguntas=${corto(r.asked)}`
+          )
+        if (tp?.status === 'completed') noSeReproduce('webfetch se completó pese a rechazar la pregunta')
+        if (tc?.status !== 'completed') throw new Error(`control: con «una vez» webfetch no se completó (${tc?.status}): ${corto(c.asked)}`)
+        confirmado('webfetch pregunta en Solo explorar; rechazado no descarga y con «una vez» sí (control)')
         return true
+      } finally {
+        web.close()
       }
-      noSeReproduce(`webfetch=${tp?.status ?? 'sin parte'} ${tp?.output.slice(0, 200) ?? ''}; preguntas=${corto(r.asked)}`)
-    } finally {
-      web.close()
     }
-  })
+  )
 
   // ── 5. websearch con proveedor que no es opencode ───────────────────────────────────────────────────────────────
   checkRun(

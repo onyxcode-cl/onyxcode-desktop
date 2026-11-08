@@ -46,13 +46,18 @@ const DEFAULTS: Rule[] = [
   r('doom_loop', 'ask'),
   r('external_directory', 'ask'),
   r('question', 'deny'),
+  r('plan_enter', 'deny'),
+  r('plan_exit', 'deny'),
   r('read', 'allow'),
   r('read', 'ask', '*.env'),
   r('read', 'ask', '*.env.*'),
   r('read', 'allow', '*.env.example')
 ]
 const CONFIG: Rule[] = fromConfig({ ...bgshellConfigPermission(), ...documentsConfigPermission() })
-const BUILD: Rule[] = [...DEFAULTS.map((x) => (x.permission === 'question' ? r('question', 'allow') : x)), ...CONFIG]
+const BUILD: Rule[] = [
+  ...DEFAULTS.map((x) => (x.permission === 'question' || x.permission === 'plan_enter' ? r(x.permission, 'allow') : x)),
+  ...CONFIG
+]
 const declarado = (): Rule[] => {
   const agent = (buildInlineConfig() as { agent: Record<string, { permission?: Record<string, unknown> }> }).agent
   return fromConfig(agent.general?.permission ?? {})
