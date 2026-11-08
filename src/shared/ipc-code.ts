@@ -147,6 +147,8 @@ export interface ProjectScanItem {
   detail?: string
   /** Solo `mcp`: `<servidor saneado>_*`, calculada con el nombre COMPLETO (la que usa el motor). */
   mcpKey?: string
+  /** Solo `mcp`: el nombre CRUDO si es un nombre válido de conector (con él se decide «de confianza»; `name` está saneado solo para mostrar). */
+  trustName?: string
   /** Solo `mcp`: esta carpeta redefine un conector que la app o la persona ya tienen (nombre conocido). */
   overrides?: string
   /** Archivo, relativo a la carpeta (`../` = carpeta superior). */

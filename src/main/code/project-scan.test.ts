@@ -2,7 +2,7 @@
  * W-A2: lo que trae una carpeta, leído de disco como dato no confiable. Carpetas temporales reales (sin simulaciones de `fs`).
  */
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -347,6 +347,90 @@ describe('scanProjectConfig', () => {
   it('una carpeta inexistente no lanza', async () => {
     const r = await scanProjectConfig(join(root, 'no-existe', 'nada'))
     expect(Array.isArray(r.items)).toBe(true)
+  })
+})
+
+describe('lo que ve el motor: sustitución {env:…} / {file:…} del texto crudo', () => {
+  const KEY = 'LZX_SCAN_TEST_NOEXISTE'
+  it('una clave de primer nivel con un marcador sin variable (vale "") se lee como el motor: `mcp` aparece y la lista queda incompleta', async () => {
+    const d = mk()
+    w(join(d, 'opencode.json'), `{ "mc{env:${KEY}}p": { "x": { "type": "local", "command": ["prog"] } } }`)
+    const r = await scanProjectConfig(d)
+    expect(mcpOf(r).map((i) => [i.name, i.mcpKey])).toEqual([['x', 'x_*']])
+    expect(r.complete).toBe(false)
+    expect(r.items.some((i) => i.reason === 'dynamic')).toBe(true)
+  })
+
+  it('un marcador dentro del NOMBRE del conector se sustituye antes de calcular la clave (la regla casa con las herramientas reales)', async () => {
+    const d = mk()
+    w(join(d, 'opencode.json'), `{ "mcp": { "ev{env:${KEY}}il": { "type": "local", "command": ["prog"] } } }`)
+    const r = await scanProjectConfig(d)
+    expect(mcpOf(r).map((i) => i.mcpKey)).toEqual(['evil_*'])
+    expect(r.complete).toBe(false)
+  })
+
+  it('un marcador en `command` no se muestra como si fuera el programa; {file:…} tampoco', async () => {
+    const d = mk()
+    w(
+      join(d, 'opencode.json'),
+      '{ "mcp": { "a": { "type": "local", "command": ["{file:./x.txt}"] }, "b": { "type": "local", "command": ["{env:HOME_NO}"] } } }'
+    )
+    const r = await scanProjectConfig(d)
+    for (const i of mcpOf(r)) expect(i.detail).toBe('')
+    expect(r.complete).toBe(false)
+  })
+
+  it('la variable que SÍ existe se sustituye (se ve el programa real) y el texto crudo entra en la huella', async () => {
+    process.env.LZX_SCAN_TEST_PROG = 'programa-real'
+    try {
+      const a = mk()
+      const b = mk()
+      w(join(a, 'opencode.json'), '{ "mcp": { "x": { "type": "local", "command": ["{env:LZX_SCAN_TEST_PROG}"] } } }')
+      w(join(b, 'opencode.json'), '{ "mcp": { "x": { "type": "local", "command": ["programa-real"] } } }')
+      const ra = await scanProjectConfig(a)
+      const rb = await scanProjectConfig(b)
+      expect(mcpOf(ra)[0]!.detail).toBe('programa-real')
+      expect(ra.huella).not.toBe(rb.huella)
+    } finally {
+      delete process.env.LZX_SCAN_TEST_PROG
+    }
+  })
+})
+
+describe('plazo y claves', () => {
+  it('el plazo se respeta de verdad: muchos archivos grandes, resultado incompleto y rápido', async () => {
+    const d = mk()
+    for (let i = 0; i < 60; i++) {
+      const f = join(d, '.opencode', 'plugin', `p${i}.ts`)
+      mkdirSync(join(f, '..'), { recursive: true })
+      writeFileSync(f, '')
+      truncateSync(f, 8 * 1024 * 1024) // archivo disperso: ocupa poco, pero leerlo cuesta
+    }
+    const t0 = Date.now()
+    const r = await scanProjectConfig(d, { deadline: Date.now() + 20 })
+    expect(Date.now() - t0).toBeLessThan(1500)
+    expect(r.complete).toBe(false)
+    expect(r.items.some((i) => i.reason === 'truncated')).toBe(true)
+  })
+
+  it('trustName solo existe si el nombre crudo es un nombre válido: un carácter invisible lo anula', async () => {
+    const d = mk()
+    w(
+      join(d, 'opencode.json'),
+      JSON.stringify({ mcp: { github: { type: 'local', command: ['a'] }, 'github\u200b': { type: 'local', command: ['b'] } } })
+    )
+    const r = await scanProjectConfig(d)
+    const byKey = Object.fromEntries(mcpOf(r).map((i) => [i.mcpKey, i.trustName]))
+    expect(byKey['github_*']).toBe('github')
+    expect(byKey['github__*']).toBeUndefined()
+  })
+
+  it('una clave __proto__ de primer nivel no rompe nada y `mcp` se sigue leyendo', async () => {
+    const d = mk()
+    w(join(d, 'opencode.json'), '{ "__proto__": { "polluted": true }, "mcp": { "ok": { "type": "local", "command": ["a"] } } }')
+    const r = await scanProjectConfig(d)
+    expect(mcpOf(r).map((i) => i.name)).toEqual(['ok'])
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
   })
 })
 

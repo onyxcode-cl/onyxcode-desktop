@@ -21,6 +21,7 @@ import { createReadStream } from 'node:fs'
 import { lstat, open, opendir, realpath, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path'
 import type { ProjectScanItem, ProjectScanKind, ProjectScanReason, ProjectScanResult } from '@shared/ipc-code'
+import { MCP_NAME_RE } from '@shared/catalogo'
 import { mcpServerPermissionKey } from '@shared/mcp-permissions'
 import { stripJsonc } from '../opencode/code-mcp-permission'
 
@@ -34,6 +35,11 @@ export const MAX_ITEMS = 400
 const MAX_DIR_ENTRIES = 1000
 /** Tope de bytes que se leen para sacar la huella de un archivo de código. */
 const MAX_HASH_BYTES = 16 * 1024 * 1024
+/** Tope de bytes que se leen para huellas en TODO un escaneo (más allá, solo tamaño y fecha). */
+const MAX_HASH_TOTAL = 64 * 1024 * 1024
+/** Los mismos marcadores que sustituye el motor en el TEXTO CRUDO de la configuración (`ConfigVariable.substitute`). */
+const ENV_TOKEN_RE = /\{env:([^}]+)\}/g
+const DYNAMIC_RE = /\{(?:env|file):[^}]+\}/
 /** Tope de niveles hacia arriba. */
 const MAX_LEVELS = 64
 const NAME_MAX = 80
@@ -149,15 +155,34 @@ async function readCapped(real: string, max: number): Promise<string | null> {
   }
 }
 
-/** sha256 del contenido (en flujo, con tope); pasado el tope, tamaño y fecha. Nunca lanza. */
-async function hashFile(real: string, size: number, mtimeMs: number): Promise<string> {
-  if (size > MAX_HASH_BYTES) return `big:${size}:${Math.trunc(mtimeMs)}`
+interface HashBudget {
+  left: number
+  deadline?: number
+  timedOut: boolean
+}
+
+/** sha256 del contenido (en flujo, con tope por archivo, tope total y plazo); si no cabe, tamaño y fecha. Nunca lanza. */
+async function hashFile(real: string, size: number, mtimeMs: number, b: HashBudget): Promise<string> {
+  const meta = `${size}:${Math.trunc(mtimeMs)}`
+  if (b.timedOut || (b.deadline !== undefined && Date.now() > b.deadline)) {
+    b.timedOut = true
+    return `skip:${meta}`
+  }
+  if (size > MAX_HASH_BYTES || size > b.left) return `big:${meta}`
+  b.left -= size
   return new Promise<string>((res) => {
     const h = createHash('sha256')
     const s = createReadStream(real)
-    s.on('data', (c) => h.update(c))
+    s.on('data', (c) => {
+      h.update(c)
+      if (b.deadline !== undefined && Date.now() > b.deadline) {
+        b.timedOut = true
+        s.destroy()
+        res(`skip:${meta}`)
+      }
+    })
     s.on('end', () => res(h.digest('hex')))
-    s.on('error', () => res(`unreadable:${size}:${Math.trunc(mtimeMs)}`))
+    s.on('error', () => res(`unreadable:${meta}`))
   })
 }
 
@@ -188,7 +213,11 @@ async function listDir(dir: string): Promise<{ names: string[]; more: boolean } 
 class Scan {
   readonly items: ProjectScanItem[] = []
   readonly instructionFiles: ProjectScanResult['instructionFiles'] = []
+  readonly budget: HashBudget
   complete = true
+  /** Tras devolver el resultado por plazo, lo que siga corriendo ya no añade nada. */
+  closed = false
+  private flagged = false
   private full = false
   private readonly knownKeys: Set<string>
   private readonly knownByKey = new Map<string, string>()
@@ -197,6 +226,7 @@ class Scan {
     readonly start: string,
     private readonly opts: ScanOptions
   ) {
+    this.budget = { left: MAX_HASH_TOTAL, deadline: opts.deadline, timedOut: false }
     this.knownKeys = new Set()
     for (const n of opts.known ?? []) {
       if (typeof n !== 'string' || !n) continue
@@ -207,7 +237,17 @@ class Scan {
   }
 
   expired(): boolean {
-    return this.opts.deadline !== undefined && Date.now() > this.opts.deadline
+    return this.budget.timedOut || (this.opts.deadline !== undefined && Date.now() > this.opts.deadline)
+  }
+
+  /** ¿Venció el plazo? Si sí, lo deja dicho UNA vez (lista incompleta) y quien llama debe parar. */
+  halt(file: string): boolean {
+    if (!this.expired()) return false
+    if (!this.flagged) {
+      this.flagged = true
+      this.unreviewed(file, 'truncated', true)
+    }
+    return true
   }
 
   rel(file: string): string {
@@ -216,6 +256,7 @@ class Scan {
   }
 
   add(it: Omit<ProjectScanItem, 'id' | 'name'> & { name: string; digest: string; fullName?: string }): void {
+    if (this.closed) return
     if (this.items.length >= MAX_ITEMS) {
       if (!this.full) {
         this.full = true
@@ -234,15 +275,16 @@ class Scan {
   }
 
   /** Algo que no se pudo revisar. `breaksMcp` = podría esconder conectores (las reglas pasan a ser amplias). */
-  unreviewed(file: string, reason: ProjectScanReason, breaksMcp: boolean): void {
+  unreviewed(file: string, reason: ProjectScanReason, breaksMcp: boolean, digest: string = reason): void {
     if (breaksMcp) this.complete = false
     const where = this.rel(file)
-    this.add({ kind: 'unreviewed', name: basename(file), where, risky: true, reason, digest: reason })
+    this.add({ kind: 'unreviewed', name: basename(file), where, risky: true, reason, digest })
   }
 
   // ── un archivo JSON/JSONC de configuración ────────────────────────────────────────────────────────────────────
 
   async configFile(file: string, base: string): Promise<void> {
+    if (this.halt(file)) return
     const c = await checkRegular(file, base)
     if (!c.ok) {
       if (c.reason !== 'missing') this.unreviewed(file, c.reason, true)
@@ -251,9 +293,15 @@ class Scan {
     if (c.size > MAX_JSON_BYTES) return this.unreviewed(file, 'too-big', true)
     const text = await readCapped(c.real, MAX_JSON_BYTES)
     if (text === null) return this.unreviewed(file, 'too-big', true)
+    // El motor sustituye `{env:X}` (y `{file:…}`) en el TEXTO CRUDO antes de interpretarlo, también en claves y fuera de comillas; una variable
+    // que no existe vale "". Se hace lo mismo para ver lo que el motor ve. Cualquiera de los dos marcadores deja el archivo «no revisado del todo»
+    // (lista incompleta) y su texto crudo entra en la huella; el contenido de los `{file:…}` no se lee (queda como residual).
+    const raw = text.replace(/^﻿/, '')
+    const substituted = raw.replace(ENV_TOKEN_RE, (_m, v: string) => process.env[v] || '')
+    if (DYNAMIC_RE.test(raw)) this.unreviewed(file, 'dynamic', true, sha(`${raw}\0${substituted}`))
     let data: unknown
     try {
-      data = JSON.parse(stripJsonc(text.replace(/^﻿/, '')))
+      data = JSON.parse(stripJsonc(substituted))
     } catch {
       return this.unreviewed(file, 'parse', true)
     }
@@ -280,16 +328,19 @@ class Scan {
           const e = o.mcp[k]
           const entry = isPlain(e) ? e : {}
           const remote = entry.type === 'remote' || (entry.type !== 'local' && typeof entry.url === 'string' && entry.command === undefined)
-          const detail = remote ? hostOf(entry.url) : programOf(entry.command)
+          let detail = remote ? hostOf(entry.url) : programOf(entry.command)
+          // Un marcador sin resolver no es el programa real: no se muestra como si lo fuera.
+          if (/\{(?:env|file):/.test(detail)) detail = ''
           let mcpKey: string | undefined
           if (k.length <= KEY_NAME_MAX && k.length > 0) mcpKey = mcpServerPermissionKey(k)
           else this.complete = false // sin regla exacta posible: las reglas pasan a ser amplias
-          if (JSON.stringify(e)?.includes('{file:')) this.unreviewed(file, 'dynamic', true)
           const overrides = mcpKey ? this.knownByKey.get(mcpKey) : undefined
           this.add({
             kind: 'mcp',
             name: k,
             fullName: k,
+            // Solo si el nombre CRUDO es un nombre válido de conector se puede decidir «de confianza» por nombre; el saneado es solo para mostrar.
+            trustName: MCP_NAME_RE.test(k) ? k : undefined,
             detail,
             mcpKey,
             overrides,
@@ -306,7 +357,6 @@ class Scan {
       else {
         for (const el of o.plugin.slice(0, MAX_ENTRIES)) {
           const spec = Array.isArray(el) ? el[0] : el
-          if (JSON.stringify(el)?.includes('{file:')) this.unreviewed(file, 'dynamic', false)
           this.add({ kind: 'plugin', name: typeof spec === 'string' ? spec : '?', where, risky: true, digest: sha(canon(el)) })
         }
         if (o.plugin.length > MAX_ENTRIES) this.unreviewed(file, 'truncated', false)
@@ -385,6 +435,7 @@ class Scan {
     if (!l) return this.unreviewed(dir, 'unreadable', false)
     if (l.more) this.unreviewed(dir, 'truncated', false)
     for (const n of l.names.slice(0, MAX_ENTRIES)) {
+      if (this.halt(join(dir, n))) return
       if (!CODE_EXT.has(extname(n).toLowerCase())) continue
       const file = join(dir, n)
       const c = await checkRegular(file, base)
@@ -401,13 +452,14 @@ class Scan {
       } catch {
         /* sin fecha */
       }
-      this.add({ kind: 'plugin', name: n, where: this.rel(file), risky: true, digest: await hashFile(c.real, c.size, mtime) })
+      this.add({ kind: 'plugin', name: n, where: this.rel(file), risky: true, digest: await hashFile(c.real, c.size, mtime, this.budget) })
+      this.halt(file)
     }
   }
 
   /** Carpeta de ayudantes o comandos (`*.md`, hasta 3 niveles): solo los nombres; el contenido no se lee. */
   private async mdDir(dir: string, base: string, kind: 'agent' | 'command', depth = 0, prefix = ''): Promise<void> {
-    if (depth > 2 || this.expired()) return
+    if (depth > 2 || this.halt(dir)) return
     const real = await realpathWithin(dir, base)
     if (real === null) return this.unreviewed(dir, 'symlink', false)
     const l = await listDir(real)
@@ -435,6 +487,7 @@ class Scan {
     if (!l) return this.unreviewed(dir, 'unreadable', true)
     if (l.more) this.unreviewed(dir, 'truncated', true)
     for (const n of l.names) {
+      if (this.halt(join(dir, n))) return
       const low = n.toLowerCase()
       const p = join(dir, n)
       if (low === 'opencode.json' || low === 'opencode.jsonc') await this.configFile(p, base)
@@ -447,6 +500,7 @@ class Scan {
 
   /** `.opencode/package.json`: el motor instala sus dependencias y los complementos las cargan. Solo se calcula su huella. */
   private async packageFile(file: string, base: string): Promise<void> {
+    if (this.halt(file)) return
     const c = await checkRegular(file, base)
     if (!c.ok) {
       if (c.reason !== 'missing') this.unreviewed(file, c.reason, false)
@@ -458,7 +512,14 @@ class Scan {
     } catch {
       /* sin fecha */
     }
-    this.add({ kind: 'package', name: 'package.json', where: this.rel(file), risky: true, digest: await hashFile(c.real, c.size, mtime) })
+    this.add({
+      kind: 'package',
+      name: 'package.json',
+      where: this.rel(file),
+      risky: true,
+      digest: await hashFile(c.real, c.size, mtime, this.budget)
+    })
+    this.halt(file)
   }
 
   /** Ayudantes del ayudante externo que el motor también lee (ver `ConfigAgent.loadClaude` en el motor): solo nombres. */
@@ -520,7 +581,7 @@ const byId = (a: ProjectScanItem, b: ProjectScanItem): number => (a.id < b.id ? 
 export async function scanProjectConfig(dir: string, opts: ScanOptions = {}): Promise<ProjectScanResult> {
   const start = resolve(dir)
   const scan = new Scan(start, opts)
-  try {
+  const body = async (): Promise<void> => {
     // Carpetas a recorrer: desde `start` hacia arriba hasta la raíz del repositorio (con `.git`, carpeta o archivo); sin git, hasta la raíz del disco.
     const chain: string[] = []
     let hasGit = false
@@ -559,16 +620,37 @@ export async function scanProjectConfig(dir: string, opts: ScanOptions = {}): Pr
       }
       await scan.level(d, base)
     }
-  } catch {
+  }
+  const guarded = body().catch(() => {
     scan.complete = false
-    scan.items.push({
-      id: sha('scan-failed').slice(0, 24),
-      kind: 'unreviewed',
-      name: basename(start),
-      where: '.',
-      risky: true,
-      reason: 'unreadable'
+    scan.add({ kind: 'unreviewed', name: basename(start), where: '.', risky: true, reason: 'unreadable', digest: 'scan-failed' })
+  })
+  const limit = opts.deadline
+  if (limit === undefined) await guarded
+  else {
+    // Plazo duro: una lectura colgada (volumen de red lento) no puede retener la apertura. Pasado el plazo (más un margen corto) se devuelve
+    // lo reunido como INCOMPLETO y lo que siga corriendo ya no añade nada.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const late = new Promise<void>((res) => {
+      timer = setTimeout(
+        () => {
+          scan.closed = true
+          scan.complete = false
+          scan.items.push({
+            id: sha('deadline').slice(0, 24),
+            kind: 'unreviewed',
+            name: basename(start),
+            where: '.',
+            risky: true,
+            reason: 'truncated'
+          })
+          res()
+        },
+        Math.max(0, limit - Date.now()) + 300
+      )
     })
+    await Promise.race([guarded, late])
+    clearTimeout(timer)
   }
   const items = scan.items.slice().sort(byId)
   const huella = sha(`${scan.complete ? 'c' : 'i'}\n${items.map((i) => i.id).join('\n')}`)
