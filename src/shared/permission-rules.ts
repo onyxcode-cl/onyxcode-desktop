@@ -4,8 +4,9 @@
  * Cómo se comporta el motor (OpenCode 1.19.0, verificado con el motor real, `docs/estudio-competencia/permisos-arreglo.md`):
  * - `session.update({ permission })` AÑADE las reglas al final de las que la sesión ya tenía; no las reemplaza.
  * - Gana la ÚLTIMA regla que coincide (permiso y patrón, ambos con comodines).
- * - En una orden compuesta (`ls && ls > f`, `ls | ls > f`) el motor evalúa cada subcomando POR SEPARADO y SIN su redirección: una regla
- *   `allow` para `ls` deja pasar `ls > f`. Por eso los comandos de solo lectura NO se permiten con reglas del motor: el motor
+ * - En una orden compuesta (`ls && ls > f`, `ls | ls > f`) el motor evalúa cada subcomando POR SEPARADO (una regla `allow` para `ls`
+ *   dejó pasar `ls > f` en la prueba original; en el motor 1.19.0 el patrón de una sentencia con redirección incluye la redirección, y un
+ *   comodín final como `git log*` la casa: tampoco sirve) Por eso los comandos de solo lectura NO se permiten con reglas del motor: el motor
  *   pregunta y la app aprueba sola solo si ella misma comprueba el comando completo (`isAutoApprovableCommand`).
  * Cada bloque es AUTOSUFICIENTE: empieza fijando, para cada permiso que la app gestiona, un valor explícito con patrón `*`
  * (anula lo que dejaran bloques anteriores) y recién después añade las excepciones. El resultado para esos permisos solo depende del
@@ -41,11 +42,6 @@ const READ_ONLY_COMMANDS = [
   'Get-ChildItem',
   'Get-Location'
 ]
-/**
- * La lista de «Automático» que Comparar pide al propio motor (prefijos con comodín). Ya NO lleva `npm run*` ni `npm test*` (1.8.12, R1):
- * esas órdenes ejecutan código del proyecto (scripts, archivos de prueba, configuración) que «Automático» deja editar sin preguntar.
- */
-const LEGACY_AUTO_ALLOW = ['git status*', 'git diff*', 'git log*']
 /** `git branch` solo se aprueba para LISTAR: con otros argumentos crea, borra o renombra ramas. */
 const GIT_BRANCH_LIST = /^git branch(?:\s+(?:-a|-r|-v|-vv|--show-current|--list(?:\s+\S+)*))*\s*$/
 
@@ -54,29 +50,15 @@ type ApprovalKind = 'auto' | 'plan'
 const withBoundary = (c: string): RegExp => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')}(?:\\s|$)`)
 const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
 /** Cualquier cosa que encadene, redirija, sustituya o cambie de línea: el comando deja de ser «uno solo y simple». */
-const SHELL_META = /[><|;&`$\\()\n\r]|--output|--exec/
+const SHELL_META = /[><|;&`$\\(){}'"\n\r]|--output|--exec/
 /**
  * Opciones de `git` que escriben archivos, ejecutan programas o cambian dónde/con qué configuración trabaja (1.8.12, RI de W-A1):
  * `--output=<archivo>` (git acepta abreviaturas: `--out…`), `--ext-diff`, `--textconv`, `-c clave=valor`, `-C <dir>`, `--git-dir`,
- * `--work-tree`, `--exec-path`, `--config-env`. Con ellas un `git log`/`git diff` «de lectura» puede escribir `.git/config` u `opencode.json`.
+ * `--work-tree`, `--exec-path`, `--config-env`, `--namespace`. Con ellas un `git log`/`git diff` «de lectura» puede escribir `.git/config` u `opencode.json`.
  */
 const GIT_RISKY_LONG = /^--(?:out|ext|text|git-dir|work-tree|exec-path|config-env|namespace)/
 const hasRiskyGitOption = (cmd: string): boolean =>
   cmd.startsWith('git') && cmd.split(/\s+/).some((t) => GIT_RISKY_LONG.test(t) || /^-[cCo]/.test(t))
-/** Los mismos patrones como reglas del motor (Comparar): van DESPUÉS de las `allow` de git y preguntan (gana la última que casa). */
-const GIT_RISKY_ASK_PATTERNS = [
-  '* --out*',
-  '* --ext*',
-  '* --text*',
-  '* --git-dir*',
-  '* --work-tree*',
-  '* --exec-path*',
-  '* --config-env*',
-  '* --namespace*',
-  '* -c*',
-  '* -C*',
-  '* -o*'
-].map((p) => `git ${p}`)
 
 /**
  * ¿La app puede aprobar sola este comando completo? Solo si es UN comando simple de la lista de solo lectura, sin redirecciones, tuberías,
@@ -118,7 +100,7 @@ function readRules(protectEnv: boolean): PermissionRuleLike[] {
  * Mismo riesgo con los hooks (`.git/hooks/*`), `.gitattributes` (filtros/textconv) y `.gitmodules`. Rutas relativas al proyecto; `*` casa
  * también con «/». No afecta a `.gitignore` ni a `.github/`.
  */
-const GIT_CONFIG_PATTERNS = ['.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
+const GIT_CONFIG_PATTERNS = ['.git', '*/.git', '.git/*', '*/.git/*', '.gitattributes', '*/.gitattributes', '.gitmodules', '*/.gitmodules']
 const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /**
@@ -242,13 +224,10 @@ export function rulesetForMode(
         ...readRules(true),
         rule('bash', '*', 'ask'),
         // Comparar no tiene quién apruebe en la interfaz: allí solo las tres órdenes de lectura de git las permite el propio motor.
-        ...(opts.engineAllowReadOnly
-          ? [
-              ...LEGACY_AUTO_ALLOW.map((p) => rule('bash', p, 'allow')),
-              // Después de los `allow` (gana la última): las opciones de git que escriben o ejecutan preguntan en la tarjeta de Comparar.
-              ...GIT_RISKY_ASK_PATTERNS.map((p) => rule('bash', p, 'ask'))
-            ]
-          : approvalMarks()),
+        // Comparar (`engineAllowReadOnly`) usa el MISMO bloque: antes dejaba que el motor permitiera `git status*`/`git diff*`/`git log*` con
+        // comodín, y ese patrón casa con redirecciones (`git log > f`), `git difftool`, opciones entre comillas, etc. (RI de W-A1). Ahora todo
+        // comando pregunta y la columna de Comparar muestra la tarjeta; el costo es que `git status` también pide permiso allí.
+        ...approvalMarks(),
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,

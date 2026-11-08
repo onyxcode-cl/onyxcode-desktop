@@ -13,16 +13,22 @@ import {
 } from './permission-rules'
 
 /** Simulador del motor 1.19.0 (verificado en el motor real): comodines en permiso y patrón, gana la ÚLTIMA regla; sin coincidencia, pregunta. */
-function wild(text: string, pattern: string): boolean {
+function wildTP(text: string, pattern: string): boolean {
   // Como el motor: las barras invertidas de Windows se normalizan a «/» antes de comparar (y se distingue mayúsculas de minúsculas).
   text = text.replace(/\\/g, '/')
   pattern = pattern.replace(/\\/g, '/')
-  let re = '^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
+  let re =
+    '^' +
+    pattern
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.') +
+    '$'
   if (re.endsWith(' .*$')) re = re.slice(0, -4) + '( .*)?$'
   return new RegExp(re, 's').test(text)
 }
 function evaluate(permission: string, pattern: string, ...sets: PermissionRuleLike[][]): RuleAction {
-  const hit = sets.flat().findLast((r) => wild(permission, r.permission) && wild(pattern, r.pattern))
+  const hit = sets.flat().findLast((r) => wildTP(permission, r.permission) && wildTP(pattern, r.pattern))
   return hit?.action ?? 'ask'
 }
 /** Reglas del agente `build` del motor (valores por defecto que ve la sesión antes de las suyas). */
@@ -229,15 +235,7 @@ describe('isAutoApprovableCommand: solo un comando simple de lectura', () => {
 // el `read: * allow` de cada modo las dejaba pasar sin tarjeta. «Todo sin preguntar» (bypass) lo levanta como siempre.
 describe('recursos de conectores MCP (read con patrón mcp:<servidor>:*)', () => {
   // Misma semántica del motor: gana la ÚLTIMA regla que coincide; `*` casa con cualquier texto (también con «:»).
-  const wild = (pattern: string, text: string): boolean =>
-    new RegExp(
-      '^' +
-        pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*')
-          .replace(/\?/g, '.') +
-        '$'
-    ).test(text)
+  const wild = (pattern: string, text: string): boolean => wildTP(text, pattern)
   const actionFor = (mode: Parameters<typeof rulesetForMode>[0], text: string): string | null => {
     const hit = rulesetForMode(mode)
       .filter((r) => r.permission === 'read' && wild(r.pattern, text))
@@ -271,15 +269,7 @@ describe('agentes empaquetados: recursos de conectores', () => {
 // Editar la config de git pregunta en los modos que dejan editar sin preguntar: `core.fsmonitor` en `.git/config` hace que un `git status`
 // (aprobado solo por la app como «solo lectura» en Automático) EJECUTE un comando.
 describe('editar la configuración de git', () => {
-  const wild = (pattern: string, text: string): boolean =>
-    new RegExp(
-      '^' +
-        pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*')
-          .replace(/\?/g, '.') +
-        '$'
-    ).test(text)
+  const wild = (pattern: string, text: string): boolean => wildTP(text, pattern)
   const lastAction = (mode: Parameters<typeof rulesetForMode>[0], permission: 'edit' | 'write', path: string): string | null =>
     rulesetForMode(mode)
       .filter((r) => r.permission === permission && wild(r.pattern, path))
@@ -318,15 +308,7 @@ describe('editar la configuración de git', () => {
 
 // 1.8.12 (R1/R4): «Automático» y «Comparar» no ejecutan código del proyecto sin tarjeta; opencode.json(c) pregunta; «Solo explorar» pregunta por la web.
 describe('1.8.12: cierre de R1 y R4', () => {
-  const wild = (pattern: string, text: string): boolean =>
-    new RegExp(
-      '^' +
-        pattern
-          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*')
-          .replace(/\?/g, '.') +
-        '$'
-    ).test(text)
+  const wild = (pattern: string, text: string): boolean => wildTP(text, pattern)
   const last = (rules: ReturnType<typeof rulesetForMode>, permission: 'edit' | 'write', path: string): string | null =>
     rules.filter((r) => r.permission === permission && wild(r.pattern, path)).at(-1)?.action ?? null
 
@@ -337,8 +319,6 @@ describe('1.8.12: cierre de R1 y R4', () => {
       expect(evaluate('bash', 'npm test', BUILD, rules)).toBe('ask')
       expect(evaluate('bash', 'npm run build', BUILD, rules)).toBe('ask')
     }
-    // Comparar conserva solo la lectura de git
-    expect(evaluate('bash', 'git status', BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('allow')
   })
 
   it.each(['acceptEdits', 'auto'] as const)('%s: editar opencode.json(c) pregunta; un archivo normal sigue permitido', (mode) => {
@@ -437,7 +417,7 @@ describe('1.8.12: cierre de R1 y R4', () => {
   })
 })
 
-// RI de W-A1 (hallazgo 2): en Comparar el motor permite `git log*`/`git diff*`; las opciones que escriben o ejecutan deben preguntar.
+// RI de W-A1 (rondas 1 y 2): git con opciones que escriben o ejecutan, comillas, redirecciones, difftool y `.git` como archivo.
 describe('git con opciones que escriben o ejecutan', () => {
   const RIESGOSOS = [
     'git log -1 --output=.git/config',
@@ -450,25 +430,58 @@ describe('git con opciones que escriben o ejecutan', () => {
     'git log -C /tmp',
     'git diff --git-dir=/tmp/x',
     'git status --work-tree=/tmp',
-    'git log -ofoo'
+    'git log -ofoo',
+    'git log --namespace=x',
+    // comillas: el shell las quita y git recibe la opción
+    'git log "--out=x"',
+    "git log '-c' a=b",
+    "git log --out'put'=x",
+    // redirecciones y encadenados
+    'git log -1 > f',
+    'git log -1 >> f',
+    'git status | tee f',
+    'git status; ls',
+    // otros programas con prefijo parecido
+    'git difftool -y',
+    'git diff-tree -p HEAD',
+    'git diff-index HEAD',
+    'git statusx',
+    'git logs'
   ]
-  it.each(RIESGOSOS)('Comparar: «%s» pregunta (el motor no la deja pasar)', (c) => {
+  it.each(RIESGOSOS)('Comparar: «%s» pregunta (ninguna regla del motor la deja pasar)', (c) => {
     expect(evaluate('bash', c, BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('ask')
   })
   it.each(RIESGOSOS)('Automático: «%s» no la aprueba sola la app', (c) => {
     expect(isAutoApprovableCommand('auto', c)).toBe(false)
     expect(isAutoApprovableCommand('plan', c)).toBe(false)
   })
-  it.each(['git status', 'git status -s', 'git diff HEAD~1', 'git log --oneline -5', 'git log --stat', 'git diff --color'])(
-    'Comparar sigue pudiendo leer: «%s» pasa sin tarjeta',
-    (c) => {
-      expect(evaluate('bash', c, BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('allow')
-      expect(isAutoApprovableCommand('auto', c)).toBe(true)
-    }
-  )
-  it('Comparar: npm sigue pidiendo tarjeta (rulesetFor de Comparar usa este mismo bloque)', () => {
+  it('Comparar no lleva ninguna regla bash allow (costo asumido: git status también pide tarjeta allí)', () => {
+    const r = rulesetForMode('auto', { engineAllowReadOnly: true })
+    expect(r.filter((x) => x.permission === 'bash' && x.action === 'allow')).toEqual([])
+    expect(evaluate('bash', 'git status', BUILD, r)).toBe('ask')
+  })
+  it.each([
+    'git status',
+    'git status -s',
+    'git status --porcelain',
+    'git diff HEAD~1',
+    'git log --oneline -5',
+    'git log --stat',
+    'git diff --color',
+    'git log --cc'
+  ])('Automático sigue aprobando solo «%s» (aprobación de la app)', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(true)
+  })
+  it('Comparar: npm sigue pidiendo tarjeta', () => {
     const r = rulesetForMode('auto', { engineAllowReadOnly: true })
     expect(evaluate('bash', 'npm test', BUILD, r)).toBe('ask')
     expect(evaluate('bash', 'npm run build', BUILD, r)).toBe('ask')
+  })
+  it.each(['acceptEdits', 'auto'] as const)('%s: un ARCHIVO llamado .git también pregunta', (mode) => {
+    for (const permission of ['edit', 'write'] as const) {
+      for (const p of ['.git', 'sub/.git', 'a\\b\\.git']) {
+        expect(evaluate(permission, p, BUILD, rulesetForMode(mode)), `${mode} ${permission} ${p}`).toBe('ask')
+      }
+    }
   })
 })
