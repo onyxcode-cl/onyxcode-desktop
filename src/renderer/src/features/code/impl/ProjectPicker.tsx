@@ -13,7 +13,7 @@ import type { ProjectScanItem, ProjectScanKind } from '@shared/ipc-code'
 import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
 import { timeAgo } from './ui'
-import { openProjectTrusted, resolveTrust, usePendingTrust, type PendingTrust } from './trust'
+import { CONFIRM_DELAY_MS, openProjectTrusted, resolveTrust, usePendingTrust, type PendingTrust } from './trust'
 import { askMacAgain, setBlockedFolder, useBlockedFolder } from './folder-access'
 
 /** Clave de texto por tipo de elemento que puede traer una carpeta (W-A2). */
@@ -246,6 +246,15 @@ function TrustDialog(): React.JSX.Element | null {
   const cancelRef = useRef<HTMLButtonElement>(null)
   const scanning = p?.scanning ?? false
   const pendingDir = p?.dir ?? null
+  // «Confiar» solo se puede pulsar CONFIRM_DELAY_MS después de que aparece el diálogo de ESTA carpeta (el siguiente de la cola sale en el mismo
+  // sitio: un doble clic no debe aceptarlo sin verlo). Se guarda para qué carpeta se armó, así el cambio de carpeta desarma al instante.
+  const [armedFor, setArmedFor] = useState<string | null>(null)
+  useEffect(() => {
+    if (!pendingDir) return
+    const id = setTimeout(() => setArmedFor(pendingDir), CONFIRM_DELAY_MS)
+    return () => clearTimeout(id)
+  }, [pendingDir])
+  const armed = armedFor !== null && armedFor === pendingDir
   useEffect(() => {
     if (!pendingDir) return
     // El foco queda en «Cancelar» y NO se mueve solo cuando llega la lista: un Intro pulsado justo entonces no puede confiar sin leerla.
@@ -301,8 +310,8 @@ function TrustDialog(): React.JSX.Element | null {
           </button>
           <button
             type="button"
-            disabled={scanning}
-            onClick={() => resolveTrust(true)}
+            disabled={scanning || !armed}
+            onClick={() => (armed ? resolveTrust(true) : undefined)}
             className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-50 hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
           >
             {t(p.again ? 'code.trust.confirmAgain' : 'code.trust.confirm')}

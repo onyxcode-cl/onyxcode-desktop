@@ -1155,8 +1155,15 @@ export const useCode = create<CodeState>((set, get) => {
       // Antes de que el motor cargue cada carpeta se escanea (una a una: si trae algo nuevo, se repregunta); si no se acepta, no se carga.
       const { verifyTrustedFolder } = await import('./trust')
       const ok: string[] = []
-      for (const d of others) if (await verifyTrustedFolder(d)) ok.push(d)
-      await Promise.all(ok.map((d) => get().loadSessions(d)))
+      for (const d of others) {
+        // Mientras el bucle espera, la persona pudo rechazar o cerrar esta carpeta desde otra vía: no se verifica ni se carga.
+        if (!get().isTrusted(d) || !isOpenDir(get(), d)) {
+          setVerifying(d, false)
+          continue
+        }
+        if (await verifyTrustedFolder(d)) ok.push(d)
+      }
+      await Promise.all(ok.filter((d) => get().isTrusted(d) && isOpenDir(get(), d)).map((d) => get().loadSessions(d)))
     },
 
     declineFocusedProject: (directory) => {

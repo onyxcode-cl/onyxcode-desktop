@@ -294,6 +294,29 @@ describe('RI2: diálogos reemplazados, cancelar sin foco, foco a carpeta sin con
     expect(st().directory).toBe(A)
   })
 
+  it('restoreOpenProjects no carga una carpeta que la persona rechazó mientras el bucle esperaba otra', async () => {
+    const C = '/work/c'
+    trustedWith(B)
+    trustedWith(C)
+    useCode.setState({ directory: A, openDirectories: [A, B, C] })
+    const loadSessions = vi.fn(() => Promise.resolve())
+    useCode.setState({ loadSessions } as never)
+    scan.mockResolvedValue(withNew())
+    const restore = st().restoreOpenProjects() // empieza por B (re-pregunta abierta)
+    await flush()
+    await flush()
+    // Mientras tanto la persona rechaza C por otra vía: pierde la confianza y se cierra.
+    st().untrustFolder(C)
+    st().closeOneProject(C)
+    t.resolveTrust(true) // acepta B
+    await restore
+    expect(loadSessions.mock.calls.map((c) => (c as unknown[])[0])).toEqual([B])
+  })
+
+  it('verifyTrustedFolder devuelve false para una carpeta sin confianza (no se carga)', async () => {
+    await expect(t.verifyTrustedFolder('/work/sin')).resolves.toBe(false)
+  })
+
   it('resync solo recarga las carpetas de confianza ya verificadas', async () => {
     const loadSessions = vi.fn(() => Promise.resolve())
     useCode.setState({ directory: A, openDirectories: [A, B], loadSessions } as never)

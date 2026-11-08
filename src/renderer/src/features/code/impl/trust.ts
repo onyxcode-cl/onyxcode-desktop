@@ -76,6 +76,9 @@ export function usePendingTrust(): PendingTrust | null {
   return p
 }
 
+/** Tras aparecer cada diálogo, «Confiar» tarda este tiempo en poder pulsarse: un doble clic no puede aceptar también el siguiente de la cola. */
+export const CONFIRM_DELAY_MS = 700
+
 /** Plazo del escaneo en el renderer (main corta a los ~2,8 s y devuelve lo reunido como incompleto; esto cubre un main colgado). */
 export const SCAN_TIMEOUT_MS = 3500
 const inflight = new Map<string, Promise<ProjectScanResult | null>>()
@@ -147,9 +150,13 @@ async function ensureTrustedAgain(dir: string): Promise<boolean> {
  * escanea y, si trae algo nuevo, repregunta. Si la persona no lo acepta, la carpeta pierde la confianza y NO se carga. `true` = se puede cargar.
  */
 export async function verifyTrustedFolder(dir: string): Promise<boolean> {
-  if (!useCode.getState().isTrusted(dir) || isFolderVerified(dir)) {
+  if (!useCode.getState().isTrusted(dir)) {
     setVerifying(dir, false)
-    return true // las no confiadas ya piden confirmación al entrar; las aceptadas no se repiten («escaneada» NO basta: puede haber quedado una re-pregunta sin contestar)
+    return false // sin confianza (p. ej. la rechazó la persona mientras tanto): NO se carga; pide confirmación al entrar
+  }
+  if (isFolderVerified(dir)) {
+    setVerifying(dir, false)
+    return true // las aceptadas no se repiten («escaneada» NO basta: puede haber quedado una re-pregunta sin contestar)
   }
   return ensureTrustedAgain(dir)
 }
