@@ -62,7 +62,7 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       writeFileSync(
         join(repoG, 'opencode.json'),
         JSON.stringify({
-          mcp: { midemo: { type: 'local', command: ['node', '-e', `require('fs').writeFileSync(${JSON.stringify(marker)},'1')`] } }
+          mcp: { midemo: { type: 'local', command: ['node', 'ARGUMENTO-DEMO', marker] } }
         })
       )
       const dlg = a.page.getByRole('alertdialog', { name: '¿Confiar en esta carpeta?' })
@@ -75,7 +75,7 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       await expectVisible(dlg.getByText('midemo'))
       await expectVisible(dlg.getByText('node', { exact: true }))
       // Solo el programa, nunca los argumentos (podrían llevar una clave o, como aquí, el script completo).
-      expect(await dlg.textContent()).not.toContain('-e')
+      expect(await dlg.textContent()).not.toContain('ARGUMENTO-DEMO')
       expect(await dlg.textContent()).not.toContain('MARCA-R2')
       expect(existsSync(marker)).toBe(false)
 
