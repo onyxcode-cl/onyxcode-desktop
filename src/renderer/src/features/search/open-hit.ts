@@ -3,6 +3,7 @@
  */
 import { openChatSession } from '../chat/actions'
 import { useCode } from '../code/impl/store'
+import { openProjectTrusted } from '../code/impl/trust'
 import { useUi } from '../../stores/ui'
 import type { SearchGroup, SearchHit } from './search-index'
 
@@ -40,7 +41,8 @@ export async function openSearchHit(group: SearchGroup, hit?: SearchHit): Promis
     const code = useCode.getState()
     if (code.directory !== group.directory) {
       if (code.openDirectories.includes(group.directory)) await code.focusProject(group.directory)
-      else await code.openProject(group.directory)
+      // Pasa por el diálogo de confianza y el escaneo (W-A2); si la persona no confía, no se abre ni se selecciona la sesión.
+      else if (!(await openProjectTrusted(group.directory))) return
     }
     await useCode.getState().selectSession(group.sessionId)
   }

@@ -22,6 +22,8 @@ beforeEach(async () => {
   ;({ useCode } = await import('./store'))
   ;({ useServer } = await import('../../../stores/server'))
   useCode.setState({ directory: D })
+  // Carpeta ya escaneada y sin conectores: sin esto las reglas de sesión caen en el respaldo «preguntar por cualquier conector» (W-A2).
+  ;(await import('./permission-rules')).setFolderMcp(D, { items: [], complete: true })
 })
 
 const st = (): ReturnType<Store['useCode']['getState']> => useCode.getState()
@@ -237,5 +239,46 @@ describe('modo de permisos → sesión del motor', () => {
       asked('p6', 'pwd')
       expect(reply).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+describe('comandos `/…` y reglas de proyecto', () => {
+  const crm = { id: 'm', kind: 'mcp' as const, name: 'crm', trustName: 'crm', mcpKey: 'crm_*', where: 'opencode.json', risky: true }
+
+  async function setup(opts: { updateFails?: boolean } = {}) {
+    const { setFolderMcp } = await import('./permission-rules')
+    setFolderMcp(D, { items: [crm], complete: true })
+    const base = install(opts)
+    const command = vi.fn(() => Promise.resolve({ data: {} }))
+    ;(useServer.getState().client as unknown as { session: Record<string, unknown> }).session.command = command
+    apply(sessionCreated(makeSession('s1', D, { permission: rulesetFor('manual') })))
+    useCode.setState({ activeSessionID: 's1' })
+    return { ...base, command }
+  }
+
+  it('antes de session.command se igualan las reglas con las `ask` de proyecto', async () => {
+    const { update, command } = await setup()
+    await st().runCommand('x', '')
+    expect(update).toHaveBeenCalledTimes(1)
+    const sent = update.mock.calls[0]![0].permission as Array<{ permission: string; action: string }>
+    expect(sent.some((r) => r.permission === 'crm_*' && r.action === 'ask')).toBe(true)
+    expect(update.mock.invocationCallOrder[0]).toBeLessThan(command.mock.invocationCallOrder[0]!)
+  })
+
+  it('si no se pueden igualar las reglas, el comando NO se ejecuta (falla cerrado)', async () => {
+    const { command } = await setup({ updateFails: true })
+    await st().runCommand('x', '')
+    expect(command).not.toHaveBeenCalled()
+  })
+})
+
+describe('doSend y reglas de proyecto: falla cerrado en todos los modos', () => {
+  it('en Automático, si no se pueden fijar las reglas, NO se envía', async () => {
+    const { promptAsync } = install({ updateFails: true })
+    apply(sessionCreated(makeSession('s1', D)))
+    useCode.setState({ activeSessionID: 's1', permissionMode: 'auto' })
+    const ok = await st().send('hola', [])
+    expect(ok).toBe(false)
+    expect(promptAsync).not.toHaveBeenCalled()
   })
 })

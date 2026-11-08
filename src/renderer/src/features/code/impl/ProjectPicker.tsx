@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Clock, FolderCode, FolderLock, FolderOpen, GitBranch, GitBranchPlus, Plus, Search, ShieldCheck, X } from 'lucide-react'
-import { t } from '@shared/i18n'
+import { t, type MsgKey } from '@shared/i18n'
 import { Button } from '../../../components/Button'
 import { IconButton } from '../../../components/IconButton'
 import { useT } from '../../../lib/i18n'
@@ -9,11 +9,66 @@ import { PageHeader } from '../../../components/PageHeader'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { m } from '../../../app/mobile/m'
 import { useSettings } from '../../../stores/settings'
+import type { ProjectScanItem, ProjectScanKind } from '@shared/ipc-code'
 import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
 import { timeAgo } from './ui'
-import { openProjectTrusted, resolveTrust, usePendingTrust } from './trust'
+import { CONFIRM_DELAY_MS, openProjectTrusted, resolveTrust, usePendingTrust, type PendingTrust } from './trust'
 import { askMacAgain, setBlockedFolder, useBlockedFolder } from './folder-access'
+
+/** Clave de texto por tipo de elemento que puede traer una carpeta (W-A2). */
+const KIND_KEY: Record<ProjectScanKind, MsgKey> = {
+  mcp: 'code.trust.kind.mcp',
+  plugin: 'code.trust.kind.plugin',
+  package: 'code.trust.kind.package',
+  formatter: 'code.trust.kind.formatter',
+  lsp: 'code.trust.kind.lsp',
+  shell: 'code.trust.kind.shell',
+  provider: 'code.trust.kind.provider',
+  permission: 'code.trust.kind.permission',
+  instructions: 'code.trust.kind.instructions',
+  agent: 'code.trust.kind.agent',
+  command: 'code.trust.kind.command',
+  unreviewed: 'code.trust.kind.unreviewed'
+}
+
+/** Tope de filas que se pintan en el diálogo (el resto se resume en «N más…»); evita una carpeta con miles de archivos cuelgue la lista. */
+const MAX_TRUST_ROWS = 40
+
+/** Una fila de «lo que trae la carpeta»: tipo, nombre y, si hay, el programa/host (nunca argumentos ni variables). */
+function TrustItemRow({ item }: { item: ProjectScanItem }): React.JSX.Element {
+  const te = useT()
+  return (
+    <li className="min-w-0 border-b border-border/60 py-1.5 text-xs last:border-0">
+      <div className="flex min-w-0 items-baseline justify-between gap-2">
+        <span className="min-w-0 truncate font-medium text-fg">{item.name}</span>
+        <span className="shrink-0 text-subtle">{te(KIND_KEY[item.kind])}</span>
+      </div>
+      {item.detail && <div className="truncate font-mono text-[11px] text-subtle">{item.detail}</div>}
+      {item.overrides && <div className="text-[11px] text-warning">{te('code.trust.overrides', { name: item.overrides })}</div>}
+    </li>
+  )
+}
+
+/** Lista de lo que trae la carpeta, recortada; el cuerpo del diálogo cambia según si es la primera vez o una re-pregunta. */
+function TrustItemList({ p }: { p: PendingTrust }): React.JSX.Element {
+  const te = useT()
+  const shown = p.items.slice(0, MAX_TRUST_ROWS)
+  const hidden = p.items.length - shown.length
+  return (
+    <div className="mt-2">
+      <p id="trust-desc" className="text-sm leading-relaxed text-muted desk:leading-5">
+        {te(p.again ? 'code.trust.bodyAgain' : 'code.trust.bodyWith')}
+      </p>
+      <ul className="mt-2 max-h-48 min-w-0 overflow-y-auto rounded-lg border border-border/60 px-2">
+        {shown.map((item) => (
+          <TrustItemRow key={item.id} item={item} />
+        ))}
+      </ul>
+      {hidden > 0 && <p className="mt-1 text-[11px] text-subtle">{te('code.trust.more', { count: hidden })}</p>}
+    </div>
+  )
+}
 
 /** Ruta con «…» en el MEDIO: se ve el principio y, sobre todo, el final (el nombre de la carpeta), que es lo que dice qué es (E12). */
 export function MidPath({ path }: { path: string }): React.JSX.Element {
@@ -187,11 +242,23 @@ export function FolderAccessCard({
 
 function TrustDialog(): React.JSX.Element | null {
   const t = useT()
-  const dir = usePendingTrust()
-  const confirmRef = useRef<HTMLButtonElement>(null)
+  const p = usePendingTrust()
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  const scanning = p?.scanning ?? false
+  const pendingDir = p?.dir ?? null
+  // «Confiar» solo se puede pulsar CONFIRM_DELAY_MS después de que aparece el diálogo de ESTA carpeta (el siguiente de la cola sale en el mismo
+  // sitio: un doble clic no debe aceptarlo sin verlo). Se guarda para qué carpeta se armó, así el cambio de carpeta desarma al instante.
+  const [armedFor, setArmedFor] = useState<string | null>(null)
   useEffect(() => {
-    if (!dir) return
-    confirmRef.current?.focus()
+    if (!pendingDir) return
+    const id = setTimeout(() => setArmedFor(pendingDir), CONFIRM_DELAY_MS)
+    return () => clearTimeout(id)
+  }, [pendingDir])
+  const armed = armedFor !== null && armedFor === pendingDir
+  useEffect(() => {
+    if (!pendingDir) return
+    // El foco queda en «Cancelar» y NO se mueve solo cuando llega la lista: un Intro pulsado justo entonces no puede confiar sin leerla.
+    cancelRef.current?.focus()
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -200,8 +267,9 @@ function TrustDialog(): React.JSX.Element | null {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [dir])
-  if (!dir) return null
+  }, [pendingDir])
+  if (!p) return null
+  const hasList = p.items.length > 0
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-fg/30 p-6">
       <div
@@ -215,16 +283,25 @@ function TrustDialog(): React.JSX.Element | null {
           <ShieldCheck size={20} />
         </div>
         <h3 id="trust-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
-          {t('code.trust.title')}
+          {t(p.again ? 'code.trust.titleAgain' : 'code.trust.title')}
         </h3>
-        <p className="mt-1.5 flex min-w-0 font-mono text-xs text-subtle desk:text-meta" title={dir}>
-          <MidPath path={dir} />
+        <p className="mt-1.5 flex min-w-0 font-mono text-xs text-subtle desk:text-meta" title={p.dir}>
+          <MidPath path={p.dir} />
         </p>
-        <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
-          {t('code.trust.body')}
-        </p>
+        {scanning ? (
+          <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
+            {t('code.trust.scanning')}
+          </p>
+        ) : hasList ? (
+          <TrustItemList p={p} />
+        ) : (
+          <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
+            {t(p.scan === null ? 'code.trust.bodyUnknown' : 'code.trust.body')}
+          </p>
+        )}
         <div className="mt-4 flex justify-end gap-2 desk:mt-6">
           <button
+            ref={cancelRef}
             type="button"
             onClick={() => resolveTrust(false)}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
@@ -232,12 +309,12 @@ function TrustDialog(): React.JSX.Element | null {
             {t('code.ui.cancel')}
           </button>
           <button
-            ref={confirmRef}
             type="button"
-            onClick={() => resolveTrust(true)}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
+            disabled={scanning || !armed}
+            onClick={() => (armed ? resolveTrust(true) : undefined)}
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-50 hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
           >
-            {t('code.trust.confirm')}
+            {t(p.again ? 'code.trust.confirmAgain' : 'code.trust.confirm')}
           </button>
         </div>
       </div>

@@ -101,6 +101,7 @@ describe('openProject agrega en vez de reemplazar (escritorio)', () => {
 describe('focusProject', () => {
   it('cambia el foco a un proyecto ya abierto sin tocar sus sesiones ni las del otro', async () => {
     installClient({ [A]: [makeSession('sa', A)], [B]: [makeSession('sb', B)] })
+    st().trustFolder(A) // una carpeta sin confianza no recibe el foco sin pasar por el diálogo (W-A2)
     await st().openProject(A)
     await st().openProject(B)
     expect(st().directory).toBe(B)

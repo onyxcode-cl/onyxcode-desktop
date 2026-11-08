@@ -1,4 +1,6 @@
 // Code: denegar la confianza de una carpeta no deja nada a medias; abrir otra después deja Code usable.
+import { existsSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { useApp } from '../lib/harness'
 import { rmTemp } from '../lib/limpieza'
@@ -112,6 +114,64 @@ describe('Code: cancelar la confianza y abrir otra carpeta', () => {
       await expectVisible(a.page.getByText('Respuesta simulada: tras denegar al arrancar'), 30_000)
     } finally {
       for (const d of [repoE, repoF]) rmTemp(d)
+    }
+  })
+
+  // W-A2 (R2): el motor arranca un conector `local` del proyecto apenas CARGA la carpeta, antes de usar ninguna herramienta
+  // (ver docs/SEGURIDAD.md §2.2). El escaneo que alimenta este diálogo es SOLO lectura de disco: nunca pasa por el motor, así
+  // que nombra el conector sin que nada de la carpeta haya podido ejecutarse (el archivo que crearía ese conector si corriera
+  // no existe, ni antes ni después de ver el diálogo). «Cancelar» tampoco abre el proyecto.
+  it('carpeta con un conector: el diálogo lo nombra y «Cancelar» no deja que nada de la carpeta se ejecute', async () => {
+    const a = app()
+    const repoG = makeGitRepo('lazunox-e2e-trust-scan-')
+    const repoH = makeGitRepo('lazunox-e2e-trust-ctl-')
+    const marker = join(repoG, 'MARCA-R2')
+    const before = await storeState(a.page, 'useCode', 'directory')
+    try {
+      writeFileSync(
+        join(repoG, 'opencode.json'),
+        JSON.stringify({
+          mcp: { midemo: { type: 'local', command: ['node', '-e', `require('fs').writeFileSync(${JSON.stringify(marker)}, 'x')`] } }
+        })
+      )
+      const dlg = a.page.getByRole('alertdialog', { name: '¿Confiar en esta carpeta?' })
+      await stubDialog(a.electronApp, { openPaths: [repoG] })
+      await a.page
+        .getByRole('button', { name: /Abrir carpeta/ })
+        .first()
+        .click()
+      await expectVisible(dlg)
+      await expectVisible(dlg.getByText('midemo'))
+      await expectVisible(dlg.getByText('node', { exact: true }))
+      // Solo el programa, nunca los argumentos (podrían llevar una clave o, como aquí, el script completo).
+      expect(await dlg.textContent()).not.toContain('writeFileSync')
+      expect(await dlg.textContent()).not.toContain('MARCA-R2')
+      expect(existsSync(marker)).toBe(false)
+      // Con el diálogo abierto el motor (falso) no recibió ninguna petición de esa carpeta.
+      expect((await a.fake.requests({ limit: 1000 })).filter((r) => r.directory === repoG)).toEqual([])
+
+      await a.page.getByRole('button', { name: 'Cancelar' }).click()
+      await expectCount(dlg, 0)
+      // No se abrió (la carpeta sigue igual que antes de intentar abrir ésta; en este punto del spec puede ser `null` o una
+      // carpeta ya confiada de una prueba anterior).
+      expect(await storeState(a.page, 'useCode', 'directory')).toBe(before)
+      expect(existsSync(marker)).toBe(false)
+      expect((await a.fake.requests({ limit: 1000 })).filter((r) => r.directory === repoG)).toEqual([])
+
+      // Control positivo: con una carpeta ACEPTADA el mismo filtro sí ve peticiones al motor falso (así la comprobación anterior no pasa en vacío).
+      await stubDialog(a.electronApp, { openPaths: [repoH] })
+      await a.page
+        .getByRole('button', { name: /Abrir carpeta/ })
+        .first()
+        .click()
+      await expectVisible(dlg)
+      await a.page.getByRole('button', { name: 'Confiar y continuar' }).click()
+      await expect
+        .poll(async () => (await a.fake.requests({ limit: 1000 })).filter((r) => r.directory === repoH).length, { timeout: 15_000 })
+        .toBeGreaterThan(0)
+    } finally {
+      rmTemp(repoH)
+      rmTemp(repoG)
     }
   })
 })

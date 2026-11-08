@@ -83,6 +83,9 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       openFolderPrivacy: (pane) => call('dialog:openFolderPrivacy', pane ? { pane } : undefined),
       resetFolderPermission: (path, scope) => call('dialog:resetFolderPermission', scope ? { path, scope } : { path })
     },
+    project: {
+      scan: (path) => call('project:scan', { path })
+    },
     files: {
       watch: (folder, subId) => call('files:watch', { folder, subId }),
       setDirs: (subId, dirs) => call('files:setDirs', { subId, dirs }),

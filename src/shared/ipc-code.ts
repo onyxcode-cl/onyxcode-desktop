@@ -78,6 +78,8 @@ export const CODE_CHANNELS = {
   dialogCheckFolderAccess: 'dialog:checkFolderAccess',
   dialogOpenFolderPrivacy: 'dialog:openFolderPrivacy',
   dialogResetFolderPermission: 'dialog:resetFolderPermission',
+  // qué trae una carpeta (W-A2): lectura de disco, nunca el motor
+  projectScan: 'project:scan',
   // archivos del proyecto: vigilante, gestor y «Abrir en…»
   filesWatch: 'files:watch',
   filesSetDirs: 'files:setDirs',
@@ -112,6 +114,59 @@ export type FolderResetResult = 'reset' | 'failed' | 'unsupported'
 export type FolderResetScope = 'all' | 'engine'
 /** Panel de Ajustes del Sistema que se abre: Archivos y carpetas, o Acceso total al disco. */
 export type FolderPrivacyPane = 'files' | 'allFiles'
+
+/**
+ * Qué trae una carpeta de proyecto (W-A2), leído de disco como DATOS no confiables (nunca ejecuta ni carga nada).
+ * `mcp` = conector del proyecto; `plugin` = complemento de código (de `plugin`/`plugins`/`tool`/`tools` o nombrado en la config);
+ * `package` = `.opencode/package.json`; `formatter`/`lsp` = programa que el motor lanza; `shell` = intérprete de comandos fijado;
+ * `provider` = proveedor con dirección propia; `permission` = reglas con `allow`; `instructions` = instrucciones remotas;
+ * `agent`/`command` = ayudantes y comandos; `unreviewed` = algo que no se pudo revisar.
+ */
+export type ProjectScanKind =
+  | 'mcp'
+  | 'plugin'
+  | 'package'
+  | 'formatter'
+  | 'lsp'
+  | 'shell'
+  | 'provider'
+  | 'permission'
+  | 'instructions'
+  | 'agent'
+  | 'command'
+  | 'unreviewed'
+export type ProjectScanReason = 'symlink' | 'too-big' | 'not-file' | 'unreadable' | 'parse' | 'truncated' | 'dynamic'
+
+export interface ProjectScanItem {
+  /** Identidad estable: kind + nombre + archivo + huella del contenido. */
+  id: string
+  kind: ProjectScanKind
+  /** Nombre para mostrar (saneado: sin saltos ni caracteres de control o de dirección de texto; ≤ 80). */
+  name: string
+  /** Solo el programa o el host. NUNCA argumentos, variables, cabeceras ni claves. */
+  detail?: string
+  /** Solo `mcp`: `<servidor saneado>_*`, calculada con el nombre COMPLETO (la que usa el motor). */
+  mcpKey?: string
+  /** Solo `mcp`: el nombre CRUDO si es un nombre válido de conector (con él se decide «de confianza»; `name` está saneado solo para mostrar). */
+  trustName?: string
+  /** Solo `mcp`: esta carpeta redefine un conector que la app o la persona ya tienen (nombre conocido). */
+  overrides?: string
+  /** Archivo, relativo a la carpeta (`../` = carpeta superior). */
+  where: string
+  /** ¿Cuenta para volver a preguntar si cambia? (conectores, código, programas, instrucciones remotas, lo no revisado). */
+  risky: boolean
+  reason?: ProjectScanReason
+}
+
+export interface ProjectScanResult {
+  items: ProjectScanItem[]
+  /** sha256 de la lista normalizada. */
+  huella: string
+  /** `false` si algo impidió enumerar todos los conectores (archivo roto, enlace fuera, tope): las reglas deben ser más amplias. */
+  complete: boolean
+  /** `AGENTS.md`/`CLAUDE.md` que el motor lee (solo tamaños; para el aviso de W-A8). */
+  instructionFiles: Array<{ name: string; bytes: number; where: string }>
+}
 
 export interface PtyCreateRequest {
   cwd: string
@@ -487,6 +542,8 @@ export interface CodeInvokeContract {
   }
   /** Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (solo macOS). */
   'dialog:openFolderPrivacy': { req: { pane?: FolderPrivacyPane } | undefined; res: void }
+  /** Lista lo que trae la carpeta (conectores, complementos, ayudantes…) SOLO leyendo archivos; no toca el motor. */
+  'project:scan': { req: { path: string }; res: ProjectScanResult }
   /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
   'dialog:resetFolderPermission': { req: { path: string; scope?: FolderResetScope }; res: { result: FolderResetResult } }
 
@@ -585,6 +642,9 @@ export interface CodeApi {
     checkFolderAccess(path: string): Promise<{ status: FolderAccess; canReset: boolean; cause?: 'app' | 'engine' }>
     openFolderPrivacy(pane?: FolderPrivacyPane): Promise<void>
     resetFolderPermission(path: string, scope?: FolderResetScope): Promise<{ result: FolderResetResult }>
+  }
+  project: {
+    scan(path: string): Promise<ProjectScanResult>
   }
   files: {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>

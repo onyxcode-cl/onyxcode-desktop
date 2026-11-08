@@ -7,7 +7,7 @@
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { rulesetForState, sessionHasRuleset } from './permission-rules'
+import { isVerifying, projectAskOf, rulesetForState, sessionHasRuleset, setVerifying } from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -120,6 +120,8 @@ const LS_SESSION = 'code.session.'
 const LS_PERM_MODE = 'code.permissionMode'
 const LS_PINNED = 'code.pinned'
 const LS_TRUSTED = 'code.trustedFolders'
+/** Lo que se vio de cada carpeta de confianza al confiar (`TrustedScan`): huella y conectores/complementos aceptados (W-A2). */
+const LS_TRUSTED_SCANS = 'code.trustedScans'
 /** Lo que el usuario ya revisó («Aceptar») en el panel Cambios, por sesión. Solo estado de interfaz: no toca el disco. */
 const LS_REVIEWED = 'code.reviewed'
 /** Cuándo empezó a existir ese registro: lo anterior se da por revisado (ver `sessionNeedsReview`). */
@@ -165,6 +167,24 @@ function lsSetJSON(key: string, value: unknown): void {
   } catch {
     // sin storage
   }
+}
+
+/** Lo que se vio de una carpeta al confiar: huella de la lista y `id` de cada elemento que pide volver a preguntar si cambia. */
+export interface TrustedScan {
+  huella: string
+  ids: string[]
+}
+const MAX_TRUSTED_IDS = 400
+/** Lee `code.trustedScans` de disco sin fiarse de su forma: lo que no cuadre se descarta (esa carpeta vuelve a escanearse como «confianza antigua»). */
+function readTrustedScans(raw: unknown): Record<string, TrustedScan> {
+  const out: Record<string, TrustedScan> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [dir, v] of Object.entries(raw as Record<string, unknown>)) {
+    const o = v as { huella?: unknown; ids?: unknown } | null
+    if (!o || typeof o.huella !== 'string' || !Array.isArray(o.ids)) continue
+    out[dir] = { huella: o.huella, ids: o.ids.filter((x): x is string => typeof x === 'string').slice(0, MAX_TRUSTED_IDS) }
+  }
+  return out
 }
 
 function toRunState(s: SessionStatus): RunState {
@@ -232,6 +252,12 @@ export interface CodeState {
   reviewedSince: number | null
   /** Carpetas en las que el usuario ya confirmó "confiar" (workspace trust). */
   trustedFolders: string[]
+  /**
+   * Por carpeta de confianza: la huella de lo que traía cuando se confió y las identidades (`ProjectScanItem.id`) de lo que pide volver a
+   * preguntar si cambia (conectores, complementos, programas). Aparte de `trustedFolders` (que sigue siendo una lista de textos) para no romper
+   * a quien la lee. Una carpeta de confianza SIN registro es una confianza anterior a esta versión: el primer escaneo decide (W-A2).
+   */
+  trustedScans: Record<string, TrustedScan>
 
   /** Agrega `directory` a los proyectos abiertos (si no lo estaba ya) y le da el foco. En el celular reemplaza, como antes. */
   /** `fresh`: abre el proyecto con un chat NUEVO listo para escribir (no retoma la última sesión). Lo usan «Nuevo proyecto» y «Agregar carpeta». */
@@ -356,7 +382,10 @@ export interface CodeState {
 
   // -- Confianza de carpeta --
   isTrusted: (dir: string) => boolean
-  trustFolder: (dir: string) => void
+  /** Marca la carpeta de confianza. Con `scan` guarda también lo que se vio (si ya era de confianza, lo actualiza). */
+  trustFolder: (dir: string, scan?: TrustedScan) => void
+  /** Quita la confianza (y lo visto) de la carpeta: vuelve a pedir confirmación al entrar. */
+  untrustFolder: (dir: string) => void
 
   // -- No leído --
   markRead: (sessionID: string) => void
@@ -859,16 +888,15 @@ export const useCode = create<CodeState>((set, get) => {
     // no tenerlo y «Manual» no preguntaría nada. Se iguala ANTES de enviar; en Manual, si no se puede, no se envía (falla cerrado).
     // El bloque de reglas es autosuficiente (anula lo de bloques anteriores) y el motor lo AÑADE: solo se reenvía si la sesión no
     // termina ya con él, así no crece la lista en cada mensaje. El agente `plan` manda sobre el modo (ver `effectiveModeFor`).
-    const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir))
+    const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir))
     if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
       try {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
         set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
       } catch (err) {
-        if (get().permissionMode === 'manual' || agent === 'plan') {
-          setError(sid, errorMessage(err))
-          return false
-        }
+        // Falla cerrado en TODOS los modos (D4): sin las reglas del modo y las `ask` de proyecto en la sesión no se envía.
+        setError(sid, errorMessage(err))
+        return false
       }
     }
     set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
@@ -1021,6 +1049,7 @@ export const useCode = create<CodeState>((set, get) => {
     moreSessionsByDir: {},
     pinned: lsGetJSON<Record<string, string[]>>(LS_PINNED, {}),
     trustedFolders: lsGetJSON<string[]>(LS_TRUSTED, []),
+    trustedScans: readTrustedScans(lsGetJSON<unknown>(LS_TRUSTED_SCANS, {})),
     // Antes de leer el registro: su ausencia es la que marca la primera ejecución.
     reviewedSince: initReviewedSince(),
     reviewed: parseReviewed(lsGetJSON<unknown>(LS_REVIEWED, {})),
@@ -1072,7 +1101,9 @@ export const useCode = create<CodeState>((set, get) => {
       focusAt.delete(directory)
       codeSessionLimits.delete(directory)
       const wasFocused = sameDir(s.directory ?? '', directory)
-      const next = wasFocused ? nextFocusAfterClose(openDirs(s), directory, focusRank) : (s.directory ?? null)
+      // El foco no pasa a una carpeta de confianza que aún espera su verificación (su re-pregunta): con el foco el compositor ya hablaría con el motor.
+      const candidates = openDirs(s).filter((d) => sameDir(d, directory) || !isVerifying(d))
+      const next = wasFocused ? nextFocusAfterClose(candidates, directory, focusRank) : (s.directory ?? null)
       // Si se cierra el proyecto con foco, el foco pasa al siguiente EN LA MISMA actualización: si no, `openDirs` seguiría
       // contando la carpeta cerrada (por ser `directory`) y `focusProject` la volvía a guardar en la lista (reaparecía al reiniciar).
       set((st) => ({
@@ -1094,8 +1125,18 @@ export const useCode = create<CodeState>((set, get) => {
     focusProject: async (directory) => {
       const s = get()
       if (!isOpenDir(s, directory) || sameDir(s.directory ?? '', directory)) return
+      // Una carpeta sin confianza (p. ej. a la que se le canceló la re-pregunta) no recibe el foco sin preguntar: pasa por el diálogo.
+      if (!s.isTrusted(directory)) {
+        void (await import('./trust')).openProjectTrusted(directory)
+        return
+      }
+      // Carpeta de confianza que no pasó por `openProjectTrusted` en esta ejecución: se escanea (y, si trae algo nuevo, se repregunta) ANTES de darle el foco.
+      if (!(await (await import('./trust')).verifyTrustedFolder(directory))) return
+      // Tras esperar (puede haber un diálogo en medio) el estado cambió: se vuelve a leer y se comprueba que la carpeta sigue abierta.
+      const s2 = get()
+      if (!isOpenDir(s2, directory) || sameDir(s2.directory ?? '', directory)) return
       touchFocus(directory)
-      writeOpenProjects(openDirs(s), directory)
+      writeOpenProjects(openDirs(s2), directory)
       set({ directory, activeSessionID: null, projectPickerOpen: false })
       const last = lsGet(LS_SESSION + directory)
       const sessions = selectProjectSessions(get(), directory)
@@ -1110,7 +1151,19 @@ export const useCode = create<CodeState>((set, get) => {
       // inicia el motor en esa carpeta) si son de confianza.
       const all = openDirs(s)
       const others = all.filter((d) => !sameDir(d, s.directory ?? '') && s.isTrusted(d))
-      await Promise.all(others.map((d) => get().loadSessions(d)))
+      for (const d of others) setVerifying(d, true) // hasta que cada una se verifique, nada les pasa el foco
+      // Antes de que el motor cargue cada carpeta se escanea (una a una: si trae algo nuevo, se repregunta); si no se acepta, no se carga.
+      const { verifyTrustedFolder } = await import('./trust')
+      const ok: string[] = []
+      for (const d of others) {
+        // Mientras el bucle espera, la persona pudo rechazar o cerrar esta carpeta desde otra vía: no se verifica ni se carga.
+        if (!get().isTrusted(d) || !isOpenDir(get(), d)) {
+          setVerifying(d, false)
+          continue
+        }
+        if (await verifyTrustedFolder(d)) ok.push(d)
+      }
+      await Promise.all(ok.filter((d) => get().isTrusted(d) && isOpenDir(get(), d)).map((d) => get().loadSessions(d)))
     },
 
     declineFocusedProject: (directory) => {
@@ -1119,7 +1172,7 @@ export const useCode = create<CodeState>((set, get) => {
       get().closeOneProject(directory)
       const after = get()
       // `closeOneProject` pasa el foco a otro abierto: si tampoco es de confianza, no se le da el foco sin preguntar.
-      if (after.directory && !after.isTrusted(after.directory)) {
+      if (after.directory && (!after.isTrusted(after.directory) || isVerifying(after.directory))) {
         writeOpenProjects(openDirs(after), null)
         set({ directory: null, activeSessionID: null })
       }
@@ -1182,7 +1235,7 @@ export const useCode = create<CodeState>((set, get) => {
           await client.session.create({
             directory: dir,
             title,
-            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir))
+            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir), projectAskOf(dir))
           })
         )
         set((s) => ({
@@ -1242,6 +1295,18 @@ export const useCode = create<CodeState>((set, get) => {
       const { agent, model: picked } = get()
       const model = picked ?? resolveModelForMode('code')
       setError(sid, null)
+      // Igual que `doSend`: el comando `/…` también puede usar herramientas de los conectores de la carpeta, así que la sesión debe llevar ya
+      // las reglas del modo y las `ask` de proyecto. Aquí, si no se pueden igualar, NO se ejecuta (falla cerrado en todos los modos).
+      const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir))
+      if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
+        try {
+          const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
+          set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
+        } catch (err) {
+          setError(sid, errorMessage(err))
+          return
+        }
+      }
       set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
       try {
         sdkData(
@@ -1683,7 +1748,7 @@ export const useCode = create<CodeState>((set, get) => {
       // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
       // el cambio vale desde el próximo mensaje (la interfaz lo avisa).
       const { client, dir } = activeDir()
-      const permission = rulesetForState(mode, get().agent, linkedOf(dir))
+      const permission = rulesetForState(mode, get().agent, linkedOf(dir), projectAskOf(dir))
       if (sessionHasRuleset(get().sessions[sid]?.permission, permission)) return
       try {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission }))
@@ -1835,12 +1900,30 @@ export const useCode = create<CodeState>((set, get) => {
 
     // -- Confianza de carpeta --
     isTrusted: (dir) => get().trustedFolders.includes(dir),
-    trustFolder: (dir) => {
+    trustFolder: (dir, scan) => {
       set((s) => {
-        if (s.trustedFolders.includes(dir)) return s
-        const trustedFolders = [...s.trustedFolders, dir]
+        const patch: Partial<Pick<CodeState, 'trustedFolders' | 'trustedScans'>> = {}
+        if (!s.trustedFolders.includes(dir)) {
+          patch.trustedFolders = [...s.trustedFolders, dir]
+          lsSetJSON(LS_TRUSTED, patch.trustedFolders)
+        }
+        if (scan) {
+          patch.trustedScans = { ...s.trustedScans, [dir]: scan }
+          lsSetJSON(LS_TRUSTED_SCANS, patch.trustedScans)
+        }
+        return Object.keys(patch).length ? patch : s
+      })
+    },
+
+    untrustFolder: (dir) => {
+      set((s) => {
+        if (!s.trustedFolders.includes(dir) && !s.trustedScans[dir]) return s
+        const trustedFolders = s.trustedFolders.filter((d) => d !== dir)
+        const { [dir]: _gone, ...trustedScans } = s.trustedScans
+        void _gone
         lsSetJSON(LS_TRUSTED, trustedFolders)
-        return { trustedFolders }
+        lsSetJSON(LS_TRUSTED_SCANS, trustedScans)
+        return { trustedFolders, trustedScans }
       })
     },
 
@@ -1907,9 +1990,11 @@ export const useCode = create<CodeState>((set, get) => {
     resync: async () => {
       const s = get()
       if (!s.directory) return
+      // Solo se recargan las carpetas de confianza YA verificadas en esta ejecución (las que esperan una re-pregunta no se cargan).
+      const { isFolderVerified } = await import('./trust')
       await Promise.all(
         openDirs(s)
-          .filter((d) => sameDir(d, s.directory ?? '') || s.isTrusted(d))
+          .filter((d) => sameDir(d, s.directory ?? '') || (s.isTrusted(d) && isFolderVerified(d)))
           .map((d) => get().loadSessions(d))
       )
       const sid = get().activeSessionID
