@@ -1,6 +1,6 @@
 // F8-B42: el modelo elegido sobrevive a normalize, a escrituras de otros ajustes y a reabrir (releer settings.json).
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -444,6 +444,19 @@ describe('settings: migración de la huella de ganchos (1.8.12, decisión D11 = 
     const s = (await openStore(dir2)).get()
     expect(s.userHooksSha256).toBe(otra)
     expect(s.userHooksReview).toBe(false)
+  })
+
+  it('si no se puede guardar la migración, la huella queda en null (no se vuelve a confiar en el archivo)', async () => {
+    if (process.platform === 'win32') return
+    const dir = conGanchos({ userHooksEnabled: true })
+    chmodSync(dir, 0o500) // sin permiso de escritura: el renombrado del settings.json falla
+    try {
+      const s = (await openStore(dir)).get()
+      expect(s.userHooksSha256).toBeNull()
+      expect(s.userHooksReview).toBe(false)
+    } finally {
+      chmodSync(dir, 0o700)
+    }
   })
 
   it('un archivo de ganchos que pesa más que el tope del motor (64 KB) no se aprueba', async () => {

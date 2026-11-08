@@ -72,6 +72,9 @@ class SettingsStore {
         this.write({ ...loaded, userHooksSha256: hooksSha, userHooksReview: hooksSha !== null })
       } catch (err) {
         console.error('[store] no se pudo guardar la huella de los ganchos:', (err as NodeJS.ErrnoException)?.code ?? 'desconocido')
+        // Sin poder fijarla en disco, la huella queda en `null` también en memoria: los ganchos no corren en vez de volver a confiar en el archivo
+        // del siguiente arranque.
+        this.cache = { ...this.cache, userHooksSha256: null, userHooksReview: false }
       }
     }
     // NO se escribe al leer: este `get()` puede correr antes de las migraciones de datos viejos (`runMigrations`), que necesitan el
