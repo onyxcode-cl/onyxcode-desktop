@@ -7,7 +7,7 @@
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { projectAskOf, rulesetForState, sessionHasRuleset } from './permission-rules'
+import { isVerifying, projectAskOf, rulesetForState, sessionHasRuleset, setVerifying } from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -894,10 +894,9 @@ export const useCode = create<CodeState>((set, get) => {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
         set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
       } catch (err) {
-        if (get().permissionMode === 'manual' || agent === 'plan') {
-          setError(sid, errorMessage(err))
-          return false
-        }
+        // Falla cerrado en TODOS los modos (D4): sin las reglas del modo y las `ask` de proyecto en la sesión no se envía.
+        setError(sid, errorMessage(err))
+        return false
       }
     }
     set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
@@ -1102,7 +1101,9 @@ export const useCode = create<CodeState>((set, get) => {
       focusAt.delete(directory)
       codeSessionLimits.delete(directory)
       const wasFocused = sameDir(s.directory ?? '', directory)
-      const next = wasFocused ? nextFocusAfterClose(openDirs(s), directory, focusRank) : (s.directory ?? null)
+      // El foco no pasa a una carpeta de confianza que aún espera su verificación (su re-pregunta): con el foco el compositor ya hablaría con el motor.
+      const candidates = openDirs(s).filter((d) => sameDir(d, directory) || !isVerifying(d))
+      const next = wasFocused ? nextFocusAfterClose(candidates, directory, focusRank) : (s.directory ?? null)
       // Si se cierra el proyecto con foco, el foco pasa al siguiente EN LA MISMA actualización: si no, `openDirs` seguiría
       // contando la carpeta cerrada (por ser `directory`) y `focusProject` la volvía a guardar en la lista (reaparecía al reiniciar).
       set((st) => ({
@@ -1131,8 +1132,11 @@ export const useCode = create<CodeState>((set, get) => {
       }
       // Carpeta de confianza que no pasó por `openProjectTrusted` en esta ejecución: se escanea (y, si trae algo nuevo, se repregunta) ANTES de darle el foco.
       if (!(await (await import('./trust')).verifyTrustedFolder(directory))) return
+      // Tras esperar (puede haber un diálogo en medio) el estado cambió: se vuelve a leer y se comprueba que la carpeta sigue abierta.
+      const s2 = get()
+      if (!isOpenDir(s2, directory) || sameDir(s2.directory ?? '', directory)) return
       touchFocus(directory)
-      writeOpenProjects(openDirs(s), directory)
+      writeOpenProjects(openDirs(s2), directory)
       set({ directory, activeSessionID: null, projectPickerOpen: false })
       const last = lsGet(LS_SESSION + directory)
       const sessions = selectProjectSessions(get(), directory)
@@ -1147,6 +1151,7 @@ export const useCode = create<CodeState>((set, get) => {
       // inicia el motor en esa carpeta) si son de confianza.
       const all = openDirs(s)
       const others = all.filter((d) => !sameDir(d, s.directory ?? '') && s.isTrusted(d))
+      for (const d of others) setVerifying(d, true) // hasta que cada una se verifique, nada les pasa el foco
       // Antes de que el motor cargue cada carpeta se escanea (una a una: si trae algo nuevo, se repregunta); si no se acepta, no se carga.
       const { verifyTrustedFolder } = await import('./trust')
       const ok: string[] = []
@@ -1160,7 +1165,7 @@ export const useCode = create<CodeState>((set, get) => {
       get().closeOneProject(directory)
       const after = get()
       // `closeOneProject` pasa el foco a otro abierto: si tampoco es de confianza, no se le da el foco sin preguntar.
-      if (after.directory && !after.isTrusted(after.directory)) {
+      if (after.directory && (!after.isTrusted(after.directory) || isVerifying(after.directory))) {
         writeOpenProjects(openDirs(after), null)
         set({ directory: null, activeSessionID: null })
       }

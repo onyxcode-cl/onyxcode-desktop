@@ -40,6 +40,16 @@ export function setFolderMcp(dir: string, scan: Pick<ProjectScanResult, 'items' 
   folderMcp.set(dirKey(dir), { servers, askAll: !scan.complete })
 }
 
+/** Carpetas de confianza cuya verificación (escaneo y, si hace falta, re-pregunta) aún no termina: ninguna ruta les pasa el foco. */
+const verifying = new Set<string>()
+export function setVerifying(dir: string, on: boolean): void {
+  if (on) verifying.add(dirKey(dir))
+  else verifying.delete(dirKey(dir))
+}
+export function isVerifying(dir: string): boolean {
+  return verifying.has(dirKey(dir))
+}
+
 export function clearFolderMcp(dir: string): void {
   folderMcp.delete(dirKey(dir))
 }

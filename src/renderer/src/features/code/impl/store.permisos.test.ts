@@ -271,3 +271,14 @@ describe('comandos `/…` y reglas de proyecto', () => {
     expect(command).not.toHaveBeenCalled()
   })
 })
+
+describe('doSend y reglas de proyecto: falla cerrado en todos los modos', () => {
+  it('en Automático, si no se pueden fijar las reglas, NO se envía', async () => {
+    const { promptAsync } = install({ updateFails: true })
+    apply(sessionCreated(makeSession('s1', D)))
+    useCode.setState({ activeSessionID: 's1', permissionMode: 'auto' })
+    const ok = await st().send('hola', [])
+    expect(ok).toBe(false)
+    expect(promptAsync).not.toHaveBeenCalled()
+  })
+})

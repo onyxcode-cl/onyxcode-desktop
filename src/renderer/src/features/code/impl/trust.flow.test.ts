@@ -208,18 +208,56 @@ describe('RI2: diálogos reemplazados, cancelar sin foco, foco a carpeta sin con
     st().trustFolder(dir, { huella: r.huella, ids: r.items.map((i) => i.id) })
   }
 
-  it('una re-pregunta tapada por otro diálogo cuenta como Cancelar: pierde la confianza y no queda «verificada»', async () => {
+  it('una re-pregunta NO se cancela porque llegue otro diálogo: espera su turno en la cola', async () => {
     trustedWith(B)
     scan.mockResolvedValue(withNew())
     const first = t.verifyTrustedFolder(B)
     await flush()
     scan.mockResolvedValue(result([]))
-    const second = t.ensureTrusted(A) // carpeta nueva: reemplaza el diálogo de B
-    await expect(first).resolves.toBe(false)
-    expect(st().isTrusted(B)).toBe(false)
-    expect(t.isFolderVerified(B)).toBe(false)
+    const second = t.ensureTrusted(A) // carpeta nueva: espera detrás de la re-pregunta de B
+    await flush()
+    expect(st().isTrusted(B)).toBe(true)
+    t.resolveTrust(true) // se responde la de B
+    await expect(first).resolves.toBe(true)
+    expect(t.isFolderVerified(B)).toBe(true)
+    await flush()
+    t.resolveTrust(false) // ahora el de A
+    await expect(second).resolves.toBe(false)
+  })
+
+  it('arranque con DOS re-preguntas (la enfocada y otra): salen una a una, ninguna pierde la confianza sola y el foco no pasa a la que espera', async () => {
+    const F = '/work/f'
+    trustedWith(F)
+    trustedWith(B)
+    useCode.setState({ directory: F, openDirectories: [F, B] })
+    scan.mockResolvedValue(withNew())
+    const pf = t.openProjectTrusted(F, { passive: true })
+    const rb = st().restoreOpenProjects()
+    await flush()
+    await flush()
+    expect(st().isTrusted(F)).toBe(true)
+    expect(st().isTrusted(B)).toBe(true)
+    // Cancelar la de F: se cierra y el foco NO pasa a B (aún sin aceptar).
     t.resolveTrust(false)
-    await second
+    await expect(pf).resolves.toBe(false)
+    expect(st().isTrusted(F)).toBe(false)
+    expect(st().directory).not.toBe(B)
+    await flush()
+    t.resolveTrust(true) // ahora la de B
+    await rb
+    expect(st().isTrusted(B)).toBe(true)
+    expect(t.isFolderVerified(B)).toBe(true)
+  })
+
+  it('verificar dos veces a la vez la misma carpeta comparte el diálogo (una sola pregunta)', async () => {
+    trustedWith(B)
+    scan.mockResolvedValue(withNew())
+    const one = t.verifyTrustedFolder(B)
+    const two = t.verifyTrustedFolder(B)
+    await flush()
+    t.resolveTrust(true)
+    await expect(one).resolves.toBe(true)
+    await expect(two).resolves.toBe(true)
   })
 
   it('«escaneada» no es «aceptada»: verifyTrustedFolder vuelve a verificar una carpeta escaneada pero sin aceptar', async () => {
