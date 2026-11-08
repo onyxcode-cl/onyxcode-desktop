@@ -15,11 +15,11 @@ export function sameRuleset(a: PermissionRuleset | undefined, b: PermissionRules
 
 /**
  * Lo que el último escaneo (lectura de disco, antes de abrir la carpeta) dice de sus conectores. Solo en memoria: se vuelve a llenar cada
- * vez que se abre o se restaura la carpeta (`trust.ts`). Sin registro = esa carpeta no se escaneó (comportamiento de siempre).
+ * vez que se abre o se restaura la carpeta (`trust.ts`). Sin registro = esa carpeta no se escaneó en esta ejecución: falla cerrado (`projectAskRules`).
  */
 export interface FolderMcpState {
   /** Conectores de la carpeta: nombre, clave de permiso (`<servidor>_*`) y si redefinen uno que la app o la persona ya tienen. */
-  servers: Array<{ name: string; key: string; overrides: boolean }>
+  servers: Array<{ name: string; trustName?: string; key: string; overrides: boolean }>
   /** Hay algo que no se pudo enumerar (archivo roto, enlace fuera, tope, escaneo fallido): la regla cubre CUALQUIER conector. */
   askAll: boolean
 }
@@ -35,7 +35,7 @@ export function setFolderMcp(dir: string, scan: Pick<ProjectScanResult, 'items' 
   }
   const servers: FolderMcpState['servers'] = []
   for (const i of scan.items) {
-    if (i.kind === 'mcp' && i.mcpKey) servers.push({ name: i.name, key: i.mcpKey, overrides: !!i.overrides })
+    if (i.kind === 'mcp' && i.mcpKey) servers.push({ name: i.name, trustName: i.trustName, key: i.mcpKey, overrides: !!i.overrides })
   }
   folderMcp.set(dirKey(dir), { servers, askAll: !scan.complete })
 }
@@ -58,11 +58,13 @@ export function folderMcpOf(dir: string): FolderMcpState | undefined {
  * Orden estable (por clave) para que `sessionHasRuleset` no reenvíe sin motivo.
  */
 export function projectAskRules(state: FolderMcpState | undefined, trusted: readonly string[]): PermissionRuleLike[] {
-  if (!state) return []
+  // Carpeta que no se escaneó en esta ejecución (restaurada al arrancar, abierta desde la barra…): falla cerrado, todo conector pregunta.
+  if (!state) return [{ permission: '*_*', pattern: '*', action: 'ask' }]
   const trustedNames = new Set(trusted)
   const keys = new Set<string>()
   for (const s of state.servers) {
-    if (!s.overrides && trustedNames.has(s.name)) continue
+    // La confianza se decide con el nombre CRUDO (`trustName`); `name` está saneado solo para mostrar y no sirve para esto.
+    if (!s.overrides && s.trustName !== undefined && trustedNames.has(s.trustName)) continue
     keys.add(s.key)
   }
   const rules: PermissionRuleLike[] = [...keys].sort().map((k) => ({ permission: k, pattern: '*', action: 'ask' as const }))

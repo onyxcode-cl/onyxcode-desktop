@@ -244,9 +244,13 @@ function TrustDialog(): React.JSX.Element | null {
   const t = useT()
   const p = usePendingTrust()
   const confirmRef = useRef<HTMLButtonElement>(null)
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  const scanning = p?.scanning ?? false
+  const pendingDir = p?.dir ?? null
   useEffect(() => {
-    if (!p) return
-    confirmRef.current?.focus()
+    if (!pendingDir) return
+    // Mientras se revisa la carpeta el foco queda en «Cancelar» (un Intro no puede confiar antes de ver la lista); al terminar pasa a «Confiar».
+    ;(scanning ? cancelRef : confirmRef).current?.focus()
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -255,7 +259,7 @@ function TrustDialog(): React.JSX.Element | null {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [p])
+  }, [pendingDir, scanning])
   if (!p) return null
   const hasList = p.items.length > 0
   return (
@@ -276,7 +280,11 @@ function TrustDialog(): React.JSX.Element | null {
         <p className="mt-1.5 flex min-w-0 font-mono text-xs text-subtle desk:text-meta" title={p.dir}>
           <MidPath path={p.dir} />
         </p>
-        {hasList ? (
+        {scanning ? (
+          <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
+            {t('code.trust.scanning')}
+          </p>
+        ) : hasList ? (
           <TrustItemList p={p} />
         ) : (
           <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
@@ -285,6 +293,7 @@ function TrustDialog(): React.JSX.Element | null {
         )}
         <div className="mt-4 flex justify-end gap-2 desk:mt-6">
           <button
+            ref={cancelRef}
             type="button"
             onClick={() => resolveTrust(false)}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:bg-elevated desk:text-fg desk:shadow-raised desk:hover:bg-hover"
@@ -294,8 +303,9 @@ function TrustDialog(): React.JSX.Element | null {
           <button
             ref={confirmRef}
             type="button"
+            disabled={scanning}
             onClick={() => resolveTrust(true)}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
+            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg disabled:opacity-50 hover:opacity-90 desk:h-10 desk:px-4 desk:py-0 desk:rounded-[10px] desk:hover:opacity-100 desk:hover:bg-accent-hover"
           >
             {t(p.again ? 'code.trust.confirmAgain' : 'code.trust.confirm')}
           </button>

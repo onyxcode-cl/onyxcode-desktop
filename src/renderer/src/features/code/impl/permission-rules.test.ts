@@ -26,6 +26,7 @@ const scanWith = (names: string[], complete = true): Pick<ProjectScanResult, 'it
     id: n,
     kind: 'mcp',
     name: n,
+    trustName: n,
     mcpKey: `${n}_*`,
     where: 'opencode.json',
     risky: true
@@ -33,27 +34,36 @@ const scanWith = (names: string[], complete = true): Pick<ProjectScanResult, 'it
 })
 
 describe('projectAskRules', () => {
-  it('sin escaneo (carpeta no abierta todavía): sin reglas', () => {
-    expect(pr.projectAskRules(undefined, [])).toEqual([])
+  it('sin escaneo en esta ejecución: falla cerrado, todo conector pregunta', () => {
+    expect(pr.projectAskRules(undefined, [])).toEqual([{ permission: '*_*', pattern: '*', action: 'ask' }])
   })
 
   it('un conector de la carpeta: una regla ask con SU clave, no un `*_*` general', () => {
-    const rules = pr.projectAskRules({ servers: [{ name: 'crm', key: 'crm_*', overrides: false }], askAll: false }, [])
+    const rules = pr.projectAskRules({ servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: false }], askAll: false }, [])
     expect(rules).toEqual([{ permission: 'crm_*', pattern: '*', action: 'ask' }])
   })
 
   it('conector marcado de confianza en Ajustes: sin regla (no pregunta)', () => {
-    const rules = pr.projectAskRules({ servers: [{ name: 'crm', key: 'crm_*', overrides: false }], askAll: false }, ['crm'])
+    const rules = pr.projectAskRules({ servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: false }], askAll: false }, [
+      'crm'
+    ])
     expect(rules).toEqual([])
   })
 
   it('conector de confianza que esta carpeta REDEFINE (mismo nombre): pregunta siempre, aunque esté en la lista de confianza', () => {
-    const rules = pr.projectAskRules({ servers: [{ name: 'crm', key: 'crm_*', overrides: true }], askAll: false }, ['crm'])
+    const rules = pr.projectAskRules({ servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: true }], askAll: false }, [
+      'crm'
+    ])
     expect(rules).toEqual([{ permission: 'crm_*', pattern: '*', action: 'ask' }])
   })
 
+  it('la confianza se decide con el nombre CRUDO: un nombre que solo se ve igual (sin trustName) pregunta aunque el mostrado esté en la lista', () => {
+    const rules = pr.projectAskRules({ servers: [{ name: 'github', key: 'github__*', overrides: false }], askAll: false }, ['github'])
+    expect(rules).toEqual([{ permission: 'github__*', pattern: '*', action: 'ask' }])
+  })
+
   it('escaneo incompleto (archivo roto, enlace fuera, tope): `*_*: ask` como red de seguridad, delante de las demás', () => {
-    const rules = pr.projectAskRules({ servers: [{ name: 'crm', key: 'crm_*', overrides: false }], askAll: true }, [])
+    const rules = pr.projectAskRules({ servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: false }], askAll: true }, [])
     expect(rules).toEqual([
       { permission: '*_*', pattern: '*', action: 'ask' },
       { permission: 'crm_*', pattern: '*', action: 'ask' }
@@ -78,7 +88,7 @@ describe('projectAskRules', () => {
 describe('setFolderMcp / clearFolderMcp / folderMcpOf', () => {
   it('guarda el escaneo y lo relee por carpeta (normaliza la barra final)', () => {
     pr.setFolderMcp('/p/a', scanWith(['crm']))
-    expect(pr.folderMcpOf('/p/a')).toEqual({ servers: [{ name: 'crm', key: 'crm_*', overrides: false }], askAll: false })
+    expect(pr.folderMcpOf('/p/a')).toEqual({ servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: false }], askAll: false })
     expect(pr.folderMcpOf('/p/a/')).toEqual(pr.folderMcpOf('/p/a'))
   })
 
@@ -87,11 +97,11 @@ describe('setFolderMcp / clearFolderMcp / folderMcpOf', () => {
     expect(pr.folderMcpOf('/p/b')).toEqual({ servers: [], askAll: true })
   })
 
-  it('clearFolderMcp quita el registro (vuelve a `undefined`, sin reglas)', () => {
+  it('clearFolderMcp quita el registro (vuelve a `undefined`: sin escaneo, falla cerrado)', () => {
     pr.setFolderMcp('/p/c', scanWith(['x']))
     pr.clearFolderMcp('/p/c')
     expect(pr.folderMcpOf('/p/c')).toBeUndefined()
-    expect(pr.projectAskRules(pr.folderMcpOf('/p/c'), [])).toEqual([])
+    expect(pr.projectAskOf('/p/c')).toEqual([{ permission: '*_*', pattern: '*', action: 'ask' }])
   })
 })
 
@@ -131,5 +141,60 @@ describe('rulesetFor con reglas de proyecto: sigue terminando en el bloque del m
 
   it('sin reglas de proyecto, el bloque es exactamente el de antes (compatibilidad)', () => {
     expect(pr.rulesetFor('manual')).toEqual(pr.rulesetFor('manual', undefined, []))
+  })
+})
+
+/**
+ * Evaluación con la semántica REAL del motor 1.19 (`evaluate`): gana la ÚLTIMA regla que casa por permiso y patrón con comodín
+ * (`*` casa todo, `?` un carácter, `\` cuenta como `/`); si ninguna casa, el valor por defecto es `ask`. Se usa el mismo comparador que la app
+ * copia del motor (`wildcardMatch`). Las reglas del agente `build` (`'*': allow`) van ANTES de las de la sesión.
+ */
+describe('evaluación con la semántica del motor (la última que casa gana)', () => {
+  type Rule = { permission: string; pattern: string; action: 'allow' | 'ask' | 'deny' }
+  const BUILD: Rule[] = [{ permission: '*', pattern: '*', action: 'allow' }]
+  const modes = ['manual', 'acceptEdits', 'plan', 'auto', 'bypass'] as const
+
+  // Mismo comparador que el motor 1.19 (`Wildcard.match`), copia de `wildcardMatch` en main: `*` cualquier cosa, `?` un carácter, `\` como `/`, " *" final opcional.
+  function wildcardMatch(str: string, pattern: string): boolean {
+    const text = str.replaceAll('\\', '/')
+    let p = pattern
+      .replaceAll('\\', '/')
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '.*')
+      .replace(/\?/g, '.')
+    if (p.endsWith(' .*')) p = p.slice(0, -3) + '( .*)?'
+    return new RegExp('^' + p + '$', 's').test(text)
+  }
+
+  async function evaluate(permission: string, pattern: string, rules: readonly Rule[]): Promise<string> {
+    let action = 'ask'
+    for (const r of rules) if (wildcardMatch(permission, r.permission) && wildcardMatch(pattern, r.pattern)) action = r.action
+    return action
+  }
+
+  it('la herramienta de un conector de la carpeta pregunta en los cinco modos, también en «Todo sin preguntar»', async () => {
+    const ask = pr.projectAskRules({ servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: false }], askAll: false }, [])
+    for (const mode of modes) {
+      const session = pr.rulesetFor(mode, undefined, ask) as unknown as Rule[]
+      expect(await evaluate('crm_buscar', '*', [...BUILD, ...session]), mode).toBe('ask')
+    }
+  })
+
+  it('sin la regla de proyecto (conector de confianza) el agente `build` lo deja pasar: por eso la exclusión solo vale con nombre crudo', async () => {
+    const session = pr.rulesetFor('auto', undefined, []) as unknown as Rule[]
+    expect(await evaluate('crm_buscar', '*', [...BUILD, ...session])).toBe('allow')
+  })
+
+  it('el respaldo `*_*` cubre cualquier conector, pero los permisos del bloque del modo siguen mandando', async () => {
+    const ask = pr.projectAskRules(undefined, [])
+    const session = pr.rulesetFor('bypass', undefined, ask) as unknown as Rule[]
+    expect(await evaluate('otro_x', '*', [...BUILD, ...session])).toBe('ask')
+    expect(await evaluate('bash', 'ls', [...BUILD, ...session])).toBe('allow') // bypass lo permite: el bloque del modo va después
+    expect(await evaluate('external_directory', '/tmp/x', [...BUILD, ...session])).toBe('allow')
+  })
+
+  it('una ruta con `\\` casa como con `/` (Windows)', async () => {
+    const rules: Rule[] = [{ permission: 'edit', pattern: 'a/*/c.txt', action: 'deny' }]
+    expect(await evaluate('edit', 'a\\b\\c.txt', rules)).toBe('deny')
   })
 })

@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react'
 import type { ProjectScanItem, ProjectScanResult } from '@shared/ipc-code'
 import { nativeCode } from './client'
-import { clearFolderMcp, setFolderMcp } from './permission-rules'
+import { folderMcpOf, setFolderMcp } from './permission-rules'
 import { useCode, type TrustedScan } from './store'
 import { ensureFolderReadable } from './folder-access'
 
@@ -22,8 +22,12 @@ export interface PendingTrust {
   scan: ProjectScanResult | null
   /** Elementos a listar en el diálogo (todo, o solo lo nuevo si la carpeta ya era de confianza). */
   items: ProjectScanItem[]
-  /** La carpeta YA era de confianza: esto es una re-pregunta porque trajo algo nuevo. */
+  /** La carpeta YA era de confianza y tenemos lo visto antes: esto es una re-pregunta porque trajo algo nuevo. */
   again: boolean
+  /** La carpeta ya era de confianza (con o sin huella guardada): cancelar le quita la confianza. */
+  wasTrusted: boolean
+  /** El escaneo sigue en curso: se muestra «Revisando…» y no se puede confiar todavía. */
+  scanning: boolean
 }
 
 let pendingTrustResolve: ((trust: boolean) => void) | null = null
@@ -48,15 +52,27 @@ export function usePendingTrust(): PendingTrust | null {
   return p
 }
 
-/** Lee qué trae la carpeta. `null` si no hay API nativa (pruebas, celular sin motor) o la lectura falla: nunca lanza. */
-async function scanFolder(dir: string): Promise<ProjectScanResult | null> {
+/** Plazo del escaneo en el renderer (main corta a los ~2,8 s y devuelve lo reunido como incompleto; esto cubre un main colgado). */
+export const SCAN_TIMEOUT_MS = 3500
+const inflight = new Map<string, Promise<ProjectScanResult | null>>()
+
+/** Lee qué trae la carpeta. `null` si no hay API nativa (pruebas, celular sin motor), la lectura falla o vence el plazo: nunca lanza ni cuelga. */
+function scanFolder(dir: string): Promise<ProjectScanResult | null> {
   const native = nativeCode()
-  if (!native || typeof native.project?.scan !== 'function') return null
-  try {
-    return await native.project.scan(dir)
-  } catch {
-    return null
-  }
+  if (!native || typeof native.project?.scan !== 'function') return Promise.resolve(null)
+  const have = inflight.get(dir)
+  if (have) return have
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const guard = new Promise<null>((res) => {
+    timer = setTimeout(() => res(null), SCAN_TIMEOUT_MS)
+  })
+  const run = native.project.scan(dir).catch(() => null)
+  const p = Promise.race([run, guard]).finally(() => {
+    clearTimeout(timer)
+    inflight.delete(dir)
+  })
+  inflight.set(dir, p)
+  return p
 }
 
 const scanToTrustedScan = (scan: ProjectScanResult): TrustedScan => ({ huella: scan.huella, ids: scan.items.map((i) => i.id) })
@@ -68,23 +84,25 @@ const scanToTrustedScan = (scan: ProjectScanResult): TrustedScan => ({ huella: s
  */
 export function ensureTrusted(dir: string): Promise<boolean> {
   if (useCode.getState().isTrusted(dir)) return ensureTrustedAgain(dir)
-  // Carpeta nueva: se pregunta de inmediato, SIN esperar el escaneo (que puede tardar hasta ~3 s en una carpeta de red). Mientras tanto
-  // las reglas de esta sesión preguntan por CUALQUIER conector (falla cerrado); el escaneo llega después y afina el diálogo y las reglas.
+  // Carpeta nueva: se pregunta de inmediato, SIN esperar el escaneo (hasta ~3 s en una carpeta de red). Mientras tanto «Confiar» no se puede
+  // pulsar y las reglas de esta sesión preguntan por CUALQUIER conector (falla cerrado); el escaneo llega después y afina el diálogo y las reglas.
   setFolderMcp(dir, null)
-  const promise = showDialog(dir, null, [], false)
+  const promise = showDialog({ dir, scan: null, items: [], again: false, wasTrusted: false, scanning: true })
   void scanFolder(dir).then((scan) => {
     setFolderMcp(dir, scan)
     // Solo si el diálogo sigue abierto y es el de esta MISMA carpeta (si ya se resolvió, o es otra carpeta, no se toca).
-    if (pendingTrust && pendingTrust.dir === dir) setPendingTrust({ dir, scan, items: scan ? scan.items : [], again: false })
+    if (pendingTrust && pendingTrust.dir === dir) {
+      setPendingTrust({ dir, scan, items: scan ? scan.items : [], again: false, wasTrusted: false, scanning: false })
+    }
   })
   return promise
 }
 
-/** Carpeta ya de confianza: se escanea antes de decidir (sin dialogo visible mientras tanto) si hace falta repreguntar. */
+/** Carpeta ya de confianza: se escanea antes de decidir (sin diálogo visible mientras tanto) si hace falta repreguntar. */
 async function ensureTrustedAgain(dir: string): Promise<boolean> {
   const scan = await scanFolder(dir)
   setFolderMcp(dir, scan)
-  if (!scan) return true // no se pudo revisar ahora: no se bloquea (las reglas quedan en `askAll`, falla cerrado)
+  if (!scan) return true // no se pudo revisar ahora (o venció el plazo): no se bloquea; las reglas quedan en `askAll` (falla cerrado)
   const prev = useCode.getState().trustedScans[dir]
   if (prev && prev.huella === scan.huella) return true
   // Confianza vieja sin huella (versión anterior) o huella distinta: solo repregunta si hay algo NUEVO que valga la pena ver.
@@ -96,15 +114,25 @@ async function ensureTrustedAgain(dir: string): Promise<boolean> {
     useCode.getState().trustFolder(dir, scanToTrustedScan(scan))
     return true
   }
-  return showDialog(dir, scan, toShow, true)
+  return showDialog({ dir, scan, items: toShow, again: !!prev, wasTrusted: true, scanning: false })
 }
 
-function showDialog(dir: string, scan: ProjectScanResult | null, items: ProjectScanItem[], again: boolean): Promise<boolean> {
+/**
+ * Para las vías que cargan una carpeta de confianza sin pasar por `openProjectTrusted` (restaurar al arrancar, dar el foco desde la barra):
+ * escanea y, si trae algo nuevo, repregunta. Si la persona no lo acepta, la carpeta pierde la confianza y NO se carga. `true` = se puede cargar.
+ */
+export async function verifyTrustedFolder(dir: string): Promise<boolean> {
+  if (!useCode.getState().isTrusted(dir)) return true // las no confiadas ya piden confirmación al entrar
+  if (folderMcpOf(dir) !== undefined) return true // ya se escaneó en esta ejecución
+  return ensureTrustedAgain(dir)
+}
+
+function showDialog(p: PendingTrust): Promise<boolean> {
   pendingTrustResolve?.(false)
   pendingTrustResolve = null
   return new Promise<boolean>((resolve) => {
     pendingTrustResolve = resolve
-    setPendingTrust({ dir, scan, items, again })
+    setPendingTrust(p)
   })
 }
 
@@ -117,8 +145,12 @@ export function resolveTrust(trust: boolean): void {
     if (p.scan) useCode.getState().trustFolder(p.dir, scanToTrustedScan(p.scan))
     else useCode.getState().trustFolder(p.dir)
   } else if (!trust && p) {
-    // No confió: las reglas de esta carpeta no se guardan con lo que trajo este escaneo (se repite igual al reintentar).
-    clearFolderMcp(p.dir)
+    // Cancelar NO suelta las reglas de la carpeta (siguen preguntando los conectores), y si ya era de confianza se la quita: así ninguna vía
+    // (restaurar, barra lateral) la vuelve a cargar sin pedir confirmación, y si tenía el foco se cierra.
+    if (p.wasTrusted) {
+      useCode.getState().untrustFolder(p.dir)
+      useCode.getState().declineFocusedProject(p.dir)
+    }
   }
   resolve?.(trust)
 }

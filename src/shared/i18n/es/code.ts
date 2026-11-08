@@ -290,6 +290,7 @@ export const code = {
     'El agente podrá leer, escribir y ejecutar archivos dentro de esta carpeta. Solo confía en carpetas cuyo contenido conoces.',
   'code.trust.bodyWith': 'Esta carpeta trae lo siguiente. Revísalo antes de confiar en ella:',
   'code.trust.bodyAgain': 'Ya confías en esta carpeta, pero desde la última vez trae algo nuevo:',
+  'code.trust.scanning': 'Revisando qué trae la carpeta…',
   'code.trust.bodyUnknown': 'No se pudo revisar qué trae esta carpeta.',
   'code.trust.confirm': 'Confiar y continuar',
   'code.trust.confirmAgain': 'Entendido, continuar',

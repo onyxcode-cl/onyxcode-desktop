@@ -7,7 +7,7 @@
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { projectAskOf, rulesetForState, sessionHasRuleset } from './permission-rules'
+import { folderMcpOf, projectAskOf, rulesetForState, sessionHasRuleset } from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -384,6 +384,8 @@ export interface CodeState {
   isTrusted: (dir: string) => boolean
   /** Marca la carpeta de confianza. Con `scan` guarda también lo que se vio (si ya era de confianza, lo actualiza). */
   trustFolder: (dir: string, scan?: TrustedScan) => void
+  /** Quita la confianza (y lo visto) de la carpeta: vuelve a pedir confirmación al entrar. */
+  untrustFolder: (dir: string) => void
 
   // -- No leído --
   markRead: (sessionID: string) => void
@@ -1122,6 +1124,13 @@ export const useCode = create<CodeState>((set, get) => {
     focusProject: async (directory) => {
       const s = get()
       if (!isOpenDir(s, directory) || sameDir(s.directory ?? '', directory)) return
+      // Carpeta de confianza que no pasó por `openProjectTrusted` en esta ejecución: se escanea (y, si trae algo nuevo, se repregunta) ANTES de darle el foco.
+      if (
+        s.isTrusted(directory) &&
+        folderMcpOf(directory) === undefined &&
+        !(await (await import('./trust')).verifyTrustedFolder(directory))
+      )
+        return
       touchFocus(directory)
       writeOpenProjects(openDirs(s), directory)
       set({ directory, activeSessionID: null, projectPickerOpen: false })
@@ -1138,7 +1147,11 @@ export const useCode = create<CodeState>((set, get) => {
       // inicia el motor en esa carpeta) si son de confianza.
       const all = openDirs(s)
       const others = all.filter((d) => !sameDir(d, s.directory ?? '') && s.isTrusted(d))
-      await Promise.all(others.map((d) => get().loadSessions(d)))
+      // Antes de que el motor cargue cada carpeta se escanea (una a una: si trae algo nuevo, se repregunta); si no se acepta, no se carga.
+      const { verifyTrustedFolder } = await import('./trust')
+      const ok: string[] = []
+      for (const d of others) if (await verifyTrustedFolder(d)) ok.push(d)
+      await Promise.all(ok.map((d) => get().loadSessions(d)))
     },
 
     declineFocusedProject: (directory) => {
@@ -1875,6 +1888,18 @@ export const useCode = create<CodeState>((set, get) => {
           lsSetJSON(LS_TRUSTED_SCANS, patch.trustedScans)
         }
         return Object.keys(patch).length ? patch : s
+      })
+    },
+
+    untrustFolder: (dir) => {
+      set((s) => {
+        if (!s.trustedFolders.includes(dir) && !s.trustedScans[dir]) return s
+        const trustedFolders = s.trustedFolders.filter((d) => d !== dir)
+        const { [dir]: _gone, ...trustedScans } = s.trustedScans
+        void _gone
+        lsSetJSON(LS_TRUSTED, trustedFolders)
+        lsSetJSON(LS_TRUSTED_SCANS, trustedScans)
+        return { trustedFolders, trustedScans }
       })
     },
 

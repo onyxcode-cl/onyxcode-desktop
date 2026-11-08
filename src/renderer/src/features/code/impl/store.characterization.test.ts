@@ -37,6 +37,8 @@ beforeEach(async () => {
   ;({ useCode } = await import('./store'))
   ;({ useServer } = await import('../../../stores/server'))
   useCode.setState({ directory: D })
+  // Carpeta ya escaneada y sin conectores: sin esto las reglas de sesión caen en el respaldo «preguntar por cualquier conector» (W-A2).
+  ;(await import('./permission-rules')).setFolderMcp(D, { items: [], complete: true })
 })
 
 const st = (): ReturnType<Store['useCode']['getState']> => useCode.getState()

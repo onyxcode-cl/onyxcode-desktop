@@ -292,6 +292,7 @@ export const code = {
   'code.trust.body': 'The agent will be able to read, write and run files inside this folder. Only trust folders whose contents you know.',
   'code.trust.bodyWith': 'This folder brings the following. Review it before trusting it:',
   'code.trust.bodyAgain': 'You already trust this folder, but since last time it brings something new:',
+  'code.trust.scanning': 'Checking what the folder brings…',
   'code.trust.bodyUnknown': 'What this folder brings could not be checked.',
   'code.trust.confirm': 'Trust and continue',
   'code.trust.confirmAgain': 'Got it, continue',
