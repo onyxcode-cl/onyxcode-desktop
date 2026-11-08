@@ -14,6 +14,9 @@ import {
 
 /** Simulador del motor 1.19.0 (verificado en el motor real): comodines en permiso y patrón, gana la ÚLTIMA regla; sin coincidencia, pregunta. */
 function wild(text: string, pattern: string): boolean {
+  // Como el motor: las barras invertidas de Windows se normalizan a «/» antes de comparar (y se distingue mayúsculas de minúsculas).
+  text = text.replace(/\\/g, '/')
+  pattern = pattern.replace(/\\/g, '/')
   let re = '^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$'
   if (re.endsWith(' .*$')) re = re.slice(0, -4) + '( .*)?$'
   return new RegExp(re, 's').test(text)
@@ -351,6 +354,25 @@ describe('1.8.12: cierre de R1 y R4', () => {
     expect(evaluate('edit', 'src/a.ts', BUILD, rules)).toBe('allow')
   })
 
+  it('Automático: opencode.json con barras de Windows o dentro de .opencode/ también pregunta', () => {
+    for (const mode of ['acceptEdits', 'auto'] as const) {
+      const rules = rulesetForMode(mode)
+      for (const p of ['sub\\opencode.json', 'a\\b\\opencode.jsonc', '.opencode/opencode.json']) {
+        expect(evaluate('edit', p, BUILD, rules), `${mode} edit ${p}`).toBe('ask')
+        expect(evaluate('write', p, BUILD, rules), `${mode} write ${p}`).toBe('ask')
+      }
+    }
+  })
+
+  // RESIDUAL CONOCIDO (pendiente en el motor, lazunox.15): el comodín distingue mayúsculas y APFS/NTFS no, así que estas rutas llegan al
+  // mismo archivo y hoy NO preguntan desde la app. Esta prueba documenta el hueco: cuando el motor lo cubra, se cambia a 'ask'.
+  it.each(['OPENCODE.JSON', 'OpenCode.json', 'sub/Opencode.jsonc'])(
+    'residual conocido: «%s» no se puede cubrir desde la app (distingue mayúsculas)',
+    (p) => {
+      expect(evaluate('write', p, BUILD, rulesetForMode('auto'))).toBe('allow')
+    }
+  )
+
   it('«Solo explorar»: la web pregunta', () => {
     const rules = rulesetForMode('plan')
     expect(evaluate('webfetch', 'https://example.com', BUILD, rules)).toBe('ask')
@@ -412,5 +434,41 @@ describe('1.8.12: cierre de R1 y R4', () => {
       a('task', '*', 'allow')
     ]
     expect(approvalKindOf(viejo)).toBeNull()
+  })
+})
+
+// RI de W-A1 (hallazgo 2): en Comparar el motor permite `git log*`/`git diff*`; las opciones que escriben o ejecutan deben preguntar.
+describe('git con opciones que escriben o ejecutan', () => {
+  const RIESGOSOS = [
+    'git log -1 --output=.git/config',
+    'git log --output opencode.json',
+    'git diff --out=x',
+    'git log --ext-diff',
+    'git diff --textconv',
+    'git status -c core.fsmonitor=touch',
+    'git -c core.fsmonitor=touch status',
+    'git log -C /tmp',
+    'git diff --git-dir=/tmp/x',
+    'git status --work-tree=/tmp',
+    'git log -ofoo'
+  ]
+  it.each(RIESGOSOS)('Comparar: «%s» pregunta (el motor no la deja pasar)', (c) => {
+    expect(evaluate('bash', c, BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('ask')
+  })
+  it.each(RIESGOSOS)('Automático: «%s» no la aprueba sola la app', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(false)
+    expect(isAutoApprovableCommand('plan', c)).toBe(false)
+  })
+  it.each(['git status', 'git status -s', 'git diff HEAD~1', 'git log --oneline -5', 'git log --stat', 'git diff --color'])(
+    'Comparar sigue pudiendo leer: «%s» pasa sin tarjeta',
+    (c) => {
+      expect(evaluate('bash', c, BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('allow')
+      expect(isAutoApprovableCommand('auto', c)).toBe(true)
+    }
+  )
+  it('Comparar: npm sigue pidiendo tarjeta (rulesetFor de Comparar usa este mismo bloque)', () => {
+    const r = rulesetForMode('auto', { engineAllowReadOnly: true })
+    expect(evaluate('bash', 'npm test', BUILD, r)).toBe('ask')
+    expect(evaluate('bash', 'npm run build', BUILD, r)).toBe('ask')
   })
 })

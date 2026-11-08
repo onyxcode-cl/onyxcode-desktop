@@ -121,7 +121,7 @@ export const code = {
   'code.mode.plan.short': 'Explorar',
   'code.mode.auto': 'Automático',
   'code.mode.auto.hint':
-    'Edita y lee sin preguntar y deja pasar comandos de solo lectura (ls, git status…); los demás comandos, incluidas las pruebas, te los pregunta',
+    'Edita y lee sin preguntar y deja pasar comandos de solo lectura (ls, git status…); los demás comandos (también las pruebas), la web y las carpetas fuera del proyecto te los pregunta',
   'code.mode.auto.short': 'Auto',
   'code.mode.bypass': 'Todo sin preguntar',
   'code.mode.bypass.hint':

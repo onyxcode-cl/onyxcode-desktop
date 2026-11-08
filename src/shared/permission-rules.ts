@@ -55,6 +55,28 @@ const withBoundary = (c: string): RegExp => new RegExp(`^${c.replace(/[.*+?^${}(
 const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
 /** Cualquier cosa que encadene, redirija, sustituya o cambie de línea: el comando deja de ser «uno solo y simple». */
 const SHELL_META = /[><|;&`$\\()\n\r]|--output|--exec/
+/**
+ * Opciones de `git` que escriben archivos, ejecutan programas o cambian dónde/con qué configuración trabaja (1.8.12, RI de W-A1):
+ * `--output=<archivo>` (git acepta abreviaturas: `--out…`), `--ext-diff`, `--textconv`, `-c clave=valor`, `-C <dir>`, `--git-dir`,
+ * `--work-tree`, `--exec-path`, `--config-env`. Con ellas un `git log`/`git diff` «de lectura» puede escribir `.git/config` u `opencode.json`.
+ */
+const GIT_RISKY_LONG = /^--(?:out|ext|text|git-dir|work-tree|exec-path|config-env|namespace)/
+const hasRiskyGitOption = (cmd: string): boolean =>
+  cmd.startsWith('git') && cmd.split(/\s+/).some((t) => GIT_RISKY_LONG.test(t) || /^-[cCo]/.test(t))
+/** Los mismos patrones como reglas del motor (Comparar): van DESPUÉS de las `allow` de git y preguntan (gana la última que casa). */
+const GIT_RISKY_ASK_PATTERNS = [
+  '* --out*',
+  '* --ext*',
+  '* --text*',
+  '* --git-dir*',
+  '* --work-tree*',
+  '* --exec-path*',
+  '* --config-env*',
+  '* --namespace*',
+  '* -c*',
+  '* -C*',
+  '* -o*'
+].map((p) => `git ${p}`)
 
 /**
  * ¿La app puede aprobar sola este comando completo? Solo si es UN comando simple de la lista de solo lectura, sin redirecciones, tuberías,
@@ -65,6 +87,7 @@ export function isAutoApprovableCommand(_kind: ApprovalKind, command: string | u
   if (typeof command !== 'string') return false
   const cmd = command.trim()
   if (!cmd || cmd.length > 500 || SHELL_META.test(cmd)) return false
+  if (hasRiskyGitOption(cmd)) return false
   if (cmd.startsWith('git branch')) return GIT_BRANCH_LIST.test(cmd)
   return READ_ONLY_RES.some((re) => re.test(cmd))
 }
@@ -219,7 +242,13 @@ export function rulesetForMode(
         ...readRules(true),
         rule('bash', '*', 'ask'),
         // Comparar no tiene quién apruebe en la interfaz: allí solo las tres órdenes de lectura de git las permite el propio motor.
-        ...(opts.engineAllowReadOnly ? LEGACY_AUTO_ALLOW.map((p) => rule('bash', p, 'allow')) : approvalMarks()),
+        ...(opts.engineAllowReadOnly
+          ? [
+              ...LEGACY_AUTO_ALLOW.map((p) => rule('bash', p, 'allow')),
+              // Después de los `allow` (gana la última): las opciones de git que escriben o ejecutan preguntan en la tarjeta de Comparar.
+              ...GIT_RISKY_ASK_PATTERNS.map((p) => rule('bash', p, 'ask'))
+            ]
+          : approvalMarks()),
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),
         EXTERNAL_ASK,

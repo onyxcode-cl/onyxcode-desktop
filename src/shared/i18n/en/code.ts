@@ -124,7 +124,7 @@ export const code = {
   'code.mode.plan.short': 'Explore',
   'code.mode.auto': 'Automatic',
   'code.mode.auto.hint':
-    'Edits and reads without asking and lets read-only commands (ls, git status…) through; asks about all other commands, including tests',
+    'Edits and reads without asking and lets read-only commands (ls, git status…) through; asks about all other commands (tests too), the web and folders outside the project',
   'code.mode.auto.short': 'Auto',
   'code.mode.bypass': 'Allow everything',
   'code.mode.bypass.hint':
