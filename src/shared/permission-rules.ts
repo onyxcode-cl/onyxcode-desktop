@@ -6,7 +6,7 @@
  * - Gana la ÚLTIMA regla que coincide (permiso y patrón, ambos con comodines).
  * - En una orden compuesta (`ls && ls > f`, `ls | ls > f`) el motor evalúa cada subcomando POR SEPARADO (una regla `allow` para `ls`
  *   dejó pasar `ls > f` en la prueba original; en el motor 1.19.0 el patrón de una sentencia con redirección incluye la redirección, y un
- *   comodín final como `git log*` la casa: tampoco sirve) Por eso los comandos de solo lectura NO se permiten con reglas del motor: el motor
+ *   comodín final como `git log*` la casa: tampoco sirve). Por eso los comandos de solo lectura NO se permiten con reglas del motor: el motor
  *   pregunta y la app aprueba sola solo si ella misma comprueba el comando completo (`isAutoApprovableCommand`).
  * Cada bloque es AUTOSUFICIENTE: empieza fijando, para cada permiso que la app gestiona, un valor explícito con patrón `*`
  * (anula lo que dejaran bloques anteriores) y recién después añade las excepciones. El resultado para esos permisos solo depende del
@@ -62,6 +62,13 @@ const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
  */
 const SAFE_CHARS = /^[A-Za-z0-9 ._/:=,@%^~+-]+$/
 const BAD_CARET = /(?:^|[^A-Za-z0-9])\^/
+/**
+ * `%` solo dentro de un token `--format=…`, `--pretty=…` o `--date=…` (RI5): con cmd.exe como shell, `%VAR%`/`%VAR:~0,2%` se expanden ANTES de que
+ * git vea el comando y podrían recomponer una opción prohibida partida en trozos. PowerShell (el shell por defecto del motor en Windows:
+ * pwsh → powershell → Git Bash → cmd) no lo hace. Residual (no se puede saber desde esta capa): si alguien configura cmd, cmd también busca
+ * `git.bat` en la carpeta actual antes que en el PATH; allí la aprobación automática no protege.
+ */
+const BAD_PERCENT = (cmd: string): boolean => cmd.split(' ').some((t) => t.includes('%') && !/^--(?:format|pretty|date)=/.test(t))
 /** Mismas búsquedas de siempre (`--output`, `--exec`), sobre el comando sin `^` (defensa en profundidad contra `--o^utput` de cmd). */
 const WRITE_OPTS = /--output|--exec/
 /**
@@ -81,7 +88,7 @@ const hasRiskyGitOption = (cmd: string): boolean =>
 export function isAutoApprovableCommand(_kind: ApprovalKind, command: string | undefined): boolean {
   if (typeof command !== 'string') return false
   const cmd = command.trim()
-  if (!cmd || cmd.length > 500 || !SAFE_CHARS.test(cmd) || BAD_CARET.test(cmd)) return false
+  if (!cmd || cmd.length > 500 || !SAFE_CHARS.test(cmd) || BAD_CARET.test(cmd) || BAD_PERCENT(cmd)) return false
   // Defensa en profundidad: las comprobaciones de opciones miran el comando SIN `^` y sin nada fuera de ASCII (con la lista blanca ya no llegan).
   const plain = cmd.replace(/\^/g, '').replace(/[^\x20-\x7e]/g, '')
   if (WRITE_OPTS.test(plain) || hasRiskyGitOption(plain)) return false
@@ -191,7 +198,11 @@ const withoutLinked = (rules: readonly PermissionRuleLike[]): PermissionRuleLike
 /** Bloque completo de un modo. Siempre una lista (nunca `undefined`): «Solo explorar» también tiene que anular lo que dejó el modo anterior. */
 export function rulesetForMode(
   mode: PermissionModeId,
-  opts: { engineAllowReadOnly?: boolean; linked?: readonly LinkedFolderRule[] } = {}
+  opts: {
+    /** SIN EFECTO desde la 1.8.12 (se conserva solo porque `src/main/compare/engine.ts` aún lo pasa y ese archivo no es de este paquete): Comparar usa el mismo bloque. */
+    engineAllowReadOnly?: boolean
+    linked?: readonly LinkedFolderRule[]
+  } = {}
 ): PermissionRuleLike[] {
   const linked = linkedFolderRules(opts.linked)
   switch (mode) {
@@ -248,9 +259,9 @@ export function rulesetForMode(
         ...EXEC_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
-        // Comparar (`engineAllowReadOnly`) usa el MISMO bloque: antes dejaba que el motor permitiera `git status*`/`git diff*`/`git log*` con
-        // comodín, y ese patrón casa con redirecciones (`git log > f`), `git difftool`, opciones entre comillas, etc. (RI de W-A1). Ahora todo
-        // comando pregunta y la columna de Comparar muestra la tarjeta; el costo es que `git status` también pide permiso allí.
+        // Comparar usa el MISMO bloque (`engineAllowReadOnly` ya no hace nada; antes el motor permitía `git status*`/`git diff*`/`git log*` con comodín,
+        // que casa con redirecciones, `git difftool`, opciones entre comillas…; RI de W-A1). Todo comando pregunta; la columna de Comparar
+        // muestra la tarjeta. Costo: `git status` también pide permiso allí.
         ...approvalMarks(),
         rule('webfetch', '*', 'ask'),
         rule('websearch', '*', 'ask'),

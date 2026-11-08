@@ -427,6 +427,31 @@ describe('1.8.12: cierre de R1 y R4', () => {
 
 // RI de W-A1 (rondas 1 y 2): git con opciones que escriben o ejecutan, comillas, redirecciones, difftool y `.git` como archivo.
 // RI4 de W-A1: lista blanca de caracteres (comillas tipográficas de PowerShell, `^`, ancho completo, control) y `git branch` sin argumentos libres.
+// RI5 de W-A1: `%` solo dentro de --format=/--pretty=/--date= (cmd.exe expande %VAR% antes de que git vea el comando).
+describe('aprobación automática: el % solo en --format/--pretty/--date', () => {
+  it.each([
+    'git log --o%X%put=x',
+    'git log %VAR%',
+    'git log --ou%VAR:~0,2%tput=x',
+    'git log %VAR:~0,2%',
+    'git log %',
+    'git log -%X%-output=x',
+    'git log --format=%h %VAR%',
+    'git log 100%'
+  ])('«%s» NO se aprueba sola', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(false)
+  })
+  it.each([
+    'git log --format=%h',
+    'git log --pretty=format:%h',
+    'git log --date=short',
+    'git log --format=%h -3',
+    'git log --pretty=format:%H%n%s'
+  ])('«%s» sí', (c) => {
+    expect(isAutoApprovableCommand('auto', c)).toBe(true)
+  })
+})
+
 describe('aprobación automática: lista blanca de caracteres y git branch', () => {
   const U = (...c: number[]): string => String.fromCodePoint(...c)
   const MALOS = [
