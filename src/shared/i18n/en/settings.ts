@@ -487,7 +487,7 @@ export const settings = {
     'Off by default. When you change it, the engine restarts once nothing is in progress; editing the hooks while the switch is on does not restart it. They do not apply in the Overdrive sandbox (only in Chat, Code and Overdrive with Full control).',
   'settings.engine.hooks.editorLabel': 'Hooks file (JSON)',
   'settings.engine.hooks.editorHelp':
-    'Events: PreToolUse (before a tool; exit code 2 blocks it), PostToolUse, PreCompact (before the conversation is compacted), PostCompact (after it is compacted; what it prints with exit code 0, up to 4000 characters, is added to the context that is kept) and Stop. “matcher” is a regular expression on the tool name; “timeout” is 1 to 60 seconds. At most 20 hooks per event, a command of up to 2000 characters and 64 KB in total.',
+    'Events: PreToolUse (before a tool; exit code 2 blocks it), PostToolUse (after a tool), PreCompact (before the conversation is compacted), PostCompact (after it is compacted; what it prints with exit code 0, up to 4000 characters, is added to the context that is kept), Stop (when the AI is about to finish; if it returns the decision “block”, it keeps working), SessionStart (when a session starts; what it prints with exit code 0 is added to its instructions), UserPromptSubmit (each message you send; exit code 2 rejects it), SubagentStop (a helper went idle; informational), PostToolUseFailure (a tool failed; informational), PermissionDenied (a rule or a plugin denied a permission; informational), PermissionRequest (before asking you about a permission; the hook can only deny it, never approve it), SubagentStart (a helper starts; informational), Interrupt (you stopped the session; informational) and PostToolBatch (a batch of tools finished; informational). “matcher” is a regular expression on the tool name; “if” (optional, up to 300 characters) limits the hook to a tool and a pattern, such as Bash(git *); “onFailure”: “block” blocks the action if the hook fails (only in PreToolUse, UserPromptSubmit and PermissionRequest). “timeout” is 1 to 60 seconds. At most 20 hooks per event, a command of up to 2000 characters and 64 KB in total.',
   'settings.engine.hooks.exampleTitle': 'Example: block “rm -rf”',
   'settings.engine.hooks.useExample': 'Use the example',
   'settings.engine.hooks.save': 'Save',
@@ -498,7 +498,7 @@ export const settings = {
   'settings.engine.hooks.err.badJson': 'The text is not valid JSON.',
   'settings.engine.hooks.err.noHooks': 'The “hooks” object is missing at the root of the JSON.',
   'settings.engine.hooks.err.tooBig': 'The file is larger than {kb} KB.',
-  'settings.engine.hooks.err.unknownEvent': 'Unknown event “{event}”. Use PreToolUse, PostToolUse, PreCompact, PostCompact or Stop.',
+  'settings.engine.hooks.err.unknownEvent': 'Unknown event “{event}”. See the list of events above.',
   'settings.engine.hooks.err.notList': '{event} must be a list of hooks.',
   'settings.engine.hooks.err.tooMany': '{event} has too many hooks (maximum {max}).',
   'settings.engine.hooks.err.notObject': '{event}, hook {n}: must be an object with “command”.',
@@ -508,6 +508,8 @@ export const settings = {
   'settings.engine.hooks.err.matcherTooLong': '{event}, hook {n}: “matcher” is longer than {max} characters.',
   'settings.engine.hooks.err.matcherInvalid': '{event}, hook {n}: “matcher” is not a valid regular expression.',
   'settings.engine.hooks.err.badTimeout': '{event}, hook {n}: “timeout” must be a whole number from {min} to {max}.',
+  'settings.engine.hooks.err.badIf': '{event}, hook {n}: “if” must be a text of 1 to {max} characters.',
+  'settings.engine.hooks.err.badOnFailure': '{event}, hook {n}: “onFailure” can only be “block”.',
   'settings.engine.hooks.err.writeFailed': 'Could not write the file on this computer.',
   'settings.engine.limits.title': 'Limits',
   'settings.engine.limits.desc':
