@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react'
 import type { ProjectScanItem, ProjectScanResult } from '@shared/ipc-code'
 import { nativeCode } from './client'
-import { folderMcpOf, setFolderMcp } from './permission-rules'
+import { setFolderMcp } from './permission-rules'
 import { useCode, type TrustedScan } from './store'
 import { ensureFolderReadable } from './folder-access'
 
@@ -33,6 +33,14 @@ export interface PendingTrust {
 let pendingTrustResolve: ((trust: boolean) => void) | null = null
 const trustListeners = new Set<(p: PendingTrust | null) => void>()
 let pendingTrust: PendingTrust | null = null
+/** Carpetas de confianza ACEPTADAS en esta ejecución (huella igual, nada nuevo, o la persona confirmó). Distinto de «escaneada». */
+const verified = new Set<string>()
+const dirId = (d: string): string => d.replace(/[/\\]+$/, '')
+
+/** ¿La carpeta pasó la verificación de confianza en esta ejecución? */
+export function isFolderVerified(dir: string): boolean {
+  return verified.has(dirId(dir))
+}
 
 function setPendingTrust(p: PendingTrust | null): void {
   pendingTrust = p
@@ -102,9 +110,9 @@ export function ensureTrusted(dir: string): Promise<boolean> {
 async function ensureTrustedAgain(dir: string): Promise<boolean> {
   const scan = await scanFolder(dir)
   setFolderMcp(dir, scan)
-  if (!scan) return true // no se pudo revisar ahora (o venció el plazo): no se bloquea; las reglas quedan en `askAll` (falla cerrado)
+  if (!scan) return accept(dir) // no se pudo revisar ahora (o venció el plazo): no se bloquea; las reglas quedan en `askAll` (falla cerrado)
   const prev = useCode.getState().trustedScans[dir]
-  if (prev && prev.huella === scan.huella) return true
+  if (prev && prev.huella === scan.huella) return accept(dir)
   // Confianza vieja sin huella (versión anterior) o huella distinta: solo repregunta si hay algo NUEVO que valga la pena ver.
   const seen = new Set(prev?.ids ?? [])
   const risky = scan.items.filter((i) => i.risky)
@@ -112,7 +120,7 @@ async function ensureTrustedAgain(dir: string): Promise<boolean> {
   if (toShow.length === 0) {
     // Nada nuevo que importe (o primera huella de una carpeta vieja sin nada riesgoso): se guarda en silencio.
     useCode.getState().trustFolder(dir, scanToTrustedScan(scan))
-    return true
+    return accept(dir)
   }
   return showDialog({ dir, scan, items: toShow, again: !!prev, wasTrusted: true, scanning: false })
 }
@@ -123,13 +131,19 @@ async function ensureTrustedAgain(dir: string): Promise<boolean> {
  */
 export async function verifyTrustedFolder(dir: string): Promise<boolean> {
   if (!useCode.getState().isTrusted(dir)) return true // las no confiadas ya piden confirmación al entrar
-  if (folderMcpOf(dir) !== undefined) return true // ya se escaneó en esta ejecución
+  if (isFolderVerified(dir)) return true // ya aceptada en esta ejecución (escaneada NO basta: puede haber quedado una re-pregunta sin contestar)
   return ensureTrustedAgain(dir)
 }
 
+function accept(dir: string): true {
+  verified.add(dirId(dir))
+  return true
+}
+
 function showDialog(p: PendingTrust): Promise<boolean> {
-  pendingTrustResolve?.(false)
-  pendingTrustResolve = null
+  // Un diálogo pendiente que otro reemplaza cuenta como «Cancelar» (si era una re-pregunta, esa carpeta pierde la confianza): nunca queda
+  // como de confianza y «revisada» sin que nadie la acepte.
+  if (pendingTrust) resolveTrust(false)
   return new Promise<boolean>((resolve) => {
     pendingTrustResolve = resolve
     setPendingTrust(p)
@@ -142,14 +156,19 @@ export function resolveTrust(trust: boolean): void {
   pendingTrustResolve = null
   setPendingTrust(null)
   if (trust && p) {
+    verified.add(dirId(p.dir))
     if (p.scan) useCode.getState().trustFolder(p.dir, scanToTrustedScan(p.scan))
     else useCode.getState().trustFolder(p.dir)
   } else if (!trust && p) {
     // Cancelar NO suelta las reglas de la carpeta (siguen preguntando los conectores), y si ya era de confianza se la quita: así ninguna vía
     // (restaurar, barra lateral) la vuelve a cargar sin pedir confirmación, y si tenía el foco se cierra.
     if (p.wasTrusted) {
-      useCode.getState().untrustFolder(p.dir)
-      useCode.getState().declineFocusedProject(p.dir)
+      verified.delete(dirId(p.dir))
+      const st = useCode.getState()
+      st.untrustFolder(p.dir)
+      // Con el foco: se cierra y el foco no pasa a otra sin confianza. Sin el foco: también se cierra, para que nada la vuelva a cargar sin preguntar.
+      if (st.directory && dirId(st.directory) === dirId(p.dir)) st.declineFocusedProject(p.dir)
+      else st.closeOneProject(p.dir)
     }
   }
   resolve?.(trust)

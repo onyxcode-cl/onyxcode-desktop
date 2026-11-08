@@ -241,3 +241,33 @@ describe('modo de permisos → sesión del motor', () => {
     })
   })
 })
+
+describe('comandos `/…` y reglas de proyecto', () => {
+  const crm = { id: 'm', kind: 'mcp' as const, name: 'crm', trustName: 'crm', mcpKey: 'crm_*', where: 'opencode.json', risky: true }
+
+  async function setup(opts: { updateFails?: boolean } = {}) {
+    const { setFolderMcp } = await import('./permission-rules')
+    setFolderMcp(D, { items: [crm], complete: true })
+    const base = install(opts)
+    const command = vi.fn(() => Promise.resolve({ data: {} }))
+    ;(useServer.getState().client as unknown as { session: Record<string, unknown> }).session.command = command
+    apply(sessionCreated(makeSession('s1', D, { permission: rulesetFor('manual') })))
+    useCode.setState({ activeSessionID: 's1' })
+    return { ...base, command }
+  }
+
+  it('antes de session.command se igualan las reglas con las `ask` de proyecto', async () => {
+    const { update, command } = await setup()
+    await st().runCommand('x', '')
+    expect(update).toHaveBeenCalledTimes(1)
+    const sent = update.mock.calls[0]![0].permission as Array<{ permission: string; action: string }>
+    expect(sent.some((r) => r.permission === 'crm_*' && r.action === 'ask')).toBe(true)
+    expect(update.mock.invocationCallOrder[0]).toBeLessThan(command.mock.invocationCallOrder[0]!)
+  })
+
+  it('si no se pueden igualar las reglas, el comando NO se ejecuta (falla cerrado)', async () => {
+    const { command } = await setup({ updateFails: true })
+    await st().runCommand('x', '')
+    expect(command).not.toHaveBeenCalled()
+  })
+})

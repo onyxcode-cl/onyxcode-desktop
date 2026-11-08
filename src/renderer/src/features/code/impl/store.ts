@@ -7,7 +7,7 @@
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { folderMcpOf, projectAskOf, rulesetForState, sessionHasRuleset } from './permission-rules'
+import { projectAskOf, rulesetForState, sessionHasRuleset } from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -1124,13 +1124,13 @@ export const useCode = create<CodeState>((set, get) => {
     focusProject: async (directory) => {
       const s = get()
       if (!isOpenDir(s, directory) || sameDir(s.directory ?? '', directory)) return
-      // Carpeta de confianza que no pasó por `openProjectTrusted` en esta ejecución: se escanea (y, si trae algo nuevo, se repregunta) ANTES de darle el foco.
-      if (
-        s.isTrusted(directory) &&
-        folderMcpOf(directory) === undefined &&
-        !(await (await import('./trust')).verifyTrustedFolder(directory))
-      )
+      // Una carpeta sin confianza (p. ej. a la que se le canceló la re-pregunta) no recibe el foco sin preguntar: pasa por el diálogo.
+      if (!s.isTrusted(directory)) {
+        void (await import('./trust')).openProjectTrusted(directory)
         return
+      }
+      // Carpeta de confianza que no pasó por `openProjectTrusted` en esta ejecución: se escanea (y, si trae algo nuevo, se repregunta) ANTES de darle el foco.
+      if (!(await (await import('./trust')).verifyTrustedFolder(directory))) return
       touchFocus(directory)
       writeOpenProjects(openDirs(s), directory)
       set({ directory, activeSessionID: null, projectPickerOpen: false })
@@ -1283,6 +1283,18 @@ export const useCode = create<CodeState>((set, get) => {
       const { agent, model: picked } = get()
       const model = picked ?? resolveModelForMode('code')
       setError(sid, null)
+      // Igual que `doSend`: el comando `/…` también puede usar herramientas de los conectores de la carpeta, así que la sesión debe llevar ya
+      // las reglas del modo y las `ask` de proyecto. Aquí, si no se pueden igualar, NO se ejecuta (falla cerrado en todos los modos).
+      const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir))
+      if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
+        try {
+          const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
+          set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
+        } catch (err) {
+          setError(sid, errorMessage(err))
+          return
+        }
+      }
       set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
       try {
         sdkData(
@@ -1966,9 +1978,11 @@ export const useCode = create<CodeState>((set, get) => {
     resync: async () => {
       const s = get()
       if (!s.directory) return
+      // Solo se recargan las carpetas de confianza YA verificadas en esta ejecución (las que esperan una re-pregunta no se cargan).
+      const { isFolderVerified } = await import('./trust')
       await Promise.all(
         openDirs(s)
-          .filter((d) => sameDir(d, s.directory ?? '') || s.isTrusted(d))
+          .filter((d) => sameDir(d, s.directory ?? '') || (s.isTrusted(d) && isFolderVerified(d)))
           .map((d) => get().loadSessions(d))
       )
       const sid = get().activeSessionID

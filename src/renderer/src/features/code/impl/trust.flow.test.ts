@@ -173,11 +173,12 @@ describe('vías que no pasan por openProjectTrusted', () => {
     expect(st().isTrusted(D)).toBe(false)
   })
 
-  it('verifyTrustedFolder: ya escaneada en esta ejecución, no vuelve a escanear', async () => {
+  it('verifyTrustedFolder: ya aceptada en esta ejecución, no vuelve a escanear', async () => {
     st().trustFolder(D)
-    pr.setFolderMcp(D, { items: [], complete: true })
+    scan.mockResolvedValue(result([]))
     await expect(t.verifyTrustedFolder(D)).resolves.toBe(true)
-    expect(scan).not.toHaveBeenCalled()
+    await expect(t.verifyTrustedFolder(D)).resolves.toBe(true)
+    expect(scan).toHaveBeenCalledTimes(1)
   })
 
   it('restoreOpenProjects: no carga (loadSessions) la carpeta que no se aceptó', async () => {
@@ -195,5 +196,76 @@ describe('vías que no pasan por openProjectTrusted', () => {
     t.resolveTrust(false)
     await p
     expect(loadSessions).not.toHaveBeenCalled()
+  })
+})
+
+describe('RI2: diálogos reemplazados, cancelar sin foco, foco a carpeta sin confianza y resync', () => {
+  const A = '/work/a'
+  const B = '/work/b'
+  const withNew = (): ProjectScanResult => result([mcp('crm'), mcp('nuevo')])
+  const trustedWith = (dir: string): void => {
+    const r = result([mcp('crm')])
+    st().trustFolder(dir, { huella: r.huella, ids: r.items.map((i) => i.id) })
+  }
+
+  it('una re-pregunta tapada por otro diálogo cuenta como Cancelar: pierde la confianza y no queda «verificada»', async () => {
+    trustedWith(B)
+    scan.mockResolvedValue(withNew())
+    const first = t.verifyTrustedFolder(B)
+    await flush()
+    scan.mockResolvedValue(result([]))
+    const second = t.ensureTrusted(A) // carpeta nueva: reemplaza el diálogo de B
+    await expect(first).resolves.toBe(false)
+    expect(st().isTrusted(B)).toBe(false)
+    expect(t.isFolderVerified(B)).toBe(false)
+    t.resolveTrust(false)
+    await second
+  })
+
+  it('«escaneada» no es «aceptada»: verifyTrustedFolder vuelve a verificar una carpeta escaneada pero sin aceptar', async () => {
+    trustedWith(B)
+    pr.setFolderMcp(B, result([mcp('crm')]))
+    scan.mockResolvedValue(result([mcp('crm')]))
+    expect(t.isFolderVerified(B)).toBe(false)
+    await expect(t.verifyTrustedFolder(B)).resolves.toBe(true)
+    expect(scan).toHaveBeenCalledTimes(1)
+    expect(t.isFolderVerified(B)).toBe(true)
+  })
+
+  it('cancelar la re-pregunta de una carpeta SIN foco la cierra (no se puede cargar después sin preguntar)', async () => {
+    trustedWith(B)
+    useCode.setState({ directory: A, openDirectories: [A, B] })
+    scan.mockResolvedValue(withNew())
+    const p = t.verifyTrustedFolder(B)
+    await flush()
+    t.resolveTrust(false)
+    await expect(p).resolves.toBe(false)
+    expect(st().openDirectories).toEqual([A])
+    expect(st().directory).toBe(A)
+  })
+
+  it('focusProject a una carpeta sin confianza NO le da el foco: pasa por el diálogo', async () => {
+    useCode.setState({ directory: A, openDirectories: [A, B] })
+    scan.mockResolvedValue(result([mcp('crm')]))
+    await st().focusProject(B)
+    await flush()
+    expect(st().directory).toBe(A)
+    expect(scan).toHaveBeenCalledWith(B)
+    t.resolveTrust(false)
+    await flush()
+    expect(st().directory).toBe(A)
+  })
+
+  it('resync solo recarga las carpetas de confianza ya verificadas', async () => {
+    const loadSessions = vi.fn(() => Promise.resolve())
+    useCode.setState({ directory: A, openDirectories: [A, B], loadSessions } as never)
+    st().trustFolder(B)
+    await st().resync()
+    expect(loadSessions.mock.calls.map((c) => (c as unknown[])[0])).toEqual([A])
+    scan.mockResolvedValue(result([]))
+    await t.verifyTrustedFolder(B)
+    loadSessions.mockClear()
+    await st().resync()
+    expect(loadSessions.mock.calls.map((c) => (c as unknown[])[0]).sort()).toEqual([A, B])
   })
 })

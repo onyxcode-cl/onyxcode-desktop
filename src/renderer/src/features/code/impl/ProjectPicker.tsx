@@ -243,14 +243,13 @@ export function FolderAccessCard({
 function TrustDialog(): React.JSX.Element | null {
   const t = useT()
   const p = usePendingTrust()
-  const confirmRef = useRef<HTMLButtonElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
   const scanning = p?.scanning ?? false
   const pendingDir = p?.dir ?? null
   useEffect(() => {
     if (!pendingDir) return
-    // Mientras se revisa la carpeta el foco queda en «Cancelar» (un Intro no puede confiar antes de ver la lista); al terminar pasa a «Confiar».
-    ;(scanning ? cancelRef : confirmRef).current?.focus()
+    // El foco queda en «Cancelar» y NO se mueve solo cuando llega la lista: un Intro pulsado justo entonces no puede confiar sin leerla.
+    cancelRef.current?.focus()
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -259,7 +258,7 @@ function TrustDialog(): React.JSX.Element | null {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [pendingDir, scanning])
+  }, [pendingDir])
   if (!p) return null
   const hasList = p.items.length > 0
   return (
@@ -301,7 +300,6 @@ function TrustDialog(): React.JSX.Element | null {
             {t('code.ui.cancel')}
           </button>
           <button
-            ref={confirmRef}
             type="button"
             disabled={scanning}
             onClick={() => resolveTrust(true)}
