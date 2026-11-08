@@ -50,10 +50,16 @@ type ApprovalKind = 'auto' | 'plan'
 const withBoundary = (c: string): RegExp => new RegExp(`^${c.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&')}(?:\\s|$)`)
 const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
 /** Cualquier cosa que encadene, redirija, sustituya o cambie de línea: el comando deja de ser «uno solo y simple». */
-const SHELL_META = /[><|;&`$\\(){}'"\n\r]|--output|--exec/
+/*
+ * Incluye los comodines del shell (`*`, `?`, `[`, `]`) y `!`/`#`: el shell expande `git log *` a los NOMBRES de archivo de la carpeta, y la IA
+ * puede haber creado antes (sin tarjeta) archivos llamados `--output=opencode.json` o `--format=…` (RI3 de W-A1). NO se bloquean `~`, `^`,
+ * `%` ni `@` (no expanden a archivos en medio de una palabra y romperían `HEAD~1`, `HEAD^`, `--format=%h`); costo: `ls *.ts` pide tarjeta.
+ */
+const SHELL_META_BASE = /[><|;&`$\\(){}'"!#\n\r]|--output|--exec/
+const SHELL_GLOB = /[*?[\]]/
 /**
  * Opciones de `git` que escriben archivos, ejecutan programas o cambian dónde/con qué configuración trabaja (1.8.12, RI de W-A1):
- * `--output=<archivo>` (git acepta abreviaturas: `--out…`), `--ext-diff`, `--textconv`, `-c clave=valor`, `-C <dir>`, `--git-dir`,
+ * `--output=<archivo>` (git 2.54 rechaza las abreviaturas `--ou=`/`--outp=`, pero bloquear `--out…` es inocuo), `--ext-diff`, `--textconv`, `-c clave=valor`, `-C <dir>`, `--git-dir`,
  * `--work-tree`, `--exec-path`, `--config-env`, `--namespace`. Con ellas un `git log`/`git diff` «de lectura» puede escribir `.git/config` u `opencode.json`.
  */
 const GIT_RISKY_LONG = /^--(?:out|ext|text|git-dir|work-tree|exec-path|config-env|namespace)/
@@ -68,9 +74,11 @@ const hasRiskyGitOption = (cmd: string): boolean =>
 export function isAutoApprovableCommand(_kind: ApprovalKind, command: string | undefined): boolean {
   if (typeof command !== 'string') return false
   const cmd = command.trim()
-  if (!cmd || cmd.length > 500 || SHELL_META.test(cmd)) return false
+  if (!cmd || cmd.length > 500 || SHELL_META_BASE.test(cmd)) return false
   if (hasRiskyGitOption(cmd)) return false
+  // `git branch --list <patrón>` conserva el comodín (verificado: mezclado con -D/-m/-c/--set-upstream-to git solo da «usage», no toca nada).
   if (cmd.startsWith('git branch')) return GIT_BRANCH_LIST.test(cmd)
+  if (SHELL_GLOB.test(cmd)) return false
   return READ_ONLY_RES.some((re) => re.test(cmd))
 }
 
@@ -108,7 +116,17 @@ const GIT_CONFIG_ASK: PermissionRuleLike[] = GIT_CONFIG_PATTERNS.flatMap((p) => 
  * superiores pueden declarar un conector MCP con `command` que se arranca la próxima vez que se carga el proyecto. Si la IA pudiera
  * escribirlos sin preguntar (modos «Editar sin preguntar» y «Automático»), sería ejecución de comandos sin tarjeta. Igual que `GIT_CONFIG_ASK`.
  */
-const EXEC_CONFIG_PATTERNS = ['opencode.json', '*/opencode.json', 'opencode.jsonc', '*/opencode.jsonc']
+const EXEC_CONFIG_PATTERNS = [
+  'opencode.json',
+  '*/opencode.json',
+  'opencode.jsonc',
+  '*/opencode.jsonc',
+  // Todo `.opencode/`: el motor carga y EJECUTA `.opencode/plugin(s)/*.{ts,js}` y `.opencode/tool(s)/*`, además de agentes, comandos y skills.
+  // La app escribe `.opencode/agents` (Ajustes › Ayudantes) y `.opencode/skills` (habilidades aprendidas) desde el proceso principal con
+  // `fs`, NO por la IA, así que estas reglas no las afectan. «Solo explorar» conserva su `allow` de `.opencode/plans/*.md` (otro bloque).
+  '.opencode/*',
+  '*/.opencode/*'
+]
 const EXEC_CONFIG_ASK: PermissionRuleLike[] = EXEC_CONFIG_PATTERNS.flatMap((p) => [rule('edit', p, 'ask'), rule('write', p, 'ask')])
 
 /** Carpetas fuera del proyecto: preguntan en todos los modos menos «Todo sin preguntar». */
@@ -223,7 +241,6 @@ export function rulesetForMode(
         ...EXEC_CONFIG_ASK,
         ...readRules(true),
         rule('bash', '*', 'ask'),
-        // Comparar no tiene quién apruebe en la interfaz: allí solo las tres órdenes de lectura de git las permite el propio motor.
         // Comparar (`engineAllowReadOnly`) usa el MISMO bloque: antes dejaba que el motor permitiera `git status*`/`git diff*`/`git log*` con
         // comodín, y ese patrón casa con redirecciones (`git log > f`), `git difftool`, opciones entre comillas, etc. (RI de W-A1). Ahora todo
         // comando pregunta y la columna de Comparar muestra la tarjeta; el costo es que `git status` también pide permiso allí.

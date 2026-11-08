@@ -446,7 +446,18 @@ describe('git con opciones que escriben o ejecutan', () => {
     'git diff-tree -p HEAD',
     'git diff-index HEAD',
     'git statusx',
-    'git logs'
+    'git logs',
+    // comodines del shell: se expanden a nombres de archivo que la IA pudo crear (`--output=opencode.json`)
+    'git log *',
+    'git diff *',
+    'git show *',
+    'git log ?',
+    'git log ?*',
+    'git log [a]*',
+    'git log [-]*',
+    'ls *',
+    'git log !x',
+    'git log #x'
   ]
   it.each(RIESGOSOS)('Comparar: «%s» pregunta (ninguna regla del motor la deja pasar)', (c) => {
     expect(evaluate('bash', c, BUILD, rulesetForMode('auto', { engineAllowReadOnly: true }))).toBe('ask')
@@ -476,6 +487,27 @@ describe('git con opciones que escriben o ejecutan', () => {
     const r = rulesetForMode('auto', { engineAllowReadOnly: true })
     expect(evaluate('bash', 'npm test', BUILD, r)).toBe('ask')
     expect(evaluate('bash', 'npm run build', BUILD, r)).toBe('ask')
+  })
+  it.each(['acceptEdits', 'auto'] as const)('%s: plugins, herramientas y todo .opencode/ preguntan; los archivos normales no', (mode) => {
+    const rules = rulesetForMode(mode)
+    for (const permission of ['edit', 'write'] as const) {
+      for (const p of [
+        '.opencode/plugin/x.ts',
+        '.opencode/plugins/x.js',
+        '.opencode/tool/x.ts',
+        '.opencode/tools/x.js',
+        '.opencode/agents/a.md',
+        'sub/.opencode/plugin/x.ts',
+        'sub\\.opencode\\tools\\x.js'
+      ]) {
+        expect(evaluate(permission, p, BUILD, rules), `${mode} ${permission} ${p}`).toBe('ask')
+      }
+      for (const p of ['src/opencode/x.ts', 'docs/opencode.md', 'src/a.ts']) expect(evaluate(permission, p, BUILD, rules)).toBe('allow')
+    }
+  })
+  it('«Solo explorar» sigue pudiendo escribir su plan en .opencode/plans/*.md', () => {
+    expect(evaluate('write', '.opencode/plans/uno.md', BUILD, rulesetForMode('plan'))).toBe('allow')
+    expect(evaluate('write', '.opencode/plugin/x.ts', BUILD, rulesetForMode('plan'))).toBe('deny')
   })
   it.each(['acceptEdits', 'auto'] as const)('%s: un ARCHIVO llamado .git también pregunta', (mode) => {
     for (const permission of ['edit', 'write'] as const) {
