@@ -63,10 +63,11 @@ const READ_ONLY_RES = READ_ONLY_COMMANDS.map(withBoundary)
 const SAFE_CHARS = /^[A-Za-z0-9 ._/:=,@%^~+-]+$/
 const BAD_CARET = /(?:^|[^A-Za-z0-9])\^/
 /**
- * `%` solo dentro de un token `--format=…`, `--pretty=…` o `--date=…` (RI5): con cmd.exe como shell, `%VAR%`/`%VAR:~0,2%` se expanden ANTES de que
- * git vea el comando y podrían recomponer una opción prohibida partida en trozos. PowerShell (el shell por defecto del motor en Windows:
- * pwsh → powershell → Git Bash → cmd) no lo hace. Residual (no se puede saber desde esta capa): si alguien configura cmd, cmd también busca
- * `git.bat` en la carpeta actual antes que en el PATH; allí la aprobación automática no protege.
+ * `%` solo dentro de un token `--format=…`, `--pretty=…` o `--date=…` (RI5). Con cmd.exe como shell, `%VAR%`/`%VAR:~0,2%` se expanden ANTES
+ * de que git vea el comando y podrían recomponer una opción prohibida partida en trozos. Este filtro solo REDUCE ese riesgo, no lo impide:
+ * dentro del valor de `--format=`, `%VAR:~n,m%` aún puede reconstruir otra opción. PowerShell (el shell por defecto del motor en Windows:
+ * pwsh → powershell → Git Bash → cmd) no expande `%VAR%`. Residual (no se puede saber desde esta capa): con cmd.exe configurado a mano la
+ * aprobación automática NO protege del todo (además cmd busca `git.bat` en la carpeta actual antes que en el PATH).
  */
 const BAD_PERCENT = (cmd: string): boolean => cmd.split(' ').some((t) => t.includes('%') && !/^--(?:format|pretty|date)=/.test(t))
 /** Mismas búsquedas de siempre (`--output`, `--exec`), sobre el comando sin `^` (defensa en profundidad contra `--o^utput` de cmd). */
