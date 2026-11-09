@@ -228,3 +228,17 @@ export async function openProjectTrusted(dir: string, opts: { passive?: boolean;
   else await useCode.getState().openProject(dir)
   return true
 }
+
+/**
+ * Arranque: la carpeta que tenía el foco al cerrar la app (`restoredFocus`) pasa por el MISMO escaneo y la MISMA decisión de confianza que
+ * cualquier otra ANTES de ser el foco. Hasta entonces `directory` es `null` y ninguna parte de la interfaz habla con el motor con esa carpeta
+ * (el motor arranca los conectores del proyecto en cuanto carga la carpeta; no hay forma de pedírselo sin que lo haga).
+ * Si la persona no la acepta (o no confía), la carpeta se cierra: no queda ni abierta ni con foco.
+ */
+export async function restoreFocusedProject(): Promise<void> {
+  const dir = useCode.getState().restoredFocus
+  if (!dir) return
+  useCode.setState({ restoredFocus: null })
+  const ok = await openProjectTrusted(dir, { passive: true })
+  if (!ok) useCode.getState().closeOneProject(dir)
+}

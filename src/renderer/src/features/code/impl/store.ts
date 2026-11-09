@@ -194,6 +194,12 @@ function toRunState(s: SessionStatus): RunState {
 export interface CodeState {
   /** Carpeta del proyecto CON FOCO (chat, barra superior, paneles, compositor). `null` solo si no hay ninguno abierto. */
   directory: string | null
+  /**
+   * Carpeta que tenía el foco al cerrar la app y que se restaura al arrancar. NO es `directory` (el foco) hasta que pasa por el escaneo y la
+   * decisión de confianza (`restoreFocusedProject`, `trust.ts`): mientras tanto nada del renderer puede hablar con el motor con esa carpeta
+   * (el compositor, los paneles y las listas piden al motor con `directory`, y el motor arranca los conectores del proyecto al cargarlo).
+   */
+  restoredFocus: string | null
   /** Proyectos abiertos a la vez en la barra lateral, en orden de apertura. En escritorio `directory`, si no es `null`,
    *  siempre está incluido aquí; en el celular como mucho hay uno (abrir otro reemplaza, como antes). */
   openDirectories: string[]
@@ -1014,7 +1020,9 @@ export const useCode = create<CodeState>((set, get) => {
   if (initialProjects.focus) touchFocus(initialProjects.focus)
 
   return {
-    directory: initialProjects.focus,
+    // El foco restaurado NO se publica como `directory` hasta verificar su confianza (ver `restoredFocus`).
+    directory: null,
+    restoredFocus: initialProjects.focus,
     openDirectories: initialProjects.open,
     projectPickerOpen: false,
     sessions: {},
@@ -1059,7 +1067,14 @@ export const useCode = create<CodeState>((set, get) => {
       if (isRemoteSurface()) {
         touchFocus(directory)
         writeOpenProjects([directory], directory)
-        set({ directory, openDirectories: [directory], activeSessionID: null, globalError: null, projectPickerOpen: false })
+        set({
+          directory,
+          restoredFocus: null,
+          openDirectories: [directory],
+          activeSessionID: null,
+          globalError: null,
+          projectPickerOpen: false
+        })
       } else {
         const s = get()
         const plan = planOpen(openDirs(s), directory, MAX_OPEN_PROJECTS, projectIsLive, focusRank)
@@ -1070,7 +1085,14 @@ export const useCode = create<CodeState>((set, get) => {
         if (plan.evict) get().closeOneProject(plan.evict)
         touchFocus(directory)
         writeOpenProjects(plan.open, directory)
-        set({ directory, openDirectories: plan.open, activeSessionID: null, globalError: null, projectPickerOpen: false })
+        set({
+          directory,
+          restoredFocus: null,
+          openDirectories: plan.open,
+          activeSessionID: null,
+          globalError: null,
+          projectPickerOpen: false
+        })
       }
       void window.api.invoke('settings:addRecentFolder', { path: directory }).catch(() => undefined)
       await get().loadSessions(directory)
@@ -1085,7 +1107,7 @@ export const useCode = create<CodeState>((set, get) => {
     closeProject: () => {
       // Solo lo usa el celular. En escritorio nadie la llama: ver `closeOneProject`.
       writeOpenProjects([], null)
-      set({ directory: null, openDirectories: [], activeSessionID: null })
+      set({ directory: null, restoredFocus: null, openDirectories: [], activeSessionID: null })
     },
 
     closeOneProject: (directory) => {
@@ -1109,6 +1131,7 @@ export const useCode = create<CodeState>((set, get) => {
       set((st) => ({
         ...purgeManyPatch(st, ids),
         openDirectories,
+        ...(st.restoredFocus && sameDir(st.restoredFocus, directory) ? { restoredFocus: null } : {}),
         ...(wasFocused ? { directory: next ?? null, activeSessionID: null } : {})
       }))
       purgeManySideState(ids)
@@ -1150,7 +1173,10 @@ export const useCode = create<CodeState>((set, get) => {
       // desaparecían sin avisar al reiniciar): quedan visibles y piden confirmar al entrar. Solo se cargan sus sesiones (lo que
       // inicia el motor en esa carpeta) si son de confianza.
       const all = openDirs(s)
-      const others = all.filter((d) => !sameDir(d, s.directory ?? '') && s.isTrusted(d))
+      // La carpeta con foco restaurada al arrancar (`restoredFocus`) la verifica `restoreFocusedProject`, no este bucle.
+      const others = all.filter(
+        (d) => !sameDir(d, s.directory ?? '') && !(s.restoredFocus && sameDir(d, s.restoredFocus)) && s.isTrusted(d)
+      )
       for (const d of others) setVerifying(d, true) // hasta que cada una se verifique, nada les pasa el foco
       // Antes de que el motor cargue cada carpeta se escanea (una a una: si trae algo nuevo, se repregunta); si no se acepta, no se carga.
       const { verifyTrustedFolder } = await import('./trust')

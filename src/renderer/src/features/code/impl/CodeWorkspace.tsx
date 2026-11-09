@@ -66,6 +66,7 @@ import { TerminalPanel } from './panels/TerminalPanel'
 import { ShellRunProvider } from './ShellRunProvider'
 import { ensureFolderReadable } from './folder-access'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
+import { restoreFocusedProject } from './trust'
 import { askCloseProject, SessionList } from './SessionList'
 import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootSessionID, selectCodeRunOf, useCode } from './store'
 import { TodoList } from './ToolCard'
@@ -970,17 +971,22 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
   }, [])
 
   // Al conectar (o reconectar con un cliente nuevo), recarga el proyecto con foco y, en paralelo, los demás abiertos.
+  // La carpeta con foco de la sesión anterior (`restoredFocus`) NO es el foco hasta pasar por el escaneo y la confianza: nada habla con el
+  // motor con ella antes (el motor arranca sus conectores al cargarla).
   const loadedFor = useRef<unknown>(null)
   useEffect(() => {
     if (!client) return
-    const dir = useCode.getState().directory
-    if (!dir || loadedFor.current === client) return
+    const { directory: dir, restoredFocus } = useCode.getState()
+    if ((!dir && !restoredFocus) || loadedFor.current === client) return
     loadedFor.current = client
     void useCode.getState().restoreOpenProjects()
-    // Si no confía en la carpeta restaurada, no se queda enfocada (sin sesiones cargadas ni motor para ella).
-    void openProjectTrusted(dir, { passive: true }).then((ok) => {
-      if (!ok) useCode.getState().declineFocusedProject(dir)
-    })
+    void restoreFocusedProject()
+    // Reconexión con un cliente nuevo y una carpeta ya enfocada (y verificada): se recarga como siempre.
+    if (dir) {
+      void openProjectTrusted(dir, { passive: true }).then((ok) => {
+        if (!ok) useCode.getState().declineFocusedProject(dir)
+      })
+    }
   }, [client])
 
   // Cualquier carpeta que reciba el foco (barra lateral, chip, búsqueda…) se comprueba igual que al abrirla: la comprobación de «Abrir carpeta»
