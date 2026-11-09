@@ -345,11 +345,22 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
       //    esté en «Editar sin preguntar»/«Automático»/«Todo sin preguntar».
       //  - Si el padre tiene MENOS libertad (Solo explorar: `edit` en deny; Chat: todo en deny), la declaración sigue siendo más libertad y el guardián
       //    sigue BLOQUEANDO: este bloque no puede abrir nada, falla cerrado. `lazunox-helper`, `explore` y los demás agentes no cambian.
+      //  - Conectores de la carpeta (arreglo 1.8.12, «Fallo 2» de las pruebas en Mac): la app pone `<conector>_*: ask` en la SESIÓN del padre (W-A2), y la
+      //    hija solo hereda los `deny` de esa sesión; sin esto `general` quedaba con el `'*': allow` del motor en cada conector de la carpeta y el guardián
+      //    bloqueaba el lanzamiento. La config inline es del proceso (no de una carpeta) y no conoce los conectores de cada carpeta, así que `general`
+      //    pregunta en TODO lo que tenga guion bajo (`*_*`, la misma red que usa la sesión cuando no pudo enumerar los conectores). Eso también toca
+      //    permisos internos con guion bajo que el motor deja en deny/ask (`plan_enter`, `plan_exit`, `doom_loop`): se re-afirman justo después con su
+      //    valor, para que `*_*` no los afloje. Y los `deny` con guion bajo de la config (conectores bloqueados) se re-afirman AL FINAL: un `ask` nunca
+      //    tapa un `deny` del usuario. Solo añade «preguntar»: nunca más libertad que el padre.
       //  - `task: deny`: un ayudante no lanza ayudantes. `todowrite` lo conserva el motor (`allow`, su propia lista de la hija).
       //  - Las protecciones de la sesión del padre (`.git`, `opencode.json`, `.opencode/*` en `ask`) NO se heredan (solo `deny`), pero aquí `edit`/`write`
       //    ya son `ask` para todo, así que preguntan igual.
       general: {
         permission: {
+          '*_*': 'ask',
+          doom_loop: 'ask',
+          plan_enter: 'deny',
+          plan_exit: 'deny',
           edit: 'ask',
           write: 'ask',
           bash: 'ask',
@@ -357,7 +368,8 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           websearch: 'ask',
           read: { '*': 'allow', '*.env': 'ask', '*.env.*': 'ask', '*.env.example': 'allow', 'mcp:*': 'ask' },
           external_directory: 'ask',
-          task: 'deny'
+          task: 'deny',
+          ...Object.fromEntries(Object.entries(opts.permission ?? {}).filter(([k, v]) => k.includes('_') && v === 'deny'))
         }
       },
       computer: { disable: true }

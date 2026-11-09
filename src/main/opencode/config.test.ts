@@ -192,6 +192,22 @@ describe('ayudante general en Code (W-A3, D5=A)', () => {
     expect(general().read).toEqual({ '*': 'allow', '*.env': 'ask', '*.env.*': 'ask', '*.env.example': 'allow', 'mcp:*': 'ask' })
   })
 
+  it('pregunta en todo lo que tenga guion bajo (conectores de la carpeta), mantiene deny/ask de los internos y re-afirma los deny de conectores al final', () => {
+    const p = general()
+    expect(p['*_*']).toBe('ask')
+    expect(Object.keys(p).indexOf('plan_enter')).toBeGreaterThan(Object.keys(p).indexOf('*_*'))
+    expect([p.plan_enter, p.plan_exit, p.doom_loop]).toEqual(['deny', 'deny', 'ask'])
+    const conDeny = (
+      buildInlineConfig({ permission: { 'x_*': 'ask', 'x_secreto *': 'deny', bash: 'deny' } }) as {
+        agent: { general: { permission: Record<string, unknown> } }
+      }
+    ).agent.general.permission
+    const claves = Object.keys(conDeny)
+    expect(conDeny['x_secreto *']).toBe('deny')
+    expect(claves.at(-1)).toBe('x_secreto *')
+    expect(conDeny.bash).toBe('ask') // solo se re-afirman los deny con guion bajo
+  })
+
   it('no hay ningún `allow` fuera de `read` ni se tocan otros agentes nativos (explore, plan, build)', () => {
     const p = general()
     for (const [k, v] of Object.entries(p)) if (k !== 'read') expect(v, k).not.toBe('allow')

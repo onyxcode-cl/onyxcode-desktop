@@ -168,3 +168,76 @@ describe('W-A3: general en Code (el guardián lo deja pasar porque declara «pre
     await expect(task(await load('build', BUILD, rulesetFor('auto') as Rule[]), 'explore')).rejects.toThrow(/bloqueado por Lazunox/)
   })
 })
+
+/**
+ * Arreglo «Fallo 2» (pruebas en Mac de 1.8.12): en una carpeta con conectores el padre trae `<conector>_*: ask` en su SESIÓN (W-A2, delante del
+ * bloque del modo) y la hija solo hereda los `deny`. `general` debe declarar «preguntar» también ahí: nunca más libertad que el padre.
+ */
+describe('general en una carpeta con conectores (W-A2 + W-A3)', () => {
+  const carpeta = (...keys: string[]): Rule[] => keys.map((k) => r(k, 'ask'))
+  const sesion = (mode: 'manual' | 'acceptEdits' | 'auto' | 'bypass', ...keys: string[]): Rule[] => [
+    ...bgshellSessionRules(mode),
+    ...documentsSessionRules(mode),
+    ...carpeta(...keys),
+    ...(rulesetForMode(mode) as Rule[])
+  ]
+  const generalCon = (permission?: Record<string, unknown>): Rule[] => {
+    const agent = (
+      buildInlineConfig(permission ? { permission } : {}) as { agent: Record<string, { permission?: Record<string, unknown> }> }
+    ).agent
+    return [
+      ...DEFAULTS,
+      r('todowrite', 'allow'),
+      ...CONFIG,
+      ...fromConfig(permission ?? {}),
+      ...fromConfig(agent.general?.permission ?? {})
+    ]
+  }
+
+  for (const mode of ['manual', 'acceptEdits', 'auto', 'bypass'] as const) {
+    it(`«${mode}»: task(general) pasa con conectores de la carpeta (conector-nuevo_*, conector-r2_*)`, async () => {
+      const b = await load('build', BUILD, sesion(mode, 'conector-nuevo_*', 'conector-r2_*'), generalCon())
+      await expect(task(b, 'general')).resolves.toBeUndefined()
+    })
+  }
+
+  it('con la red de respaldo `*_*: ask` de la sesión (carpeta sin escanear) también pasa', async () => {
+    const b = await load('build', BUILD, sesion('auto', '*_*'), generalCon())
+    await expect(task(b, 'general')).resolves.toBeUndefined()
+  })
+
+  it('la hija PREGUNTA en los conectores de la carpeta (nunca allow) y no afloja los permisos internos con guion bajo', () => {
+    const g = generalCon()
+    const ev = (perm: string): string =>
+      g.filter((x) => perm.length >= 0 && x.pattern === '*' && new RegExp('^' + x.permission.replace(/\*/g, '.*') + '$').test(perm)).at(-1)
+        ?.action ?? 'ask'
+    expect(ev('conector-nuevo_leer')).toBe('ask')
+    expect(ev('conector-r2_start')).toBe('ask')
+    expect(ev('plan_enter')).toBe('deny')
+    expect(ev('plan_exit')).toBe('deny')
+    expect(ev('doom_loop')).toBe('ask')
+    expect(ev('external_directory')).toBe('ask')
+    expect(declarado().filter((x) => x.action === 'allow' && x.permission !== 'read')).toEqual([])
+  })
+
+  it('un `deny` del usuario sobre una herramienta de conector sigue mandando en la hija (el `ask` nuevo no lo tapa) y el guardián pasa', async () => {
+    const perm = { 'conector-nuevo_*': 'ask', 'conector-nuevo_borrar': 'deny', 'conector-nuevo_borrar *': 'deny' }
+    const padre = [...BUILD, ...fromConfig(perm)]
+    const g = generalCon(perm)
+    const b = await load('build', padre, sesion('auto', 'conector-nuevo_*'), g)
+    await expect(task(b, 'general')).resolves.toBeUndefined()
+    expect(g.at(-1)).toMatchObject({ permission: 'conector-nuevo_borrar *', action: 'deny' })
+  })
+
+  it('sigue bloqueando: padre con un deny que la hija no hereda (conector bloqueado en el AGENTE del padre sin config) y Solo explorar / Chat', async () => {
+    const b = await load('build', [...BUILD, r('conector-x_*', 'deny')], sesion('auto'), generalCon())
+    await expect(task(b, 'general')).rejects.toThrow(/conector-x_/)
+    await expect(task(await load('chat', CHAT, []), 'general')).rejects.toThrow(/bloqueado por Lazunox/)
+  })
+
+  it('el mismo caso SIN el bloque nuevo (permisos del motor a secas) se bloquea: la prueba falla antes del arreglo', async () => {
+    const sinBloque = [...DEFAULTS, r('todowrite', 'allow'), ...CONFIG, ...declarado().filter((x) => x.permission !== '*_*')]
+    const b = await load('build', BUILD, sesion('auto', 'conector-nuevo_*', 'conector-r2_*'), sinBloque)
+    await expect(task(b, 'general')).rejects.toThrow(/conector-nuevo_\* \(padre: ask, subagente: allow\)/)
+  })
+})

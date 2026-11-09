@@ -108,10 +108,12 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     config: { name: 'write', args: { filePath: 'opencode.json', content: '{}' }, archivo: 'opencode.json', permiso: 'write' },
     git: { name: 'write', args: { filePath: '.git/config', content: '[core]\n' }, archivo: null, permiso: 'write' },
     opencode: { name: 'write', args: { filePath: '.opencode/x.md', content: 'x' }, archivo: '.opencode/x.md', permiso: 'write' },
-    shell: { name: 'bash', args: { command: 'echo hola > y.txt', description: 'escribe y.txt' }, archivo: 'y.txt', permiso: 'bash' }
+    shell: { name: 'bash', args: { command: 'echo hola > y.txt', description: 'escribe y.txt' }, archivo: 'y.txt', permiso: 'bash' },
+    // Conector de la carpeta (Fallo 2 de las pruebas en Mac): herramienta del conector `prueba` que declara el opencode.json del proyecto.
+    conector: { name: 'prueba_start', args: { command: 'a' }, archivo: null, permiso: 'prueba_start' }
   }
   /** Lanza `task general` desde un padre `build` con las reglas de sesión de `modo`; la hija hace `accion`. Contesta `respuesta` a lo que pregunte. */
-  const hija = async (modo, accion, respuesta, agente = 'build') => {
+  const hija = async (modo, accion, respuesta, agente = 'build', carpeta = null) => {
     const m = await reales()
     const a = ACCIONES[accion]
     const preguntas = []
@@ -121,7 +123,18 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       git: true,
       plugins: { 'lazunox-subagent-guard.js': m.subagentGuardPluginSource() },
       inline: configReal(m),
-      sessionBody: { permission: m.rulesetFor(modo) },
+      // `carpeta`: carpeta con conector (como el escaneo de W-A2): `<conector>_*: ask` delante del bloque del modo, en la sesión del PADRE.
+      ...(carpeta
+        ? {
+            projectFiles: {
+              'opencode.json': JSON.stringify({
+                mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } }
+              })
+            },
+            pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000)
+          }
+        : {}),
+      sessionBody: { permission: m.rulesetFor(modo, undefined, carpeta ? [{ permission: 'prueba_*', pattern: '*', action: 'ask' }] : []) },
       decide: ({ tools, toolTexts, userTexts }) => {
         if (toolTexts.length) return null
         const u = userTexts.at(-1)
@@ -200,6 +213,36 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       return true
     })
   }
+
+  // Fallo 2 (pruebas en Mac): carpeta CON conectores. El padre tiene `prueba_*: ask` en su sesión (la hija no lo hereda); `general` debe pasar el guardián
+  // y la herramienta del conector debe PREGUNTAR en la sesión hija (nunca ejecutarse sola). Rechazada, no corre.
+  for (const modo of ['manual', 'acceptEdits', 'auto', 'bypass']) {
+    checkRun(
+      `olaA 1b (${modo}, carpeta con conector): task general PASA el guardián y la herramienta del conector PREGUNTA en la sesión hija`,
+      async () => {
+        const x = await hija(modo, 'conector', (p) => (p.permission === 'task' ? 'once' : 'reject'), 'build', true)
+        if (x.tp.status !== 'completed' && /bloqueado por Lazunox/.test(x.tp.output))
+          noSeReproduce(`el guardián bloqueó a general: ${resumen(x.tp)}`)
+        const q = x.preguntas.filter((p) => p.permission === 'prueba_start')
+        if (q.length !== 1)
+          noSeReproduce(
+            `se esperaba UNA pregunta por prueba_start de la hija y hubo ${q.length}: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`
+          )
+        if (!x.http.hijas.includes(q[0].sessionID) || q[0].sessionID === x.http.padre)
+          noSeReproduce(`la pregunta no es de la sesión HIJA: ${corto(q)}`)
+        confirmado(`pasa; prueba_start pregunta en la sesión hija ${q[0].sessionID}; rechazada, no se ejecuta`)
+        return true
+      }
+    )
+  }
+  checkRun('olaA 1b (plan, carpeta con conector): Solo explorar sigue BLOQUEANDO a general', async () => {
+    const x = await hija('plan', 'conector', () => 'reject', 'build', true)
+    if (x.tp.status === 'error' && !x.preguntas.length) {
+      confirmado(`bloqueado (${resumen(x.tp)})`)
+      return true
+    }
+    noSeReproduce(`se esperaba bloqueo: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`)
+  })
 
   // «Solo explorar» (sesión con el bloque plan) sigue sin dejar trabajar a `general`: aquí lo para la regla `task general deny` del propio bloque
   // (permission-rules.ts); el guardián, por su parte, deja pasar la sesión porque la hija heredaría el `edit deny` (el motor copia los deny).
