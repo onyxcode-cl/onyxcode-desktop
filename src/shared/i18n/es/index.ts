@@ -29,6 +29,7 @@ import { search } from './search'
 import { projects } from './projects'
 import { telegram } from './telegram'
 import { pr } from './pr'
+import { helpers } from './helpers'
 
 export const es = {
   ...common,
@@ -61,7 +62,8 @@ export const es = {
   ...search,
   ...projects,
   ...telegram,
-  ...pr
+  ...pr,
+  ...helpers
 }
 
 export const AREAS = {
@@ -95,5 +97,6 @@ export const AREAS = {
   search,
   projects,
   telegram,
-  pr
+  pr,
+  helpers
 }
