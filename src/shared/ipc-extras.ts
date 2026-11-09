@@ -8,6 +8,7 @@
 import type { KeybindingOverrides } from './keybindings'
 import type { McpCatalogState } from './mcp-catalog'
 import type { ModelRef } from './types'
+import type { PlanExecModels } from './plan-exec-models'
 import type { ViewerEventType, ViewerRect } from './ipc-tasks'
 import type { DocxSpec, PptxSpec, XlsxSpec } from './chat-doc-spec'
 import type { ExportDoc, ExportOptions } from './conversation-export'
@@ -21,6 +22,8 @@ export interface ExtrasPrefs {
   quickEntryShortcut: string
   /** Modelo por modo; si falta, se usa `settings.defaultModel`. */
   modelsByMode: Partial<Record<ModelMode, ModelRef>>
+  /** Code: modelo para planear y para ejecutar (D2). Vacío = el de la conversación. */
+  planExecModels: PlanExecModels
   /** Mostrar icono en la barra de menús. */
   showTray: boolean
   /** Notificaciones nativas (Code/Tareas: sesión terminó o pide algo). */
@@ -43,6 +46,7 @@ export function defaultQuickEntryShortcut(platform: string): string {
 export const DEFAULT_EXTRAS_PREFS: ExtrasPrefs = {
   quickEntryShortcut: DEFAULT_QUICK_ENTRY_SHORTCUT,
   modelsByMode: {},
+  planExecModels: {},
   showTray: true,
   notificationsEnabled: true,
   soundEnabled: true,

@@ -28,13 +28,30 @@ function normalize(input: Partial<ExtrasPrefs>): ExtrasPrefs {
       if (isModelRef(v)) modelsByMode[m] = { providerID: v.providerID, modelID: v.modelID }
     }
   }
+  const planExecModels: ExtrasPrefs['planExecModels'] = {}
+  const rawPE = input.planExecModels
+  if (rawPE && typeof rawPE === 'object') {
+    for (const r of ['plan', 'exec'] as const) {
+      const v = (rawPE as Record<string, unknown>)[r]
+      if (isModelRef(v)) planExecModels[r] = { providerID: v.providerID, modelID: v.modelID }
+    }
+  }
   const showTray = typeof input.showTray === 'boolean' ? input.showTray : DEFAULT_EXTRAS_PREFS.showTray
   const notificationsEnabled =
     typeof input.notificationsEnabled === 'boolean' ? input.notificationsEnabled : DEFAULT_EXTRAS_PREFS.notificationsEnabled
   const soundEnabled = typeof input.soundEnabled === 'boolean' ? input.soundEnabled : DEFAULT_EXTRAS_PREFS.soundEnabled
   const lastEditor = typeof input.lastEditor === 'string' && /^[a-z]{1,20}$/.test(input.lastEditor) ? input.lastEditor : ''
   const keybindings = sanitizeOverrides(input.keybindings, kbPlatformOf(process.platform))
-  return { quickEntryShortcut: shortcut, modelsByMode, showTray, notificationsEnabled, soundEnabled, lastEditor, keybindings }
+  return {
+    quickEntryShortcut: shortcut,
+    modelsByMode,
+    planExecModels,
+    showTray,
+    notificationsEnabled,
+    soundEnabled,
+    lastEditor,
+    keybindings
+  }
 }
 
 /** Preferencias de extras en `userData/extras.json` (separadas de settings.json). */
@@ -63,7 +80,8 @@ class ExtrasPrefsStore {
     const next = normalize({
       ...current,
       ...patch,
-      modelsByMode: patch.modelsByMode !== undefined ? patch.modelsByMode : current.modelsByMode
+      modelsByMode: patch.modelsByMode !== undefined ? patch.modelsByMode : current.modelsByMode,
+      planExecModels: patch.planExecModels !== undefined ? patch.planExecModels : current.planExecModels
     })
     this.cache = next
     mkdirSync(dirname(this.file), { recursive: true })

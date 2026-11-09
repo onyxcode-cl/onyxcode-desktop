@@ -112,5 +112,24 @@ export const models = {
   'models.keyTest.oauth.message': '{provider} está conectado con tu cuenta, no con una clave: no hay nada que probar.',
   'models.keyTest.unsupported.title': 'No se puede probar',
   'models.keyTest.unsupported.message': 'No se puede probar sin gastar. Envía un mensaje en Chat con {provider} para comprobarlo.',
-  'models.keyTest.httpSuffix': ' (HTTP {status})'
+  'models.keyTest.httpSuffix': ' (HTTP {status})',
+  'models.planExec.title': 'Planear y ejecutar en Code',
+  'models.planExec.description':
+    'Opcional. En Code, el modo Planear puede usar un modelo (por ejemplo uno más fuerte) y Hacer otro (por ejemplo uno más barato), aunque sean de proveedores distintos. Vacío = se usa el modelo de la conversación.',
+  'models.planExec.plan.label': 'Modelo para planear',
+  'models.planExec.plan.description': 'Se usa mientras Code está en modo Planear.',
+  'models.planExec.plan.aria': 'Modelo para planear',
+  'models.planExec.exec.label': 'Modelo para ejecutar',
+  'models.planExec.exec.description': 'Se usa al pasar a Hacer. Los ayudantes lo heredan, salvo los que tengan un modelo propio.',
+  'models.planExec.exec.aria': 'Modelo para ejecutar',
+  'models.planExec.useConversation': 'El de la conversación',
+  'code.planExec.strip': 'Planear con {plan} · Ejecutar con {exec}',
+  'code.planExec.strip.conversation': 'el de la conversación',
+  'code.planExec.strip.aria': 'Modelos de Code: planear y ejecutar',
+  'code.planExec.role.plan': 'Planear',
+  'code.planExec.role.exec': 'Ejecutar',
+  'code.planExec.picker.title': 'Modelo para {role} (solo en esta conversación)',
+  'code.planExec.fallback':
+    'El modelo para {role} ({wanted}) ya no está disponible o no tiene clave. Se usó el de la conversación ({used}). Puedes elegir otro en el selector o revisar Ajustes › Modelos.',
+  'code.planExec.fallback.dismiss': 'Entendido'
 } as const

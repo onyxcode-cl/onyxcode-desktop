@@ -30,6 +30,8 @@ import { useAiGate, type AiGate } from '../../../lib/ai-gate'
 import { useModeModel } from '../../settings/impl/extras'
 import { CompareControls } from '../../compare'
 import { useCode } from './store'
+import { useRoleModels } from './PlanExecStrip'
+import { roleOfAgent } from '@shared/plan-exec-models'
 import { nativeCode } from './client'
 import { sameDir } from './open-projects'
 import { pickAndOpenFolder } from './ProjectPicker'
@@ -216,6 +218,13 @@ export function ModelControls(): React.JSX.Element {
   const directory = useCode((s) => s.directory)
   const variant = useCode((s) => s.variant)
   const setVariant = useCode((s) => s.setVariant)
+  // D2: con modelo propio para planear/ejecutar, el selector muestra y cambia el del paso actual (solo en esta conversación).
+  const agent = useCode((s) => s.agent)
+  const setRoleModel = useCode((s) => s.setRoleModel)
+  const roles = useRoleModels(activeSessionID)
+  const role = roleOfAgent(agent)
+  const roleModel = roles[role]
+  const t = useT()
 
   return (
     <div className="flex items-center gap-0.5 desk:ml-auto desk:min-w-0 desk:shrink">
@@ -224,8 +233,22 @@ export function ModelControls(): React.JSX.Element {
         <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" iconOnly />
       </div>
       {/* El nombre largo se acorta con «…» (nunca se sale ni se pisa con lo de al lado); el menú se alinea a la derecha. */}
-      <div className="no-drag desk:max-w-[15rem] desk:min-w-[4.5rem] desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right">
-        <ModelPicker value={effective} onChange={setModel} placement="top" effort={{ variant, onChange: setVariant }} />
+      <div
+        title={
+          roleModel
+            ? t('code.planExec.picker.title', {
+                role: t(role === 'plan' ? 'code.planExec.role.plan' : 'code.planExec.role.exec').toLowerCase()
+              })
+            : undefined
+        }
+        className="no-drag desk:max-w-[15rem] desk:min-w-[4.5rem] desk:shrink [&_.absolute]:right-0 [&_.absolute]:left-auto [&_.absolute]:origin-bottom-right"
+      >
+        <ModelPicker
+          value={roleModel ?? effective}
+          onChange={roleModel ? (m) => setRoleModel(role, m) : setModel}
+          placement="top"
+          effort={roleModel ? undefined : { variant, onChange: setVariant }}
+        />
       </div>
       <div className="block desk:@max-[34rem]:hidden">
         <UsageMeter messages={messages ?? []} model={effective} />
