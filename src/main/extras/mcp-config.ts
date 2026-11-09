@@ -16,6 +16,8 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSy
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpLocalEntry, McpRemoteEntry } from '@shared/ipc-extras'
+import { readGlobalOpencodeConfig } from '../opencode/code-mcp-permission'
+import { configRulesOf, type ConfigRule } from '@shared/permission-rules'
 import { MCP_NAME_RE as NAME_RE, MCP_VALUE_MASK, mcpPermissionKey } from '@shared/mcp-catalog'
 
 const SCHEMA = 'https://opencode.ai/config.json'
@@ -199,6 +201,26 @@ export function readAppPermission(): Record<string, unknown> {
   } catch {
     return {}
   }
+}
+
+/** Reglas de permiso del archivo de la app (todas las acciones y las de `agent.build|plan`), en su orden. `[]` si falta o es ilegible. */
+export function readAppConfigRules(): ConfigRule[] {
+  try {
+    return configRulesOf(readRaw())
+  } catch {
+    return []
+  }
+}
+
+/** Reglas de permiso de la config global del usuario y de la de la app (en ese orden, el del motor). Nunca lanza. */
+export function readGlobalConfigRules(): ConfigRule[] {
+  let g: ConfigRule[] = []
+  try {
+    g = readGlobalOpencodeConfig().rules ?? []
+  } catch {
+    g = []
+  }
+  return [...g, ...readAppConfigRules()]
 }
 
 /** ¿El servidor tiene «Preguntar antes de cada uso» (`permission["<nombre>_*"] = "ask"`)? */

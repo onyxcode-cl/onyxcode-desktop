@@ -1,7 +1,17 @@
 import type { PermissionRuleset } from '@opencode-ai/sdk/v2/client'
-import { effectiveModeFor, endsWithRuleset, rulesetForMode, type LinkedFolderRule, type PermissionRuleLike } from '@shared/permission-rules'
+import {
+  effectiveModeFor,
+  endsWithRuleset,
+  rulesetForMode,
+  sessionConfigRules,
+  wildcardMatch,
+  type ConfigRule,
+  type LinkedFolderRule,
+  type PermissionRuleLike
+} from '@shared/permission-rules'
 import type { ProjectScanResult } from '@shared/ipc-code'
 import { useSettings } from '../../../stores/settings'
+import { nativeCode } from './client'
 import { bgshellSessionRules } from '@shared/shell-bg-permissions'
 import { documentsSessionRules } from '@shared/documents-permissions'
 import type { PermissionMode } from './types'
@@ -22,15 +32,34 @@ export interface FolderMcpState {
   servers: Array<{ name: string; trustName?: string; key: string; overrides: boolean }>
   /** Hay algo que no se pudo enumerar (archivo roto, enlace fuera, tope, escaneo fallido): la regla cubre CUALQUIER conector. */
   askAll: boolean
-  /** Reglas `deny` de la config (global, archivo de la app y `opencode.json` de la carpeta) que van DESPUÉS de los `ask` de conector. */
-  denies?: PermissionRuleLike[]
+  /** Reglas de permiso del `opencode.json` de la carpeta (las globales y las de la app van aparte: `globalConfigRules`). */
+  config?: ConfigRule[]
 }
 
 /**
- * `deny` de la config global y del archivo de conectores de la app, del último escaneo visto. Valen para las carpetas que no se escanearon o cuyo
- * escaneo falló (no dependen de la carpeta). Sin ningún escaneo previo queda vacío: ese caso no se puede cerrar desde aquí (ver SEGURIDAD.md).
+ * Reglas de permiso de la config global del usuario y del archivo de conectores de la app. No dependen de la carpeta: se refrescan al escanear y antes de
+ * enviar (`refreshGlobalConfigRules`, store). Sin ninguna lectura previa queda vacío (ese caso no se puede cerrar desde aquí; ver SEGURIDAD.md).
  */
-let knownGlobalDenies: PermissionRuleLike[] = []
+let globalConfigRules: ConfigRule[] = []
+/**
+ * Vuelve a leer (barato, solo disco, sin escanear la carpeta) las reglas globales y de la app antes de calcular las reglas de una sesión: Ajustes puede
+ * haberlas cambiado desde el último escaneo, y si el escaneo venció o falló no las trajo. Si no se puede, queda lo último que se supo (un `deny` nuevo
+ * tardaría hasta la próxima lectura: documentado en SEGURIDAD.md).
+ */
+export function refreshGlobalConfigRules(): Promise<void> | undefined {
+  const native = nativeCode()
+  if (!native) return undefined
+  const guard = new Promise<null>((res) => setTimeout(() => res(null), 1500))
+  return Promise.race([native.project.scan('/', true).catch(() => null), guard]).then(
+    (r) => {
+      if (r) setGlobalConfigRules(r.globalConfigRules)
+    },
+    () => undefined
+  )
+}
+export function setGlobalConfigRules(rules: readonly ConfigRule[] | undefined): void {
+  if (rules) globalConfigRules = rules.map((r) => ({ ...r }))
+}
 
 const folderMcp = new Map<string, FolderMcpState>()
 const dirKey = (dir: string): string => (dir.length > 1 ? dir.replace(/[/\\]+$/, '') : dir)
@@ -38,13 +67,13 @@ const dirKey = (dir: string): string => (dir.length > 1 ? dir.replace(/[/\\]+$/,
 /** Guarda el resultado del escaneo de `dir`; `null` = no se pudo escanear (falla cerrado: preguntan todos los conectores). */
 export function setFolderMcp(
   dir: string,
-  scan: Pick<ProjectScanResult, 'items' | 'complete' | 'denyRules' | 'globalDenyRules'> | null
+  scan: Pick<ProjectScanResult, 'items' | 'complete' | 'configRules' | 'globalConfigRules'> | null
 ): void {
   if (!scan) {
-    folderMcp.set(dirKey(dir), { servers: [], askAll: true, denies: knownGlobalDenies })
+    folderMcp.set(dirKey(dir), { servers: [], askAll: true })
     return
   }
-  if (scan.globalDenyRules) knownGlobalDenies = scan.globalDenyRules.map((d) => ({ ...d }))
+  setGlobalConfigRules(scan.globalConfigRules)
   const servers: FolderMcpState['servers'] = []
   for (const i of scan.items) {
     if (i.kind === 'mcp' && i.mcpKey) servers.push({ name: i.name, trustName: i.trustName, key: i.mcpKey, overrides: !!i.overrides })
@@ -52,7 +81,7 @@ export function setFolderMcp(
   folderMcp.set(dirKey(dir), {
     servers,
     askAll: !scan.complete,
-    denies: (scan.denyRules ?? knownGlobalDenies).map((d) => ({ ...d }))
+    config: (scan.configRules ?? []).map((r) => ({ ...r }))
   })
 }
 
@@ -83,9 +112,9 @@ export function folderMcpOf(dir: string): FolderMcpState | undefined {
  * Si el escaneo no pudo enumerarlo todo (`askAll`) se añade `*_*: ask` como red de seguridad: todo conector pregunta en esa carpeta.
  * Orden estable (por clave) para que `sessionHasRuleset` no reenvíe sin motivo.
  */
-export function projectAskRules(state: FolderMcpState | undefined, trusted: readonly string[]): PermissionRuleLike[] {
+export function projectAskRules(state: FolderMcpState | undefined, trusted: readonly string[], agent?: string): PermissionRuleLike[] {
   // Carpeta que no se escaneó en esta ejecución (restaurada al arrancar, abierta desde la barra…): falla cerrado, todo conector pregunta.
-  if (!state) return [{ permission: '*_*', pattern: '*', action: 'ask' }, ...knownGlobalDenies]
+  if (!state) return [{ permission: '*_*', pattern: '*', action: 'ask' }, ...sessionConfigRules(globalConfigRules, agent)]
   const trustedNames = new Set(trusted)
   const keys = new Set<string>()
   for (const s of state.servers) {
@@ -95,20 +124,20 @@ export function projectAskRules(state: FolderMcpState | undefined, trusted: read
   }
   const rules: PermissionRuleLike[] = [...keys].sort().map((k) => ({ permission: k, pattern: '*', action: 'ask' as const }))
   if (state.askAll) rules.unshift({ permission: '*_*', pattern: '*', action: 'ask' })
-  // Los `deny` de la config van DESPUÉS de los `ask`: gana la última regla que coincide, y las de sesión van después de las de la config, así que un
-  // `ask` de conector taparía un `deny` (`prueba_start: deny` pasaría a «preguntar»). Re-escribir un `deny` después nunca afloja nada.
-  return [...rules, ...(state.denies ?? [])]
+  // Lo que la config NIEGA va DESPUÉS de los `ask`: gana la última regla que coincide, y las de sesión van después de las de la config, así que un
+  // `ask` de conector taparía un `deny` (`prueba_start: deny`, `*: deny`, `agent.build.permission`…) y lo dejaría en «preguntar». Ver `sessionConfigRules`.
+  return [...rules, ...sessionConfigRules([...globalConfigRules, ...(state.config ?? [])], agent)]
 }
 
 /** Reglas de conectores de la carpeta `dir` con la lista de confianza actual de Ajustes. Nunca lanza. */
-export function projectAskOf(dir: string): PermissionRuleLike[] {
+export function projectAskOf(dir: string, agent?: string): PermissionRuleLike[] {
   let trusted: readonly string[] = []
   try {
     trusted = useSettings.getState().settings.codeTrustedMcp ?? []
   } catch {
     trusted = []
   }
-  return projectAskRules(folderMcpOf(dir), trusted)
+  return projectAskRules(folderMcpOf(dir), trusted, agent)
 }
 
 /**
@@ -124,12 +153,19 @@ export function rulesetFor(
   linked?: readonly LinkedFolderRule[],
   projectAsk: readonly PermissionRuleLike[] = []
 ): PermissionRuleset {
-  return [
-    ...bgshellSessionRules(mode),
-    ...documentsSessionRules(mode),
-    ...projectAsk,
-    ...rulesetForMode(mode, { linked })
-  ] as PermissionRuleset
+  const app = [...bgshellSessionRules(mode), ...documentsSessionRules(mode)]
+  // Si la config NIEGA algo, esos `deny` van tras los `ask` y un patrón amplio (`*_*`, `*start*`, `*`) alcanzaría también a las herramientas propias de la app
+  // (`bgshell_*`, `documentos_*`), que antes (1.8.11, y 1.8.12 sin los deny) volvían a abrir sus reglas de sesión. Se repiten tras los `deny` y, donde los `ask`
+  // de conector las cubrían (carpeta sin enumerar o que redefine `bgshell`/`documentos`), se repite su `ask`: mismo resultado que antes, sin aflojar nada.
+  const hasDeny = projectAsk.some((r) => r.action === 'deny')
+  const tail: PermissionRuleLike[] = []
+  if (hasDeny) {
+    tail.push(...app)
+    for (const p of new Set(app.map((r) => r.permission)))
+      if (projectAsk.some((r) => r.action === 'ask' && r.pattern === '*' && wildcardMatch(p, r.permission)))
+        tail.push({ permission: p, pattern: '*', action: 'ask' })
+  }
+  return [...app, ...projectAsk, ...tail, ...rulesetForMode(mode, { linked })] as PermissionRuleset
 }
 
 /** Reglas que debe tener la sesión según el modo elegido y el agente activo. */

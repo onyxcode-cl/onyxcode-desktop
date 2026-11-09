@@ -91,14 +91,14 @@ describe('setFolderMcp / clearFolderMcp / folderMcpOf', () => {
     expect(pr.folderMcpOf('/p/a')).toEqual({
       servers: [{ name: 'crm', trustName: 'crm', key: 'crm_*', overrides: false }],
       askAll: false,
-      denies: []
+      config: []
     })
     expect(pr.folderMcpOf('/p/a/')).toEqual(pr.folderMcpOf('/p/a'))
   })
 
   it('sin escaneo (null): askAll true, falla cerrado', () => {
     pr.setFolderMcp('/p/b', null)
-    expect(pr.folderMcpOf('/p/b')).toEqual({ servers: [], askAll: true, denies: [] })
+    expect(pr.folderMcpOf('/p/b')).toEqual({ servers: [], askAll: true })
   })
 
   it('clearFolderMcp quita el registro (vuelve a `undefined`: sin escaneo, falla cerrado)', () => {
@@ -203,63 +203,110 @@ describe('evaluación con la semántica del motor (la última que casa gana)', (
   })
 })
 
-describe('los deny de la config no los tapa un ask de conector (arreglo de W-A2)', () => {
-  const D = (permission: string, pattern = '*') => ({ permission, pattern, action: 'deny' as const })
+describe('lo que la config niega no lo tapa un ask de conector (arreglo de W-A2)', () => {
+  const C = (permission: string, action: 'allow' | 'ask' | 'deny', pattern = '*', agent?: 'build' | 'plan') => ({
+    permission,
+    pattern,
+    action,
+    agent
+  })
   const srv = [{ name: 'prueba', key: 'prueba_*', overrides: false }]
+  const fmt = (rs: Array<{ permission: string; pattern: string; action: string }>): string[] =>
+    rs.map((r) => `${r.permission} ${r.pattern} ${r.action}`)
+  // Como el motor: gana la última regla que coincide.
+  const gana = (rules: Array<{ permission: string; action: string }>, tool: string): string =>
+    rules.filter((r) => new RegExp('^' + r.permission.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$').test(tool)).at(-1)
+      ?.action ?? 'sin-regla'
 
-  it('los `deny` van DESPUÉS de los `ask` (gana la última): conector de la carpeta + deny por herramienta, comodín y alias', () => {
-    const rules = pr.projectAskRules(
-      { servers: srv, askAll: false, denies: [D('prueba_start'), D('*delete*'), D('*start* *'), D('y_mapa', 'a/*')] },
-      []
-    )
-    expect(rules.map((r) => `${r.permission} ${r.pattern} ${r.action}`)).toEqual([
-      'prueba_* * ask',
-      'prueba_start * deny',
-      '*delete* * deny',
-      '*start* * * deny',
-      'y_mapa a/* deny'
-    ])
-    // Como el motor: gana la última regla que coincide.
-    const gana = (tool: string): string =>
-      rules.filter((r) => new RegExp('^' + r.permission.replace(/\*/g, '.*') + '$').test(tool)).at(-1)?.action ?? 'ask'
-    expect(gana('prueba_start')).toBe('deny')
-    expect(gana('prueba_otra')).toBe('ask')
-    expect(gana('github_delete_repo')).toBe('deny')
+  it('los deny de la carpeta van DESPUÉS de los `ask` (gana la última): herramienta, comodín, alias, mapa, `*` y por agente', () => {
+    const state = {
+      servers: srv,
+      askAll: false,
+      config: [C('prueba_start', 'deny'), C('*delete*', 'deny'), C('y_mapa', 'deny', 'a/*'), C('*', 'deny'), C('b_x', 'deny', '*', 'build')]
+    }
+    const rules = pr.projectAskRules(state, [], 'build')
+    expect(fmt(rules)).toEqual(['prueba_* * ask', 'prueba_start * deny', '*delete* * deny', 'y_mapa a/* deny', '* * deny', 'b_x * deny'])
+    expect(gana(rules, 'prueba_otra')).toBe('deny') // `*: deny` (G1)
+    expect(fmt(pr.projectAskRules(state, [], 'plan')).includes('b_x * deny')).toBe(false) // G2: solo el agente activo
   })
 
-  it('conector de confianza (sin ask) con deny: el deny sigue yendo; `*_*` de respaldo también va antes de los deny', () => {
-    const t = pr.projectAskRules({ servers: srv.map((x) => ({ ...x, trustName: 'prueba' })), askAll: true, denies: [D('prueba_start')] }, [
-      'prueba'
-    ])
-    expect(t.map((r) => `${r.permission} ${r.action}`)).toEqual(['*_* ask', 'prueba_start deny'])
-  })
-
-  it('sin deny todo queda EXACTAMENTE como antes (regresión)', () => {
+  it('sin ninguna regla que niegue todo queda EXACTAMENTE como antes (regresión)', () => {
     expect(pr.projectAskRules({ servers: srv, askAll: false }, [])).toEqual([{ permission: 'prueba_*', pattern: '*', action: 'ask' }])
-    expect(pr.projectAskRules({ servers: srv, askAll: false, denies: [] }, [])).toEqual([
+    expect(pr.projectAskRules({ servers: srv, askAll: false, config: [C('prueba_*', 'allow'), C('x_*', 'ask')] }, [])).toEqual([
       { permission: 'prueba_*', pattern: '*', action: 'ask' }
     ])
   })
 
-  it('el escaneo trae los deny (globales + carpeta) y los guarda; una carpeta sin escanear o con escaneo fallido usa los globales del último escaneo', () => {
-    const scan = { ...scanWith(['prueba']), denyRules: [D('g_x'), D('p_y')], globalDenyRules: [D('g_x')] }
-    pr.setFolderMcp('/a', scan)
-    expect(pr.projectAskOf('/a').map((r) => `${r.permission} ${r.action}`)).toEqual(['prueba_* ask', 'g_x deny', 'p_y deny'])
-    expect(pr.projectAskOf('/sin-escanear').map((r) => `${r.permission} ${r.action}`)).toEqual(['*_* ask', 'g_x deny'])
-    pr.setFolderMcp('/b', null)
-    expect(pr.projectAskOf('/b').map((r) => `${r.permission} ${r.action}`)).toEqual(['*_* ask', 'g_x deny'])
+  it('M5: «negar todo menos X»: X sigue preguntando, nunca allow', () => {
+    const rules = pr.projectAskRules({ servers: srv, askAll: false, config: [C('prueba_*', 'deny'), C('prueba_start', 'allow')] }, [])
+    expect(rules.some((r) => r.action === 'allow')).toBe(false)
+    expect(gana(rules, 'prueba_start')).toBe('ask')
+    expect(gana(rules, 'prueba_otra')).toBe('deny')
   })
 
-  it('en la sesión: los deny van antes del bloque del modo (que sigue al final) y en «Todo sin preguntar» también valen', () => {
+  it('M3: las reglas globales (config del usuario y archivo de la app) valen para carpetas sin escanear o con escaneo fallido, y se pueden refrescar', () => {
+    pr.setGlobalConfigRules([C('g_x', 'deny')])
+    expect(fmt(pr.projectAskOf('/sin-escanear'))).toEqual(['*_* * ask', 'g_x * deny'])
+    pr.setFolderMcp('/b', null)
+    expect(fmt(pr.projectAskOf('/b'))).toEqual(['*_* * ask', 'g_x * deny'])
+    pr.setGlobalConfigRules([C('g_x', 'deny'), C('h_y', 'deny')]) // Ajustes cambió algo: el siguiente cálculo ya lo trae
+    expect(fmt(pr.projectAskOf('/b'))).toEqual(['*_* * ask', 'g_x * deny', 'h_y * deny'])
+    pr.setGlobalConfigRules(undefined) // una lectura fallida no borra lo último que se supo
+    expect(fmt(pr.projectAskOf('/b'))).toHaveLength(3)
+  })
+
+  it('el escaneo trae reglas globales y de la carpeta y las guarda', () => {
+    const scan = { ...scanWith(['prueba']), globalConfigRules: [C('g_x', 'deny')], configRules: [C('p_y', 'deny')] }
+    pr.setFolderMcp('/a', scan)
+    expect(fmt(pr.projectAskOf('/a'))).toEqual(['prueba_* * ask', 'g_x * deny', 'p_y * deny'])
+  })
+
+  it('en la sesión: los deny van antes del bloque del modo (que sigue al final) y las herramientas propias de la app (bgshell/documentos) siguen como antes', () => {
     for (const mode of ['manual', 'acceptEdits', 'auto', 'bypass', 'plan'] as const) {
-      const ask = pr.projectAskRules({ servers: srv, askAll: false, denies: [D('prueba_start')] }, [])
+      const ask = pr.projectAskRules({ servers: srv, askAll: false, config: [C('*_*', 'deny')] }, [])
       const set = pr.rulesetFor(mode, undefined, ask)
       const block = rulesetForMode(mode)
       expect(set.slice(-block.length)).toEqual(block)
-      const iAsk = set.findIndex((r) => r.permission === 'prueba_*')
-      const iDeny = set.findIndex((r) => r.permission === 'prueba_start')
-      expect(iDeny).toBeGreaterThan(iAsk)
-      expect(set.slice(iDeny + 1).some((r) => r.permission.startsWith('prueba') || r.permission === '*')).toBe(false)
+      // El deny amplio `*_*` no deja a `bgshell_status` ni `documentos_renderizar` denegados: sus reglas de sesión se repiten DESPUÉS del deny.
+      const cola = set.slice(0, set.length - block.length)
+      for (const tool of ['bgshell_status', 'bgshell_start', 'documentos_renderizar'])
+        expect(gana(cola, tool), `${mode} ${tool}`).not.toBe('deny')
+      expect(gana(cola, 'prueba_start')).toBe('deny')
     }
+  })
+
+  it('carpeta sin enumerar (`*_*: ask`) + deny: las herramientas de la app siguen PREGUNTANDO, como antes (no se aflojan)', () => {
+    const ask = pr.projectAskRules({ servers: [], askAll: true, config: [C('*start*', 'deny')] }, [])
+    const set = pr.rulesetFor('bypass', undefined, ask)
+    const cola = set.slice(0, set.length - rulesetForMode('bypass').length)
+    expect(gana(cola, 'bgshell_status')).toBe('ask')
+    expect(gana(cola, 'documentos_renderizar')).toBe('ask')
+    expect(gana(cola, 'prueba_start')).toBe('deny')
+  })
+
+  it('sin deny, rulesetFor es idéntico al de antes (sin repetir nada)', () => {
+    const ask = pr.projectAskRules({ servers: srv, askAll: false }, [])
+    const set = pr.rulesetFor('manual', undefined, ask)
+    const base = pr.rulesetFor('manual', undefined, [])
+    expect(set).toHaveLength(base.length + 1)
+  })
+
+  it('M3: `refreshGlobalConfigRules` lee solo las reglas globales (rulesOnly) y actualiza lo que se manda; si falla o vence, queda lo último que se supo', async () => {
+    const scan = vi.fn(async () => ({ globalConfigRules: [C('nuevo_x', 'deny')] }))
+    vi.resetModules()
+    vi.doMock('./client', () => ({ nativeCode: () => ({ project: { scan } }) }))
+    const pr2 = await import('./permission-rules')
+    pr2.setGlobalConfigRules([C('viejo_x', 'deny')])
+    expect(fmt(pr2.projectAskOf('/x'))).toEqual(['*_* * ask', 'viejo_x * deny'])
+    await pr2.refreshGlobalConfigRules()
+    expect(scan).toHaveBeenCalledWith('/', true)
+    expect(fmt(pr2.projectAskOf('/x'))).toEqual(['*_* * ask', 'nuevo_x * deny'])
+    scan.mockRejectedValueOnce(new Error('sin motor'))
+    await pr2.refreshGlobalConfigRules()
+    expect(fmt(pr2.projectAskOf('/x'))).toEqual(['*_* * ask', 'nuevo_x * deny'])
+    vi.doUnmock('./client')
+  })
+  it('sin API nativa (pruebas, web) no hace nada y no espera', () => {
+    expect(pr.refreshGlobalConfigRules()).toBeUndefined()
   })
 })

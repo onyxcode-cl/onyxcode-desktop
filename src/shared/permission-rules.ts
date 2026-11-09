@@ -347,30 +347,93 @@ export function effectiveModeFor(mode: PermissionModeId, agent: 'build' | 'plan'
   return mode === 'plan' ? 'manual' : mode
 }
 
-/** Tope de reglas `deny` que se toman de una config (defensa ante un archivo inflado) y largo máximo de cada clave. */
-const DENY_RULES_MAX = 200
-const DENY_TEXT_MAX = 200
+/** Tope de reglas que se toman de CADA config (defensa ante un archivo inflado) y largo máximo de cada texto. */
+const CONFIG_RULES_MAX = 200
+const CONFIG_TEXT_MAX = 200
+
+/** Regla de un bloque `permission` de una config del motor; `agent` = viene de `agent.<build|plan>.permission` (solo vale para ese agente). */
+export interface ConfigRule extends PermissionRuleLike {
+  agent?: 'build' | 'plan'
+}
+
+const isAct = (v: unknown): v is RuleAction => v === 'allow' || v === 'ask' || v === 'deny'
+
+/** Reglas de UN bloque `permission` (texto suelto = clave `*`; texto por clave; o mapa por patrón), en el mismo orden. */
+function rulesOfBlock(p: unknown, agent: ConfigRule['agent'], out: ConfigRule[]): void {
+  const push = (permission: string, pattern: string, action: RuleAction): void => {
+    if (
+      out.length >= CONFIG_RULES_MAX ||
+      !permission ||
+      permission.length > CONFIG_TEXT_MAX ||
+      !pattern ||
+      pattern.length > CONFIG_TEXT_MAX
+    )
+      return
+    out.push(agent ? { permission, pattern, action, agent } : { permission, pattern, action })
+  }
+  if (isAct(p)) return push('*', '*', p)
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return
+  for (const [k, v] of Object.entries(p as Record<string, unknown>)) {
+    if (isAct(v)) push(k, '*', v)
+    else if (v && typeof v === 'object' && !Array.isArray(v))
+      for (const [pat, a] of Object.entries(v as Record<string, unknown>)) if (isAct(a)) push(k, pat, a)
+  }
+}
 
 /**
- * Reglas `deny` de un bloque `permission` de config del motor (texto por clave, o mapa por patrón), en el mismo orden. Solo `deny`: re-escribir un
- * `deny` más tarde nunca aflojar nada. Se ignora la clave `*` suelta y lo que no sean textos. Las usa W-A2 para que las reglas `<conector>_*: ask` de la
- * sesión no tapen un `deny` de la config (gana la ÚLTIMA regla que coincide, y las de sesión van después de las de la config).
+ * Reglas de permiso de UNA config del motor ya leída (`permission` y `agent.build|plan.permission`), con todas las acciones y en su orden, con la
+ * sintaxis `permission: "deny"` normalizada a `*: deny`. Dato no confiable: topes de cantidad y de largo; nunca lanza.
  */
-export function denyRulesOf(permission: unknown): PermissionRuleLike[] {
-  const out: PermissionRuleLike[] = []
-  if (!permission || typeof permission !== 'object' || Array.isArray(permission)) return out
-  const ok = (t: unknown): t is string => typeof t === 'string' && t.length > 0 && t.length <= DENY_TEXT_MAX
-  for (const [k, v] of Object.entries(permission as Record<string, unknown>)) {
-    if (out.length >= DENY_RULES_MAX) break
-    if (!ok(k)) continue
-    if (v === 'deny') {
-      if (k !== '*') out.push(rule(k, '*', 'deny'))
-    } else if (v && typeof v === 'object' && !Array.isArray(v)) {
-      for (const [pat, a] of Object.entries(v as Record<string, unknown>)) {
-        if (out.length >= DENY_RULES_MAX) break
-        if (a === 'deny' && ok(pat)) out.push(rule(k, pat, 'deny'))
-      }
+export function configRulesOf(config: unknown): ConfigRule[] {
+  const out: ConfigRule[] = []
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return out
+  const o = config as Record<string, unknown>
+  rulesOfBlock(o.permission, undefined, out)
+  const agents = o.agent
+  if (agents && typeof agents === 'object' && !Array.isArray(agents)) {
+    for (const a of ['build', 'plan'] as const) {
+      const e = (agents as Record<string, unknown>)[a]
+      if (e && typeof e === 'object' && !Array.isArray(e)) rulesOfBlock((e as Record<string, unknown>).permission, a, out)
     }
   }
   return out
+}
+
+/** Permisos internos del motor con guion bajo: nunca se convierten en `ask` (no son herramientas de conector). */
+const INTERNAL_KEYS = new Set(['external_directory', 'doom_loop', 'plan_enter', 'plan_exit'])
+
+/**
+ * Lo que hay que mandar en la SESIÓN, DESPUÉS de las reglas `ask` de conector (W-A2), para que «gana la última regla» se comporte con la config como si
+ * esos `ask` no existieran donde la config NIEGA. Recorre las reglas en el orden del motor (las de nivel superior, luego las de `agent.<agente>`):
+ *  - todo `deny` se re-emite tal cual (incluida la clave `*`);
+ *  - un `allow`/`ask` posterior a algún `deny` se re-emite como `ask` («negar todo menos X»: X sigue preguntando, que es lo que piden los conectores de
+ *    la carpeta; nunca `allow`), solo si su clave puede casar con una herramienta de conector (lleva `_`, `*` o `?`, no es `*` suelta ni un permiso interno).
+ * Sin ningún `deny` no devuelve nada (las reglas de la sesión quedan como antes). Nunca devuelve `allow`.
+ */
+export function sessionConfigRules(rules: readonly ConfigRule[], agent?: string): PermissionRuleLike[] {
+  const cur = agent === 'plan' ? 'plan' : 'build'
+  const ordered = [...rules.filter((r) => !r.agent), ...rules.filter((r) => r.agent === cur)]
+  const out: PermissionRuleLike[] = []
+  let seenDeny = false
+  for (const r of ordered) {
+    if (r.action === 'deny') {
+      out.push(rule(r.permission, r.pattern, 'deny'))
+      seenDeny = true
+    } else if (seenDeny && r.permission !== '*' && !INTERNAL_KEYS.has(r.permission) && /[_*?]/.test(r.permission)) {
+      out.push(rule(r.permission, r.pattern, 'ask'))
+    }
+  }
+  return out
+}
+
+/** Mismo comparador que el motor (`Wildcard.match`): `*` cualquier cosa, `?` un carácter, y un « *» final es opcional. */
+export function wildcardMatch(str: string, pattern: string): boolean {
+  const s = str.replaceAll('\\', '/')
+  let p = pattern
+    .replaceAll('\\', '/')
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.')
+  if (p.endsWith(' .*')) p = p.slice(0, -3) + '( .*)?'
+  return new RegExp('^' + p + '$', 's').test(s)
 }

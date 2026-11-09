@@ -7,7 +7,7 @@
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { isVerifying, projectAskOf, rulesetForState, sessionHasRuleset, setVerifying } from './permission-rules'
+import { isVerifying, projectAskOf, refreshGlobalConfigRules, rulesetForState, sessionHasRuleset, setVerifying } from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -888,7 +888,11 @@ export const useCode = create<CodeState>((set, get) => {
     // no tenerlo y «Manual» no preguntaría nada. Se iguala ANTES de enviar; en Manual, si no se puede, no se envía (falla cerrado).
     // El bloque de reglas es autosuficiente (anula lo de bloques anteriores) y el motor lo AÑADE: solo se reenvía si la sesión no
     // termina ya con él, así no crece la lista en cada mensaje. El agente `plan` manda sobre el modo (ver `effectiveModeFor`).
-    const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir))
+    {
+      const rf = refreshGlobalConfigRules()
+      if (rf) await rf
+    }
+    const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir, agent))
     if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
       try {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
@@ -1231,11 +1235,15 @@ export const useCode = create<CodeState>((set, get) => {
     newSessionAt: async (dir, title) => {
       try {
         const client = requireClient()
+        {
+          const rf = refreshGlobalConfigRules()
+          if (rf) await rf
+        }
         const sess = sdkData(
           await client.session.create({
             directory: dir,
             title,
-            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir), projectAskOf(dir))
+            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir), projectAskOf(dir, get().agent))
           })
         )
         set((s) => ({
@@ -1297,7 +1305,11 @@ export const useCode = create<CodeState>((set, get) => {
       setError(sid, null)
       // Igual que `doSend`: el comando `/…` también puede usar herramientas de los conectores de la carpeta, así que la sesión debe llevar ya
       // las reglas del modo y las `ask` de proyecto. Aquí, si no se pueden igualar, NO se ejecuta (falla cerrado en todos los modos).
-      const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir))
+      {
+        const rf = refreshGlobalConfigRules()
+        if (rf) await rf
+      }
+      const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir, agent))
       if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
         try {
           const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
@@ -1748,7 +1760,11 @@ export const useCode = create<CodeState>((set, get) => {
       // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
       // el cambio vale desde el próximo mensaje (la interfaz lo avisa).
       const { client, dir } = activeDir()
-      const permission = rulesetForState(mode, get().agent, linkedOf(dir), projectAskOf(dir))
+      {
+        const rf = refreshGlobalConfigRules()
+        if (rf) await rf
+      }
+      const permission = rulesetForState(mode, get().agent, linkedOf(dir), projectAskOf(dir, get().agent))
       if (sessionHasRuleset(get().sessions[sid]?.permission, permission)) return
       try {
         const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission }))

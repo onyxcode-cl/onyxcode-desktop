@@ -21,6 +21,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { mcpPermissionRulesForCode, mcpServerPermissionKey } from '@shared/mcp-permissions'
+import { configRulesOf, type ConfigRule } from '@shared/permission-rules'
 
 type Action = 'allow' | 'ask' | 'deny'
 type RuleValue = Action | Record<string, Action>
@@ -201,6 +202,8 @@ export function stripJsonc(text: string): string {
 export interface GlobalOpencodeConfigInfo {
   servers: string[]
   permission: Record<string, unknown>
+  /** Reglas de permiso de esos archivos (todas las acciones y las de `agent.build|plan`), en el orden del motor. */
+  rules: ConfigRule[]
 }
 
 /**
@@ -212,6 +215,7 @@ export function readGlobalOpencodeConfig(env: NodeJS.ProcessEnv = process.env): 
   const dir = join(env.XDG_CONFIG_HOME || join(env.HOME || homedir(), '.config'), 'opencode')
   const servers: string[] = []
   let permission: Record<string, unknown> = {}
+  const rules: ConfigRule[] = []
   for (const name of ['config.json', 'opencode.json', 'opencode.jsonc']) {
     const file = join(dir, name)
     try {
@@ -219,6 +223,7 @@ export function readGlobalOpencodeConfig(env: NodeJS.ProcessEnv = process.env): 
       const raw = JSON.parse(stripJsonc(readFileSync(file, 'utf8'))) as unknown
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
       const o = raw as Record<string, unknown>
+      rules.push(...configRulesOf(o))
       if (o.mcp && typeof o.mcp === 'object' && !Array.isArray(o.mcp)) servers.push(...Object.keys(o.mcp))
       if (typeof o.permission === 'string') permission = { ...permission, '*': o.permission }
       else if (o.permission && typeof o.permission === 'object' && !Array.isArray(o.permission))
@@ -227,7 +232,7 @@ export function readGlobalOpencodeConfig(env: NodeJS.ProcessEnv = process.env): 
       /* ilegible: lo que cargue el motor se verá al preguntarle */
     }
   }
-  return { servers: cleanServerNames(servers), permission }
+  return { servers: cleanServerNames(servers), permission, rules }
 }
 
 // ── Lo que reporta el motor ya arrancado ──────────────────────────────────────────────────────────────────────────

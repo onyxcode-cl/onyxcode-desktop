@@ -65,7 +65,7 @@ describe('carpeta nueva', () => {
     scan.mockReturnValue(new Promise((res) => (done = res)))
     const p = t.ensureTrusted(D)
     // Aún sin respuesta: está revisando y las reglas fallan cerrado.
-    expect(pr.folderMcpOf(D)).toEqual({ servers: [], askAll: true, denies: [] })
+    expect(pr.folderMcpOf(D)).toEqual({ servers: [], askAll: true })
     done(result([mcp('crm'), agent('rev')]))
     await flush()
     t.resolveTrust(true)

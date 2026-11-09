@@ -3,7 +3,9 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   approvalKindOf,
-  denyRulesOf,
+  configRulesOf,
+  sessionConfigRules,
+  wildcardMatch,
   effectiveModeFor,
   endsWithRuleset,
   isAutoApprovableCommand,
@@ -592,29 +594,90 @@ describe('git con opciones que escriben o ejecutan', () => {
   })
 })
 
-describe('denyRulesOf (deny de una config del motor)', () => {
-  it('toma solo los deny: texto por clave, mapas por patrón, comodines y alias; en orden', () => {
-    const r = denyRulesOf({
-      'x_*': 'ask',
-      x_secreto: 'deny',
-      '*start* *': 'deny',
-      y: { '*': 'deny', 'a/*': 'allow', 'b/*': 'deny' },
-      z: 'allow'
+describe('configRulesOf (reglas de una config del motor)', () => {
+  it('todas las acciones y en orden; `permission: "deny"` = `*: deny`; mapas por patrón; agent.build|plan etiquetados', () => {
+    expect(configRulesOf({ permission: 'deny' })).toEqual([{ permission: '*', pattern: '*', action: 'deny' }])
+    const r = configRulesOf({
+      permission: { 'x_*': 'ask', x_s: 'deny', '*': 'deny', y: { '*': 'deny', 'a/*': 'allow' }, z: 'quizá' },
+      agent: { build: { permission: { b_x: 'deny' } }, plan: { permission: 'deny' }, otro: { permission: { q: 'deny' } } }
     })
     expect(r).toEqual([
-      { permission: 'x_secreto', pattern: '*', action: 'deny' },
-      { permission: '*start* *', pattern: '*', action: 'deny' },
+      { permission: 'x_*', pattern: '*', action: 'ask' },
+      { permission: 'x_s', pattern: '*', action: 'deny' },
+      { permission: '*', pattern: '*', action: 'deny' },
       { permission: 'y', pattern: '*', action: 'deny' },
-      { permission: 'y', pattern: 'b/*', action: 'deny' }
+      { permission: 'y', pattern: 'a/*', action: 'allow' },
+      { permission: 'b_x', pattern: '*', action: 'deny', agent: 'build' },
+      { permission: '*', pattern: '*', action: 'deny', agent: 'plan' }
     ])
   })
-  it('ignora la clave `*` suelta, lo que no es objeto y los textos enormes; tope de reglas', () => {
-    expect(denyRulesOf({ '*': 'deny' })).toEqual([])
-    expect(denyRulesOf('deny')).toEqual([])
-    expect(denyRulesOf(null)).toEqual([])
-    expect(denyRulesOf([1])).toEqual([])
-    expect(denyRulesOf({ ['a'.repeat(500)]: 'deny' })).toEqual([])
+  it('ignora lo que no es objeto y los textos enormes; tope de reglas', () => {
+    for (const v of [null, 'deny', [1], 3, undefined]) expect(configRulesOf(v)).toEqual([])
+    expect(configRulesOf({ permission: { ['a'.repeat(500)]: 'deny' } })).toEqual([])
     const grande = Object.fromEntries(Array.from({ length: 500 }, (_, i) => [`k${i}_x`, 'deny']))
-    expect(denyRulesOf(grande)).toHaveLength(200)
+    expect(configRulesOf({ permission: grande })).toHaveLength(200)
+  })
+})
+
+describe('sessionConfigRules (lo que se manda DESPUÉS de los ask de conector)', () => {
+  const C = (permission: string, action: 'allow' | 'ask' | 'deny', pattern = '*', agent?: 'build' | 'plan') => ({
+    permission,
+    pattern,
+    action,
+    agent
+  })
+  // Como el motor: gana la ÚLTIMA regla que coincide; sin coincidencia, la de los `ask` de la sesión.
+  const gana = (asks: string[], extra: ReturnType<typeof sessionConfigRules>, tool: string): string =>
+    [...asks.map((k) => ({ permission: k, pattern: '*', action: 'ask' })), ...extra].filter((r) => wildcardMatch(tool, r.permission)).at(-1)
+      ?.action ?? 'sin-regla'
+
+  it('sin ningún deny no devuelve nada (las reglas de la sesión quedan como antes), aunque haya allow/ask', () => {
+    expect(sessionConfigRules([C('x_*', 'allow'), C('y_*', 'ask'), C('*', 'allow')])).toEqual([])
+    expect(sessionConfigRules([])).toEqual([])
+  })
+  it('G1: `*: deny` (y `permission: "deny"`) niega aunque haya un `prueba_*: ask` antes', () => {
+    const e = sessionConfigRules(configRulesOf({ permission: 'deny' }))
+    expect(gana(['prueba_*'], e, 'prueba_start')).toBe('deny')
+    expect(gana(['*_*'], sessionConfigRules(configRulesOf({ permission: { '*': 'deny' } })), 'cualquier_cosa')).toBe('deny')
+  })
+  it('G2: deny en agent.build solo vale para build; en agent.plan solo para plan', () => {
+    const rs = configRulesOf({ agent: { build: { permission: { prueba_start: 'deny' } }, plan: { permission: { otra_x: 'deny' } } } })
+    expect(gana(['prueba_*'], sessionConfigRules(rs, 'build'), 'prueba_start')).toBe('deny')
+    expect(gana(['prueba_*'], sessionConfigRules(rs, 'build'), 'otra_x')).toBe('sin-regla')
+    expect(gana(['otra_*'], sessionConfigRules(rs, 'plan'), 'otra_x')).toBe('deny')
+    expect(gana(['prueba_*'], sessionConfigRules(rs, 'plan'), 'prueba_start')).toBe('ask')
+  })
+  it('M5: «negar todo menos X» (deny `prueba_*` + allow `prueba_start`): X sigue PREGUNTANDO (nunca allow), lo demás deniega', () => {
+    const e = sessionConfigRules([C('prueba_*', 'deny'), C('prueba_start', 'allow')])
+    expect(e.some((r) => r.action === 'allow')).toBe(false)
+    expect(gana(['prueba_*'], e, 'prueba_start')).toBe('ask')
+    expect(gana(['prueba_*'], e, 'prueba_otra')).toBe('deny')
+  })
+  it('un allow de ANTES del deny no se re-emite; `*` allow, permisos internos y claves sin comodín ni guion bajo tampoco', () => {
+    expect(sessionConfigRules([C('prueba_start', 'allow'), C('prueba_*', 'deny')]).map((r) => `${r.permission} ${r.action}`)).toEqual([
+      'prueba_* deny'
+    ])
+    const e = sessionConfigRules([
+      C('x_*', 'deny'),
+      C('*', 'allow'),
+      C('external_directory', 'allow'),
+      C('bash', 'allow'),
+      C('y_*', 'allow')
+    ])
+    expect(e.map((r) => `${r.permission} ${r.action}`)).toEqual(['x_* deny', 'y_* ask'])
+  })
+  it('comodines sin guion bajo y alias: `*start*`, `*delete* *`, `?`', () => {
+    const e = sessionConfigRules([C('*start*', 'deny'), C('*delete* *', 'deny'), C('prueba_sta?t', 'deny')])
+    expect(gana(['prueba_*'], e, 'prueba_start')).toBe('deny')
+    expect(gana(['github_*'], e, 'github_delete_repo')).toBe('deny')
+  })
+})
+
+describe('wildcardMatch', () => {
+  it('como el motor: `*`, `?`, y « *» final opcional', () => {
+    expect(wildcardMatch('prueba_start', 'prueba_*')).toBe(true)
+    expect(wildcardMatch('prueba_start', '*start*')).toBe(true)
+    expect(wildcardMatch('x_secreto', 'x_secreto *')).toBe(true)
+    expect(wildcardMatch('a', 'b')).toBe(false)
   })
 })
