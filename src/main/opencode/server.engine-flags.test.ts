@@ -260,7 +260,7 @@ describe('sidecar principal: bgshell (F8-B204)', () => {
   afterEach(() => {
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
     else process.env.OPENCODE_BIN = prevBin
-    state.userData = '/tmp/lazunox-test'
+    state.userData = process.platform === 'win32' ? 'C:\\tmp\\lazunox-test' : '/tmp/lazunox-test'
     state.node = null
     state.script = null
     rmSync(dir, { recursive: true, force: true })
