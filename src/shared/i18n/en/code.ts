@@ -135,7 +135,7 @@ export const code = {
     'Allows everything without asking (commands, the web and folders outside the project). Only warns if the same action repeats endlessly. Use with care.',
   'code.mode.bypass.short': 'No asking',
   'code.mode.note':
-    'Except in "Allow everything", it always asks about folders outside the project and .env files; if an action repeats in a loop it warns you in any mode. External connectors may act without asking.',
+    'Except in "Allow everything", it always asks about folders outside the project and .env files; if an action repeats in a loop it warns you in any mode. Connectors that come with the folder ask before they are used in every mode, except those you marked “Don’t ask in Code” in Settings.',
   'code.mode.laterNotice': 'The change takes effect from the next message',
   'code.mode.title': 'Permission mode',
   'code.agent.title': 'Work mode',

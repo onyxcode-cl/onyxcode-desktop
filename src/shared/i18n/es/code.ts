@@ -132,7 +132,7 @@ export const code = {
     'Permite todo sin preguntar (comandos, web y carpetas fuera del proyecto). Solo avisa si una misma acción se repite sin parar. Úsalo con cuidado.',
   'code.mode.bypass.short': 'Sin preguntar',
   'code.mode.note':
-    'Salvo en «Todo sin preguntar», siempre pregunta por carpetas fuera del proyecto y archivos .env; si una acción se repite en bucle, avisa en cualquier modo. Los conectores externos pueden actuar sin avisar.',
+    'Salvo en «Todo sin preguntar», siempre pregunta por carpetas fuera del proyecto y archivos .env; si una acción se repite en bucle, avisa en cualquier modo. Los conectores que trae la carpeta preguntan antes de usarse en todos los modos, salvo los que marcaste «Sin preguntar en Code» en Ajustes.',
   'code.mode.laterNotice': 'El cambio vale desde el próximo mensaje',
   'code.mode.title': 'Modo de permisos',
   'code.agent.title': 'Modo de trabajo',
