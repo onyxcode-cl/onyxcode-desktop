@@ -41,6 +41,8 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Si confías en una carpeta, los conectores y complementos que trae se arrancan** (eso es lo que significa confiar). Las herramientas de un conector preguntan antes de usarse. Al abrir la app, una carpeta que ya tenías abierta se revisa primero: si trae algo nuevo, o no se pudo revisar, sale el aviso y no se carga nada hasta que decidas; «Cancelar» la cierra.
 - **Sin diálogo de confianza** en Tareas, Overdrive, Telegram, el celular, Rutinas y Comparar: ahí rigen las mismas preguntas de permiso, pero la carpeta no se revisa antes.
 - En Windows, `cmd.exe` y `git.bat` no tienen aún el mismo cuidado que PowerShell.
+- **Después de usar «Solo explorar» en una conversación,** los ayudantes pueden quedarse sin poder editar aunque vuelvas a «Hacer» y «Automático»: la conversación conserva ese bloqueo. Abre una conversación nueva. Es más estricto, no más laxo.
+- Si «Solo explorar» bloquea a un ayudante, solo se ve un icono rojo, sin explicación.
 - En «Comparar», las columnas canceladas o descartadas pueden seguir mostrando los botones «Permitir una vez / Rechazar» (no hacen nada).
 - «Permitir siempre» a una página web deja pasar las siguientes durante esa misma sesión, aunque no se guarda para la próxima.
 
