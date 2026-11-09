@@ -307,6 +307,22 @@ export function rulesetForMode(
   }
 }
 
+/**
+ * Motor `lazunox.16` con `LAZUNOX_PERMISOS_CAPAS=1`: el campo opcional `permissionMode: "replace"` en `POST /session` y `PATCH /session/{id}` hace que el
+ * bloque enviado SUSTITUYA al bloque del modo anterior en vez de anexarse (el motor lo marca con una regla `lazunox_modo_inicio` al principio del bloque).
+ * Así la lista de reglas de la sesión no crece y los ayudantes (sesiones hijas) dejan de heredar el `edit * deny` de un «Solo explorar» viejo.
+ * El SDK fijado no conoce el campo: se pasa con el prefijo `$body_` que su generador reconoce. Un motor anterior lo ignora y anexa como siempre.
+ */
+export const PERMISSION_REPLACE_BODY = { $body_permissionMode: 'replace' } as const
+
+/** Regla que el motor pone al principio de un bloque «reemplazado» (`pattern: "modo"`); no casa con ninguna herramienta. */
+export const MODE_MARK_PERMISSION = 'lazunox_modo_inicio'
+
+/** ¿La sesión ya lleva la marca del motor (su bloque de modo ya se reemplazó alguna vez)? */
+export function hasModeMark(sessionRules: readonly PermissionRuleLike[] | undefined): boolean {
+  return (sessionRules ?? []).some((r) => r.permission === MODE_MARK_PERMISSION)
+}
+
 function sameRule(a: PermissionRuleLike, b: PermissionRuleLike): boolean {
   return a.permission === b.permission && a.pattern === b.pattern && a.action === b.action
 }

@@ -10,7 +10,8 @@ import type { OpencodeConnection } from '@shared/types'
 import { t } from '@shared/i18n'
 import { makeInvokeHandler } from '../ipc/handle'
 import { publishTo } from '../ipc/event-bus'
-import { createSdkEngine } from './engine'
+import { engineTrust } from '../opencode/engine-trust'
+import { createSdkEngine, withTrustDeclared } from './engine'
 import { CompareGitError } from './git'
 import { ManifestStore } from './manifest'
 import { CompareError, CompareService } from './service'
@@ -31,7 +32,7 @@ const on = makeInvokeHandler<CodeInvokeContract>({
 export function registerCompareHandlers(ipcMain: IpcMain, deps: CompareHandlerDeps): CompareService {
   const svc = new CompareService({
     store: new ManifestStore(join(app.getPath('userData'), 'compare')),
-    engine: async () => createSdkEngine(await deps.getMainConnection()),
+    engine: async () => withTrustDeclared(createSdkEngine(await deps.getMainConnection()), (d) => engineTrust.declare(d)),
     chatDirectory: deps.chatDirectory,
     cliVersion: deps.cliVersion,
     onChange: (m) => {

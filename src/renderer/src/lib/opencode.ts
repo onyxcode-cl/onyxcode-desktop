@@ -8,6 +8,7 @@
 import { createOpencodeClient, type GlobalEvent, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import { t } from '@shared/i18n'
+import { isFolderNotTrusted } from '@shared/engine/errors'
 
 export type { OpencodeClient }
 /** Evento de OpenCode (payload de /global/event). */
@@ -68,6 +69,8 @@ export function startEventStream(
 /** Extrae un mensaje legible de los errores del SDK / sesión. */
 export function errorMessage(err: unknown): string {
   if (!err) return t('common.error.unknown')
+  // Motor con confianza obligatoria: una carpeta sin confianza no es un fallo, es un aviso en lenguaje simple.
+  if (isFolderNotTrusted(err)) return t('common.error.folderNotTrusted')
   if (typeof err === 'string') return err
   if (err instanceof Error) return err.message
   if (typeof err === 'object') {

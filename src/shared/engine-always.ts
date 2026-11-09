@@ -12,9 +12,9 @@ export interface AlwaysRule {
 }
 
 export type AlwaysListResult =
-  { available: false } | { available: true; active: boolean; rules: AlwaysRule[]; notice?: string; truncated: boolean }
+  { available: false; notTrusted?: true } | { available: true; active: boolean; rules: AlwaysRule[]; notice?: string; truncated: boolean }
 
-export type AlwaysRevokeResult = { available: false } | { available: true; ok: boolean }
+export type AlwaysRevokeResult = { available: false; notTrusted?: true } | { available: true; ok: boolean }
 
 export const ALWAYS_LIMITS = { rules: 500, text: 500, id: 128 } as const
 

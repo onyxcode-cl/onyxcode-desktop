@@ -15,6 +15,7 @@ import { settingsStore } from './store'
 import { applyGlass, glassSupported, glassWindowOptions } from './window-glass'
 import { installMotorApp, motorHomeDir, motorPaths } from './opencode/motor-app'
 import { getLiveFolders } from './code/live-folders'
+import { engineTrust } from './opencode/engine-trust'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
 import { permissionDir } from './opencode/permission-store'
 import { hooksFile } from './opencode/user-hooks-store'
@@ -123,6 +124,8 @@ const chatDirectory = join(app.getPath('userData'), 'chat-workspace')
 const corsOrigins = trustedOrigins()
 
 const server = new OpencodeServer({ chatDirectory, corsOrigins })
+// Confianza de carpetas (lazunox.16): la lista del motor es de memoria; esta es la que la reenvía en cada arranque.
+engineTrust.bind({ start: () => server.start(), peek: () => server.getConnection() })
 
 let mainWindow: BrowserWindow | null = null
 let tasksMod: TasksLike | null = null

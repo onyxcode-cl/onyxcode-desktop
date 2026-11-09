@@ -1,5 +1,6 @@
 import type { PermissionRuleset } from '@opencode-ai/sdk/v2/client'
 import {
+  hasModeMark,
   effectiveModeFor,
   endsWithRuleset,
   rulesetForMode,
@@ -181,4 +182,25 @@ export function rulesetForState(
 /** ¿La sesión ya termina con el bloque pedido? (idempotencia: no se reenvía ni crece la lista). */
 export function sessionHasRuleset(session: PermissionRuleset | undefined, wanted: PermissionRuleset): boolean {
   return endsWithRuleset(session, wanted)
+}
+
+/** Sesiones a las que esta ejecución ya les mandó el bloque con `permissionMode: "replace"` (para no repetirlo con un motor que no pone marca). */
+const replacedSessions = new Set<string>()
+const MAX_REPLACED = 2000
+
+/**
+ * ¿La sesión ya tiene el bloque del modo AL DÍA con el contrato de `lazunox.16`? Termina con el bloque pedido Y, además, ya fue reemplazada: o el
+ * motor la marcó (`lazunox_modo_inicio`) o esta ejecución ya lo envió con `replace`. Una sesión de la 1.8.12 que termina con el bloque pero
+ * arrastra los anteriores (p. ej. un «Solo explorar» viejo) NO está al día: se reenvía una vez con `replace` y el motor la deja limpia, que es lo
+ * que arregla a los ayudantes. Con un motor anterior (sin marca) se reenvía una sola vez por sesión y ejecución, no en cada mensaje.
+ */
+export function sessionRulesUpToDate(sessionID: string, session: PermissionRuleset | undefined, wanted: PermissionRuleset): boolean {
+  if (!endsWithRuleset(session, wanted)) return false
+  return hasModeMark(session) || replacedSessions.has(sessionID)
+}
+
+/** Se mandó el bloque con `replace` a esta sesión (llamar tras un `session.update` o `session.create` bien hecho). */
+export function noteRulesReplaced(sessionID: string): void {
+  if (replacedSessions.size >= MAX_REPLACED) replacedSessions.clear()
+  replacedSessions.add(sessionID)
 }

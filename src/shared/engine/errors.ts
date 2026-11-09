@@ -51,6 +51,24 @@ export function isEngineError(err: unknown): err is EngineError {
   return err instanceof EngineError
 }
 
+/**
+ * Motor `lazunox.16` con `LAZUNOX_TRUST_REQUIRED`: una ruta con una carpeta que la app no declaró de confianza responde
+ * `403 {"error":"folder_not_trusted"}`. No es un fallo ni un problema de credenciales: es «esta carpeta aún no es de confianza».
+ */
+export const FOLDER_NOT_TRUSTED = 'folder_not_trusted'
+
+/** ¿El texto (cuerpo o mensaje) del motor es el 403 de carpeta sin confianza? */
+export const isFolderNotTrustedText = (text: string | null | undefined): boolean => !!text && text.includes(FOLDER_NOT_TRUSTED)
+
+/** ¿Este error es «carpeta sin confianza»? Reconoce el `EngineError` (403) y los textos con el código del motor. */
+export function isFolderNotTrusted(err: unknown): boolean {
+  if (err instanceof EngineError) {
+    if (err.status !== undefined && err.status !== 403) return false
+    return isFolderNotTrustedText(err.message) || isFolderNotTrustedText(engineErrorText(err.detail))
+  }
+  return isFolderNotTrustedText(engineErrorText(err))
+}
+
 /** Clase de fallo según el código HTTP. */
 export function kindFromStatus(status: number): EngineErrorKind {
   if (status === 401 || status === 403) return 'unauthorized'

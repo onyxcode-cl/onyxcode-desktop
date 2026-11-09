@@ -38,6 +38,8 @@ import { ensurePermissionDir, permissionDir } from './permission-store'
 import { hooksFile } from './user-hooks-store'
 import { userHooksEnvFor } from '@shared/user-hooks'
 import { engineLastMileEnv } from './engine-lastmile'
+import { engineContractEnv } from '@shared/engine-contract-env'
+import { engineTrust } from './engine-trust'
 import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
@@ -322,6 +324,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         // Búsqueda web con cualquier IA (D7, apagada), sugerencia en tarjetas (apagada) y política de empresa del motor (solo si existe el archivo del
         // administrador, D12). Solo el sidecar principal: Overdrive no recibe nada de esto (ver `manager.ts`).
         ...engineLastMileEnv(settingsStore.get()),
+        // Contratos de lazunox.16 (permisos por capas y confianza obligatoria de carpetas): siempre encendidos, y DESPUÉS de todo lo demás.
+        ...engineContractEnv(),
         OPENCODE_SERVER_USERNAME: username,
         OPENCODE_SERVER_PASSWORD: password,
         OPENCODE_CONFIG_CONTENT: JSON.stringify(
@@ -370,6 +374,12 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
         const catalog = await waitForCatalog(catalogFile(childEnv))
         if (catalog !== 'present') console.log(`[opencode] catálogo de modelos: ${catalog}`)
       }
+      if (this.child !== child) throw new Error(t('merr.engine.stoppedAtStart'))
+
+      // Confianza obligatoria (lazunox.16): la lista de carpetas confiables del motor es de memoria y nace vacía. ANTES de decir «listo» (nadie
+      // le pide nada hasta entonces) se vuelven a declarar la carpeta del Chat y las que la app ya tenía como confiables.
+      const notDeclared = await engineTrust.declareAll({ baseUrl, authorization }, [this.options.chatDirectory])
+      if (notDeclared.length) console.warn(`[opencode] confianza: no se pudo declarar ${notDeclared.length} carpeta(s) al arrancar`)
       if (this.child !== child) throw new Error(t('merr.engine.stoppedAtStart'))
 
       const connection: OpencodeConnection = {

@@ -6,6 +6,7 @@
 import { BrowserWindow, type IpcMain } from 'electron'
 import type { TasksEventChannel, TasksEventContract } from '@shared/ipc-tasks'
 import type { NotifyTarget } from '@shared/types'
+import { engineTrust } from '../opencode/engine-trust'
 import { previewSchedule } from '../scheduler/schedule'
 import { noTasksPort } from '../scheduler/no-tasks-port'
 import { SchedulerService, type SchedulerDeps } from '../scheduler/service'
@@ -66,6 +67,7 @@ export function registerRoutinesHandlers(
   }
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
+    declareTrust: (d) => engineTrust.declare(d),
     chatDirectory: deps.chatDirectory,
     tasks: noTasksPort,
     tasksSupported: false,

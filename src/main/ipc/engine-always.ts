@@ -2,6 +2,7 @@ import type { IpcMain } from 'electron'
 import { ALWAYS_ID_RE, parseAlwaysList, type AlwaysListResult, type AlwaysRevokeResult } from '@shared/engine-always'
 import type { OpencodeConnection } from '@shared/types'
 import type { OpencodeServer } from '../opencode/server'
+import { isFolderNotTrustedText } from '@shared/engine/errors'
 import { handle, IpcError } from './handle'
 
 /**
@@ -20,6 +21,9 @@ type FetchLike = typeof fetch
 const TIMEOUT_MS = 6000
 const MAX_BODY_CHARS = 2_000_000
 
+/** `403 folder_not_trusted` (confianza obligatoria del motor): la carpeta aún no es de confianza; no es un error. */
+const untrusted = async (res: Response): Promise<boolean> => isFolderNotTrustedText(await res.text().catch(() => ''))
+
 const withDir = (url: string, directory: string): string => `${url}?directory=${encodeURIComponent(directory)}`
 
 export async function fetchAlwaysRules(conn: Conn, req: { directory: string }, fetchImpl: FetchLike = fetch): Promise<AlwaysListResult> {
@@ -27,6 +31,7 @@ export async function fetchAlwaysRules(conn: Conn, req: { directory: string }, f
     headers: { Authorization: conn.authorization },
     signal: AbortSignal.timeout(TIMEOUT_MS)
   })
+  if (res.status === 403 && (await untrusted(res))) return { available: false, notTrusted: true }
   if (res.status === 404 || res.status === 405) return { available: false }
   if (!res.ok) throw new Error(`El motor respondió ${res.status}`)
   const text = await res.text().catch(() => '')
@@ -54,6 +59,7 @@ export async function revokeAlwaysRule(
     headers: { Authorization: conn.authorization },
     signal: AbortSignal.timeout(TIMEOUT_MS)
   })
+  if (res.status === 403 && (await untrusted(res))) return { available: false, notTrusted: true }
   if (res.status === 405) return { available: false }
   // 404 = esa regla ya no existe (o el motor no tiene la ruta: el listado ya lo habría dicho): no es un éxito.
   if (res.status === 404) return { available: true, ok: false }

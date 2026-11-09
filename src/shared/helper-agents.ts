@@ -481,7 +481,8 @@ export interface HelperView extends HelperInfo {
   pending?: boolean
 }
 
-export type HelpersListResult = { available: false } | { available: true; helpers: HelperView[]; claudeNames: string[] }
+/** `notTrusted`: el motor (confianza obligatoria) no tiene la carpeta como de confianza; no es que le falte la función. */
+export type HelpersListResult = { available: false; notTrusted?: true } | { available: true; helpers: HelperView[]; claudeNames: string[] }
 
 export type HelperReadResult =
   { ok: true; def: HelperDef } | { ok: false; reason: 'folder' | 'name' | 'missing' | 'format' | 'complex' | 'too_big'; complex?: string[] }

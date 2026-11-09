@@ -82,6 +82,9 @@ export const CODE_CHANNELS = {
   projectScan: 'project:scan',
   // carpetas abiertas con confianza vigente (el renderer guarda la confianza; main solo puede preguntar al motor por estas)
   projectSetLive: 'project:setLive',
+  // confianza ante el motor (lazunox.16): declarar / quitar una carpeta de confianza
+  projectTrustEngine: 'project:trustEngine',
+  projectUntrustEngine: 'project:untrustEngine',
   // archivos del proyecto: vigilante, gestor y «Abrir en…»
   filesWatch: 'files:watch',
   filesSetDirs: 'files:setDirs',
@@ -556,6 +559,10 @@ export interface CodeInvokeContract {
   'project:scan': { req: { path: string; rulesOnly?: boolean }; res: ProjectScanResult }
   /** Informa a main qué carpetas de Code están abiertas con confianza vigente (reemplaza la lista). */
   'project:setLive': { req: { dirs: string[] }; res: void }
+  /** La carpeta pasó la confianza de Code en esta ejecución: se declara al motor (y sus árboles de trabajo). `ok:false` = no se pudo; el motor quedó sin enterarse. */
+  'project:trustEngine': { req: { dir: string }; res: { ok: boolean } }
+  /** La persona quitó la confianza de la carpeta: se le quita al motor, que además la descarga. */
+  'project:untrustEngine': { req: { dir: string }; res: { ok: boolean } }
   /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
   'dialog:resetFolderPermission': { req: { path: string; scope?: FolderResetScope }; res: { result: FolderResetResult } }
 
@@ -658,6 +665,8 @@ export interface CodeApi {
   project: {
     scan(path: string, rulesOnly?: boolean): Promise<ProjectScanResult>
     setLive(dirs: string[]): Promise<void>
+    trustEngine(dir: string): Promise<{ ok: boolean }>
+    untrustEngine(dir: string): Promise<{ ok: boolean }>
   }
   files: {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>

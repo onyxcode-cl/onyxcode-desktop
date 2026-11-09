@@ -671,6 +671,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'dialog:resetFolderPermission': 'X',
   'project:scan': 'X',
   'project:setLive': 'X',
+  'project:trustEngine': 'X',
+  'project:untrustEngine': 'X',
   'editors:list': scoped('R', 'cwd'),
   'editors:open': 'X',
 

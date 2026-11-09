@@ -32,6 +32,7 @@ export const common = {
   'common.error.titleIn': 'Algo salió mal en {label}',
   'common.error.title': 'Algo salió mal',
   'common.error.unknown': 'Error desconocido',
+  'common.error.folderNotTrusted': 'Esta carpeta aún no es de confianza. Ábrela en Code y confía en ella para usarla.',
   'common.error.copyDetail': 'Copiar detalle',
   'common.transcriptLoading': 'Cargando conversación…',
   'common.diff.binary': 'Archivo binario',

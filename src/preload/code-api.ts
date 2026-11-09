@@ -85,7 +85,9 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
     },
     project: {
       scan: (path, rulesOnly) => call('project:scan', rulesOnly ? { path, rulesOnly } : { path }),
-      setLive: (dirs) => call('project:setLive', { dirs })
+      setLive: (dirs) => call('project:setLive', { dirs }),
+      trustEngine: (dir) => call('project:trustEngine', { dir }),
+      untrustEngine: (dir) => call('project:untrustEngine', { dir })
     },
     files: {
       watch: (folder, subId) => call('files:watch', { folder, subId }),

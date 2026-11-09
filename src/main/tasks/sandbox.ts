@@ -23,6 +23,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { app } from 'electron'
 import { appAuthFile } from '../opencode/data-dir'
 import { resolveOpencodeAsync } from '../opencode/server'
+import { engineTrust } from '../opencode/engine-trust'
+import { engineContractEnv } from '@shared/engine-contract-env'
 import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
@@ -252,7 +254,10 @@ export async function startTasksServer(folder: string, options: StartTasksServer
       OPENCODE_SERVER_USERNAME: username,
       OPENCODE_SERVER_PASSWORD: password,
       OPENCODE_DISABLE_AUTOUPDATE: '1',
-      LAZUNOX_TASKS_FOLDER: folder
+      LAZUNOX_TASKS_FOLDER: folder,
+      // Contratos de lazunox.16 (permisos por capas y confianza obligatoria). Va en la base de TODOS los respaldos (Seatbelt, sin aislar y WSL, cuyo
+      // filtro de entorno deja pasar `LAZUNOX_*`); la declaración de la carpeta se hace al responder el servidor (abajo).
+      ...engineContractEnv()
     },
     proxyEnv: isolatedEnv,
     extraEnv: options.extraEnv
@@ -299,6 +304,12 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(`${msg}\n${tail.slice(-5).join('').trim()}`)
   }
+
+  // Confianza obligatoria (lazunox.16): este servidor es de UNA carpeta que la persona ya aprobó en Tareas/Overdrive (o que una rutina usa); sin
+  // el diálogo de Code, la app la declara en cuanto el servidor responde y ANTES de que nadie le pida nada. En WSL la carpeta es la ruta de la distro.
+  const engineDirectory = launched.mounts ? launched.toSandboxPath(folder) : folder
+  const declared = await engineTrust.declareOn({ baseUrl, authorization }, engineDirectory)
+  if (declared === 'failed') console.warn(`[tasks] no se pudo declarar la carpeta de confianza al servidor (${folder})`)
 
   return {
     folder,

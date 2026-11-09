@@ -123,9 +123,10 @@ describe('modo de permisos → sesión del motor', () => {
     expect(update.mock.invocationCallOrder[0]).toBeLessThan(promptAsync.mock.invocationCallOrder[0]!)
   })
 
-  it('si la sesión ya tiene el ruleset del modo, no se vuelve a pedir al motor', async () => {
+  it('si la sesión ya tiene el ruleset del modo Y la marca del motor (lazunox.16), no se vuelve a pedir al motor', async () => {
     const { update, promptAsync } = install()
-    apply(sessionCreated(makeSession('s1', D, { permission: rulesetFor('manual') })))
+    const marked = [{ permission: 'lazunox_modo_inicio', pattern: 'modo', action: 'allow' as const }, ...rulesetFor('manual')]
+    apply(sessionCreated(makeSession('s1', D, { permission: marked })))
     useCode.setState({ activeSessionID: 's1' })
     await st().send('hola', [])
     expect(update).not.toHaveBeenCalled()

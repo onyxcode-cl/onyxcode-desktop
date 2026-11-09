@@ -7,7 +7,7 @@
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { isVerifying, projectAskOf, refreshGlobalConfigRules, rulesetForState, sessionHasRuleset, setVerifying } from './permission-rules'
+import { isVerifying, projectAskOf, refreshGlobalConfigRules, rulesetForState, sessionRulesUpToDate, noteRulesReplaced, setVerifying } from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -18,7 +18,7 @@ function linkedOf(dir: string): Array<{ path: string; mode: 'rw' | 'ro' }> {
   if (!have) void useProjectProfile.getState().ensure(dir)
   return have?.linked ?? []
 }
-import { approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
+import { PERMISSION_REPLACE_BODY, approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
@@ -929,9 +929,12 @@ export const useCode = create<CodeState>((set, get) => {
       if (rf) await rf
     }
     const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir, agent))
-    if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
+    if (!sessionRulesUpToDate(sid, get().sessions[sid]?.permission, wantRules)) {
       try {
-        const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
+        const updated = sdkData(
+          await client.session.update({ sessionID: sid, directory: dir, permission: wantRules, ...PERMISSION_REPLACE_BODY })
+        )
+        noteRulesReplaced(sid)
         set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
       } catch (err) {
         // Falla cerrado en TODOS los modos (D4): sin las reglas del modo y las `ask` de proyecto en la sesión no se envía.
@@ -1302,9 +1305,11 @@ export const useCode = create<CodeState>((set, get) => {
           await client.session.create({
             directory: dir,
             title,
-            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir), projectAskOf(dir, get().agent))
+            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir), projectAskOf(dir, get().agent)),
+            ...PERMISSION_REPLACE_BODY
           })
         )
+        noteRulesReplaced(sess.id)
         set((s) => ({
           sessions: { ...s.sessions, [sess.id]: sess },
           sessionProject: { ...s.sessionProject, [sess.id]: dir },
@@ -1369,9 +1374,12 @@ export const useCode = create<CodeState>((set, get) => {
         if (rf) await rf
       }
       const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir, agent))
-      if (!sessionHasRuleset(get().sessions[sid]?.permission, wantRules)) {
+      if (!sessionRulesUpToDate(sid, get().sessions[sid]?.permission, wantRules)) {
         try {
-          const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission: wantRules }))
+          const updated = sdkData(
+            await client.session.update({ sessionID: sid, directory: dir, permission: wantRules, ...PERMISSION_REPLACE_BODY })
+          )
+          noteRulesReplaced(sid)
           set((st) => ({ sessions: { ...st.sessions, [updated.id]: updated } }))
         } catch (err) {
           setError(sid, errorMessage(err))
@@ -1835,9 +1843,10 @@ export const useCode = create<CodeState>((set, get) => {
         if (rf) await rf
       }
       const permission = rulesetForState(mode, get().agent, linkedOf(dir), projectAskOf(dir, get().agent))
-      if (sessionHasRuleset(get().sessions[sid]?.permission, permission)) return
+      if (sessionRulesUpToDate(sid, get().sessions[sid]?.permission, permission)) return
       try {
-        const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission }))
+        const updated = sdkData(await client.session.update({ sessionID: sid, directory: dir, permission, ...PERMISSION_REPLACE_BODY }))
+        noteRulesReplaced(sid)
         set((s) => ({ sessions: { ...s.sessions, [updated.id]: updated } }))
       } catch (err) {
         set({ globalError: errorMessage(err) })

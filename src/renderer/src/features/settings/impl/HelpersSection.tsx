@@ -315,6 +315,7 @@ export function HelpersSection(): React.JSX.Element {
   })
   const [helpers, setHelpers] = useState<HelperView[] | null>(null)
   const [available, setAvailable] = useState(true)
+  const [notTrusted, setNotTrusted] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [view, setView] = useState<View>({ kind: 'list' })
   const [tick, setTick] = useState(0)
@@ -338,6 +339,7 @@ export function HelpersSection(): React.JSX.Element {
       .then((r) => {
         if (!alive) return
         setAvailable(r.available)
+        setNotTrusted(!r.available && r.notTrusted === true)
         setHelpers(r.available ? r.helpers : [])
       })
       .catch((err: unknown) => {
@@ -435,7 +437,9 @@ export function HelpersSection(): React.JSX.Element {
             </div>
           )}
           {helpers === null && !loadError && <p className="text-sm text-muted">{t('settings.helpers.loading')}</p>}
-          {helpers !== null && !available && <p className="text-sm text-muted">{t('settings.helpers.unavailable')}</p>}
+          {helpers !== null && !available && (
+            <p className="text-sm text-muted">{notTrusted ? t('common.error.folderNotTrusted') : t('settings.helpers.unavailable')}</p>
+          )}
           {helpers !== null && available && helpers.length === 0 && !loadError && (
             <p className="text-sm text-muted">{t('settings.helpers.empty')}</p>
           )}

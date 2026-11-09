@@ -7,6 +7,8 @@ import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeIn
 import * as git from '../git/service'
 import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
+import { engineTrust } from '../opencode/engine-trust'
+import { declareCodeFolder, revokeCodeFolder } from '../code/engine-trust-folders'
 import { setLiveFolders } from '../code/live-folders'
 import { checkFolderAccess, PANE_ALL_FILES, PANE_FILES_AND_FOLDERS, resetFolderPermission, tccServicesFor } from '../dialog/folder-access'
 import { ENGINE_PROBE_TIMEOUT_MS, probeFolderAsEngine, type RunResult } from '../dialog/engine-folder-probe'
@@ -136,7 +138,12 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   on(ipcMain, 'git:branches', (r) => git.branches(req(r, 'req').cwd))
   on(ipcMain, 'git:currentBranch', (r) => git.currentBranch(req(r, 'req').cwd))
   on(ipcMain, 'git:worktrees', (r) => git.listWorktrees(req(r, 'req').cwd))
-  on(ipcMain, 'git:createWorktree', (r) => git.createWorktree(req(r, 'req').cwd, r.branch, r.base))
+  on(ipcMain, 'git:createWorktree', async (r) => {
+    const wt = await git.createWorktree(req(r, 'req').cwd, r.branch, r.base)
+    // Árbol de trabajo creado por la app: se declara al motor antes de que la conversación nueva le pida nada (el motor no hereda la confianza a hijas).
+    await engineTrust.declare(wt.path).catch(() => undefined)
+    return wt
+  })
   on(ipcMain, 'git:removeWorktree', (r) => git.removeWorktree(req(r, 'req').cwd, r.path, r.force === true))
   on(ipcMain, 'git:commit', (r) => git.commit(req(r, 'req').cwd, r.message, r.stageAll === true))
   on(ipcMain, 'git:log', (r) => git.log(req(r, 'req').cwd, r.n))
@@ -164,6 +171,9 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
   on(ipcMain, 'project:setLive', (r) => {
     setLiveFolders(req(r, 'req').dirs)
   })
+  // Confianza ante el motor (lazunox.16): el renderer avisa cuando una carpeta pasó (o perdió) la confianza de Code. Nunca lanza: `ok:false` si no se pudo.
+  on(ipcMain, 'project:trustEngine', async (r) => ({ ok: await declareCodeFolder(req(r, 'req').dir) }))
+  on(ipcMain, 'project:untrustEngine', async (r) => ({ ok: await revokeCodeFolder(req(r, 'req').dir) }))
   on(ipcMain, 'project:scan', (r) => {
     const { path, rulesOnly } = req(r, 'req')
     let appServers: string[] = []

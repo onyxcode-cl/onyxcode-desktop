@@ -21,6 +21,7 @@ import {
   replyElicitation
 } from '../../mcp-elicitation'
 import { fetchRewindReview, fetchTurnDiff, listTurns, postRewind, postUndoRewind } from '../../rewind'
+import { PERMISSION_REPLACE_BODY } from '../../permission-rules'
 import type { EngineClient, EngineConnection } from '../client'
 import { EngineError, toEngineError } from '../errors'
 import type { EngineEvent, EngineEventHandler, EngineEventOptions } from '../events'
@@ -247,7 +248,9 @@ export class Engine1Adapter implements EngineClient {
             ...(i?.agent ? { agent: i.agent } : {}),
             ...(i?.model ? { model: i.model } : {}),
             ...(i?.metadata ? { metadata: i.metadata } : {}),
-            ...(i?.permission ? { permission: i.permission } : {})
+            ...(i?.permission ? { permission: i.permission } : {}),
+            // Campo del motor lazunox.16 que el SDK fijado no conoce: se pasa con el prefijo `$body_` de su generador.
+            ...(i?.permission && i.permissionMode === 'replace' ? PERMISSION_REPLACE_BODY : {})
           })
         ),
       update: (id, p, o) =>
@@ -258,6 +261,7 @@ export class Engine1Adapter implements EngineClient {
             ...(p.title !== undefined ? { title: p.title } : {}),
             ...(p.metadata ? { metadata: p.metadata } : {}),
             ...(p.permission ? { permission: p.permission } : {}),
+            ...(p.permission && p.permissionMode === 'replace' ? PERMISSION_REPLACE_BODY : {}),
             // `archived: 0` desarchiva (el motor trata 0 como «sin archivar»).
             ...(p.archived !== undefined ? { time: { archived: p.archived ?? 0 } } : {})
           })

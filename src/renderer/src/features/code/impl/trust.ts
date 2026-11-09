@@ -18,6 +18,36 @@ import { dirId, isFolderVerified, markVerified, unmarkVerified } from './verifie
 
 export { isFolderVerified }
 
+/**
+ * Confianza ante el motor (lazunox.16, `LAZUNOX_TRUST_REQUIRED`): el motor no carga una carpeta que la app no le haya declarado. Cuando una
+ * carpeta pasa la verificación de Code en esta ejecución, se le avisa por main (`project:trustEngine`, que también declara los árboles de
+ * trabajo de la app) ANTES de que se le dé el foco; cuando la persona quita la confianza, se le quita también (`project:untrustEngine`).
+ * Sin API nativa (pruebas, celular) no hay nada que declarar: devuelve `undefined`. Nunca lanza; si falla, la carpeta se abre igual (el
+ * motor responderá `folder_not_trusted` y cada pantalla lo trata como «sin confianza»).
+ */
+function declareEngineTrust(dir: string): Promise<void> | undefined {
+  try {
+    const native = nativeCode()
+    if (!native || typeof native.project?.trustEngine !== 'function') return undefined
+    return Promise.resolve(native.project.trustEngine(dir)).then(
+      () => undefined,
+      () => undefined
+    )
+  } catch {
+    return undefined
+  }
+}
+
+function revokeEngineTrust(dir: string): void {
+  try {
+    const native = nativeCode()
+    if (!native || typeof native.project?.untrustEngine !== 'function') return
+    void Promise.resolve(native.project.untrustEngine(dir)).catch(() => undefined)
+  } catch {
+    /* sin API nativa */
+  }
+}
+
 /** Lo que se le pide pintar al diálogo: la carpeta y, si hay algo que mostrar, el escaneo y qué parte es nueva. */
 export interface PendingTrust {
   dir: string
@@ -176,7 +206,9 @@ export async function verifyTrustedFolder(dir: string): Promise<boolean> {
   return ensureTrustedAgain(dir)
 }
 
-function accept(dir: string): true {
+async function accept(dir: string): Promise<true> {
+  // Primero se le dice al motor que la carpeta es de confianza; recién entonces cuenta como verificada y puede recibir el foco.
+  await declareEngineTrust(dir)
   markVerified(dir)
   setVerifying(dir, false)
   syncLiveFolders()
@@ -204,6 +236,8 @@ export function resolveTrust(trust: boolean): void {
   const p = e?.p ?? null
   current = null
   setPendingTrust(null)
+  // Aceptar: quienes esperan (abrir la carpeta, darle el foco) siguen cuando el motor ya fue avisado.
+  const declaring = trust && p ? declareEngineTrust(p.dir) : undefined
   if (trust && p) {
     markVerified(p.dir)
     setVerifying(p.dir, false)
@@ -219,12 +253,15 @@ export function resolveTrust(trust: boolean): void {
       syncLiveFolders()
       const st = useCode.getState()
       st.untrustFolder(p.dir)
+      revokeEngineTrust(p.dir)
       // Con el foco: se cierra y el foco no pasa a otra sin confianza. Sin el foco: también se cierra, para que nada la vuelva a cargar sin preguntar.
       if (st.directory && dirId(st.directory) === dirId(p.dir)) st.declineFocusedProject(p.dir)
       else st.closeOneProject(p.dir)
     }
   }
-  for (const r of e?.resolvers ?? []) r(trust)
+  const resolvers = e?.resolvers ?? []
+  if (declaring) void declaring.then(() => resolvers.forEach((r) => r(trust)))
+  else for (const r of resolvers) r(trust)
   // Siguiente diálogo en cola.
   const next = queue.shift()
   if (next) {

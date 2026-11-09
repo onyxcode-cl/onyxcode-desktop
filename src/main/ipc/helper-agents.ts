@@ -22,6 +22,7 @@ import {
 import type { OpencodeConnection } from '@shared/types'
 import type { OpencodeServer } from '../opencode/server'
 import { settingsStore } from '../store'
+import { isFolderNotTrustedText } from '@shared/engine/errors'
 import { handle, IpcError } from './handle'
 import { windowOfSender } from './sender-window'
 
@@ -225,6 +226,8 @@ export async function listHelpers(deps: HelperDeps, req: { directory: string }):
     headers: { Authorization: conn.authorization },
     signal: AbortSignal.timeout(TIMEOUT_MS)
   })
+  // Confianza obligatoria del motor: la carpeta (elegida a mano entre las recientes) aún no es de confianza. No es un error rojo.
+  if (res.status === 403 && isFolderNotTrustedText(await res.text().catch(() => ''))) return { available: false, notTrusted: true }
   if (res.status === 404 || res.status === 405) return { available: false }
   if (!res.ok) throw new Error(`El motor respondió ${res.status}`)
   const infos = parseHelperList(await res.json().catch(() => null))

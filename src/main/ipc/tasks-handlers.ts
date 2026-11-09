@@ -6,6 +6,7 @@ import { t } from '@shared/i18n'
 import { engineFlagEnvFor } from '@shared/engine-experiments'
 import { engineLimitEnvFor } from '@shared/engine-limits'
 import { permissionPersistEnvFor } from '@shared/permission-persist'
+import { engineTrust } from '../opencode/engine-trust'
 import { permissionDir } from '../opencode/permission-store'
 import { hooksFile } from '../opencode/user-hooks-store'
 import { userHooksEnvFor } from '@shared/user-hooks'
@@ -121,6 +122,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   }
   const scheduler = new SchedulerService({
     getMainConnection: deps.getMainConnection,
+    declareTrust: (d) => engineTrust.declare(d),
     chatDirectory: deps.chatDirectory,
     tasks,
     projects,

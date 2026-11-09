@@ -95,7 +95,7 @@ export function AlwaysRulesBlock(): React.JSX.Element {
             {view.state === 'loading' && <p className="text-xs text-muted">{t('settings.engine.always.loading')}</p>}
             {list && !list.available && (
               <p role="status" className="text-xs text-muted">
-                {t('settings.engine.always.unavailable')}
+                {list.notTrusted ? t('common.error.folderNotTrusted') : t('settings.engine.always.unavailable')}
               </p>
             )}
             {list?.available && !list.active && !remember && list.rules.length > 0 && (

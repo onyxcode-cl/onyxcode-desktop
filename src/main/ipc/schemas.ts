@@ -867,6 +867,8 @@ const CODE_SCHEMAS: { [C in CodeInvokeChannel]: Validator<CodeRequest<C>> } = {
   'dialog:openFolderPrivacy': optional(obj({ pane: optional(literal('files', 'allFiles')) })),
   'project:scan': obj({ path: absPath, rulesOnly: optional(bool) }),
   'project:setLive': obj({ dirs: arr(absPath, 24) }),
+  'project:trustEngine': obj({ dir: absPath }),
+  'project:untrustEngine': obj({ dir: absPath }),
   'dialog:resetFolderPermission': obj({ path: absPath, scope: optional(literal('all', 'engine')) }),
   'files:watch': obj({ folder: absPath, subId: filesSubId }),
   'files:setDirs': obj({ subId: filesSubId, dirs: arr(str({ max: 4096 }), 100) }),

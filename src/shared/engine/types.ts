@@ -192,12 +192,16 @@ export interface SessionCreateInput extends Scope {
   model?: { id: string; providerID: string; variant?: string }
   metadata?: Record<string, unknown>
   permission?: PermissionRuleset
+  /** `replace` (motor lazunox.16): el bloque SUSTITUYE al del modo anterior en vez de anexarse. Un motor anterior lo ignora. */
+  permissionMode?: 'replace'
 }
 
 export interface SessionUpdateInput {
   title?: string
   metadata?: Record<string, unknown>
   permission?: PermissionRuleset
+  /** Ver `SessionCreateInput.permissionMode`. */
+  permissionMode?: 'replace'
   /** Instante de archivado en ms; `0` o `null` la desarchiva. */
   archived?: number | null
 }

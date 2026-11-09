@@ -111,6 +111,11 @@ export interface RoutineTasksPort {
 export interface SchedulerDeps {
   /** Conexión al sidecar principal (p.ej. `() => server.start()`). */
   getMainConnection: () => Promise<{ baseUrl: string; authorization: string }>
+  /**
+   * Declara al motor principal que una carpeta es de confianza (lazunox.16, confianza obligatoria). Las rutinas de modo código usan su carpeta
+   * sin diálogo de confianza (como en la 1.8.12): se declara justo antes de crear la sesión. Nunca debe lanzar.
+   */
+  declareTrust?: (directory: string) => Promise<unknown>
   /** Directorio del modo Chat (userData/chat-workspace). */
   chatDirectory: string
   tasks: RoutineTasksPort
@@ -879,6 +884,8 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       ocDirectory = cw.directory ?? cw.folder
     } else {
       conn = await this.deps.getMainConnection()
+      // Rutina de modo código: su carpeta no pasa por el diálogo de Code, la app la declara antes de usarla. El Chat ya viene declarado al arrancar.
+      if (directory !== this.deps.chatDirectory) await this.deps.declareTrust?.(directory).catch(() => undefined)
     }
     const client: OpencodeClient = createOpencodeClient({
       baseUrl: conn.baseUrl,

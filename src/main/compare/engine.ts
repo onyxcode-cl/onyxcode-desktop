@@ -5,7 +5,7 @@
 import { noteWork } from '../code/work-registry'
 import { createOpencodeClient, type PermissionRuleset } from '@opencode-ai/sdk/v2/client'
 import type { ComparePermissionMode } from '@shared/ipc-code'
-import { rulesetForMode } from '@shared/permission-rules'
+import { PERMISSION_REPLACE_BODY, rulesetForMode } from '@shared/permission-rules'
 import type { MetricMessage } from './metrics'
 import { EngineCallError } from './rate-limit'
 
@@ -75,7 +75,8 @@ export function createSdkEngine(conn: { baseUrl: string; authorization: string }
           title: a.title,
           agent: a.agent,
           metadata: a.metadata,
-          ...(a.permission ? { permission: a.permission as PermissionRuleset } : {})
+          // Bloque del modo con marca del motor (lazunox.16): una sesión de comparación nace con su bloque «reemplazable». Un motor anterior lo ignora.
+          ...(a.permission ? { permission: a.permission as PermissionRuleset, ...PERMISSION_REPLACE_BODY } : {})
         })
       )
       return (data as { id: string }).id
@@ -108,6 +109,47 @@ export function createSdkEngine(conn: { baseUrl: string; authorization: string }
     },
     async deleteSession(a) {
       ok(await client.session.delete({ sessionID: a.sessionID, directory: a.directory }))
+    }
+  }
+}
+
+/**
+ * Motor con confianza declarada (lazunox.16, confianza obligatoria de carpetas): antes de cada llamada con una carpeta, la app le dice al motor
+ * que es de confianza. Son las copias (worktrees) que la propia app crea para comparar, y el Chat: no hay diálogo de confianza propio, como en
+ * la 1.8.12. Declarar es barato (el resultado se recuerda por motor) y nunca lanza; también cubre comparaciones retomadas tras reiniciar la app.
+ */
+export function withTrustDeclared(engine: CompareEngine, declare: (directory: string) => Promise<unknown>): CompareEngine {
+  const pre = async (directory: string): Promise<void> => {
+    await declare(directory).catch(() => undefined)
+  }
+  return {
+    async createSession(a) {
+      await pre(a.directory)
+      return engine.createSession(a)
+    },
+    async prompt(a) {
+      await pre(a.directory)
+      return engine.prompt(a)
+    },
+    async abort(a) {
+      await pre(a.directory)
+      return engine.abort(a)
+    },
+    async statuses(directory) {
+      await pre(directory)
+      return engine.statuses(directory)
+    },
+    async messages(a) {
+      await pre(a.directory)
+      return engine.messages(a)
+    },
+    async children(a) {
+      await pre(a.directory)
+      return engine.children(a)
+    },
+    async deleteSession(a) {
+      await pre(a.directory)
+      return engine.deleteSession(a)
     }
   }
 }
