@@ -10,13 +10,24 @@ K="$HOME/.ssh/lazunox_deploy_ed25519"
 VPS="root@72.60.55.136"
 SSH_O=(-i "$K" -o IdentitiesOnly=yes -o BatchMode=yes)
 mkdir -p "$OUT/d" "$OUT/w" "$OUT/l"
-# Reproducibilidad: antes de empaquetar se exige que las dos compilaciones de cada plataforma (-1 y -2) sean idénticas.
-for t in darwin-arm64 win32-x64 linux-x64; do
-  ssh "${SSH_O[@]}" "$VPS" "cmp -s /opt/lzx-fork/out-$t-1 /opt/lzx-fork/out-$t-2" || { echo "ERROR: las dos compilaciones de $t NO son idénticas; no se empaqueta" >&2; exit 3; }
-done
-scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-darwin-arm64-1" "$OUT/d/opencode"
-scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-win32-x64-1" "$OUT/w/opencode.exe"
-scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-linux-x64-1" "$OUT/l/opencode"
+# Origen de los binarios: por defecto el VPS; con LOCAL_BIN_DIR=<carpeta> se usan los compilados en esta máquina
+# (carpeta con out-<plataforma>-1 y out-<plataforma>-2). En ambos casos se exige que las dos compilaciones sean idénticas.
+if [ -n "${LOCAL_BIN_DIR:-}" ]; then
+  for t in darwin-arm64 win32-x64 linux-x64; do
+    cmp -s "$LOCAL_BIN_DIR/out-$t-1" "$LOCAL_BIN_DIR/out-$t-2" || { echo "ERROR: las dos compilaciones de $t NO son idénticas; no se empaqueta" >&2; exit 3; }
+  done
+  cp "$LOCAL_BIN_DIR/out-darwin-arm64-1" "$OUT/d/opencode"
+  cp "$LOCAL_BIN_DIR/out-win32-x64-1" "$OUT/w/opencode.exe"
+  cp "$LOCAL_BIN_DIR/out-linux-x64-1" "$OUT/l/opencode"
+else
+  # Reproducibilidad: antes de empaquetar se exige que las dos compilaciones de cada plataforma (-1 y -2) sean idénticas.
+  for t in darwin-arm64 win32-x64 linux-x64; do
+    ssh "${SSH_O[@]}" "$VPS" "cmp -s /opt/lzx-fork/out-$t-1 /opt/lzx-fork/out-$t-2" || { echo "ERROR: las dos compilaciones de $t NO son idénticas; no se empaqueta" >&2; exit 3; }
+  done
+  scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-darwin-arm64-1" "$OUT/d/opencode"
+  scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-win32-x64-1" "$OUT/w/opencode.exe"
+  scp "${SSH_O[@]}" -q "$VPS:/opt/lzx-fork/out-linux-x64-1" "$OUT/l/opencode"
+fi
 chmod +x "$OUT/d/opencode" "$OUT/l/opencode"
 # La compilación cruzada de macOS sale sin firma válida: firma ad-hoc (la app la vuelve a firmar con su certificado).
 codesign --force --sign - "$OUT/d/opencode" >/dev/null 2>&1

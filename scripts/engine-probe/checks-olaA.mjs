@@ -323,29 +323,40 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
   )
 
   // ── 6. AGENTS.md de 100 KB ─────────────────────────────────────────────────────────────────────────────────────
-  checkRun('olaA 6: AGENTS.md de 100 KB entra ENTERO en el sistema de la primera petición (sin tope de 32 KB)', async () => {
+  checkRun('olaA 6: AGENTS.md de 100 KB se recorta al tope de 32 KB (lazunox.15); uno chico entra entero', async () => {
     const inicio = 'INICIO-AGENTS-A0'
     const fin = 'FIN-AGENTS-A0'
     const relleno = 'Regla de relleno para medir el tamaño del archivo de instrucciones del proyecto.\n'
-    let texto = `${inicio}\n`
-    while (texto.length < 100 * 1024) texto += relleno
-    texto += `${fin}\n`
-    const r = await motor({ git: true, projectFiles: { 'AGENTS.md': texto }, call: { name: 'read', args: { filePath: '.' } } })
-    const b = (r.bodies ?? []).find((x) => (x.tools ?? []).length > 0)
-    const sistema = (b?.messages ?? [])
-      .filter((x) => x.role === 'system')
-      .map((x) => str(x.content))
-      .join('\n---\n')
-    const cuenta = sistema.split(relleno.trim()).length - 1
-    const esperadas = texto.split(relleno.trim()).length - 1
-    if (sistema.includes(inicio) && sistema.includes(fin) && cuenta === esperadas) {
+    const armar = (kb) => {
+      let t = `${inicio}\n`
+      while (t.length < kb * 1024) t += relleno
+      return `${t}${fin}\n`
+    }
+    const sistemaDe = async (texto) => {
+      const r = await motor({ git: true, projectFiles: { 'AGENTS.md': texto }, call: { name: 'read', args: { filePath: '.' } } })
+      const b = (r.bodies ?? []).find((x) => (x.tools ?? []).length > 0)
+      return (b?.messages ?? [])
+        .filter((x) => x.role === 'system')
+        .map((x) => str(x.content))
+        .join('\n---\n')
+    }
+    const cuentaDe = (t) => t.split(relleno.trim()).length - 1
+    const chico = armar(20)
+    const sChico = await sistemaDe(chico)
+    if (!(sChico.includes(inicio) && sChico.includes(fin) && cuentaDe(sChico) === cuentaDe(chico)))
+      throw new Error(`control: el archivo de 20 KB no entró entero (inicio=${sChico.includes(inicio)}, fin=${sChico.includes(fin)})`)
+    const grande = armar(100)
+    const s = await sistemaDe(grande)
+    const cuenta = cuentaDe(s)
+    const esperadas = cuentaDe(grande)
+    if (s.includes(inicio) && !s.includes(fin) && cuenta < esperadas && s.length < 60 * 1024) {
       confirmado(
-        `el sistema trae las ${cuenta} líneas del archivo (${texto.length} caracteres; sistema total ${sistema.length}); no hay recorte`
+        `recortado: trae ${cuenta} de ${esperadas} líneas (sistema ${s.length} caracteres, archivo ${grande.length}); el inicio sí, el final no; el de 20 KB entra entero`
       )
       return true
     }
     noSeReproduce(
-      `inicio=${sistema.includes(inicio)}, fin=${sistema.includes(fin)}, líneas de relleno ${cuenta}/${esperadas}, sistema ${sistema.length} caracteres`
+      `inicio=${s.includes(inicio)}, fin=${s.includes(fin)}, líneas de relleno ${cuenta}/${esperadas}, sistema ${s.length} caracteres (¿sigue sin tope?)`
     )
   })
 
@@ -390,20 +401,20 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     })
   }
   checkRun(
-    'olaA 7: con `respaldo` solo en OPENCODE_CONFIG_CONTENT un 429 de cuota NO conmuta (control: en la config global sí)',
+    'olaA 7: con `respaldo` solo en OPENCODE_CONFIG_CONTENT un 429 de cuota SÍ conmuta (lazunox.15; control: en la config global también)',
     async () => {
       const ctl = await conCuota({ globalConfig: { respaldo: { modelos: ['pa/a2'] } } })
       if (!ctl.http.llamadas.includes('pa/a2') || ctl.http.avisos < 1)
         throw new Error(`control: con respaldo global tampoco conmutó (prueba en vacío): ${corto(ctl.http)}`)
       const r = await conCuota({ inline: { respaldo: { modelos: ['pa/a2'] } } })
       const x = r.http
-      if (!x.llamadas.includes('pa/a2') && x.avisos === 0) {
-        confirmado(
-          `no conmuta: llamadas=${corto(x.llamadas)}, avisos=${x.avisos}; el control con config global sí (a2, ${ctl.http.avisos} aviso)`
-        )
+      if (x.llamadas.includes('pa/a2') && x.avisos >= 1) {
+        confirmado(`conmuta con respaldo inline: llamadas=${corto(x.llamadas)}, avisos=${x.avisos}, último modelo=${x.ultimo}`)
         return true
       }
-      noSeReproduce(`sí conmutó con respaldo inline: llamadas=${corto(x.llamadas)}, avisos=${x.avisos}, último modelo=${x.ultimo}`)
+      noSeReproduce(
+        `NO conmutó con respaldo inline: llamadas=${corto(x.llamadas)}, avisos=${x.avisos} (¿el motor es anterior a lazunox.15?)`
+      )
     }
   )
 
