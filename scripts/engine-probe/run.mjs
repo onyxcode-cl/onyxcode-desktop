@@ -11,7 +11,7 @@
 //     simbólicos (`TMPDIR=/private/var/tmp/... nice -n 19 node …`); Linux: contenedor sin red en el VPS.
 //   PROBE_ONLY=umbral | minimos | resumen | todo-deps | ganchos3 | cambios | respaldo | heredado | sugerencia | unicode | paralelo | bifurcar   Ola 6 del motor
 //     lazunox.12 (checks-ola6.mjs), una familia por vez; `PROBE_ONLY=no-verificable` lista lo que no se puede comprobar sin modelo real.
-//   PROBE_ONLY=olaA   Ola A de la app 1.8.12 (checks-olaA.mjs): línea base con el motor lazunox.14 (R1/R2/R4, `general`, websearch, AGENTS.md grande, respaldo, huella de ganchos).
+//   PROBE_ONLY=olaA   Ola A de la app 1.8.12 (checks-olaA.mjs): con el motor lazunox.15 (R1/R2/R4, `general`, websearch, AGENTS.md grande, respaldo, huella de ganchos).
 //   PROBE_MCP_MANY=<n>  herramientas extra del conector de las comprobaciones `tool-search` (defecto 40).
 //   PROBE_FORCE_TOOL_SEARCH=1  corre las `tool-search` aunque el motor no traiga `LAZUNOX_TOOL_SEARCH` (para ver POR QUÉ fallan).
 // Reverificar al subir de versión del motor (docs/ACTUALIZAR-OPENCODE.md). Sale con código 1 si algo no se cumple.
@@ -1107,7 +1107,7 @@ const FAMILIAS_OLA3 = registrarOla3({ bin, checkRun, runEngine })
 // `PROBE_ONLY=no-verificable` imprime lo que este probe no puede comprobar sin modelo real.
 const FAMILIAS_OLA6 = registrarOla6({ bin, checkRun, runEngine })
 registrarOla7({ bin, checkRun, runEngine })
-// Ola A de la app 1.8.12 (checks-olaA.mjs): línea base con el motor lazunox.14, ocho comprobaciones. PROBE_ONLY=olaA.
+// Ola A de la app 1.8.12 (checks-olaA.mjs): con el motor lazunox.15, ocho comprobaciones. PROBE_ONLY=olaA.
 registrarOlaA({ bin, checkRun, runEngine, tsModule, repo })
 
 // `PROBE_ONLY=texto` corre solo las comprobaciones cuyo nombre lo contiene (para probar una pieza en un equipo lento o ajeno).

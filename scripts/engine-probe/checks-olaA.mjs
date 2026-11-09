@@ -1,4 +1,4 @@
-// Línea base de la Ola A (1.8.12) con el motor REAL (lazunox.14): ocho comprobaciones que la auditoría dedujo leyendo código.
+// Comprobaciones de la Ola A (1.8.12) con el motor REAL (lazunox.15; con .14 eran la línea base): ocho comprobaciones que la auditoría dedujo leyendo código.
 // Sin modelo ni red: proveedor falso del arnés (`harness.mjs`). Cada una imprime «CONFIRMADO» o «NO SE REPRODUCE» con el detalle.
 // Una comprobación «NO SE REPRODUCE» hace fallar la corrida (código 1): no es un error del arnés, es que el motor ya no se comporta
 // como dijo la auditoría. W-A3 y W-M2 dan la vuelta a las comprobaciones 1, 6 y 7 cuando arreglen lo que describen.

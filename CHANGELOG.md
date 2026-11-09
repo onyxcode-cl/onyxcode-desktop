@@ -4,6 +4,44 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.12] - 2026-11-09
+
+### Code pregunta más antes de ejecutar cosas
+
+- **«Automático» ya no corre las pruebas del proyecto sin preguntar**: `npm test`, `npm run …` y similares muestran la tarjeta «¿Permitir?» como cualquier otro comando. Puedes marcar «Permitir siempre» en esa carpeta. Los comandos de solo lectura (`ls`, `git status`…) se siguen aprobando solos. Lo mismo vale en «Comparar».
+- **«Solo explorar» pregunta antes de abrir una página web o buscar en internet.**
+- **`opencode.json` del proyecto** (donde se configura el motor) pregunta antes de editarse en «Editar sin preguntar» y «Automático», y el motor nuevo lo protege en todos los modos.
+- **Git más cuidadoso**: el motor nuevo no ejecuta ayudantes de Git que una carpeta ajena podría traer escondidos.
+
+### Carpetas de confianza
+
+- **El diálogo de confianza dice qué trae la carpeta** antes de cargar nada: conectores (MCP), complementos (plugins), ayudantes y comandos propios. Si una carpeta que ya confiaste empieza a traer algo nuevo, vuelve a preguntar.
+- **Las herramientas de un conector que trae la carpeta preguntan antes de usarse.**
+
+### Ayudantes y ganchos
+
+- **En Code los ayudantes ya pueden editar archivos.** Antes el ayudante «general» quedaba bloqueado. Ahora corre, pero pregunta antes de editar, ejecutar comandos o usar la web, aunque la conversación principal no pregunte.
+- **Los ayudantes que trae la app usan el modelo de la conversación** en vez de uno fijo.
+- **Ganchos con los 14 eventos** que el motor sabe ejecutar (antes solo 5). El motor se niega a ejecutar ganchos si el archivo cambió sin pasar por la pantalla.
+
+### Búsqueda web y sugerencias
+
+- **La búsqueda web funciona con cualquier IA** (Anthropic, OpenAI, OpenRouter, Ollama…), no solo con OpenCode Zen/Go. Usa el buscador Exa, así que las búsquedas salen a ese servicio. Es un ajuste que tú controlas.
+- **Sugerencia en la tarjeta de permiso**: una IA pequeña puede sugerir «permitir, porque…». Nunca decide sola.
+- **Política de empresa** también para el motor de Code (archivo de administrador).
+
+### Motor nuevo (lazunox.15)
+
+- **`AGENTS.md` muy grande**: el motor lee como máximo 32 KB de cada uno, para no gastar tu contexto.
+- **Modelo de respaldo**: si el modelo gratis se queda sin cuota, el motor puede seguir con otro de la lista de respaldo. La pantalla para elegirlo llega en la próxima versión.
+
+### Lo que todavía no está cerrado
+
+- **Un repositorio Git «desnudo» falso** dentro de una carpeta puede seguir engañando a un `git status` aprobado solo en «Automático». El motor nuevo lo endurece; no lo damos por cerrado hasta probarlo más.
+- **Al confiar en una carpeta, el programa de un conector que ella trae se puede arrancar** antes de que lo uses. El diálogo lo avisa y sus herramientas preguntan, pero arrancar no se evita todavía.
+- **Sin diálogo de confianza** en Tareas, Overdrive, Telegram, el celular, Rutinas y Comparar: ahí rigen las mismas preguntas de permiso, pero la carpeta no se revisa antes.
+- En Windows, `cmd.exe` y `git.bat` no tienen aún el mismo cuidado que PowerShell.
+
 ## [1.8.11] - 2026-11-06
 
 ### Documentos también en Code
@@ -136,6 +174,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ## [1.8.3] - 2026-10-29
 
 ### Ficha del proyecto (Overdrive y Code)
+
 - **Ficha del proyecto**: tarjeta en el panel derecho de Overdrive y en el panel «Resumen» de Code, con nombre, carpeta, nivel de acceso de la IA (Aislado, Con comandos aprobados, Control total; en Code, sin Control total) y Bóveda de variables. El engranaje abre el modal: nombre, carpetas (en Overdrive, «Añadir» y quitar carpetas vinculadas con su modo), acceso en un selector de tres tramos y Bóveda.
 - **Bóveda de variables**: pega formato `.env` por proyecto. Los valores se guardan cifrados con el almacén seguro del sistema (sin cifrado no se guarda nada), no vuelven nunca a la pantalla, llegan solo a los comandos que apruebas con `equipo_ejecutar` en ese proyecto y se tapan (`«NOMBRE»`) en lo que vuelve a la IA, a la auditoría y a las respuestas. Nombres que alteran cómo arrancan los programas (`PATH`, `LD_*`, `NODE_OPTIONS`…) no se aceptan.
 - **Acceso «Aislado»**: la carpeta deja de recibir la herramienta de comandos del equipo; se aplica ya relanzando el servidor si está ocioso.
@@ -146,6 +185,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - Canales `project:*` y `tasks:access:apply`: prohibidos desde el celular (clase X). Sin cambios en zonas intocables.
 
 ### Contexto detallado y motor nuevo
+
 - **Desglose del contexto, como el `/context` de Claude Code**: en la tarjeta «Contexto» del panel derecho (Code y Overdrive) el botón «Ver desglose» abre una barra apilada y una tabla con los tokens y el % de cada parte: mensajes, instrucciones y herramientas del sistema, herramientas e instrucciones de MCP, skills, archivos de memoria, reserva de autocompactado y espacio libre. Las listas de herramientas MCP y de archivos de memoria se despliegan. Lo estimado lleva «≈»; el total usado es exacto. El medidor del compositor sigue corto para no tapar la conversación.
 - **Motor lazunox.14**: calcula ese desglose (nuevo punto `contexto-fijo`) y entrega la ventana real del modelo. Con un motor anterior la app sigue mostrando la barra simple.
 
