@@ -22,6 +22,7 @@ import { engineExperimentsFor, engineFlagEnvFor, engineFlagEnvForMainSidecar } f
 import { engineLimitEnvFor } from '@shared/engine-limits'
 import { permissionPersistEnvFor } from '@shared/permission-persist'
 import { userHooksEnvFor } from '@shared/user-hooks'
+import { recentWorkKeys, workKey } from '../code/work-registry'
 import { engineLastMileEnv } from './engine-lastmile'
 import type { OpencodeConnection, ServerStatus, Settings } from '@shared/types'
 
@@ -30,13 +31,7 @@ type SettingsLike = Pick<Settings, 'engineExperiments'> &
   Partial<
     Pick<
       Settings,
-      | 'recentFolders'
-      | 'engineLimits'
-      | 'rememberAlways'
-      | 'userHooksEnabled'
-      | 'userHooksSha256'
-      | 'webSearchAnyProvider'
-      | 'permissionSuggestions'
+      'engineLimits' | 'rememberAlways' | 'userHooksEnabled' | 'userHooksSha256' | 'webSearchAnyProvider' | 'permissionSuggestions'
     >
   >
 
@@ -67,6 +62,8 @@ export interface EngineFlagsRestartDeps {
   tasks?: EngineFlagsTasks
   /** Directorio del modo Chat: el estado del sidecar principal se consulta por directorio. */
   chatDirectory: string
+  /** Carpetas de Code abiertas con confianza vigente (las únicas, además de `chatDirectory`, cuyo estado se puede preguntar al motor). */
+  liveFolders?: () => string[]
   /** ¿Todas las sesiones de esos directorios están ociosas? Si no se puede saber, `false` (no se reinicia). */
   isIdle?: (baseUrl: string, authorization: string, directories: string[]) => Promise<boolean>
   /**
@@ -124,12 +121,24 @@ const sameEnv = (a: Env, b: Env): boolean => JSON.stringify(Object.entries(a).so
 const DISCOVER_LIMIT = 200
 
 /**
- * Carpetas donde el motor tiene sesiones recientes (`GET /experimental/session`, de todos los proyectos), incluidas las
- * hijas (subagentes). Sirve para no depender solo de `chatDirectory` y `recentFolders`: un subagente de fondo o una
- * sesión de una carpeta que ya no figura en recientes también cuenta como «en curso». Mejor esfuerzo: si el motor no
- * tiene la ruta o falla, se devuelve `[]` y se sigue con las carpetas conocidas.
+ * Una sesión de una carpeta que NO se puede consultar (no está abierta con confianza) cuya última actividad es más reciente que esto se
+ * cuenta como «posiblemente en curso» y aplaza el reinicio. Es evidencia, no certeza: no se le puede preguntar su estado sin que el motor
+ * cargue la carpeta (y con ella sus complementos y conectores).
  */
-async function discoverDirectories(baseUrl: string, authorization: string): Promise<string[]> {
+export const RECENT_WORK_MS = 120_000
+
+interface KnownSession {
+  directory: string
+  /** Última actividad (ms) si el motor la dio. */
+  updated?: number
+}
+
+/**
+ * Sesiones que el motor tiene guardadas, de todos los proyectos (`GET /experimental/session` SIN `directory`: lista la base de datos y NO
+ * carga ninguna carpeta; comprobado con el motor real, `scripts/engine-probe/probe-reinicio.mjs`), incluidas las hijas (subagentes).
+ * Mejor esfuerzo: si el motor no tiene la ruta o falla, se devuelve `[]` y se sigue con las carpetas dadas.
+ */
+async function discoverSessions(baseUrl: string, authorization: string): Promise<KnownSession[]> {
   try {
     const res = await fetch(`${baseUrl}/experimental/session?limit=${DISCOVER_LIMIT}&archived=false`, {
       headers: { Authorization: authorization },
@@ -138,26 +147,49 @@ async function discoverDirectories(baseUrl: string, authorization: string): Prom
     if (!res.ok) return []
     const body = (await res.json()) as unknown
     if (!Array.isArray(body)) return []
-    const dirs = new Set<string>()
+    const out: KnownSession[] = []
     for (const row of body) {
-      const dir = (row as { directory?: unknown } | null)?.directory
-      if (typeof dir === 'string' && dir) dirs.add(dir)
+      const r = row as { directory?: unknown; time?: { updated?: unknown } } | null
+      if (typeof r?.directory !== 'string' || !r.directory) continue
+      const updated = typeof r.time?.updated === 'number' ? r.time.updated : undefined
+      out.push({ directory: r.directory, ...(updated !== undefined ? { updated } : {}) })
     }
-    return [...dirs]
+    return out
   } catch {
     return []
   }
 }
 
+/** Misma carpeta aunque difieran las mayúsculas, el separador o la barra final (Windows y macOS no distinguen mayúsculas). */
+const dirKey = (d: string): string => workKey(d)
+
 /**
- * Consulta real a `GET /session/status?directory=…` de cada carpeta (las dadas MÁS las que el motor conoce); cualquier fallo
- * = no ocioso. El mapa de estados es por sesión e incluye a las HIJAS: un subagente `busy` (también uno en segundo plano,
- * cuya sesión raíz figura ociosa mientras trabaja) hace que la carpeta no esté ociosa.
+ * Consulta real a `GET /session/status?directory=…` SOLO de las carpetas dadas; cualquier fallo = no ocioso. El mapa de estados es por
+ * sesión e incluye a las HIJAS: un subagente `busy` (también uno en segundo plano, cuya sesión raíz figura ociosa mientras trabaja) hace
+ * que la carpeta no esté ociosa.
+ *
+ * R2: una petición al motor con `directory=` hace que el motor CARGUE esa carpeta (complementos de código, y conectores con `command.list`),
+ * así que NUNCA se pregunta por una carpeta que el que llama no dio. Las carpetas que el motor conoce por sus sesiones guardadas pero que no
+ * están en `directories` (recientes que la persona nunca abrió o aprobó, carpetas cerradas) no se consultan: solo cuentan como «posiblemente
+ * en curso» si tienen actividad de hace menos de `RECENT_WORK_MS`. Compromiso: un turno de una de esas carpetas que lleve más de ese tiempo
+ * sin escribir nada (p. ej. un comando largo) no se ve y podría interrumpirse con un reinicio; la alternativa era cargar carpetas sin confianza.
  */
-export async function fetchSessionsIdle(baseUrl: string, authorization: string, directories: string[]): Promise<boolean> {
+export async function fetchSessionsIdle(
+  baseUrl: string,
+  authorization: string,
+  directories: string[],
+  now: () => number = Date.now
+): Promise<boolean> {
   try {
-    const dirs = [...new Set([...directories, ...(await discoverDirectories(baseUrl, authorization))])]
-    for (const dir of dirs) {
+    const allowed = new Set(directories.map(dirKey))
+    // Trabajo que Rutinas, Telegram, el celular o Comparar mandaron hace poco a una carpeta que no se consulta: se ve en el registro de `main`
+    // (un comando largo no mueve `time.updated`, pero el servicio sí anotó que mandó el turno).
+    for (const k of recentWorkKeys(now)) if (!allowed.has(k)) return false
+    for (const k of await discoverSessions(baseUrl, authorization)) {
+      if (allowed.has(dirKey(k.directory))) continue // esas se consultan abajo, con su estado real
+      if (k.updated !== undefined && now() - k.updated < RECENT_WORK_MS) return false
+    }
+    for (const dir of new Set(directories)) {
       const res = await fetch(`${baseUrl}/session/status?directory=${encodeURIComponent(dir)}`, {
         headers: { Authorization: authorization },
         signal: AbortSignal.timeout(3000)
@@ -196,7 +228,9 @@ export function installEngineFlagsRestart(deps: EngineFlagsRestartDeps): EngineF
   /** Causa de lo pendiente en la familia principal (para el texto del aviso). */
   let mainCause: 'connectors' | undefined
 
-  const mainDirs = (): string[] => [deps.chatDirectory, ...(deps.settings.get().recentFolders ?? [])]
+  // Solo la carpeta del Chat y las carpetas de Code ABIERTAS Y CON CONFIANZA vigente (las informa el renderer, que guarda la confianza). Nunca las
+  // recientes: preguntar el estado de una carpeta hace que el motor la cargue (R2).
+  const mainDirs = (): string[] => [deps.chatDirectory, ...(deps.liveFolders?.() ?? [])]
 
   /** ¿La config inline con la que corre el sidecar principal es la que corresponde? (sin arrancar aún = sí). Un fallo = sí (no se reinicia a ciegas). */
   const inlineCurrent = (): boolean => {

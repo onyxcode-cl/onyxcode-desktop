@@ -69,6 +69,8 @@ export interface TelegramServiceDeps {
   housekeepingMs?: number
   /** Carpetas cuyas sesiones se pueden elegir: la de Chat y los proyectos recientes de Code (nunca Tareas/Overdrive). */
   sessionDirs?: () => { directory: string; kind: 'chat' | 'code' }[]
+  /** ¿La carpeta de Code está abierta con confianza vigente? Sin esto no se retoma por su cuenta una sesión de Code (R2). */
+  isCodeDirLive?: (directory: string) => boolean
   /** Modelo que usa la pantalla para ese modo (si la sesión no tiene uno propio). */
   modelFor?: (kind: 'chat' | 'code') => { providerID: string; modelID: string } | undefined
   /** Carpetas desde las que se pueden mandar archivos de esa sesión (nunca otras). */
@@ -986,6 +988,13 @@ export class TelegramService {
 
   /** Al arrancar con un vínculo y una sesión guardada: comprueba que existe y retoma sin repetir lo ya contado. */
   private async resumeActive(a: PersistedActiveSession): Promise<void> {
+    // R2: pedir al motor una sesión de Code carga su carpeta (complementos). Si la carpeta no está abierta con confianza, no se retoma sola: se
+    // suelta la elegida (en silencio) y la persona la vuelve a elegir con /sesiones cuando la tenga abierta. Todo lo demás parte de `persisted.active`.
+    if (a.kind === 'code' && !(this.d.isCodeDirLive?.(a.directory) ?? false)) {
+      this.dropActive('app')
+      this.emit()
+      return
+    }
     const r = await this.d.engine.getSession(a.directory, a.id, a.kind)
     if (this.persisted.active?.id !== a.id) return
     if (r === null) return this.lostSession()

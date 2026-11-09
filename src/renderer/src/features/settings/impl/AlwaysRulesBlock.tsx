@@ -3,6 +3,7 @@
  * motor recordó con «Permitir siempre» y deja quitar una regla a la vez. Todo el texto de una regla viene del motor: se pinta como texto
  * plano (nunca como HTML) y ya llega acotado y sin saltos de línea (`@shared/engine-always`). Solo ve el motor principal.
  */
+import { isFolderVerified } from '../../code/impl/verified-folders'
 import { useCallback, useEffect, useId, useState } from 'react'
 import type { AlwaysListResult } from '@shared/engine-always'
 import { Button } from '../../../components/Button'
@@ -41,9 +42,12 @@ export function AlwaysRulesBlock(): React.JSX.Element {
       })
   }, [])
 
-  // Al abrir la vista se elige la carpeta más reciente (si hay).
+  // Al abrir la vista se elige sola la carpeta más reciente QUE YA PASÓ la confianza en esta ejecución (R2: pedir las reglas de una carpeta
+  // al motor carga sus complementos). Las demás las elige la persona.
   useEffect(() => {
-    if (!dir && folders.length > 0) setDir(folders[0]!)
+    if (dir) return
+    const first = folders.find((f) => isFolderVerified(f))
+    if (first) setDir(first)
   }, [dir, folders])
   useEffect(() => {
     load(dir)

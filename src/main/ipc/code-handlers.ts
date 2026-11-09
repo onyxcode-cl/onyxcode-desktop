@@ -7,6 +7,7 @@ import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeIn
 import * as git from '../git/service'
 import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
+import { setLiveFolders } from '../code/live-folders'
 import { checkFolderAccess, PANE_ALL_FILES, PANE_FILES_AND_FOLDERS, resetFolderPermission, tccServicesFor } from '../dialog/folder-access'
 import { ENGINE_PROBE_TIMEOUT_MS, probeFolderAsEngine, type RunResult } from '../dialog/engine-folder-probe'
 import { findOpencodeBinary } from '../opencode/server'
@@ -160,6 +161,9 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     return path
   })
   // W-A2: qué trae la carpeta, leído de disco (nunca el motor) antes de abrirla. Plazo total de 2,8 s; lo que no alcanza queda «no revisado».
+  on(ipcMain, 'project:setLive', (r) => {
+    setLiveFolders(req(r, 'req').dirs)
+  })
   on(ipcMain, 'project:scan', (r) => {
     const { path, rulesOnly } = req(r, 'req')
     let appServers: string[] = []

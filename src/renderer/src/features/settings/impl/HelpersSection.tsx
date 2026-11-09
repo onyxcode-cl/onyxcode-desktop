@@ -5,6 +5,7 @@
  * (nunca Markdown, nunca `dangerouslySetInnerHTML`, nunca enlaces): `parseHelperList` ya le quitó controles y marcas de dirección.
  * La escritura la hace main: solo dentro de la carpeta elegida, con el nombre validado y sin seguir enlaces (`main/ipc/helper-agents.ts`).
  */
+import { isFolderVerified } from '../../code/impl/verified-folders'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { t as tr, type MsgKey } from '@shared/i18n'
 import {
@@ -306,7 +307,12 @@ type View = { kind: 'list' } | { kind: 'form'; mode: 'create' | 'edit'; def: Hel
 export function HelpersSection(): React.JSX.Element {
   const t = useT()
   const recent = useSettings((s) => s.settings.recentFolders)
-  const [folder, setFolder] = useState<string | null>(loadFolder)
+  // R2: la carpeta recordada de otra vez solo se carga sola si ya pasó la confianza en esta ejecución (pedir sus ayudantes al motor carga sus
+  // complementos); si no, la persona la elige de nuevo (elegirla es una acción suya).
+  const [folder, setFolder] = useState<string | null>(() => {
+    const f = loadFolder()
+    return f && isFolderVerified(f) ? f : null
+  })
   const [helpers, setHelpers] = useState<HelperView[] | null>(null)
   const [available, setAvailable] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)

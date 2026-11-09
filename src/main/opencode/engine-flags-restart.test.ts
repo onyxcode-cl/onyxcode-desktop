@@ -28,7 +28,14 @@ const flag = (chat: boolean, code: boolean, tasks: boolean) => ({ chat, code, ta
 
 function harness(
   initial: S,
-  opts: { idle?: boolean; serverState?: ServerState; live?: EngineFlagsLiveServer[]; permissionDir?: string; hooksFile?: string } = {}
+  opts: {
+    idle?: boolean
+    serverState?: ServerState
+    live?: EngineFlagsLiveServer[]
+    permissionDir?: string
+    hooksFile?: string
+    liveFolders?: string[]
+  } = {}
 ) {
   let current = initial
   const listeners = new Set<(s: S) => void>()
@@ -53,6 +60,7 @@ function harness(
     server,
     tasks,
     chatDirectory: '/chat',
+    liveFolders: () => opts.liveFolders ?? [],
     permissionDir: opts.permissionDir,
     hooksFile: opts.hooksFile,
     isIdle,
@@ -170,10 +178,16 @@ describe('reinicio al cambiar las funciones experimentales', () => {
     expect(h.notify).not.toHaveBeenCalled()
   })
 
-  it('el estado del sidecar se consulta en el directorio de Chat y en las carpetas recientes', async () => {
+  it('R2: el estado del sidecar se consulta en el directorio de Chat y en las carpetas abiertas con confianza, NUNCA en las recientes', async () => {
+    const h = harness({ ...base, recentFolders: ['/r1'] }, { liveFolders: ['/abierta'] })
+    await h.change({ engineExperiments: on({ codeMode: flag(false, true, false) }), recentFolders: ['/r1', '/r2'] })
+    expect(h.isIdle).toHaveBeenCalledWith('http://main', 'a', ['/chat', '/abierta'])
+  })
+
+  it('R2: sin carpetas de confianza abiertas solo se consulta el Chat', async () => {
     const h = harness({ ...base, recentFolders: ['/r1'] })
     await h.change({ engineExperiments: on({ codeMode: flag(false, true, false) }), recentFolders: ['/r1', '/r2'] })
-    expect(h.isIdle).toHaveBeenCalledWith('http://main', 'a', ['/chat', '/r1', '/r2'])
+    expect(h.isIdle).toHaveBeenCalledWith('http://main', 'a', ['/chat'])
   })
 
   it('al quitar el listener deja de reaccionar', async () => {

@@ -14,6 +14,9 @@ import { nativeCode } from './client'
 import { setFolderMcp, setVerifying } from './permission-rules'
 import { useCode, type TrustedScan } from './store'
 import { ensureFolderReadable } from './folder-access'
+import { dirId, isFolderVerified, markVerified, unmarkVerified } from './verified-folders'
+
+export { isFolderVerified }
 
 /** Lo que se le pide pintar al diálogo: la carpeta y, si hay algo que mostrar, el escaneo y qué parte es nueva. */
 export interface PendingTrust {
@@ -41,14 +44,8 @@ let current: Entry | null = null
 const queue: Entry[] = []
 const trustListeners = new Set<(p: PendingTrust | null) => void>()
 let pendingTrust: PendingTrust | null = null
-/** Carpetas de confianza ACEPTADAS en esta ejecución (huella igual, nada nuevo, o la persona confirmó). Distinto de «escaneada». */
-const verified = new Set<string>()
-const dirId = (d: string): string => d.replace(/[/\\]+$/, '')
 
 /** ¿La carpeta pasó la verificación de confianza en esta ejecución? */
-export function isFolderVerified(dir: string): boolean {
-  return verified.has(dirId(dir))
-}
 
 function setPendingTrust(p: PendingTrust | null): void {
   pendingTrust = p
@@ -180,8 +177,9 @@ export async function verifyTrustedFolder(dir: string): Promise<boolean> {
 }
 
 function accept(dir: string): true {
-  verified.add(dirId(dir))
+  markVerified(dir)
   setVerifying(dir, false)
+  syncLiveFolders()
   return true
 }
 
@@ -207,16 +205,18 @@ export function resolveTrust(trust: boolean): void {
   current = null
   setPendingTrust(null)
   if (trust && p) {
-    verified.add(dirId(p.dir))
+    markVerified(p.dir)
     setVerifying(p.dir, false)
     if (p.scan) useCode.getState().trustFolder(p.dir, scanToTrustedScan(p.scan))
     else useCode.getState().trustFolder(p.dir)
+    syncLiveFolders()
   } else if (!trust && p) {
     setVerifying(p.dir, false)
     // Cancelar NO suelta las reglas de la carpeta (siguen preguntando los conectores), y si ya era de confianza se la quita: así ninguna vía
     // (restaurar, barra lateral) la vuelve a cargar sin pedir confirmación, y si tenía el foco se cierra.
     if (p.wasTrusted) {
-      verified.delete(dirId(p.dir))
+      unmarkVerified(p.dir)
+      syncLiveFolders()
       const st = useCode.getState()
       st.untrustFolder(p.dir)
       // Con el foco: se cierra y el foco no pasa a otra sin confianza. Sin el foco: también se cierra, para que nada la vuelva a cargar sin preguntar.
@@ -272,3 +272,31 @@ export function restoreFocusedProject(): Promise<void> {
   })()
   return restoring
 }
+
+let liveSent = ''
+/**
+ * Informa a main de las carpetas abiertas con confianza vigente Y verificada en esta ejecución: son las únicas por las que main puede preguntar
+ * al motor (p. ej. «¿está ocioso?» antes de reiniciarlo). Preguntar por una carpeta la carga en el motor (complementos y conectores).
+ */
+export function syncLiveFolders(force = false): void {
+  if (typeof window === 'undefined') return
+  let native: ReturnType<typeof nativeCode> = null
+  try {
+    native = nativeCode()
+  } catch {
+    return // sin `window.api` (pruebas)
+  }
+  if (!native || typeof native.project?.setLive !== 'function') return
+  const s = useCode.getState()
+  const open = [...s.openDirectories, ...(s.directory ? [s.directory] : [])]
+  const dirs = [...new Set(open)].filter((d) => s.isTrusted(d) && isFolderVerified(d)).sort()
+  const sig = JSON.stringify(dirs)
+  if (!force && sig === liveSent) return
+  liveSent = sig
+  void Promise.resolve(native.project.setLive(dirs)).catch(() => {
+    liveSent = '' // no llegó: se reintenta con el próximo cambio
+  })
+}
+useCode.subscribe(() => syncLiveFolders())
+// Latido: main descarta la lista si no se renueva (falla cerrado si el aviso se pierde o este proceso deja de responder).
+if (typeof window !== 'undefined') setInterval(() => syncLiveFolders(true), 30_000)

@@ -43,6 +43,8 @@ export interface RemoteBootDeps {
   startEngine: () => Promise<OpencodeConnection>
   getConnection: () => OpencodeConnection | null
   getRecentFolders: () => string[]
+  /** Carpetas de Code abiertas con confianza vigente: las únicas por las que el celular consulta el motor por su cuenta (listar sesiones, permisos). */
+  getLiveFolders?: () => string[]
   modelFor: (kind: 'chat' | 'code') => { providerID: string; modelID: string } | undefined
   onChanged: (state: RemoteState) => void
   onPairRequest: (req: RemotePairRequest) => void
@@ -74,7 +76,8 @@ export function createRemote(d: RemoteBootDeps): RemoteService {
   const backend = new SidecarBackend({
     getClient: async () => clientFor(await d.startEngine()),
     chatDirectory: d.chatDirectory,
-    getRecentFolders: d.getRecentFolders,
+    // R2: listar sesiones y permisos con una carpeta la carga en el motor; solo las abiertas con confianza (sin la dep, ninguna).
+    getRecentFolders: d.getLiveFolders ?? (() => []),
     modelFor: d.modelFor
   })
   // Carpetas del ámbito: recientes de Code + carpetas de Tareas aprobadas (se leen por el mismo IPC que usa la ventana).

@@ -2,6 +2,7 @@
  * Handlers IPC de Telegram (`telegram:*`, F8-B187). Todos son clase X en `remote/policy.ts`: el celular no los toca.
  * Aquí se arma el servicio real (almacén seguro, `net.fetch`, dirección base fija) y se difunde su estado a las ventanas.
  */
+import { getLiveFolders } from '../code/live-folders'
 import { app, safeStorage, session, type IpcMain } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -56,10 +57,11 @@ export function registerTelegramHandlers(ipcMain: IpcMain, deps: { server: Openc
         baseUrl: base,
         fetch: (url, init) => tgSession.fetch(url as string, { ...init, cache: 'no-store' }) as Promise<Response>
       }),
-    // Qué sesiones se pueden elegir: Chat y los proyectos recientes de Code que existen (Tareas/Overdrive vive en otros motores y nunca entra).
+    // Qué sesiones se pueden elegir: Chat y los proyectos de Code ABIERTOS con confianza vigente que existen (Tareas/Overdrive vive en otros
+    // motores y nunca entra). R2: listar sesiones pide al motor con la carpeta y la carga (complementos); las recientes no abiertas no se piden.
     sessionDirs: () => {
       const out: { directory: string; kind: 'chat' | 'code' }[] = [{ directory: deps.chatDirectory, kind: 'chat' }]
-      for (const f of settingsStore.get().recentFolders) {
+      for (const f of getLiveFolders()) {
         if (out.length > 5) break
         if (typeof f === 'string' && f && f !== deps.chatDirectory && !out.some((o) => o.directory === f) && existsSync(f)) {
           out.push({ directory: f, kind: 'code' })
@@ -67,6 +69,7 @@ export function registerTelegramHandlers(ipcMain: IpcMain, deps: { server: Openc
       }
       return out
     },
+    isCodeDirLive: (dir) => getLiveFolders().some((f) => f.replace(/[\\/]+$/, '') === dir.replace(/[\\/]+$/, '')),
     modelFor: (kind) => extrasPrefs.get().modelsByMode[kind] ?? settingsStore.get().defaultModel,
     // Desde dónde se puede mandar un archivo: Code, SOLO la carpeta del proyecto de esa sesión; Chat, su carpeta y la de documentos.
     fileRoots: (s) => (s.kind === 'chat' ? [deps.chatDirectory, chatDocsRoot()] : [s.directory]),

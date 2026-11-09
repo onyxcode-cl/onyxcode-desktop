@@ -43,6 +43,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - En Windows, `cmd.exe` y `git.bat` no tienen aún el mismo cuidado que PowerShell.
 - **Después de usar «Solo explorar» en una conversación,** los ayudantes pueden quedarse sin poder editar aunque vuelvas a «Hacer» y «Automático»: el motor conserva ese bloqueo en esa conversación. La app ahora te avisa sobre el cuadro de escribir («Esta conversación pasó por Solo explorar… abre una conversación nueva»). Arreglarlo de fondo pide cambiar el motor y queda para la próxima versión. Es más estricto, no más laxo.
 - Si un ayudante queda bloqueado, la tarjeta sigue sin explicar el motivo (solo un icono rojo).
+- **Cambiar un Ajuste que reinicia el motor mientras un proyecto de Code recién cerrado sigue con un turno en marcha** puede cortarlo si pasa 2 minutos sin escribir. La 1.8.11 lo evitaba; a cambio, ya no se tocan carpetas en las que no confiaste.
 - En «Comparar», las columnas canceladas o descartadas pueden seguir mostrando los botones «Permitir una vez / Rechazar» (no hacen nada).
 - «Permitir siempre» a una página web deja pasar las siguientes durante esa misma sesión, aunque no se guarda para la próxima.
 
