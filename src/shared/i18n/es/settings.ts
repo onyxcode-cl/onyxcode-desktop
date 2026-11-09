@@ -414,7 +414,7 @@ export const settings = {
   'settings.doctor.item.disk.warn': 'Queda poco espacio en disco',
   'settings.doctor.item.screens.title': 'Pantallas',
   // Funciones experimentales del motor (Ajustes › Funciones experimentales)
-  'settings.engine.nav': 'Funciones experimentales',
+  'settings.engine.nav': 'Experimentales',
   'settings.engine.title': 'Funciones experimentales',
   'settings.engine.desc':
     'Capacidades nuevas de la IA que aún están en prueba. Casi todas están apagadas por defecto (los ayudantes en segundo plano y recordar tus «siempre» vienen encendidos); enciende o apaga cada una en los modos donde quieras.',

@@ -418,7 +418,7 @@ export const settings = {
   'settings.doctor.item.disk.warn': 'Disk space is running low',
   'settings.doctor.item.screens.title': 'Screens',
   // Experimental engine features (Settings › Experimental features)
-  'settings.engine.nav': 'Experimental features',
+  'settings.engine.nav': 'Experimental',
   'settings.engine.title': 'Experimental features',
   'settings.engine.desc':
     'New AI capabilities that are still being tested. Most are off by default (background helpers and remembering your “always” choices start on); turn each one on or off in the modes you want.',
