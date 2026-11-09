@@ -13,3 +13,18 @@ describe('rechazo de permisos', () => {
     expect(friendlyToolError('fallo normal\ncon dos líneas', true)).toBe('fallo normal\ncon dos líneas')
   })
 })
+
+describe('ayudante bloqueado (solo presentación)', () => {
+  it('reconoce el texto del guardián y la regla de Solo explorar', async () => {
+    const { subagentBlockKind } = await import('./plan-gate')
+    expect(
+      subagentBlockKind(
+        'Lanzamiento de subagente bloqueado por Lazunox: el subagente "general" tendria mas libertad que quien lo lanza (build): bash.'
+      )
+    ).toBe('escalation')
+    expect(subagentBlockKind('Lanzamiento de subagente bloqueado por Lazunox: no se pudo leer la lista de agentes.')).toBe('unverified')
+    expect(subagentBlockKind('The user has specified a rule which prevents you from using this specific tool call.')).toBe('rule')
+    expect(subagentBlockKind('otro fallo')).toBeNull()
+    expect(subagentBlockKind(undefined)).toBeNull()
+  })
+})

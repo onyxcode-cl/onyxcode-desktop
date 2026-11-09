@@ -2,6 +2,7 @@
  * Avisos que deja el motor en los metadatos de las partes, dichos en lenguaje llano para la persona (P6 de la 1.8.9).
  *
  *  - Comandos en segundo plano (motor publicado): `metadata.running === true` + `metadata.shellId` en la parte `bash`.
+ *  - Modelo de respaldo (`lazunox_respaldo`, lazunox.15; paquete B6): «El modelo X no respondió; este turno se hizo con Y».
  *  - Reintentos anotados y cambio de modelo (motor aún sin publicar, `lazunox_reintento` / `lazunox_cambio_modelo`): hoy no llegan;
  *    cuando lleguen ya se pintan. Todo lo que viene del motor es dato no confiable: se valida la forma y se recortan los textos.
  *
@@ -57,6 +58,16 @@ function modelName(ref: unknown): string {
   return id.replace(/\s+/g, ' ').trim().slice(0, 60)
 }
 
+/** `proveedor/modelo` del motor, recortado y sin saltos; el proveedor solo se nombra si cambió (`de` y `a` son de servicios distintos). */
+function fallbackRef(ref: unknown, otherSide: unknown): string {
+  const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 100) : '')
+  const full = clean(ref)
+  const i = full.indexOf('/')
+  if (i <= 0 || i === full.length - 1) return full
+  const other = clean(otherSide)
+  return other.startsWith(full.slice(0, i + 1)) ? full.slice(i + 1) : full
+}
+
 /** Texto llano de una parte-anotación del motor (reintento o cambio de modelo), o `null` si la parte no es una. */
 export function engineNote(part: { type: string; metadata?: unknown }): string | null {
   if (part.type !== 'text') return null
@@ -79,6 +90,16 @@ export function engineNote(part: { type: string; metadata?: unknown }): string |
       cause,
       seconds
     })
+  }
+
+  // Modelo de respaldo (lazunox.15): el modelo gratuito se quedó sin cuota (o sin servicio) y este turno se hizo con otro.
+  const fallback = meta.lazunox_respaldo
+  if (fallback !== undefined) {
+    const o = asMeta(fallback)
+    const from = fallbackRef(o.de, o.a)
+    const to = fallbackRef(o.a, o.de)
+    if (!from || !to) return null
+    return t('engine.respaldo.note', { from, to })
   }
 
   const change = meta.lazunox_cambio_modelo

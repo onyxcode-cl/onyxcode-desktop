@@ -12,6 +12,7 @@
  * `buildInlineConfig({ browserMcp })`. Si el MCP no arrancó (`browserMcp` es null), el sidecar
  * arranca igual, sin navegador: `mcp.browser` simplemente no se incluye. Igual con `mcp.bgshell` (F8-B204).
  */
+import { modelFallbackInline } from '@shared/model-fallback'
 import { CHAT_AGENT } from '@shared/types'
 import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
 import { DOCUMENTS_SERVER } from '@shared/documents-permissions'
@@ -58,6 +59,12 @@ export interface InlineConfigOptions {
    */
   chatSubagents?: boolean
   /**
+   * «Modelo de respaldo» (`Settings.modelFallback`, motor lazunox.15): se escribe como `respaldo: { modelos, otro_proveedor }`. Sin modelos
+   * (o ausente) no se escribe la clave y el respaldo queda apagado. El motor vuelve a comprobar que sean de coste 0 y del mismo servicio
+   * (salvo `otro_proveedor`); lee la lista solo de esta config en línea y de la global del usuario, nunca del `opencode.json` del proyecto.
+   */
+  modelFallback?: unknown
+  /**
    * Bloque `permission` de la config (vale para todos los agentes del sidecar; los de `'*': deny` como `chat` siguen denegando porque
    * su permiso de agente va después). Lo construye `buildCodeMcpPermission` (`code-mcp-permission.ts`): conectores en Code (F8-B203).
    * NO lleva reglas de bash/edit/etc.: esas siguen en el bloque de modo de cada sesión.
@@ -96,6 +103,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
         }
       : {}),
     ...(opts.instructions?.length ? { instructions: [...opts.instructions] } : {}),
+    ...(modelFallbackInline(opts.modelFallback) ? { respaldo: modelFallbackInline(opts.modelFallback) } : {}),
     ...(opts.permission && Object.keys(opts.permission).length ? { permission: opts.permission } : {}),
     agent: {
       [CHAT_AGENT]: {

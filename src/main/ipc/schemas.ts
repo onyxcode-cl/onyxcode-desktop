@@ -10,6 +10,7 @@ import { IPC_INVOKE_CHANNELS, type IpcInvokeChannel, type IpcRequest } from '@sh
 import { ALWAYS_ID_RE, ALWAYS_LIMITS } from '@shared/engine-always'
 import { BUDGET_LIMITS, GOAL_LIMITS } from '@shared/engine-code-extras'
 import { ENGINE_LIMIT_SPECS, type EngineLimitKey } from '@shared/engine-limits'
+import { MODEL_FALLBACK_MAX, MODEL_FALLBACK_REF_MAX, MODEL_FALLBACK_REF_RE } from '@shared/model-fallback'
 import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
 import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 import { DIAG_SOURCES } from '@shared/diagnostics'
@@ -731,6 +732,11 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     // (`user-hooks-store.ts`) o al migrar (`store.ts`); si el renderer pudiera escribirla, «aprobar» un archivo no pasaría por la app.
     webSearchAnyProvider: bool,
     permissionSuggestions: bool,
+    // Paquete B6: modelos de respaldo (hasta 3, `proveedor/modelo`) y consentimiento para otro proveedor (apagado por defecto).
+    modelFallback: obj({
+      models: arr(str({ min: 3, max: MODEL_FALLBACK_REF_MAX, pattern: MODEL_FALLBACK_REF_RE }), MODEL_FALLBACK_MAX),
+      otherProvider: bool
+    }),
     // Conectores de confianza en Code (nombres válidos de servidor MCP; tope igual que `MAX_CODE_TRUSTED_MCP`).
     codeTrustedMcp: arr(mcpName, 200),
     modoPlan: bool

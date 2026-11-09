@@ -8,7 +8,7 @@ import { memo, useMemo, useState, type ReactNode } from 'react'
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { t, type MsgKey } from '@shared/i18n'
 import { splitPath } from '../../../lib/paths'
-import { friendlyToolError, isPlanGateText, isRejectedText } from '../../../lib/plan-gate'
+import { friendlyToolError, isPlanGateText, isRejectedText, subagentBlockKind } from '../../../lib/plan-gate'
 import { useLocale, useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { m } from '../../../app/mobile/m'
@@ -523,7 +523,18 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           status={state.status}
         >
           {str(input.prompt) && <div className="px-3 py-2 text-xs whitespace-pre-wrap text-muted">{str(input.prompt)}</div>}
-          {error ? errorBlock : <Output text={output} max="max-h-60" />}
+          {error ? (
+            <>
+              {subagentBlockKind(state.status === 'error' ? state.error : '') && (
+                <div className="px-3 py-2 text-xs whitespace-pre-wrap text-fg/90">
+                  {t(`code.tool.subagentBlocked.${subagentBlockKind(state.status === 'error' ? state.error : '')}` as MsgKey)}
+                </div>
+              )}
+              {errorBlock}
+            </>
+          ) : (
+            <Output text={output} max="max-h-60" />
+          )}
         </Row>
       )
     default: {

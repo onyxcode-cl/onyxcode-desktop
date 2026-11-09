@@ -28,6 +28,23 @@ export function isInternalAccessNoise(text: string | undefined | null): boolean 
   return !!text && INTERNAL_ACCESS_RE.test(text)
 }
 
+const SUBAGENT_BLOCK_RE = /Lanzamiento de subagente bloqueado por Lazunox/i
+// «Solo explorar» lo frena la regla `task general deny` de la sesión; el motor responde con su texto de regla denegada.
+const TASK_RULE_DENIED_RE = /specified a rule which prevents you from using this specific tool call/i
+
+export type SubagentBlock = 'escalation' | 'rule' | 'unverified'
+
+/**
+ * Un ayudante (`task`) que Lazunox no dejó lanzar. Solo presentación: reconoce el texto del guardián
+ * (`src/main/opencode/subagent-guard.ts`) o la regla de «Solo explorar» para explicarlo en llano; no cambia ningún permiso.
+ */
+export function subagentBlockKind(text: string | undefined | null): SubagentBlock | null {
+  if (!text) return null
+  if (TASK_RULE_DENIED_RE.test(text)) return 'rule'
+  if (!SUBAGENT_BLOCK_RE.test(text)) return null
+  return /tendria mas libertad|tendría más libertad/i.test(text) ? 'escalation' : 'unverified'
+}
+
 export function isPlanGateText(text: string | undefined | null): boolean {
   return !!text && PLAN_GATE_RE.test(text)
 }

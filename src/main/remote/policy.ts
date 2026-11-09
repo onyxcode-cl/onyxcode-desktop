@@ -206,6 +206,8 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   userHooksReview: 'X',
   webSearchAnyProvider: 'X',
   permissionSuggestions: 'X',
+  // Modelo de respaldo (B6): a qué servicio se manda la conversación; solo en el Mac.
+  modelFallback: 'X',
   // Conectores de confianza en Code (usarlos sin pedir permiso): decide la persona en el Mac; el celular NO.
   codeTrustedMcp: 'X',
   modoPlan: 'X', // bandera experimental del modo plan: solo el Mac

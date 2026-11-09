@@ -146,6 +146,7 @@ export const common = {
   'engine.retry.cause.sobrecarga': 'el servicio está saturado',
   'engine.retry.cause.red': 'falló la conexión',
   'engine.retry.cause.otro': 'el modelo no respondió',
+  'engine.respaldo.note': 'El modelo {from} no respondió; este turno se hizo con {to}.',
   'engine.model.notApplied': 'No se cambió a «{to}»: {why}. Se sigue con «{from}».',
   'engine.model.why.compact': 'no se pudo resumir la conversación para que le cupiera',
   'engine.model.why.other': 'no se pudo aplicar a tiempo',

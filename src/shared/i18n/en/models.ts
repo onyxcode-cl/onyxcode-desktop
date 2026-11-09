@@ -16,6 +16,17 @@ export const models = {
   'models.forMode.aria': 'Model for {mode}',
   'models.useDefault': 'Use the default',
   'models.useDefaultNamed': 'Default: {model}',
+  'models.fallback.title': 'Fallback model',
+  'models.fallback.label': 'If the free model runs out of quota',
+  'models.fallback.description':
+    'Lazunox continues with another free model from this list (up to {max}), in the order you pick them. Only free models are offered.',
+  'models.fallback.none': 'None chosen: the fallback is off.',
+  'models.fallback.add.aria': 'Add a fallback model',
+  'models.fallback.remove': 'Remove {model} from the fallback',
+  'models.fallback.other.label': 'Also allow models from another service',
+  'models.fallback.other.description': 'Off by default: the fallback stays within the same service as the model that went down.',
+  'models.fallback.other.warn':
+    'Heads up: if the model runs out of quota, this conversation will be sent to the other service you chose, not only the current one.',
   'models.refreshList': 'Refresh list',
   'models.providers': 'AI services',
   'models.removeCreds.title': 'Remove credentials?',

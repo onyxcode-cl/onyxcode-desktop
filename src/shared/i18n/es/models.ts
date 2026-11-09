@@ -12,6 +12,17 @@ export const models = {
   'models.forMode.aria': 'Modelo para {mode}',
   'models.useDefault': 'Usar el predeterminado',
   'models.useDefaultNamed': 'Predeterminado: {model}',
+  'models.fallback.title': 'Modelo de respaldo',
+  'models.fallback.label': 'Si el modelo gratuito se queda sin cuota',
+  'models.fallback.description':
+    'Lazunox sigue con otro modelo gratuito de esta lista (hasta {max}), en el orden en que los elijas. Solo se ofrecen modelos gratuitos.',
+  'models.fallback.none': 'Ninguno elegido: el respaldo está apagado.',
+  'models.fallback.add.aria': 'Añadir un modelo de respaldo',
+  'models.fallback.remove': 'Quitar {model} del respaldo',
+  'models.fallback.other.label': 'Permitir también modelos de otro servicio',
+  'models.fallback.other.description': 'Apagado por defecto: el respaldo se queda dentro del mismo servicio del modelo que se cayó.',
+  'models.fallback.other.warn':
+    'Atención: si el modelo se queda sin cuota, esta conversación se enviará al otro servicio que elegiste, no solo al actual.',
   'models.refreshList': 'Actualizar lista',
   'models.providers': 'Servicios de IA',
   'models.removeCreds.title': '¿Eliminar credenciales?',

@@ -4,6 +4,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSyn
 import { dirname, isAbsolute, join } from 'node:path'
 import { migrateBackgroundSubagentsDefault, normalizeEngineExperiments } from '@shared/engine-experiments'
 import { normalizeEngineLimits } from '@shared/engine-limits'
+import { normalizeModelFallback } from '@shared/model-fallback'
 import { normalizeCodeTrustedMcp } from '@shared/mcp-permissions'
 import { isLangPref, migrateLanguage } from '@shared/i18n'
 import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
@@ -152,6 +153,7 @@ function normalize(s: Settings): Settings {
     // Solo `true` exacto: ausente o basura = apagado (las búsquedas salen a un tercero; la sugerencia tarda y puede costar).
     webSearchAnyProvider: s.webSearchAnyProvider === true,
     permissionSuggestions: s.permissionSuggestions === true,
+    modelFallback: normalizeModelFallback(s.modelFallback),
     engineBgMigrated: s.engineBgMigrated === true,
     codeTrustedMcp: normalizeCodeTrustedMcp(s.codeTrustedMcp),
     // Solo `true` exacto lo enciende (bandera experimental del modo plan): ausente o basura = apagado.

@@ -35,7 +35,7 @@ const KIND_KEY: Record<ProjectScanKind, MsgKey> = {
 /** Tope de filas que se pintan en el diálogo (el resto se resume en «N más…»); evita una carpeta con miles de archivos cuelgue la lista. */
 const MAX_TRUST_ROWS = 40
 
-/** Una fila de «lo que trae la carpeta»: tipo, nombre y, si hay, el programa/host (nunca argumentos ni variables). */
+/** Una fila de «lo que trae la carpeta»: tipo, nombre y, si hay, el comando seguro o el host (claves, URLs y variables salen como «•••»). */
 function TrustItemRow({ item }: { item: ProjectScanItem }): React.JSX.Element {
   const te = useT()
   return (

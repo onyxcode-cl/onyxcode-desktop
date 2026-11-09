@@ -145,7 +145,7 @@ export interface ProjectScanItem {
   kind: ProjectScanKind
   /** Nombre para mostrar (saneado: sin saltos ni caracteres de control o de dirección de texto; ≤ 80). */
   name: string
-  /** Solo el programa o el host. NUNCA argumentos, variables, cabeceras ni claves. */
+  /** Host, o comando seguro (programa + rutas de la carpeta y nombres de paquete; el resto «•••»). NUNCA variables, cabeceras ni claves. */
   detail?: string
   /** Solo `mcp`: `<servidor saneado>_*`, calculada con el nombre COMPLETO (la que usa el motor). */
   mcpKey?: string

@@ -20,6 +20,7 @@ import { APP_SLUG, MOTOR_APP_NAME } from '@shared/brand'
 import { installedMotorCurrent, motorHomeDir, motorPaths } from './motor-app'
 import type { OpencodeConnection, ServerStatus } from '@shared/types'
 import { buildInlineConfig } from './config'
+import { modelFallbackKey } from '@shared/model-fallback'
 import { bearerOf } from '../util/loopback-mcp'
 import { CODE_BINDING_FOLDER, DOCUMENTS_SERVER, documentsConfigPermission } from '@shared/documents-permissions'
 import { codeDocsInstructions } from './code-docs-instructions'
@@ -159,9 +160,18 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     }
   }
 
+  /** Parte «modelo de respaldo» de la huella de la config inline (cambiarla en Ajustes relanza el motor cuando no hay turnos en curso). */
+  private fallbackKey(): string {
+    try {
+      return modelFallbackKey(settingsStore.get().modelFallback)
+    } catch {
+      return 'sin-respaldo'
+    }
+  }
+
   /** Huella de la parte de la config inline que depende de Ajustes y conectores, tal como corresponde AHORA. */
   wantedInlineKey(): string {
-    return inlineKey(this.codeMcpPermission(), this.chatSubagents())
+    return inlineKey(this.codeMcpPermission(), this.chatSubagents(), this.fallbackKey())
   }
 
   /** Huella con la que arrancó el proceso actual (`null` si no arrancó). */
@@ -292,7 +302,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
       const permission = this.codeMcpPermission()
       const chatSubagents = this.chatSubagents()
-      this.appliedInline = inlineKey(permission, chatSubagents)
+      this.appliedInline = inlineKey(permission, chatSubagents, this.fallbackKey())
 
       const persistEnv = permissionPersistEnvFor(settingsStore.get(), permissionDir())
       if (persistEnv.LAZUNOX_PERMISSION_DIR) ensurePermissionDir(persistEnv.LAZUNOX_PERMISSION_DIR)
@@ -321,6 +331,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
             documentsMcp: documents,
             permission,
             chatSubagents,
+            modelFallback: settingsStore.get().modelFallback,
             instructions: codeDocsInstructions()
           })
         )
@@ -480,8 +491,8 @@ function openCodeFolders(): string[] {
 }
 
 /** Huella de la parte de la config inline que depende de Ajustes y conectores (permisos de conectores y subagentes del Chat). */
-function inlineKey(permission: Record<string, unknown>, chatSubagents: boolean): string {
-  return `${chatSubagents ? 'chat-task' : 'no-chat-task'}|${permissionFingerprint(permission)}`
+function inlineKey(permission: Record<string, unknown>, chatSubagents: boolean, fallback: string): string {
+  return `${chatSubagents ? 'chat-task' : 'no-chat-task'}|${permissionFingerprint(permission)}|${fallback}`
 }
 
 /**
