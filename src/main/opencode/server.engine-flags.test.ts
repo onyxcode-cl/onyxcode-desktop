@@ -13,7 +13,8 @@ const state = vi.hoisted(() => ({
   appServers: {} as Record<string, unknown>,
   appPermission: {} as Record<string, unknown>,
   global: { servers: [] as string[], permission: {} as Record<string, unknown> },
-  userData: '/tmp/lazunox-test',
+  // En Windows una ruta sin letra de unidad no es absoluta (y el motor no recibe archivos de ganchos con rutas así).
+  userData: process.platform === 'win32' ? 'C:\\tmp\\lazunox-test' : '/tmp/lazunox-test',
   node: null as string | null,
   script: null as string | null,
   wakes: [] as Array<{ eventsFile: string; started: number; stopped: number }>

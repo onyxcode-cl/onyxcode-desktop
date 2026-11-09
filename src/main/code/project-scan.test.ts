@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { cleanText, isWithin, MAX_ENTRIES, MAX_JSON_BYTES, scanProjectConfig } from './project-scan'
 
@@ -440,9 +440,11 @@ describe('plazo y claves', () => {
 
 describe('isWithin', () => {
   it('compara por carpeta completa, no por prefijo de texto', () => {
-    expect(isWithin('/a/b', '/a/b')).toBe(true)
-    expect(isWithin('/a/b', '/a/b/c')).toBe(true)
-    expect(isWithin('/a/b', '/a/bc')).toBe(false)
-    expect(isWithin('/a/b', '/a')).toBe(false)
+    // Rutas armadas con `join` para que valgan igual en Windows (separador «\\») y en Mac/Linux.
+    const r = (...p: string[]): string => join(sep, ...p)
+    expect(isWithin(r('a', 'b'), r('a', 'b'))).toBe(true)
+    expect(isWithin(r('a', 'b'), r('a', 'b', 'c'))).toBe(true)
+    expect(isWithin(r('a', 'b'), r('a', 'bc'))).toBe(false)
+    expect(isWithin(r('a', 'b'), r('a'))).toBe(false)
   })
 })
