@@ -619,6 +619,23 @@ describe('settings:set userHooksEnabled y canales de ganchos', () => {
       for (const bad of ['true', 1, {}, []]) expect(() => v({ [k]: bad }), `${k}=${String(bad)}`).toThrow()
     }
   })
+  it('B6: modelFallback acepta hasta 3 `proveedor/modelo` y un booleano; rechaza el resto', () => {
+    const v = IPC_SCHEMAS['settings:set']
+    const ok = { models: ['a/b', 'c/d:free'], otherProvider: false }
+    expect(v({ modelFallback: ok })).toEqual({ modelFallback: ok })
+    expect(v({ modelFallback: { models: [], otherProvider: true } })).toEqual({ modelFallback: { models: [], otherProvider: true } })
+    for (const bad of [
+      { models: ['a/b', 'c/d', 'e/f', 'g/h'], otherProvider: false },
+      { models: ['sin-barra'], otherProvider: false },
+      { models: ['a/b c'], otherProvider: false },
+      { models: ['a/b'], otherProvider: 'true' },
+      { models: 'a/b', otherProvider: false },
+      { models: ['a/b'] },
+      { models: [], otherProvider: false, extra: 1 },
+      'x'
+    ])
+      expect(() => v({ modelFallback: bad }), JSON.stringify(bad)).toThrow()
+  })
   it('1.8.12: la huella de los ganchos y su aviso NO se pueden escribir desde el renderer (solo main)', () => {
     const v = IPC_SCHEMAS['settings:set']
     expect(() => v({ userHooksSha256: 'ab'.repeat(32) })).toThrow()

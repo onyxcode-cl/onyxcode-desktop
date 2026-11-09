@@ -212,6 +212,12 @@ export const code = {
   'code.tool.todosDone': '{done}/{total} completadas',
   'code.tool.opened': 'Abrió',
   'code.tool.searchedWeb': 'Buscó en la web',
+  'code.tool.subagentBlocked.escalation':
+    'No se lanzó este ayudante: podría hacer más cosas de las que esta conversación permite. Abre una conversación nueva o usa otro ayudante.',
+  'code.tool.subagentBlocked.rule':
+    'Este modo no permite lanzar ayudantes. Si ya cambiaste de modo, abre una conversación nueva, o usa otro ayudante.',
+  'code.tool.subagentBlocked.unverified':
+    'Lazunox no pudo comprobar que el ayudante fuera seguro y no lo lanzó. Inténtalo otra vez; si sigue igual, abre una conversación nueva o usa otro ayudante.',
   'code.tool.subagent': 'Subagente',
   'code.tool.interrupted': 'Interrumpida: el motor se reinició o la sesión terminó antes de que acabara.',
   'code.tool.execute': 'Modo código',

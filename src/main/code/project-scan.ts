@@ -105,6 +105,128 @@ function programOf(command: unknown): string {
   return ''
 }
 
+const MASK = '•••'
+/** Tope de argumentos que se muestran del comando de un conector. */
+const MAX_SHOWN_ARGS = 10
+/** Banderas que NO llevan valor aparte: lo que sigue es otro argumento normal (el resto de banderas se supone que toma el siguiente argumento como valor). */
+const BOOL_FLAGS = new Set([
+  '-y',
+  '--yes',
+  '--stdio',
+  '-q',
+  '--quiet',
+  '-s',
+  '--silent',
+  '--no-install',
+  '--offline',
+  '--prefer-offline',
+  '-v',
+  '--verbose',
+  '/c',
+  '/k',
+  '/s',
+  '-m',
+  '-u'
+])
+const FLAG_NAME_RE = /^-{1,2}[A-Za-z][A-Za-z0-9-]{0,40}$|^\/[A-Za-z]$/
+// Parecen una clave, un token o una contraseña (prefijos conocidos, JWT, texto largo sin separadores, mezcla larga de letras y números).
+const SECRET_PREFIX_RE =
+  /(?:^|[^A-Za-z0-9])(?:sk|pk|rk|ghp|gho|ghu|ghs|ghr|github_pat|glpat|xox[abprs]|npm|pypi|hf|AKIA|ASIA|AIza|eyJ|ya29|Bearer|Basic)[-_.A-Za-z0-9]*[-_]?[A-Za-z0-9]{8,}/i
+const PKG_RE = /^(?:@[a-z0-9][a-z0-9._-]{0,60}\/)?[a-z0-9][a-z0-9._-]{0,60}(?:@[A-Za-z0-9._-]{1,20})?$/
+const PATH_EXT_RE = /\.(?:js|mjs|cjs|ts|mts|cts|jsx|tsx|py|rb|sh|ps1|bat|cmd|json|jsonc|yaml|yml|toml|exe|jar|php|go|rs)$/i
+
+function looksSecret(v: string): boolean {
+  if (SECRET_PREFIX_RE.test(v)) return true
+  // Un tramo largo sin separadores (o con mucha mezcla de mayúsculas, minúsculas y números) casi seguro es una clave.
+  for (const part of v.split(/[/\\@:._-]/)) {
+    if (part.length >= 40) return true
+    if (part.length >= 12 && /[0-9]/.test(part) && /[A-Za-z]/.test(part)) return true
+    if (part.length >= 16 && /[a-z]/.test(part) && /[A-Z]/.test(part)) return true
+  }
+  return false
+}
+
+/** Ruta de archivo DENTRO de la carpeta (comparación solo por texto: no toca el disco). Devuelve la ruta relativa o `null`. */
+function folderPath(arg: string, start: string): string | null {
+  if (arg.startsWith('~') || /^[a-z][a-z0-9+.-]*:/i.test(arg.replace(/^[A-Za-z]:[\\/]/, ''))) return null
+  if (!/[\\/]/.test(arg) && !PATH_EXT_RE.test(arg)) return null
+  const abs = resolve(start, arg)
+  if (!isWithin(start, abs) || abs === resolve(start)) return null
+  return relative(start, abs).split(sep).join('/')
+}
+
+/**
+ * Comando de un conector listo para MOSTRAR en el diálogo de confianza: el programa y, de los argumentos, solo los que son rutas de archivo
+ * dentro de la carpeta o nombres de paquete (`node servidor.js`, `npx -y @acme/mcp`). Todo lo que parezca clave, token, URL o `--clave=valor`
+ * se cambia por «•••» (los argumentos pueden llevar claves). NO recibe ni muestra variables de entorno. Solo texto: no lee el disco.
+ */
+export function safeCommand(command: unknown, start: string): string {
+  let parts: unknown[]
+  if (Array.isArray(command)) parts = command.slice(0, MAX_SHOWN_ARGS + 2)
+  else if (typeof command === 'string')
+    parts = command
+      .trim()
+      .split(/\s+/)
+      .slice(0, MAX_SHOWN_ARGS + 2)
+  else return ''
+  if (!parts.length) return ''
+  const out: string[] = []
+  const prog = parts[0]
+  if (typeof prog !== 'string' || !prog || DYNAMIC_RE.test(prog)) return ''
+  if (prog.includes('://') || prog.includes('=') || looksSecret(basename(prog.replace(/\\/g, '/')))) return MASK
+  const inside = folderPath(prog, start)
+  out.push(cleanText(inside ?? basename(prog.replace(/\\/g, '/')), 60) || MASK)
+  let valueNext = false
+  let shown = 0
+  for (const raw of parts.slice(1)) {
+    if (shown >= MAX_SHOWN_ARGS) {
+      out.push('…')
+      break
+    }
+    shown++
+    const wasValue = valueNext
+    valueNext = false
+    if (typeof raw !== 'string' || !raw || DYNAMIC_RE.test(raw) || raw.length > 200) {
+      out.push(MASK)
+      continue
+    }
+    const arg = raw
+    if (arg.includes('://') || /^[^\s/]*@[^\s/]+:/.test(arg)) {
+      out.push(MASK)
+      continue
+    }
+    if (arg.startsWith('-') || /^\/[A-Za-z](?:=|$)/.test(arg)) {
+      const eq = arg.indexOf('=')
+      if (eq >= 0) {
+        const name = arg.slice(0, eq)
+        out.push(FLAG_NAME_RE.test(name) && !looksSecret(name) ? `${name}=${MASK}` : MASK)
+        continue
+      }
+      if (FLAG_NAME_RE.test(arg) && !looksSecret(arg)) {
+        out.push(arg)
+        // Una bandera que no es de las conocidas sin valor se supone que toma el siguiente argumento como valor.
+        valueNext = !BOOL_FLAGS.has(arg)
+      } else out.push(MASK)
+      continue
+    }
+    if (arg.includes('=')) {
+      const eq = arg.indexOf('=')
+      const name = arg.slice(0, eq)
+      out.push(/^[A-Za-z][A-Za-z0-9_-]{0,40}$/.test(name) && !looksSecret(name) ? `${name}=${MASK}` : MASK)
+      continue
+    }
+    const inside2 = folderPath(arg, start)
+    if (inside2 !== null) {
+      out.push(looksSecret(basename(inside2)) ? MASK : cleanText(inside2, 100))
+      continue
+    }
+    // Nombre de paquete: solo si no viene como valor de otra bandera y no parece clave.
+    if (!wasValue && PKG_RE.test(arg) && !looksSecret(arg)) out.push(cleanText(arg, 80))
+    else out.push(MASK)
+  }
+  return out.join(' ')
+}
+
 const casefold = (p: string): string => (process.platform === 'linux' ? p : p.toLowerCase())
 /** ¿`p` está dentro de `base` (o es `base`)? Rutas ya resueltas con `realpath`. */
 export function isWithin(base: string, p: string): boolean {
@@ -332,7 +454,7 @@ class Scan {
           const e = o.mcp[k]
           const entry = isPlain(e) ? e : {}
           const remote = entry.type === 'remote' || (entry.type !== 'local' && typeof entry.url === 'string' && entry.command === undefined)
-          let detail = remote ? hostOf(entry.url) : programOf(entry.command)
+          let detail = remote ? hostOf(entry.url) : safeCommand(entry.command, this.start)
           // Un marcador sin resolver no es el programa real: no se muestra como si lo fuera.
           if (/\{(?:env|file):/.test(detail)) detail = ''
           let mcpKey: string | undefined

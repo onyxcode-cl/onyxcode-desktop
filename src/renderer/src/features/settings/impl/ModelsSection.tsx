@@ -14,6 +14,7 @@ import { useUi } from '../../../stores/ui'
 import { useExtrasPrefs, withModeModel } from './extras'
 import { modeAvailable } from '@shared/platform-caps'
 import { currentFlags, currentPlatform, isRemoteSurface } from '../../../lib/platform'
+import { ModelFallbackBlock } from './ModelFallbackBlock'
 import { ModelSelect, modelLabel, sortProviders } from './ModelSelect'
 import { canDisconnect, useProviderCatalog, useProviderConnect, unconnectedProviders, type ProviderCatalog } from './providerCatalog'
 import { reconcileAfterProviderChange, snapshotProviderIds, type SwitchNotice } from './reconcileModels'
@@ -113,6 +114,8 @@ export function ModelsSection(): React.JSX.Element {
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('models.refreshList')}
         </Button>
       </div>
+
+      {!isRemoteSurface() && <ModelFallbackBlock providers={providers} />}
 
       {/* Celular (PWA): las claves y cuentas de los proveedores se gestionan desde el Mac (no se ofrecen aquí). */}
       {!isRemoteSurface() && (

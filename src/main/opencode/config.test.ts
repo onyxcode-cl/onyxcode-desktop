@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { modelFallbackInline } from '@shared/model-fallback'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildInlineConfig, CHAT_HELPER_AGENT, CHAT_READ_SENTINEL } from './config'
@@ -228,5 +229,25 @@ describe('ayudante general en Code (W-A3, D5=A)', () => {
     for (const [k, v] of Object.entries(p)) if (k !== 'read' && !exploracion.includes(k)) expect(v, k).not.toBe('allow')
     const agents = (buildInlineConfig() as { agent: Record<string, unknown> }).agent
     for (const nombre of ['explore', 'plan', 'build', 'lazunox-helper']) expect(agents).not.toHaveProperty(nombre)
+  })
+})
+
+describe('modelo de respaldo (B6): config del motor', () => {
+  it('sin modelos no se escribe `respaldo`', () => {
+    expect(buildInlineConfig()).not.toHaveProperty('respaldo')
+    expect(buildInlineConfig({ modelFallback: { models: [], otherProvider: true } })).not.toHaveProperty('respaldo')
+    expect(modelFallbackInline(undefined)).toBeNull()
+  })
+  it('con modelos escribe { modelos, otro_proveedor }', () => {
+    expect(buildInlineConfig({ modelFallback: { models: ['opencode/big-free', 'opencode/x-free'], otherProvider: false } })).toMatchObject({
+      respaldo: { modelos: ['opencode/big-free', 'opencode/x-free'], otro_proveedor: false }
+    })
+    expect(buildInlineConfig({ modelFallback: { models: ['a/b'], otherProvider: true } })).toMatchObject({
+      respaldo: { modelos: ['a/b'], otro_proveedor: true }
+    })
+  })
+  it('basura en el ajuste nunca llega al motor', () => {
+    const c = buildInlineConfig({ modelFallback: { models: ['malo', 'a/b c', 'ok/uno'], otherProvider: 'true' } }) as { respaldo: unknown }
+    expect(c.respaldo).toEqual({ modelos: ['ok/uno'], otro_proveedor: false })
   })
 })

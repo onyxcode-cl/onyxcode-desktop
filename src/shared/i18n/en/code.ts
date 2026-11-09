@@ -215,6 +215,12 @@ export const code = {
   'code.tool.todosDone': '{done}/{total} completed',
   'code.tool.opened': 'Opened',
   'code.tool.searchedWeb': 'Searched the web',
+  'code.tool.subagentBlocked.escalation':
+    'This helper was not launched: it could do more than this conversation allows. Open a new conversation or use a different helper.',
+  'code.tool.subagentBlocked.rule':
+    'This mode does not allow launching helpers. If you already changed mode, open a new conversation, or use a different helper.',
+  'code.tool.subagentBlocked.unverified':
+    'Lazunox could not confirm the helper was safe, so it did not launch it. Try again; if it keeps happening, open a new conversation or use a different helper.',
   'code.tool.subagent': 'Subagent',
   'code.tool.interrupted': 'Interrupted: the engine restarted or the session ended before it finished.',
   'code.tool.execute': 'Code mode',

@@ -29,6 +29,12 @@ export interface ToolSearchFlags {
   tasks: ToolSearchMode
 }
 
+/** Ajuste «Modelo de respaldo»; ver `model-fallback.ts`. */
+export interface ModelFallback {
+  models: string[]
+  otherProvider: boolean
+}
+
 /** Funciones experimentales del motor; ver `engine-experiments.ts`. Cambiarlas exige reiniciar el motor. */
 export interface EngineExperiments {
   codeMode: ModeFlags
@@ -117,6 +123,13 @@ export interface Settings {
    * segundos más de espera; usa el modelo pequeño del servicio de la persona). APAGADA por defecto. Reinicia el motor al cambiar. El celular no la escribe.
    */
   permissionSuggestions: boolean
+  /**
+   * «Modelo de respaldo» (paquete B6): modelos GRATUITOS a los que el motor cambia solo cuando el modelo gratuito en uso se queda sin cuota
+   * (hasta 3, `provider/modelo`). `otherProvider` (apagado por defecto) deja pasar también a un modelo de OTRO servicio: la conversación se
+   * manda allí. Se escribe como `respaldo` en la config inline del motor; reinicia el motor al cambiar. Normalización en `model-fallback.ts`.
+   * El celular no lo escribe.
+   */
+  modelFallback: ModelFallback
   /** Marca de la migración de 1.6.0: los ayudantes en segundo plano pasan a estar encendidos por defecto, también para quien ya tenía guardado «todo apagado». Se hace una sola vez. */
   engineBgMigrated?: boolean
   /**
@@ -156,6 +169,7 @@ export const DEFAULT_SETTINGS: Settings = {
   userHooksReview: false,
   webSearchAnyProvider: false,
   permissionSuggestions: false,
+  modelFallback: { models: [], otherProvider: false },
   codeTrustedMcp: [],
   modoPlan: false
 }

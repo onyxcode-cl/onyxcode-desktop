@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { engineNote } from '@shared/engine-notes'
 import type { AssistantMessage, Part, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { FileText, Pencil, RotateCcw, RotateCw } from 'lucide-react'
 import { friendlyError } from '@shared/ai-errors'
@@ -81,9 +82,18 @@ const PartView = memo(function PartView({
 }): React.JSX.Element | null {
   const t = useT()
   switch (part.type) {
-    case 'text':
+    case 'text': {
+      // Avisos del motor (p. ej. «el modelo X no respondió; este turno se hizo con Y»): una línea llana, no el texto del modelo.
+      const note = engineNote(part)
+      if (note)
+        return (
+          <div data-testid="engine-note" className="text-xs text-muted">
+            {note}
+          </div>
+        )
       if (part.synthetic || part.ignored || !part.text) return null
       return <DeferredMarkdown text={hideMemoryBlock(part.text)} streaming={streaming} />
+    }
     case 'reasoning':
       return <Reasoning part={part} live={live} variant="chat" />
     case 'tool':

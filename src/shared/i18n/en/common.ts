@@ -145,6 +145,7 @@ export const common = {
   'engine.retry.cause.sobrecarga': 'the service is overloaded',
   'engine.retry.cause.red': 'the connection failed',
   'engine.retry.cause.otro': 'the model did not respond',
+  'engine.respaldo.note': 'The model {from} did not respond; this turn was done with {to}.',
   'engine.model.notApplied': 'The switch to “{to}” was not applied: {why}. Continuing with “{from}”.',
   'engine.model.why.compact': 'the conversation could not be summarized to fit',
   'engine.model.why.other': 'it could not be applied in time',

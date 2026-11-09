@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, truncateSync
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { cleanText, isWithin, MAX_ENTRIES, MAX_JSON_BYTES, scanProjectConfig } from './project-scan'
+import { cleanText, isWithin, MAX_ENTRIES, MAX_JSON_BYTES, safeCommand, scanProjectConfig } from './project-scan'
 
 let root: string
 let n = 0
@@ -38,13 +38,13 @@ describe('scanProjectConfig', () => {
     expect(r.huella).toMatch(/^[0-9a-f]{64}$/)
   })
 
-  it('opencode.json con 2 conectores: nombre y programa/host, nunca argumentos, variables ni claves', async () => {
+  it('opencode.json con 2 conectores: nombre y comando seguro/host, nunca claves, URLs ni variables', async () => {
     const d = mk()
     w(
       join(d, 'opencode.json'),
       JSON.stringify({
         mcp: {
-          crm: { type: 'local', command: ['npx', '-y', 'paquete-secreto', '--token=SECRETO-ARG'], environment: { API_KEY: 'SECRETO-ENV' } },
+          crm: { type: 'local', command: ['npx', '-y', 'paquete-publico', '--token=SECRETO-ARG'], environment: { API_KEY: 'SECRETO-ENV' } },
           web: {
             type: 'remote',
             url: 'https://usuario:SECRETO-PASS@api.ejemplo.com:8443/ruta/SECRETO-RUTA?k=SECRETO-QS',
@@ -57,11 +57,11 @@ describe('scanProjectConfig', () => {
     const m = mcpOf(r)
     expect(m.map((i) => [i.name, i.detail, i.mcpKey, i.where, i.risky])).toEqual(
       expect.arrayContaining([
-        ['crm', 'npx', 'crm_*', 'opencode.json', true],
+        ['crm', 'npx -y paquete-publico --token=•••', 'crm_*', 'opencode.json', true],
         ['web', 'api.ejemplo.com:8443', 'web_*', 'opencode.json', true]
       ])
     )
-    expect(JSON.stringify(r)).not.toMatch(/SECRETO|paquete-secreto/)
+    expect(JSON.stringify(r)).not.toMatch(/SECRETO/)
     expect(r.complete).toBe(true)
   })
 
@@ -153,7 +153,7 @@ describe('scanProjectConfig', () => {
       '﻿// comentario\n{\n  /* otro */ "mcp": { "con-coma": { "type": "local", "command": ["node", "x.js",], }, }, // fin\n}\n'
     )
     const r = await scanProjectConfig(d)
-    expect(mcpOf(r).map((i) => [i.name, i.detail])).toEqual([['con-coma', 'node']])
+    expect(mcpOf(r).map((i) => [i.name, i.detail])).toEqual([['con-coma', 'node x.js']])
     expect(r.complete).toBe(true)
   })
 
@@ -314,15 +314,91 @@ describe('scanProjectConfig', () => {
     const a = mk()
     const b = mk()
     const c = mk()
-    w(join(a, 'opencode.json'), '{"mcp":{"x":{"type":"local","command":["npx","bueno"]}}}')
-    w(join(b, 'opencode.json'), '{"mcp":{"x":{"command":["npx","bueno"],"type":"local"}}}')
-    w(join(c, 'opencode.json'), '{"mcp":{"x":{"type":"local","command":["npx","malo"]}}}')
+    w(join(a, 'opencode.json'), '{"mcp":{"x":{"type":"local","command":["npx","--token=bueno"]}}}')
+    w(join(b, 'opencode.json'), '{"mcp":{"x":{"command":["npx","--token=bueno"],"type":"local"}}}')
+    w(join(c, 'opencode.json'), '{"mcp":{"x":{"type":"local","command":["npx","--token=malo"]}}}')
     const [ra, rb, rc] = await Promise.all([scanProjectConfig(a), scanProjectConfig(b), scanProjectConfig(c)])
     expect(ra.items[0]!.id).toBe(rb.items[0]!.id)
     expect(ra.huella).toBe(rb.huella)
     expect(ra.items[0]!.detail).toBe(rc.items[0]!.detail) // se ve igual…
     expect(ra.items[0]!.id).not.toBe(rc.items[0]!.id) // …pero es otra identidad
     expect(ra.huella).not.toBe(rc.huella)
+  })
+
+  it('comando seguro: programa, rutas de la carpeta y paquetes; todo lo que parezca clave sale como •••', () => {
+    const d = '/proyecto/demo'
+    const t = (c: unknown) => safeCommand(c, d)
+    expect(t(['node', 'servidor.js'])).toBe('node servidor.js')
+    expect(t(['node', './dist/index.js'])).toBe('node dist/index.js')
+    expect(t(['node', '/proyecto/demo/src/a.js'])).toBe('node src/a.js')
+    expect(t(['npx', '@acme/mcp'])).toBe('npx @acme/mcp')
+    expect(t(['npx', '-y', '@modelcontextprotocol/server-filesystem', '.'])).toBe('npx -y @modelcontextprotocol/server-filesystem •••')
+    expect(t('uvx mcp-server-fetch')).toBe('uvx mcp-server-fetch')
+    expect(t(['/usr/local/bin/node', 'x.js'])).toBe('node x.js')
+  })
+
+  it('comando seguro: claves, tokens y URLs NO se muestran', () => {
+    const d = '/proyecto/demo'
+    const t = (c: unknown) => safeCommand(c, d)
+    const secretos = [
+      'sk-abcdefghijklmnopqrstuvwxyz123456',
+      ['ghp', '_abcdefghijklmnopqrstuvwxyz0123456789'].join(''),
+      ['xox', 'b-123456789012-abcdefghijkl'].join(''),
+      ['AKIA', 'IOSFODNN7EXAMPLE'].join(''),
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.abc',
+      'Tq9Zx3Lm8Vb2Nc7Rk4Pw1Yd6Hs5Jf0Ga',
+      'https://usuario:CLAVE@api.ejemplo.com/ruta',
+      'https://api.ejemplo.com/v1?token=CLAVE',
+      'postgres://admin:CLAVE@db:5432/x'
+    ]
+    for (const sec of secretos) {
+      const out = t(['npx', 'servidor', sec])
+      expect(out, sec).toBe('npx servidor •••')
+      expect(out).not.toMatch(/CLAVE|sk-|ghp_|xoxb|AKIA|eyJ|Tq9Z/)
+    }
+    expect(t(['node', 'x.js', '--api-key=SECRETO'])).toBe('node x.js --api-key=•••')
+    expect(t(['node', 'x.js', '--api-key', 'abc123'])).toBe('node x.js --api-key •••')
+    expect(t(['node', 'x.js', '-p', 'secreto'])).toBe('node x.js -p •••')
+    expect(t(['node', 'x.js', 'TOKEN=abc'])).toBe('node x.js TOKEN=•••')
+    expect(t(['node', 'x.js', '--header', 'Authorization: Bearer abc'])).toBe('node x.js --header •••')
+    expect(t(['node', 'sk-abcdefghijklmnopqrstuvwxyz123456.js'])).toBe('node •••')
+    expect(t(['node', '{env:MI_CLAVE}'])).toBe('node •••')
+    expect(t(['node', 7, null, { a: 1 }])).toBe('node ••• ••• •••')
+    expect(t(['node', '/etc/passwd', '../fuera.js', '~/secreto.js'])).toBe('node ••• ••• •••')
+    expect(t(['curl', '-H', 'x-key: abc', 'https://x.com'])).toBe('curl -H ••• •••')
+    expect(t([])).toBe('')
+    expect(t(undefined)).toBe('')
+  })
+
+  it('comando seguro: tope de argumentos', () => {
+    const out = safeCommand(['node', ...Array.from({ length: 40 }, (_, i) => `a${i}.js`)], '/p')
+    expect(out.split(' ').length).toBeLessThanOrEqual(12)
+    expect(out.endsWith('…')).toBe(true)
+  })
+
+  it('el escáner no muestra claves de los argumentos en el resultado', async () => {
+    const d = mk()
+    w(
+      join(d, 'opencode.json'),
+      JSON.stringify({
+        mcp: {
+          z: {
+            type: 'local',
+            command: [
+              'node',
+              'srv.js',
+              '--key',
+              'sk-abcdefghijklmnopqrstuvwxyz123456',
+              ['ghp', '_abcdefghijklmnopqrstuvwxyz0123456789'].join('')
+            ],
+            environment: { A: 'ENVSECRETO' }
+          }
+        }
+      })
+    )
+    const r = await scanProjectConfig(d)
+    expect(mcpOf(r)[0]!.detail).toBe('node srv.js --key ••• •••')
+    expect(JSON.stringify(r)).not.toMatch(/sk-abc|ghp_|ENVSECRETO/)
   })
 
   it('AGENTS.md y CLAUDE.md: solo tamaños', async () => {
