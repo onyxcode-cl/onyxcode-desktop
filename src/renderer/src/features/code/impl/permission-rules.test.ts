@@ -237,11 +237,25 @@ describe('lo que la config niega no lo tapa un ask de conector (arreglo de W-A2)
     ])
   })
 
-  it('M5: «negar todo menos X»: X sigue preguntando, nunca allow', () => {
+  it('«negar todo menos X» niega TAMBIÉN X (decisión de diseño: más estricto que el motor, nunca más laxo); no se re-emite ningún allow/ask', () => {
     const rules = pr.projectAskRules({ servers: srv, askAll: false, config: [C('prueba_*', 'deny'), C('prueba_start', 'allow')] }, [])
     expect(rules.some((r) => r.action === 'allow')).toBe(false)
-    expect(gana(rules, 'prueba_start')).toBe('ask')
+    expect(gana(rules, 'prueba_start')).toBe('deny')
     expect(gana(rules, 'prueba_otra')).toBe('deny')
+  })
+
+  it('N1: global y carpeta se contradicen, o carpeta y carpeta superior: cualquier deny gana, en cualquier orden de las fuentes', () => {
+    const global = [C('prueba_*', 'deny'), C('prueba_start', 'allow')]
+    const carpeta = [C('prueba_start', 'deny'), C('prueba_*', 'allow')]
+    pr.setGlobalConfigRules(global)
+    expect(gana(pr.projectAskRules({ servers: srv, askAll: false, config: carpeta }, []), 'prueba_start')).toBe('deny')
+    pr.setGlobalConfigRules([C('prueba_*', 'allow')])
+    // carpeta + carpeta superior (el escáner las junta de la más cercana a la más lejana, al revés que el motor): da igual el orden
+    for (const cfg of [
+      [...carpeta, C('prueba_start', 'allow')],
+      [C('prueba_start', 'allow'), ...carpeta]
+    ])
+      expect(gana(pr.projectAskRules({ servers: srv, askAll: false, config: cfg }, []), 'prueba_start')).toBe('deny')
   })
 
   it('M3: las reglas globales (config del usuario y archivo de la app) valen para carpetas sin escanear o con escaneo fallido, y se pueden refrescar', () => {

@@ -480,4 +480,24 @@ describe('isWithin', () => {
     w(join(g, '.opencode', 'opencode.json'), JSON.stringify({ permission: { q_x: 'deny' } }))
     expect((await scanProjectConfig(g)).configRules).toEqual([{ permission: 'q_x', pattern: '*', action: 'deny' }])
   })
+
+  it('N1: carpeta + carpeta superior con reglas contradictorias: se juntan TODAS (el escáner va de la más cercana a la más lejana) y cualquier deny gana', async () => {
+    const raiz = mk()
+    const hija = join(raiz, 'sub')
+    w(join(raiz, 'opencode.json'), JSON.stringify({ permission: { prueba_start: 'allow', 'prueba_*': 'deny' } }))
+    w(join(hija, 'opencode.json'), JSON.stringify({ permission: { prueba_start: 'deny', 'prueba_*': 'allow' } }))
+    const r = await scanProjectConfig(hija)
+    expect(r.configRules).toEqual(
+      expect.arrayContaining([
+        { permission: 'prueba_start', pattern: '*', action: 'deny' },
+        { permission: 'prueba_*', pattern: '*', action: 'deny' }
+      ])
+    )
+    const { sessionConfigRules } = await import('@shared/permission-rules')
+    expect(
+      sessionConfigRules(r.configRules ?? [])
+        .map((x) => `${x.permission} ${x.action}`)
+        .sort()
+    ).toEqual(['prueba_* deny', 'prueba_start deny'])
+  })
 })

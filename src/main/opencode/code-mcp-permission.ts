@@ -17,7 +17,7 @@
  * El bloque vale para TODOS los agentes del sidecar; `chat` y los `.md` con `'*': deny` siguen denegando (su permiso de agente va
  * después del de la config). Overdrive no usa este bloque (su servidor tiene su propia config).
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { mcpPermissionRulesForCode, mcpServerPermissionKey } from '@shared/mcp-permissions'
@@ -206,20 +206,27 @@ export interface GlobalOpencodeConfigInfo {
   rules: ConfigRule[]
 }
 
+/** Tope de tamaño de un archivo de config global que se lee (uno mayor se ignora: no es una config real y se leería en cada mensaje). */
+export const GLOBAL_CONFIG_MAX_BYTES = 1024 * 1024
+
+/** Archivos de config global del usuario, en el orden del motor. */
+export function globalConfigFiles(env: NodeJS.ProcessEnv = process.env): string[] {
+  const dir = join(env.XDG_CONFIG_HOME || join(env.HOME || homedir(), '.config'), 'opencode')
+  return ['config.json', 'opencode.json', 'opencode.jsonc'].map((n) => join(dir, n))
+}
+
 /**
  * Servidores MCP y reglas `permission` de la config GLOBAL del usuario (lo que el motor carga antes que la nuestra), leída de
  * `$XDG_CONFIG_HOME/opencode` o `~/.config/opencode` en el mismo orden que el motor (`config.json`, `opencode.json`,
  * `opencode.jsonc`). Mejor esfuerzo y SOLO lectura: un archivo ilegible se ignora (el motor reportará luego lo que cargó).
  */
 export function readGlobalOpencodeConfig(env: NodeJS.ProcessEnv = process.env): GlobalOpencodeConfigInfo {
-  const dir = join(env.XDG_CONFIG_HOME || join(env.HOME || homedir(), '.config'), 'opencode')
   const servers: string[] = []
   let permission: Record<string, unknown> = {}
   const rules: ConfigRule[] = []
-  for (const name of ['config.json', 'opencode.json', 'opencode.jsonc']) {
-    const file = join(dir, name)
+  for (const file of globalConfigFiles(env)) {
     try {
-      if (!existsSync(file)) continue
+      if (!existsSync(file) || statSync(file).size > GLOBAL_CONFIG_MAX_BYTES) continue
       const raw = JSON.parse(stripJsonc(readFileSync(file, 'utf8'))) as unknown
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue
       const o = raw as Record<string, unknown>

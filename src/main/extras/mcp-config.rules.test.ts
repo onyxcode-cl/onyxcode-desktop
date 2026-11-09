@@ -64,4 +64,12 @@ describe('readGlobalConfigRules', () => {
     writeFileSync(f, JSON.stringify({ permission: { a_b: 'deny', c_d: 'deny' } }))
     expect(readGlobalConfigRules()).toHaveLength(2)
   })
+  it('B1: un archivo global enorme (más de 1 MB) se ignora, y con los archivos sin cambios se devuelve la caché', () => {
+    const f = join(xdg, 'opencode', 'opencode.json')
+    writeFileSync(f, JSON.stringify({ permission: { a_b: 'deny' }, relleno: 'x'.repeat(1024 * 1024 + 10) }))
+    expect(readGlobalConfigRules()).toEqual([])
+    writeFileSync(f, JSON.stringify({ permission: { a_b: 'deny' } }))
+    const a = readGlobalConfigRules()
+    expect(readGlobalConfigRules()).toBe(a) // misma referencia: no volvió a leer ni a parsear
+  })
 })

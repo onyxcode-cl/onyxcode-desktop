@@ -399,29 +399,26 @@ export function configRulesOf(config: unknown): ConfigRule[] {
   return out
 }
 
-/** Permisos internos del motor con guion bajo: nunca se convierten en `ask` (no son herramientas de conector). */
-const INTERNAL_KEYS = new Set(['external_directory', 'doom_loop', 'plan_enter', 'plan_exit'])
-
 /**
- * Lo que hay que mandar en la SESIÓN, DESPUÉS de las reglas `ask` de conector (W-A2), para que «gana la última regla» se comporte con la config como si
- * esos `ask` no existieran donde la config NIEGA. Recorre las reglas en el orden del motor (las de nivel superior, luego las de `agent.<agente>`):
- *  - todo `deny` se re-emite tal cual (incluida la clave `*`);
- *  - un `allow`/`ask` posterior a algún `deny` se re-emite como `ask` («negar todo menos X»: X sigue preguntando, que es lo que piden los conectores de
- *    la carpeta; nunca `allow`), solo si su clave puede casar con una herramienta de conector (lleva `_`, `*` o `?`, no es `*` suelta ni un permiso interno).
- * Sin ningún `deny` no devuelve nada (las reglas de la sesión quedan como antes). Nunca devuelve `allow`.
+ * Lo que hay que mandar en la SESIÓN, DESPUÉS de las reglas `ask` de conector (W-A2): TODOS los `deny` de TODAS las fuentes de config (global, archivo de la
+ * app, `opencode.json` de la carpeta y de las carpetas superiores, `agent.<agente>.permission`), tal cual (con la clave `*` y `permission: "deny"` ya
+ * normalizado a `*: deny`) y sin repetir duplicados. DECISIÓN DE DISEÑO (falla cerrado): no se intenta imitar cómo el motor fusiona las configs (por clave,
+ * «gana la última») ni se re-emite ningún `allow`/`ask` posterior a un `deny`; cualquier `deny` presente en cualquier fuente gana sobre todo lo demás.
+ * Consecuencia aceptada: «negar todo menos X» (y todo caso en que el motor respetaría un `allow` posterior) pasa a negar también X: más estricto que el
+ * motor, nunca más laxo. Nunca devuelve `allow` ni `ask`. Agente `build` → solo las de `agent.build`; `plan` → solo las de `agent.plan`; cualquier otro
+ * (agentes propios) → las de ambos (no se sabe en cuál se basan).
  */
 export function sessionConfigRules(rules: readonly ConfigRule[], agent?: string): PermissionRuleLike[] {
-  const cur = agent === 'plan' ? 'plan' : 'build'
-  const ordered = [...rules.filter((r) => !r.agent), ...rules.filter((r) => r.agent === cur)]
+  const applies = (r: ConfigRule): boolean =>
+    !r.agent || (agent === 'build' ? r.agent === 'build' : agent === 'plan' ? r.agent === 'plan' : true)
   const out: PermissionRuleLike[] = []
-  let seenDeny = false
-  for (const r of ordered) {
-    if (r.action === 'deny') {
-      out.push(rule(r.permission, r.pattern, 'deny'))
-      seenDeny = true
-    } else if (seenDeny && r.permission !== '*' && !INTERNAL_KEYS.has(r.permission) && /[_*?]/.test(r.permission)) {
-      out.push(rule(r.permission, r.pattern, 'ask'))
-    }
+  const seen = new Set<string>()
+  for (const r of rules) {
+    if (r.action !== 'deny' || !applies(r)) continue
+    const k = `${r.permission}\u0000${r.pattern}`
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(rule(r.permission, r.pattern, 'deny'))
   }
   return out
 }

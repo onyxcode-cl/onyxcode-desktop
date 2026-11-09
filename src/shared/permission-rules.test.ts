@@ -619,7 +619,7 @@ describe('configRulesOf (reglas de una config del motor)', () => {
   })
 })
 
-describe('sessionConfigRules (lo que se manda DESPUÉS de los ask de conector)', () => {
+describe('sessionConfigRules (lo que se manda DESPUÉS de los ask de conector: TODOS los deny, nada más)', () => {
   const C = (permission: string, action: 'allow' | 'ask' | 'deny', pattern = '*', agent?: 'build' | 'plan') => ({
     permission,
     pattern,
@@ -635,39 +635,48 @@ describe('sessionConfigRules (lo que se manda DESPUÉS de los ask de conector)',
     expect(sessionConfigRules([C('x_*', 'allow'), C('y_*', 'ask'), C('*', 'allow')])).toEqual([])
     expect(sessionConfigRules([])).toEqual([])
   })
+  it('nunca devuelve allow ni ask, ni re-emite un allow/ask posterior a un deny (falla cerrado)', () => {
+    const e = sessionConfigRules([C('prueba_*', 'deny'), C('prueba_start', 'allow'), C('y_*', 'ask'), C('*', 'allow')])
+    expect(e.map((r) => `${r.permission} ${r.action}`)).toEqual(['prueba_* deny'])
+  })
   it('G1: `*: deny` (y `permission: "deny"`) niega aunque haya un `prueba_*: ask` antes', () => {
-    const e = sessionConfigRules(configRulesOf({ permission: 'deny' }))
-    expect(gana(['prueba_*'], e, 'prueba_start')).toBe('deny')
+    expect(gana(['prueba_*'], sessionConfigRules(configRulesOf({ permission: 'deny' })), 'prueba_start')).toBe('deny')
     expect(gana(['*_*'], sessionConfigRules(configRulesOf({ permission: { '*': 'deny' } })), 'cualquier_cosa')).toBe('deny')
   })
-  it('G2: deny en agent.build solo vale para build; en agent.plan solo para plan', () => {
+  it('G2: deny en agent.build solo vale para build; en agent.plan solo para plan; otro agente: ambos', () => {
     const rs = configRulesOf({ agent: { build: { permission: { prueba_start: 'deny' } }, plan: { permission: { otra_x: 'deny' } } } })
     expect(gana(['prueba_*'], sessionConfigRules(rs, 'build'), 'prueba_start')).toBe('deny')
-    expect(gana(['prueba_*'], sessionConfigRules(rs, 'build'), 'otra_x')).toBe('sin-regla')
+    expect(gana(['otra_*'], sessionConfigRules(rs, 'build'), 'otra_x')).toBe('ask')
     expect(gana(['otra_*'], sessionConfigRules(rs, 'plan'), 'otra_x')).toBe('deny')
     expect(gana(['prueba_*'], sessionConfigRules(rs, 'plan'), 'prueba_start')).toBe('ask')
+    const otro = sessionConfigRules(rs, 'mi-agente')
+    expect(gana(['prueba_*'], otro, 'prueba_start')).toBe('deny')
+    expect(gana(['otra_*'], otro, 'otra_x')).toBe('deny')
+    expect(sessionConfigRules(rs, undefined)).toHaveLength(2)
   })
-  it('M5: «negar todo menos X» (deny `prueba_*` + allow `prueba_start`): X sigue PREGUNTANDO (nunca allow), lo demás deniega', () => {
+  it('M5 (decisión de diseño): «negar todo menos X» niega TAMBIÉN X (más estricto que el motor, nunca más laxo)', () => {
     const e = sessionConfigRules([C('prueba_*', 'deny'), C('prueba_start', 'allow')])
-    expect(e.some((r) => r.action === 'allow')).toBe(false)
-    expect(gana(['prueba_*'], e, 'prueba_start')).toBe('ask')
+    expect(gana(['prueba_*'], e, 'prueba_start')).toBe('deny')
     expect(gana(['prueba_*'], e, 'prueba_otra')).toBe('deny')
   })
-  it('un allow de ANTES del deny no se re-emite; `*` allow, permisos internos y claves sin comodín ni guion bajo tampoco', () => {
-    expect(sessionConfigRules([C('prueba_start', 'allow'), C('prueba_*', 'deny')]).map((r) => `${r.permission} ${r.action}`)).toEqual([
-      'prueba_* deny'
-    ])
-    const e = sessionConfigRules([
-      C('x_*', 'deny'),
-      C('*', 'allow'),
-      C('external_directory', 'allow'),
-      C('bash', 'allow'),
-      C('y_*', 'allow')
-    ])
-    expect(e.map((r) => `${r.permission} ${r.action}`)).toEqual(['x_* deny', 'y_* ask'])
+  it('N1: configs que se contradicen (global `prueba_*: deny, prueba_start: allow` + carpeta `prueba_start: deny, prueba_*: allow`): lo que alguna fuente niega, se niega', () => {
+    const global = configRulesOf({ permission: { 'prueba_*': 'deny', prueba_start: 'allow' } })
+    const carpeta = configRulesOf({ permission: { prueba_start: 'deny', 'prueba_*': 'allow' } })
+    const padre = configRulesOf({ permission: { prueba_start: 'allow', 'prueba_*': 'allow' } })
+    for (const orden of [
+      [...global, ...carpeta],
+      [...carpeta, ...global],
+      [...carpeta, ...padre, ...global],
+      [...padre, ...global, ...carpeta]
+    ]) {
+      const e = sessionConfigRules(orden)
+      expect(gana(['prueba_*'], e, 'prueba_start')).toBe('deny')
+      expect(e.every((r) => r.action === 'deny')).toBe(true)
+    }
   })
-  it('comodines sin guion bajo y alias: `*start*`, `*delete* *`, `?`', () => {
-    const e = sessionConfigRules([C('*start*', 'deny'), C('*delete* *', 'deny'), C('prueba_sta?t', 'deny')])
+  it('sin duplicados y comodines sin guion bajo: `*start*`, `*delete* *`, `?`', () => {
+    const e = sessionConfigRules([C('*start*', 'deny'), C('*start*', 'deny'), C('*delete* *', 'deny'), C('prueba_sta?t', 'deny')])
+    expect(e).toHaveLength(3)
     expect(gana(['prueba_*'], e, 'prueba_start')).toBe('deny')
     expect(gana(['github_*'], e, 'github_delete_repo')).toBe('deny')
   })

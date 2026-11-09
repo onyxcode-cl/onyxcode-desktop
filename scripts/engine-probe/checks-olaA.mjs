@@ -370,9 +370,11 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
   // NIEGA (la dejaba en «preguntar»; con «una vez» se ejecutaba). Ahora `projectAskRules` manda DESPUÉS de los `ask` las reglas que niegan (`sessionConfigRules`).
   // Aquí con las reglas reales (`configRulesOf` del escaneo → `projectAskRules` → `rulesetFor`) y el motor real; la config de la persona va en el `opencode.json` de la
   // carpeta y la inline lleva lo fijo de la app (bgshell/documentos), como en producción. Sin nada que niegue, todo sigue preguntando.
-  const padreCon = async (modo, userCfg, tool = 'prueba_start') => {
+  const padreCon = async (modo, userCfg, tool = 'prueba_start', extra = {}) => {
     const m = await reales()
     const reglas = m.configRulesOf(userCfg)
+    // Reglas «globales» que ve la app (config del usuario/archivo de la app); el motor las ve en la config inline (`extra.inline`), que se fusiona DESPUÉS del opencode.json.
+    m.setGlobalConfigRules(extra.globalCfg ? m.configRulesOf(extra.globalCfg) : [])
     const ask = m.projectAskRules(
       { servers: [{ name: 'prueba', key: 'prueba_*', overrides: false }], askAll: false, config: reglas },
       [],
@@ -382,7 +384,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     const r = await motor({
       agent: 'build',
       projectFiles: { 'opencode.json': JSON.stringify({ mcp: { prueba: cmd, bgshell: cmd }, ...userCfg }) },
-      inline: { permission: { ...m.bgshellConfigPermission(), ...m.documentsConfigPermission() } },
+      inline: { permission: { ...m.bgshellConfigPermission(), ...m.documentsConfigPermission(), ...(extra.inlinePerm ?? {}) } },
       sessionBody: { permission: m.rulesetFor(modo, undefined, ask) },
       pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).bgshell?.status === 'connected', 20_000),
       call: { name: tool, args: { command: 'a' } }
@@ -414,19 +416,43 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
         }
       )
     }
-    // M5: «negar todo menos prueba_start»: prueba_start NO queda denegada; sigue PREGUNTANDO (conector de la carpeta), nunca se ejecuta sola; otra herramienta del conector sí se niega.
+    // «Negar todo menos X» (decisión de diseño, falla cerrado): cualquier deny gana, así que X también queda denegada (más estricto que el motor, nunca más laxo).
     checkRun(
-      `olaA 1d (${modo}): «negar todo menos» (prueba_*: deny + prueba_start: allow): prueba_start sigue PREGUNTANDO (no se niega ni se ejecuta sola)`,
+      `olaA 1d (${modo}): «negar todo menos» (prueba_*: deny + prueba_start: allow): TAMBIÉN prueba_start queda denegada (más estricto que el motor)`,
       async () => {
-        const x = await padreCon(modo, { permission: { 'prueba_*': 'deny', prueba_start: 'allow' } })
-        if (!x.ofrecida || x.preguntas.length !== 1 || x.ejecutada)
-          noSeReproduce(
-            `se esperaba ofrecida y UNA pregunta sin ejecutar; ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`
-          )
-        const y = await padreCon(modo, { permission: { 'prueba_*': 'deny', prueba_start: 'allow' } }, 'prueba_secret')
-        if (y.ofrecida || y.preguntas.length)
-          noSeReproduce(`prueba_secret debía quedar denegada: ofrecida=${y.ofrecida}, preguntas=${y.preguntas.length}`)
-        confirmado('prueba_start pregunta una vez (no se ejecuta sola); prueba_secret denegada')
+        for (const tool of ['prueba_start', 'prueba_secret']) {
+          const x = await padreCon(modo, { permission: { 'prueba_*': 'deny', prueba_start: 'allow' } }, tool)
+          if (x.ofrecida || x.preguntas.length || x.ejecutada)
+            noSeReproduce(
+              `${tool} debía quedar denegada: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`
+            )
+        }
+        confirmado('prueba_start y prueba_secret denegadas')
+        return true
+      }
+    )
+    // N1 (revisión de la ronda 2): dos fuentes que se contradicen. El motor fusiona POR CLAVE y solo niega prueba_start; con lo anterior (re-emitir un ask tras un deny) la
+    // app lo dejaba en «preguntar». Aquí: opencode.json {prueba_*: deny, prueba_start: allow} y config inline (se fusiona después) {prueba_start: deny, prueba_*: allow}.
+    checkRun(`olaA 1d (${modo}): N1 fuentes contradictorias (deny en una, allow en la otra): prueba_start SIGUE denegada`, async () => {
+      const x = await padreCon(modo, { permission: { 'prueba_*': 'deny', prueba_start: 'allow' } }, 'prueba_start', {
+        inlinePerm: { prueba_start: 'deny', 'prueba_*': 'allow' },
+        globalCfg: { permission: { prueba_start: 'deny', 'prueba_*': 'allow' } }
+      })
+      if (x.ofrecida || x.preguntas.length || x.ejecutada)
+        noSeReproduce(
+          `prueba_start debía quedar denegada: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`
+        )
+      confirmado('prueba_start no se ofrece ni pregunta ni se ejecuta')
+      return true
+    })
+    // N2: un `*: deny` del usuario también apaga lo que la config inline de la app abre (p. ej. un conector «Sin preguntar en Code»: `prueba_*: allow`): es lo que el usuario pidió.
+    checkRun(
+      `olaA 1d (${modo}): N2 \`*: deny\` del usuario apaga también lo que la config inline de la app abría (conector de confianza)`,
+      async () => {
+        const x = await padreCon(modo, { permission: { '*': 'deny' } }, 'prueba_start', { inlinePerm: { 'prueba_*': 'allow' } })
+        if (x.ofrecida || x.preguntas.length || x.ejecutada)
+          noSeReproduce(`debía quedar denegada: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`)
+        confirmado('denegada (consecuencia aceptada y documentada)')
         return true
       }
     )

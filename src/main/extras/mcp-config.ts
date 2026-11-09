@@ -12,11 +12,11 @@
  */
 import { t } from '@shared/i18n'
 import { app } from 'electron'
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { AppMcpConfig, McpEntry, McpLocalEntry, McpRemoteEntry } from '@shared/ipc-extras'
-import { readGlobalOpencodeConfig } from '../opencode/code-mcp-permission'
+import { globalConfigFiles, readGlobalOpencodeConfig } from '../opencode/code-mcp-permission'
 import { configRulesOf, type ConfigRule } from '@shared/permission-rules'
 import { MCP_NAME_RE as NAME_RE, MCP_VALUE_MASK, mcpPermissionKey } from '@shared/mcp-catalog'
 
@@ -212,15 +212,39 @@ export function readAppConfigRules(): ConfigRule[] {
   }
 }
 
+/** Caché corta de las reglas globales: se relee solo si cambia algún archivo (se pide en cada mensaje de Code; `stat` es barato, parsear no). */
+let rulesCache: { sig: string; rules: ConfigRule[] } | null = null
+function rulesSignature(): string {
+  const parts: string[] = []
+  for (const f of [...globalConfigFiles(), appOpencodeConfigPath()]) {
+    try {
+      const st = statSync(f)
+      parts.push(`${f}:${st.mtimeMs}:${st.size}`)
+    } catch {
+      parts.push(`${f}:-`)
+    }
+  }
+  return parts.join('|')
+}
+
 /** Reglas de permiso de la config global del usuario y de la de la app (en ese orden, el del motor). Nunca lanza. */
 export function readGlobalConfigRules(): ConfigRule[] {
+  let sig = ''
+  try {
+    sig = rulesSignature()
+    if (rulesCache && rulesCache.sig === sig) return rulesCache.rules
+  } catch {
+    /* sin caché */
+  }
   let g: ConfigRule[] = []
   try {
     g = readGlobalOpencodeConfig().rules ?? []
   } catch {
     g = []
   }
-  return [...g, ...readAppConfigRules()]
+  const rules = [...g, ...readAppConfigRules()]
+  if (sig) rulesCache = { sig, rules }
+  return rules
 }
 
 /** ¿El servidor tiene «Preguntar antes de cada uso» (`permission["<nombre>_*"] = "ask"`)? */
