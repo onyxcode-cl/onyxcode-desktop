@@ -80,6 +80,8 @@ export const CODE_CHANNELS = {
   dialogResetFolderPermission: 'dialog:resetFolderPermission',
   // qué trae una carpeta (W-A2): lectura de disco, nunca el motor
   projectScan: 'project:scan',
+  // carpetas abiertas con confianza vigente (el renderer guarda la confianza; main solo puede preguntar al motor por estas)
+  projectSetLive: 'project:setLive',
   // archivos del proyecto: vigilante, gestor y «Abrir en…»
   filesWatch: 'files:watch',
   filesSetDirs: 'files:setDirs',
@@ -552,6 +554,8 @@ export interface CodeInvokeContract {
   'dialog:openFolderPrivacy': { req: { pane?: FolderPrivacyPane } | undefined; res: void }
   /** Lista lo que trae la carpeta (conectores, complementos, ayudantes…) SOLO leyendo archivos; no toca el motor. */
   'project:scan': { req: { path: string; rulesOnly?: boolean }; res: ProjectScanResult }
+  /** Informa a main qué carpetas de Code están abiertas con confianza vigente (reemplaza la lista). */
+  'project:setLive': { req: { dirs: string[] }; res: void }
   /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
   'dialog:resetFolderPermission': { req: { path: string; scope?: FolderResetScope }; res: { result: FolderResetResult } }
 
@@ -653,6 +657,7 @@ export interface CodeApi {
   }
   project: {
     scan(path: string, rulesOnly?: boolean): Promise<ProjectScanResult>
+    setLive(dirs: string[]): Promise<void>
   }
   files: {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>

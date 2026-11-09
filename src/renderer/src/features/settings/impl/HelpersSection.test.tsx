@@ -8,6 +8,8 @@ import { DEFAULT_SETTINGS } from '@shared/types'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const callMock = vi.hoisted(() => vi.fn())
+const verifiedMock = vi.hoisted(() => new Set<string>())
+vi.mock('../../code/impl/verified-folders', () => ({ isFolderVerified: (d: string) => verifiedMock.has(d) }))
 vi.mock('../../../lib/api', () => ({ call: callMock, api: { on: () => () => undefined } }))
 
 import { HelpersSection } from './HelpersSection'
@@ -62,6 +64,7 @@ function type(el: HTMLInputElement | HTMLTextAreaElement, value: string): void {
 }
 
 async function mount(): Promise<void> {
+  verifiedMock.add(DIR)
   localStorage.setItem('settings.helpers.folder', DIR)
   act(() => useSettings.setState({ settings: { ...DEFAULT_SETTINGS, recentFolders: [DIR] } }))
   await act(async () => root.render(createElement(HelpersSection)))
@@ -202,6 +205,14 @@ describe('Ajustes › Ayudantes', () => {
     act(() => useSettings.setState({ settings: { ...DEFAULT_SETTINGS, recentFolders: [] } }))
     await act(async () => root.render(createElement(HelpersSection)))
     expect(host.textContent).toContain('Elige la carpeta de un proyecto')
+    expect(callMock).not.toHaveBeenCalledWith('helpers:list', expect.anything())
+  })
+
+  it('R2: la carpeta recordada que NO pasó la confianza en esta ejecución no se carga sola (cargarla ejecuta sus complementos)', async () => {
+    verifiedMock.clear()
+    localStorage.setItem('settings.helpers.folder', DIR)
+    act(() => useSettings.setState({ settings: { ...DEFAULT_SETTINGS, recentFolders: [DIR] } }))
+    await act(async () => root.render(createElement(HelpersSection)))
     expect(callMock).not.toHaveBeenCalledWith('helpers:list', expect.anything())
   })
 })

@@ -84,7 +84,8 @@ export function buildCodeApi(ipcRenderer: IpcRenderer): CodeApi {
       resetFolderPermission: (path, scope) => call('dialog:resetFolderPermission', scope ? { path, scope } : { path })
     },
     project: {
-      scan: (path, rulesOnly) => call('project:scan', rulesOnly ? { path, rulesOnly } : { path })
+      scan: (path, rulesOnly) => call('project:scan', rulesOnly ? { path, rulesOnly } : { path }),
+      setLive: (dirs) => call('project:setLive', { dirs })
     },
     files: {
       watch: (folder, subId) => call('files:watch', { folder, subId }),

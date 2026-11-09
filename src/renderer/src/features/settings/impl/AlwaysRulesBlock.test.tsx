@@ -8,6 +8,8 @@ import { DEFAULT_SETTINGS } from '@shared/types'
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
 const callMock = vi.hoisted(() => vi.fn())
+const verifiedMock = vi.hoisted(() => new Set<string>())
+vi.mock('../../code/impl/verified-folders', () => ({ isFolderVerified: (d: string) => verifiedMock.has(d) }))
 vi.mock('../../../lib/api', () => ({ call: callMock, api: { on: () => () => undefined } }))
 
 import { AlwaysRulesBlock } from './AlwaysRulesBlock'
@@ -23,7 +25,9 @@ const flush = async (): Promise<void> => {
     await Promise.resolve()
   })
 }
-const mount = async (folders: string[] = ['/work/a', '/work/b']): Promise<void> => {
+const mount = async (folders: string[] = ['/work/a', '/work/b'], verified: string[] = folders): Promise<void> => {
+  verifiedMock.clear()
+  verified.forEach((d) => verifiedMock.add(d))
   act(() => useSettings.setState({ settings: { ...DEFAULT_SETTINGS, recentFolders: folders } }))
   act(() => root.render(createElement(AlwaysRulesBlock)))
   await flush()
@@ -102,5 +106,17 @@ describe('AlwaysRulesBlock', () => {
     callMock.mockRejectedValue(new Error('El motor respondió 500'))
     await mount()
     expect(host.textContent).toContain('500')
+  })
+
+  it('R2: sin carpetas verificadas en esta ejecución no pide nada al motor al abrir (cargarla ejecuta sus complementos)', async () => {
+    await mount(['/work/a', '/work/b'], [])
+    expect(callMock.mock.calls.filter((c) => c[0] === 'settings:alwaysList')).toEqual([])
+  })
+
+  it('R2: elige sola la más reciente QUE está verificada, no la primera', async () => {
+    callMock.mockResolvedValue(LIST)
+    await mount(['/work/a', '/work/b'], ['/work/b'])
+    expect(callMock).toHaveBeenCalledWith('settings:alwaysList', { directory: '/work/b' })
+    expect(callMock).not.toHaveBeenCalledWith('settings:alwaysList', { directory: '/work/a' })
   })
 })

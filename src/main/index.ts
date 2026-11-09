@@ -14,6 +14,7 @@ import { prepareOpencodeData, shouldReopenOnboarding } from './opencode/data-dir
 import { settingsStore } from './store'
 import { applyGlass, glassSupported, glassWindowOptions } from './window-glass'
 import { installMotorApp, motorHomeDir, motorPaths } from './opencode/motor-app'
+import { getLiveFolders } from './code/live-folders'
 import { installEngineFlagsRestart, type EngineFlagsTasks } from './opencode/engine-flags-restart'
 import { permissionDir } from './opencode/permission-store'
 import { hooksFile } from './opencode/user-hooks-store'
@@ -401,6 +402,7 @@ function start(): void {
       server,
       tasks: tasksMod?.tasks,
       chatDirectory,
+      liveFolders: getLiveFolders,
       permissionDir: permissionDir(),
       hooksFile: hooksFile(),
       mainInline: { wanted: () => server.wantedInlineKey(), applied: () => server.appliedInlineKey() },
