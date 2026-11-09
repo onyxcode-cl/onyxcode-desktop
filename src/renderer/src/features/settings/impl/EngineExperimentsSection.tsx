@@ -408,8 +408,7 @@ export function EngineExperimentsSection(): React.JSX.Element {
       />
       <RememberAlwaysBlock />
       <AlwaysRulesBlock />
-      <HooksTrustNotice />
-      <UserHooksBlock />
+      <UserHooksBlock notice={<HooksTrustNotice />} />
       <EngineLimitsBlock />
       <p className="text-xs leading-relaxed text-muted">{t('settings.engine.sharedNote')}</p>
     </div>

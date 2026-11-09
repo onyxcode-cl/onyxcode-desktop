@@ -193,7 +193,7 @@ export function DiffStats({ additions, deletions }: { additions: number; deletio
   )
 }
 
-function editInfo(part: ToolPart, root: string | null): { file: string; patch: string } {
+function editInfo(part: ToolPart, root: string | null): { file: string; patch: string; exists: boolean } {
   const { state } = part
   const input = state.input ?? {}
   const meta = ('metadata' in state && state.metadata) || {}
@@ -205,21 +205,22 @@ function editInfo(part: ToolPart, root: string | null): { file: string; patch: s
   }
   if (!patch && tool === 'write' && str(input.content)) patch = makePatch(file, '', str(input.content))
   if (!patch && (tool === 'patch' || tool === 'apply_patch')) patch = str(input.patchText) || str(input.patch)
-  return { file, patch }
+  // El motor marca `metadata.exists` cuando `write` sobrescribe un archivo que ya estaba.
+  return { file, patch, exists: meta.exists === true }
 }
 
 /** Chip de archivo editado con +/- que se expande al diff. */
 export function EditChip({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const t = useT()
-  const { file, patch } = useMemo(() => editInfo(part, root), [part, root])
+  const { file, patch, exists } = useMemo(() => editInfo(part, root), [part, root])
   const rejected = part.state.status === 'error' && isRejectedText(part.state.error)
   // Mientras espera tu permiso (o se aplica) aún no cambió nada: «Quiere editar»; «Editó» solo cuando ya se aplicó (U5).
   const waiting = part.state.status === 'pending' || part.state.status === 'running'
   const label = rejected
     ? t('code.tool.notDone')
     : waiting
-      ? t(part.tool === 'write' ? 'code.tool.wantsCreate' : 'code.tool.wantsEdit')
+      ? t(part.tool === 'write' && !exists ? 'code.tool.wantsCreate' : 'code.tool.wantsEdit')
       : part.tool === 'write'
         ? t('code.tool.created')
         : t('code.tool.edited')

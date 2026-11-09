@@ -35,6 +35,15 @@ describe('sugerencia de permisos en la tarjeta', () => {
     expect(html).toContain('Sugerencia de la IA: permitir. Motivo: Solo lista archivos.')
     expect(html).toContain('no decide nada')
   })
+  it('escritorio: la sugerencia queda fuera de los detalles plegables y el comando corto no se repite', () => {
+    g.window = { api: { platform: 'darwin' } }
+    const html = renderToStaticMarkup(<PermissionCardDesk request={perm({ lazunoxSugerencia: SUG })} root="/proj" hotkeys />)
+    const i = html.indexOf('id="perm-details-p1"')
+    expect(i).toBeGreaterThan(0)
+    expect(html.indexOf('Sugerencia de la IA')).toBeLessThan(i)
+    expect(html.slice(i)).not.toContain('Sugerencia de la IA: permitir')
+    expect((html.match(/>ls</g) ?? []).length).toBe(1)
+  })
   it('celular: sugerencia válida → línea visible', () => {
     g.window = { api: { platform: 'ios' } }
     const html = renderToStaticMarkup(<PermissionCard request={perm({ lazunoxSugerencia: SUG })} root="/proj" />)

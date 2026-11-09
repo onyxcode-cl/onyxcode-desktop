@@ -16,7 +16,8 @@ import { Card, ErrorText, Row, TextArea, Toggle } from './ui'
 
 const issueText = (i: HooksIssue): string => tr(`settings.engine.hooks.err.${i.code}` as MsgKey, i.params)
 
-export function UserHooksBlock(): React.JSX.Element {
+/** `notice`: aviso (p. ej. de confianza) que va justo debajo del título «Ganchos», no encima. */
+export function UserHooksBlock({ notice }: { notice?: React.ReactNode } = {}): React.JSX.Element {
   const t = useT()
   const id = useId()
   const enabled = useSettings((s) => userHooksOn(s.settings))
@@ -78,6 +79,7 @@ export function UserHooksBlock(): React.JSX.Element {
       <h3 id={`${id}-t`} className="mb-1 text-sm font-semibold">
         {t('settings.engine.hooks.title')}
       </h3>
+      {notice}
       <p id={`${id}-d`} className="mb-2 text-sm leading-relaxed text-muted">
         {t('settings.engine.hooks.desc')}
       </p>
