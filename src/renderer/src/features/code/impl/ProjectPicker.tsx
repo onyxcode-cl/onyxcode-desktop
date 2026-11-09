@@ -13,7 +13,7 @@ import type { ProjectScanItem, ProjectScanKind } from '@shared/ipc-code'
 import { errorMessage, nativeCode, requireCode, useClient } from './client'
 import { useCode } from './store'
 import { timeAgo } from './ui'
-import { CONFIRM_DELAY_MS, openProjectTrusted, resolveTrust, usePendingTrust, type PendingTrust } from './trust'
+import { CONFIRM_DELAY_MS, isFolderVerified, openProjectTrusted, resolveTrust, usePendingTrust, type PendingTrust } from './trust'
 import { askMacAgain, setBlockedFolder, useBlockedFolder } from './folder-access'
 
 /** Clave de texto por tipo de elemento que puede traer una carpeta (W-A2). */
@@ -289,7 +289,7 @@ function TrustDialog(): React.JSX.Element | null {
           <ShieldCheck size={20} />
         </div>
         <h3 id="trust-title" className="text-base font-semibold desk:text-[17px] desk:leading-6">
-          {t(p.again ? 'code.trust.titleAgain' : 'code.trust.title')}
+          {t(p.unreviewed ? 'code.trust.titleUnreviewed' : p.again ? 'code.trust.titleAgain' : 'code.trust.title')}
         </h3>
         <p className="mt-1.5 flex min-w-0 font-mono text-xs text-subtle desk:text-meta" title={p.dir}>
           <MidPath path={p.dir} />
@@ -302,7 +302,7 @@ function TrustDialog(): React.JSX.Element | null {
           <TrustItemList p={p} />
         ) : (
           <p id="trust-desc" className="mt-2 text-sm leading-relaxed text-muted desk:leading-5">
-            {t(p.scan === null ? 'code.trust.bodyUnknown' : 'code.trust.body')}
+            {t(p.unreviewed ? 'code.trust.bodyUnreviewed' : p.scan === null ? 'code.trust.bodyUnknown' : 'code.trust.body')}
           </p>
         )}
         <div className="mt-4 flex justify-end gap-2 desk:mt-6">
@@ -465,7 +465,11 @@ function useProjectMeta(dir: string): ProjectMeta | null {
     void (async () => {
       const [branch, sessions, log] = await Promise.all([
         native ? native.git.currentBranch(dir).catch(() => undefined) : Promise.resolve(undefined),
-        client ? client.session.list({ directory: dir, roots: true, limit: 5 }).catch(() => null) : Promise.resolve(null),
+        // Cualquier petición al motor con una carpeta carga sus complementos de código: solo las carpetas que ya pasaron la verificación de
+        // confianza en esta ejecución le piden sesiones (el resto se muestra con lo que da git, local).
+        client && isFolderVerified(dir)
+          ? client.session.list({ directory: dir, roots: true, limit: 5 }).catch(() => null)
+          : Promise.resolve(null),
         native ? native.git.log(dir, 1).catch(() => []) : Promise.resolve([])
       ])
       const latest = (sessions?.data ?? []).reduce<{ updated: number; title: string } | null>(

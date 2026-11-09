@@ -298,6 +298,11 @@ export const code = {
   'code.trust.bodyAgain': 'You already trust this folder, but since last time it brings something new:',
   'code.trust.scanning': 'Checking what the folder brings…',
   'code.trust.bodyUnknown': 'What this folder brings could not be checked.',
+  'code.trust.titleUnreviewed': 'We could not check this folder',
+  'code.trust.bodyUnreviewed':
+    'You already trusted this folder, but what it brings could not be checked now (it may be slow, on a network or have changed a lot). If you continue, new connectors or plugins you have not seen could start. Cancel closes it.',
+  'code.trust.restoring': 'Checking the folder before opening it…',
+  'code.trust.restoringOther': 'Choose another folder',
   'code.trust.confirm': 'Trust and continue',
   'code.trust.confirmAgain': 'Got it, continue',
   'code.trust.kind.mcp': 'Connector (will start as soon as the folder opens)',

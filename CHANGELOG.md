@@ -38,7 +38,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Lo que todavía no está cerrado
 
 - **Un repositorio Git «desnudo» falso** dentro de una carpeta puede seguir engañando a un `git status` aprobado solo en «Automático». El motor nuevo lo endurece; no lo damos por cerrado hasta probarlo más.
-- **Los conectores de una carpeta pueden arrancar antes de que decidas.** Si confías en la carpeta, el programa de sus conectores se arranca. Y si la app se abre sola en una carpeta que ya tenía confianza y ahora trae un conector nuevo, ese conector puede arrancar mientras el aviso sigue en pantalla; cancelar después no lo deshace. Las herramientas del conector sí preguntan antes de usarse.
+- **Si confías en una carpeta, los conectores y complementos que trae se arrancan** (eso es lo que significa confiar). Las herramientas de un conector preguntan antes de usarse. Al abrir la app, una carpeta que ya tenías abierta se revisa primero: si trae algo nuevo, o no se pudo revisar, sale el aviso y no se carga nada hasta que decidas; «Cancelar» la cierra.
 - **Sin diálogo de confianza** en Tareas, Overdrive, Telegram, el celular, Rutinas y Comparar: ahí rigen las mismas preguntas de permiso, pero la carpeta no se revisa antes.
 - En Windows, `cmd.exe` y `git.bat` no tienen aún el mismo cuidado que PowerShell.
 - En «Comparar», las columnas canceladas o descartadas pueden seguir mostrando los botones «Permitir una vez / Rechazar» (no hacen nada).

@@ -240,7 +240,12 @@ export function SessionRow({
             const store = useCode.getState()
             // Sesión de un grupo que no tiene el foco: primero le da el foco, luego la abre (si no, quedaría
             // seleccionada una sesión de otro proyecto mientras el resto de la interfaz sigue mostrando el anterior).
-            if (!sameDir(store.directory ?? '', directory)) void store.focusProject(directory).then(() => selectSession(session.id))
+            if (!sameDir(store.directory ?? '', directory))
+              void store.focusProject(directory).then(() => {
+                // Solo si la carpeta quedó con el foco (una sin confianza o en verificación no lo recibe).
+                const st = useCode.getState()
+                if (st.directory && sameDir(st.directory, directory)) void selectSession(session.id)
+              })
             else void selectSession(session.id)
           }}
           onDoubleClick={() => setEditing(true)}
@@ -625,7 +630,16 @@ function ProjectGroup({
   // mientras la sesión activa pertenece a otro).
   const focusThen = (fn: () => void): void => {
     if (focused) fn()
-    else void useCode.getState().focusProject(directory).then(fn)
+    else
+      void useCode
+        .getState()
+        .focusProject(directory)
+        .then(() => {
+          // `focusProject` no da el foco a una carpeta sin confianza o que aún se verifica (diálogo en pantalla, o cancelado): sin foco no se
+          // actúa (crear o buscar aquí haría que el motor cargara la carpeta antes de que la persona decida).
+          const st = useCode.getState()
+          if (st.directory && sameDir(st.directory, directory)) fn()
+        })
   }
 
   return (
@@ -890,6 +904,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const t = useT()
   const directory = useCode((s) => s.directory)
   const openDirectories = useCode((s) => s.openDirectories)
+  const restoredFocus = useCode((s) => s.restoredFocus)
   const sessions = useCode((s) => s.sessions)
   const permissions = useCode((s) => s.permissions)
   const questions = useCode((s) => s.questions)
@@ -913,13 +928,14 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
     [permissions, questions, sessions]
   )
 
-  if (!directory) {
+  // Carpeta restaurada al arrancar que aún se revisa: sigue visible en la barra (escritorio), sin foco.
+  if (!directory && !(desktop && restoredFocus)) {
     // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
     return desktop ? <NoProjectsList /> : null
   }
 
   // Celular: un solo proyecto, como siempre (openDirectories tiene como mucho uno). Escritorio: un grupo por abierto.
-  const groups = desktop ? openDirectories : [directory]
+  const groups = desktop ? openDirectories : directory ? [directory] : []
 
   return (
     <div data-session-list-root="" tabIndex={-1} className="flex min-h-0 flex-col gap-0.5 outline-none">
