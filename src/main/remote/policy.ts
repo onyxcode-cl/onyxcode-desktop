@@ -219,6 +219,7 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
 
 const EXTRAS_PREF_FIELDS: Record<string, PolicyClass> = {
   modelsByMode: 'M',
+  planExecModels: 'X', // modelo para planear/ejecutar en Code: lo decide la persona en el Mac; el celular no lo cambia
   showTray: 'M',
   notificationsEnabled: 'M',
   soundEnabled: 'M',

@@ -73,6 +73,7 @@ import { TodoList } from './ToolCard'
 import { PlanCard } from './PlanCard'
 import { PlanReadyCard } from './PlanReadyCard'
 import { StalePlanNotice } from './StalePlanNotice'
+import { PlanExecStrip } from './PlanExecStrip'
 import { ForeignAgentsNotice } from './ForeignAgentsNotice'
 import { planQuestionIds } from '@shared/plan-mode'
 import type { RightPanel } from './types'
@@ -922,6 +923,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
       {sid && isRemoteSurface() && <TodoBar sessionID={sid} />}
       {sid && !isRemoteSurface() && <PlanReadyCard sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
+      <PlanExecStrip sessionID={sid} />
       <ChangesBar directory={directory} />
       {sid && entries && !busy && (
         <div className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${gutter()}`}>

@@ -105,5 +105,24 @@ export const models = {
   'models.keyTest.oauth.message': '{provider} is connected with your account, not with a key: there is nothing to test.',
   'models.keyTest.unsupported.title': 'Cannot be tested',
   'models.keyTest.unsupported.message': 'It cannot be tested without spending credit. Send a message in Chat with {provider} to check it.',
-  'models.keyTest.httpSuffix': ' (HTTP {status})'
+  'models.keyTest.httpSuffix': ' (HTTP {status})',
+  'models.planExec.title': 'Plan and execute in Code',
+  'models.planExec.description':
+    'Optional. In Code, Plan mode can use one model (for example a stronger one) and Build another (for example a cheaper one), even from different providers. Empty = the conversation model is used.',
+  'models.planExec.plan.label': 'Model for planning',
+  'models.planExec.plan.description': 'Used while Code is in Plan mode.',
+  'models.planExec.plan.aria': 'Model for planning',
+  'models.planExec.exec.label': 'Model for executing',
+  'models.planExec.exec.description': 'Used when you switch to Build. Helpers inherit it, except those with a model of their own.',
+  'models.planExec.exec.aria': 'Model for executing',
+  'models.planExec.useConversation': 'The conversation model',
+  'code.planExec.strip': 'Plan with {plan} · Execute with {exec}',
+  'code.planExec.strip.conversation': 'the conversation model',
+  'code.planExec.strip.aria': 'Code models: plan and execute',
+  'code.planExec.role.plan': 'Plan',
+  'code.planExec.role.exec': 'Execute',
+  'code.planExec.picker.title': 'Model for {role} (this conversation only)',
+  'code.planExec.fallback':
+    'The model for {role} ({wanted}) is no longer available or has no key. The conversation model ({used}) was used. You can pick another in the selector or check Settings › Models.',
+  'code.planExec.fallback.dismiss': 'Got it'
 } as const satisfies Messages<typeof es>

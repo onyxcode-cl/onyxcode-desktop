@@ -11,6 +11,7 @@ import { useProviders } from '../../../stores/providers'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { useUi } from '../../../stores/ui'
+import { withRoleModel, type PlanExecModels, type PlanExecRole } from '@shared/plan-exec-models'
 import { useExtrasPrefs, withModeModel } from './extras'
 import { modeAvailable } from '@shared/platform-caps'
 import { currentFlags, currentPlatform, isRemoteSurface } from '../../../lib/platform'
@@ -22,6 +23,8 @@ import { KeyTestNotice } from './KeyTestNotice'
 import { ProviderKeyForm } from './ProviderKeyForm'
 import { Badge, Card, ErrorText, Row, SectionHeader, SubTitle, TextInput } from './ui'
 import { useKeyTests } from './useKeyTest'
+
+const EMPTY_ROLES: PlanExecModels = {}
 
 function modes(t: ReturnType<typeof useT>): { id: ModelMode; label: string; description: string }[] {
   const all: { id: ModelMode; label: string; description: string }[] = [
@@ -38,6 +41,7 @@ export function ModelsSection(): React.JSX.Element {
   const { providers, loading, error, load } = useProviders()
   const { settings, update } = useSettings()
   const modelsByMode = useExtrasPrefs((s) => s.prefs.modelsByMode)
+  const planExecModels = useExtrasPrefs((s) => s.prefs.planExecModels ?? EMPTY_ROLES)
   const updatePrefs = useExtrasPrefs((s) => s.update)
 
   const { catalog, error: loadError, reload: loadCatalog } = useProviderCatalog(isRemoteSurface() ? null : client)
@@ -78,6 +82,10 @@ export function ModelsSection(): React.JSX.Element {
     void updatePrefs({ modelsByMode: withModeModel(modelsByMode, mode, value) })
   }
 
+  const setRole = (role: PlanExecRole, value: ModelRef | null): void => {
+    void updatePrefs({ planExecModels: withRoleModel(planExecModels, role, value) })
+  }
+
   return (
     <div>
       <SectionHeader title={t('models.title')} description={t('models.subtitle')} />
@@ -108,6 +116,31 @@ export function ModelsSection(): React.JSX.Element {
           </Row>
         ))}
       </Card>
+      {modeAvailable('code', currentPlatform(), currentFlags()) && (
+        <>
+          <SubTitle>{t('models.planExec.title')}</SubTitle>
+          <p className="mb-2 text-xs text-muted">{t('models.planExec.description')}</p>
+          <Card>
+            {(['plan', 'exec'] as const).map((role) => (
+              <Row
+                key={role}
+                label={t(`models.planExec.${role}.label`)}
+                description={t(`models.planExec.${role}.description`)}
+                layout="stack-narrow"
+              >
+                <ModelSelect
+                  aria-label={t(`models.planExec.${role}.aria`)}
+                  className="w-80 desk:@max-[34rem]:w-full"
+                  providers={providers}
+                  value={planExecModels[role] ?? null}
+                  defaultLabel={t('models.planExec.useConversation')}
+                  onChange={(v) => setRole(role, v)}
+                />
+              </Row>
+            ))}
+          </Card>
+        </>
+      )}
       <div className="mt-2 flex items-center gap-2">
         <Button variant="ghost" className="mr-0 desk:h-7 desk:px-2.5" onClick={() => void refresh()} disabled={!client || loading}>
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('models.refreshList')}

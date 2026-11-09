@@ -35,6 +35,9 @@ import type { ElicitationNotice } from '@shared/mcp-elicitation'
 import type { CodeMessage, PendingElicitation, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { compactBlockOf, useCode } from './store'
+import { useProviders } from '../../../stores/providers'
+import { useExtrasPrefs } from '../../settings/impl/extras'
+import { modelLabel } from '../../settings/impl/ModelSelect'
 import { GeneratedFiles } from './GeneratedFiles'
 import { CompactionCard } from '../../../components/conversation/CompactionCard'
 import { parseCompaction } from '@shared/compaction'
@@ -177,6 +180,9 @@ const UserMessage = memo(function UserMessage({
 }): React.JSX.Element | null {
   const t = useT()
   const revertTo = useCode((s) => s.revertTo)
+  // D2: con modelo propio para planear/ejecutar, la etiqueta del mensaje dice también con qué modelo salió.
+  const roleCfg = useExtrasPrefs((s) => s.prefs.planExecModels)
+  const providersList = useProviders((s) => s.providers)
   // «Compactar hasta aquí»: solo con el motor propio nuevo y en el Mac; deshabilitado con el motivo si el motor se negaría (409).
   const compactOk = useCode((s) => compactable && s.rewindSupport[entry.info.sessionID] === true)
   const compactBlock = useCode((s) => (compactable ? compactBlockOf(s, entry.info.sessionID) : null))
@@ -269,6 +275,8 @@ const UserMessage = memo(function UserMessage({
     )
   }
   const agent = entry.info.role === 'user' ? entry.info.agent : undefined
+  const sentModel = entry.info.role === 'user' ? entry.info.model : undefined
+  const modelTag = sentModel && (roleCfg?.plan || roleCfg?.exec) ? modelLabel(providersList, sentModel) : ''
   return (
     <div className="group/user flex flex-col items-end gap-1 desk:relative">
       <div
@@ -352,9 +360,10 @@ const UserMessage = memo(function UserMessage({
       {!mobile && (
         <div className="flex items-center gap-1 text-[11px] desk:text-meta text-subtle desk:absolute desk:top-full desk:right-0 desk:z-[1]">
           <span
-            className={`rounded px-1 font-medium${agent === 'plan' ? ' desk:h-5 desk:bg-accent-soft desk:px-1.5 desk:leading-5 desk:text-accent' : ' desk:hidden'}`}
+            className={`rounded px-1 font-medium${agent === 'plan' ? ' desk:h-5 desk:bg-accent-soft desk:px-1.5 desk:leading-5 desk:text-accent' : modelTag ? '' : ' desk:hidden'}`}
           >
             {t(agent === 'plan' ? 'code.agent.plan' : 'code.agent.build')}
+            {modelTag ? ` · ${modelTag}` : ''}
           </span>
           <span className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/user:opacity-100 focus-within:opacity-100">
             <button

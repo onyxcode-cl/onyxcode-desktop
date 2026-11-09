@@ -1167,6 +1167,7 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:setPrefs': partial({
     quickEntryShortcut: str({ max: 100 }),
     modelsByMode: partial({ chat: modelRef, code: modelRef, tasks: modelRef }),
+    planExecModels: partial({ plan: modelRef, exec: modelRef }),
     showTray: bool,
     notificationsEnabled: bool,
     soundEnabled: bool,

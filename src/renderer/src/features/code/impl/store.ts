@@ -50,6 +50,7 @@ import {
 import { mergeTurns, noticeFromResult, noticeFromUndo, type RewindNotice } from './rewind-logic'
 import { compactBlockReason, postSummarize, type CompactBlockReason } from '@shared/compaction'
 import type { ModelRef } from '@shared/types'
+import { chooseRoleModel, sameModel, withRoleModel, type PlanExecModels, type PlanExecRole } from '@shared/plan-exec-models'
 import { currentAiGate } from '../../../lib/ai-gate'
 import { useProviders } from '../../../stores/providers'
 import { useSettings } from '../../../stores/settings'
@@ -236,6 +237,10 @@ export interface CodeState {
   todos: Record<string, Todo[]>
   agent: CodeAgent
   model: ModelRef | null
+  /** Modelo de planear/ejecutar cambiado en la conversación (D2), por sesión (`''` = aún sin sesión). Solo memoria; no toca los ajustes. */
+  roleModels: Record<string, PlanExecModels>
+  /** Aviso (no bloquea) de que el modelo de planear/ejecutar ya no existe o no tiene clave y se usó el de la conversación. */
+  roleNotices: Record<string, { role: PlanExecRole; wanted: ModelRef; used: ModelRef }>
   variant: string | null
   panel: RightPanel | null
   /** Se incrementa cuando cambian archivos (para refrescar Cambios/Archivos). */
@@ -337,6 +342,9 @@ export interface CodeState {
   setAgent: (agent: CodeAgent) => void
   /** `remember` (por defecto sí): lo guarda como el modelo del modo Code (`modelsByMode.code`); nunca toca el predeterminado global. */
   setModel: (model: ModelRef, remember?: boolean) => void
+  /** Cambia en ESTA conversación el modelo de planear o de ejecutar (`null` = volver al de los ajustes). No toca los ajustes. */
+  setRoleModel: (role: PlanExecRole, model: ModelRef | null) => void
+  dismissRoleNotice: (sessionID: string) => void
   setVariant: (variant: string | null) => void
   togglePanel: (panel: RightPanel) => void
   /** Abre el panel del navegador (sin alternar/cerrar si ya estaba abierto) y sin robar el foco. */
@@ -889,7 +897,28 @@ export const useCode = create<CodeState>((set, get) => {
       setError(sid, NO_AI_ERROR)
       return false
     }
-    const sendModel = aiGate.avail === 'unknown' ? wanted : aiGate.effective
+    const conversationModel = aiGate.avail === 'unknown' ? wanted : aiGate.effective
+    // D2: con «modelo para planear/ejecutar» definidos, el modelo sale según el agente. Si el elegido ya no existe o no tiene clave,
+    // se usa el de la conversación y queda un aviso visible (nunca en silencio).
+    const roleChoice = conversationModel
+      ? chooseRoleModel({
+          agent,
+          config: useExtrasPrefs.getState().prefs.planExecModels,
+          override: get().roleModels[sid] ?? get().roleModels[''],
+          conversation: conversationModel,
+          isUnavailable: (m) => currentAiGate(m, { strict: true }).unavailable
+        })
+      : null
+    const sendModel = roleChoice?.model ?? conversationModel
+    {
+      const had = !!get().roleNotices[sid]
+      if (roleChoice?.fallback && conversationModel) {
+        const notice = { role: roleChoice.role, wanted: roleChoice.fallback, used: conversationModel }
+        set((s) => ({ roleNotices: { ...s.roleNotices, [sid]: notice } }))
+      } else if (had) {
+        get().dismissRoleNotice(sid)
+      }
+    }
     setError(sid, null)
     // El modo de permisos es de la interfaz, pero el ruleset vive en la sesión del motor: una sesión creada antes (o por otra vía) puede
     // no tenerlo y «Manual» no preguntaría nada. Se iguala ANTES de enviar; en Manual, si no se puede, no se envía (falla cerrado).
@@ -953,7 +982,8 @@ export const useCode = create<CodeState>((set, get) => {
           directory: dir,
           agent,
           model: sendModel ? { providerID: sendModel.providerID, modelID: sendModel.modelID } : undefined,
-          variant: variant ?? undefined,
+          // El esfuerzo de razonamiento es del modelo de la conversación: no se aplica a otro modelo (D2).
+          variant: sameModel(sendModel, conversationModel) ? (variant ?? undefined) : undefined,
           // Memoria aprendida (decisión del dueño, 2026-10-07): nunca desde el celular. `PROMPT_KEYS` en
           // `remote/policy.ts` no incluye `system`, así que un `system` armado en el celular (con memoria
           // que ese mismo celular pudo manipular en su copia local de los ajustes) sería una forma de colar
@@ -1050,6 +1080,8 @@ export const useCode = create<CodeState>((set, get) => {
     todos: {},
     agent: initialAgent(),
     model: null,
+    roleModels: {},
+    roleNotices: {},
     variant: null,
     panel: initialPanel(),
     fsVersion: 0,
@@ -1731,6 +1763,17 @@ export const useCode = create<CodeState>((set, get) => {
       set({ model, variant: null })
       if (remember) setModeModel('code', model)
     },
+    setRoleModel: (role, model) => {
+      const key = get().activeSessionID ?? ''
+      set((s) => ({ roleModels: { ...s.roleModels, [key]: withRoleModel(s.roleModels[key], role, model) } }))
+    },
+    dismissRoleNotice: (sessionID) =>
+      set((s) => {
+        if (!(sessionID in s.roleNotices)) return {}
+        const roleNotices = { ...s.roleNotices }
+        delete roleNotices[sessionID]
+        return { roleNotices }
+      }),
     setVariant: (variant) => set({ variant }),
 
     // -- Cola de mensajes --
