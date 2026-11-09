@@ -91,12 +91,12 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
 
   // ── 1. `general` desde Code (W-A3, D5=A: `general` declara «preguntar» y el guardián lo deja pasar) ─────────────────────────────────
   // Config inline como la de la app: bloque `agent` real + `permission` de bgshell y documentos (server.ts: `codeMcpPermission`).
-  const configReal = (m) => {
+  const configReal = (m, extra = {}) => {
     const permission = m.buildCodeMcpPermission({
-      servers: [],
-      trusted: [],
+      servers: extra.servers ?? [],
+      trusted: extra.trusted ?? [],
       internal: [],
-      base: {},
+      base: extra.base ?? {},
       fixed: { ...m.bgshellConfigPermission(), ...m.documentsConfigPermission() },
       fixedServers: [m.SHELL_BG_SERVER, m.DOCUMENTS_SERVER]
     })
@@ -113,7 +113,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     conector: { name: 'prueba_start', args: { command: 'a' }, archivo: null, permiso: 'prueba_start' }
   }
   /** Lanza `task general` desde un padre `build` con las reglas de sesión de `modo`; la hija hace `accion`. Contesta `respuesta` a lo que pregunte. */
-  const hija = async (modo, accion, respuesta, agente = 'build', carpeta = null) => {
+  const hija = async (modo, accion, respuesta, agente = 'build', carpeta = null, extra = null) => {
     const m = await reales()
     const a = ACCIONES[accion]
     const preguntas = []
@@ -122,19 +122,23 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       agentsDir,
       git: true,
       plugins: { 'lazunox-subagent-guard.js': m.subagentGuardPluginSource() },
-      inline: configReal(m),
+      inline: configReal(m, extra ?? {}),
       // `carpeta`: carpeta con conector (como el escaneo de W-A2): `<conector>_*: ask` delante del bloque del modo, en la sesión del PADRE.
       ...(carpeta
         ? {
             projectFiles: {
               'opencode.json': JSON.stringify({
-                mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } }
+                mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } },
+                // `extra.base` = deny de la config de la app/global (el motor también los carga); `extra.proyecto` = deny SOLO del opencode.json del proyecto.
+                ...(extra?.base || extra?.proyecto ? { permission: { ...extra.base, ...extra.proyecto } } : {})
               })
             },
             pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000)
           }
         : {}),
-      sessionBody: { permission: m.rulesetFor(modo, undefined, carpeta ? [{ permission: 'prueba_*', pattern: '*', action: 'ask' }] : []) },
+      sessionBody: {
+        permission: m.rulesetFor(modo, undefined, carpeta && !extra ? [{ permission: 'prueba_*', pattern: '*', action: 'ask' }] : [])
+      },
       decide: ({ tools, toolTexts, userTexts }) => {
         if (toolTexts.length) return null
         const u = userTexts.at(-1)
@@ -235,6 +239,49 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       }
     )
   }
+  // H1 (revisión independiente): un `deny` con comodín SIN guion bajo (`*start*`, en la config de la app Y en el opencode.json del proyecto) sobre un conector
+  // de confianza («Sin preguntar en Code»). El padre no tiene `prueba_start`; la hija tampoco debe tenerla NI poder pedirla (ninguna pregunta por ella).
+  for (const modo of ['manual', 'bypass']) {
+    checkRun(
+      `olaA 1c (${modo}): \`*start*: deny\` sobre un conector de confianza: la hija NO obtiene prueba_start ni puede pedirla`,
+      async () => {
+        const m = await reales()
+        const x = await hija(modo, 'conector', (p) => (p.permission === 'task' ? 'once' : 'reject'), 'build', true, {
+          servers: ['prueba'],
+          trusted: ['prueba'],
+          base: { '*start*': 'deny' }
+        })
+        void m
+        const q = x.preguntas.filter((p) => p.permission === 'prueba_start')
+        if (q.length) noSeReproduce(`la hija pudo PEDIR prueba_start pese al deny: ${corto(x.preguntas)}`)
+        confirmado(`sin pregunta por prueba_start (task=${resumen(x.tp)})`)
+        return true
+      }
+    )
+  }
+
+  // Un `deny` con comodín que SOLO está en el opencode.json del proyecto (la app no lo conoce): la hija lo recibe tapado por el `'*': ask` de `general`
+  // y el guardián tiene que BLOQUEAR el lanzamiento (falla cerrado). Se anota como residual en SEGURIDAD.md.
+  checkRun(
+    'olaA 1c (proyecto): `*start*: deny` solo en el opencode.json del proyecto → el guardián BLOQUEA a general (falla cerrado)',
+    async () => {
+      const x = await hija('manual', 'conector', (p) => (p.permission === 'task' ? 'once' : 'reject'), 'build', true, {
+        servers: ['prueba'],
+        trusted: ['prueba'],
+        proyecto: { '*start*': 'deny' }
+      })
+      if (
+        x.tp.status === 'error' &&
+        /bloqueado por Lazunox/.test(x.tp.output) &&
+        !x.preguntas.some((p) => p.permission === 'prueba_start')
+      ) {
+        confirmado(`bloqueado (${resumen(x.tp)})`)
+        return true
+      }
+      noSeReproduce(`se esperaba bloqueo del guardián: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`)
+    }
+  )
+
   checkRun('olaA 1b (plan, carpeta con conector): Solo explorar sigue BLOQUEANDO a general', async () => {
     const x = await hija('plan', 'conector', () => 'reject', 'build', true)
     if (x.tp.status === 'error' && !x.preguntas.length) {
@@ -317,6 +364,33 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     }
     noSeReproduce(`prueba_start=${tp.status}, preguntas=${corto(r.asked)}`)
   })
+
+  // Observación de la revisión (W-A2, NO de este arreglo): en el PADRE, la regla de sesión `<conector>_*: ask` va DESPUÉS de los permisos del agente/config, así que
+  // tapa un `deny` de la config para esa herramienta. Esta comprobación es INFORMATIVA: pasa siempre y dice si el problema se reproduce en el motor real.
+  checkRun(
+    'olaA 1d (hallazgo W-A2, informativo): `prueba_start: deny` en la config + `prueba_*: ask` en la sesión del PADRE ¿sigue valiendo el deny?',
+    async () => {
+      const m = await reales()
+      const r = await motor({
+        agent: 'build',
+        projectFiles: {
+          'opencode.json': JSON.stringify({ mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } } })
+        },
+        inline: { permission: { prueba_start: 'deny' } },
+        sessionBody: { permission: m.rulesetFor('manual', undefined, [{ permission: 'prueba_*', pattern: '*', action: 'ask' }]) },
+        pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000),
+        call: { name: 'prueba_start', args: { command: 'a' } }
+      })
+      const ofrecida = r.toolsOffered.includes('prueba_start')
+      const preguntas = r.asked.filter((a) => a.permission === 'prueba_start')
+      confirmado(
+        ofrecida || preguntas.length
+          ? `SE REPRODUCE: el deny de la config quedó en «preguntar» en el padre (ofrecida=${ofrecida}, preguntas=${preguntas.length}); ver informe`
+          : 'no se reproduce: el deny de la config sigue valiendo en el padre'
+      )
+      return true
+    }
+  )
 
   // ── 4. R4: web en el bloque «plan» ───────────────────────────────────────────────────────────────────────────────
   checkRun(

@@ -125,7 +125,11 @@ describe('W-A3: general en Code (el guardián lo deja pasar porque declara «pre
     expect(d.find((x) => x.permission === 'read' && x.pattern === '*.env.example')?.action).toBe('allow')
     expect(d.find((x) => x.permission === 'task')?.action).toBe('deny')
     // Nada de `allow` en lo que cambia el mundo: lo único `allow` es leer.
-    expect(d.filter((x) => x.action === 'allow').every((x) => x.permission === 'read')).toBe(true)
+    expect(
+      d
+        .filter((x) => x.action === 'allow')
+        .every((x) => ['read', 'glob', 'grep', 'list', 'lsp', 'skill', 'todowrite', 'execute'].includes(x.permission))
+    ).toBe(true)
   })
 
   for (const mode of ['manual', 'acceptEdits', 'auto', 'bypass'] as const) {
@@ -217,7 +221,10 @@ describe('general en una carpeta con conectores (W-A2 + W-A3)', () => {
     expect(ev('plan_exit')).toBe('deny')
     expect(ev('doom_loop')).toBe('ask')
     expect(ev('external_directory')).toBe('ask')
-    expect(declarado().filter((x) => x.action === 'allow' && x.permission !== 'read')).toEqual([])
+    expect(ev('conector-x_cualquiera')).toBe('ask')
+    expect(ev('browser_open')).toBe('ask')
+    expect(ev('glob')).toBe('allow')
+    expect(ev('question')).toBe('deny')
   })
 
   it('un `deny` del usuario sobre una herramienta de conector sigue mandando en la hija (el `ask` nuevo no lo tapa) y el guardián pasa', async () => {
@@ -229,6 +236,42 @@ describe('general en una carpeta con conectores (W-A2 + W-A3)', () => {
     expect(g.at(-1)).toMatchObject({ permission: 'conector-nuevo_borrar *', action: 'deny' })
   })
 
+  // H1 (revisión independiente): un `deny` con comodín SIN guion bajo (`*start*`, `*delete*`) no debe pasar a «preguntar» en la hija.
+  // Como `Wildcard.match` del motor: `*` = cualquier cosa y un « *» final es opcional.
+  const casa = (clave: string, tool: string): boolean => {
+    let re = clave.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
+    if (re.endsWith(' .*')) re = re.slice(0, -3) + '( .*)?'
+    return new RegExp('^' + re + '$', 's').test(tool)
+  }
+  const nombreReal = (reglas: Rule[], tool: string): string =>
+    reglas.filter((x) => x.pattern === '*' && casa(x.permission, tool)).at(-1)?.action ?? 'ask'
+
+  it('H1: `*start*: deny` y `*delete* *` (alias) de la app: la hija los conserva en deny para el nombre REAL de la herramienta (no solo para la clave escrita)', async () => {
+    const perm = { 'prueba_*': 'allow', '*start*': 'deny', '*delete* *': 'deny' }
+    const g = generalCon(perm)
+    expect(nombreReal([...BUILD, ...fromConfig(perm)], 'prueba_start')).toBe('deny')
+    expect(nombreReal(g, 'prueba_start')).toBe('deny')
+    expect(nombreReal(g, 'github_delete_repo')).toBe('deny')
+    const b = await load('build', [...BUILD, ...fromConfig(perm)], sesion('manual'), g)
+    await expect(task(b, 'general')).resolves.toBeUndefined()
+  })
+
+  it('H1 (falla cerrado): un `deny` con comodín que SOLO está en el opencode.json del proyecto (la app no lo conoce) hace que el guardián bloquee a general', async () => {
+    const proyecto = { '*start*': 'deny' }
+    // El motor pone la config del proyecto en el permiso del padre Y de la hija (antes de lo declarado); la app no lo re-afirma.
+    const g = [
+      ...DEFAULTS,
+      r('todowrite', 'allow'),
+      ...CONFIG,
+      ...fromConfig(proyecto),
+      ...fromConfig(
+        (buildInlineConfig() as { agent: Record<string, { permission?: Record<string, unknown> }> }).agent.general?.permission ?? {}
+      )
+    ]
+    const b = await load('build', [...BUILD, ...fromConfig(proyecto)], sesion('auto'), g)
+    await expect(task(b, 'general')).rejects.toThrow(/\*start\* \(padre: deny, subagente: ask\)/)
+  })
+
   it('sigue bloqueando: padre con un deny que la hija no hereda (conector bloqueado en el AGENTE del padre sin config) y Solo explorar / Chat', async () => {
     const b = await load('build', [...BUILD, r('conector-x_*', 'deny')], sesion('auto'), generalCon())
     await expect(task(b, 'general')).rejects.toThrow(/conector-x_/)
@@ -236,7 +279,17 @@ describe('general en una carpeta con conectores (W-A2 + W-A3)', () => {
   })
 
   it('el mismo caso SIN el bloque nuevo (permisos del motor a secas) se bloquea: la prueba falla antes del arreglo', async () => {
-    const sinBloque = [...DEFAULTS, r('todowrite', 'allow'), ...CONFIG, ...declarado().filter((x) => x.permission !== '*_*')]
+    // `general` como quedó en W-A3 (sin lo de los conectores): lo declarado entonces, sin `'*': ask`.
+    const wa3 = [
+      r('edit', 'ask'),
+      r('write', 'ask'),
+      r('bash', 'ask'),
+      r('webfetch', 'ask'),
+      r('websearch', 'ask'),
+      r('external_directory', 'ask'),
+      r('task', 'deny')
+    ]
+    const sinBloque = [...DEFAULTS, r('todowrite', 'allow'), ...CONFIG, ...wa3, r('read', 'ask', 'mcp:*')]
     const b = await load('build', BUILD, sesion('auto', 'conector-nuevo_*', 'conector-r2_*'), sinBloque)
     await expect(task(b, 'general')).rejects.toThrow(/conector-nuevo_\* \(padre: ask, subagente: allow\)/)
   })

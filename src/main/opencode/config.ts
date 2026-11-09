@@ -65,6 +65,19 @@ export interface InlineConfigOptions {
   permission?: Record<string, unknown> | null
 }
 
+/** Todo `deny` del bloque `permission` de la app (texto o mapa por patrón; con o sin guion bajo), para re-afirmarlo al final de `general`. */
+function denyRules(permission: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(permission ?? {})) {
+    if (v === 'deny') out[k] = 'deny'
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const m = Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([, a]) => a === 'deny'))
+      if (Object.keys(m).length) out[k] = m
+    }
+  }
+  return out
+}
+
 export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string, unknown> {
   return {
     $schema: 'https://opencode.ai/config.json',
@@ -345,19 +358,30 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
       //    esté en «Editar sin preguntar»/«Automático»/«Todo sin preguntar».
       //  - Si el padre tiene MENOS libertad (Solo explorar: `edit` en deny; Chat: todo en deny), la declaración sigue siendo más libertad y el guardián
       //    sigue BLOQUEANDO: este bloque no puede abrir nada, falla cerrado. `lazunox-helper`, `explore` y los demás agentes no cambian.
-      //  - Conectores de la carpeta (arreglo 1.8.12, «Fallo 2» de las pruebas en Mac): la app pone `<conector>_*: ask` en la SESIÓN del padre (W-A2), y la
+      //  - Conectores de la carpeta (arreglo 1.8.12, «Fallo 2» de las pruebas en Mac): la app pone `<conector>_*: ask` en la SESIÓN del padre (W-A2) y la
       //    hija solo hereda los `deny` de esa sesión; sin esto `general` quedaba con el `'*': allow` del motor en cada conector de la carpeta y el guardián
-      //    bloqueaba el lanzamiento. La config inline es del proceso (no de una carpeta) y no conoce los conectores de cada carpeta, así que `general`
-      //    pregunta en TODO lo que tenga guion bajo (`*_*`, la misma red que usa la sesión cuando no pudo enumerar los conectores). Eso también toca
-      //    permisos internos con guion bajo que el motor deja en deny/ask (`plan_enter`, `plan_exit`, `doom_loop`): se re-afirman justo después con su
-      //    valor, para que `*_*` no los afloje. Y los `deny` con guion bajo de la config (conectores bloqueados) se re-afirman AL FINAL: un `ask` nunca
-      //    tapa un `deny` del usuario. Solo añade «preguntar»: nunca más libertad que el padre.
+      //    bloqueaba el lanzamiento. La config inline es del proceso y no conoce los conectores de cada carpeta, así que `general` declara `'*': 'ask'` y
+      //    re-afirma a continuación SOLO lo que el motor le daba y debe seguir igual (`allow` de explorar: glob, grep, list, lsp, skill, todowrite, execute;
+      //    `deny` de question y plan_enter/plan_exit; `ask` de doom_loop). Todo lo demás (conectores, bgshell, documentos, herramientas nuevas) pregunta.
+      //  - POR QUÉ `'*'` Y NO `'*_*'` (revisión independiente, H1): un `deny` con comodín sin guion bajo (`*delete*`, `*start*`) quedaba tapado por `*_*` y el
+      //    guardián, que compara las claves ESCRITAS, no lo veía. Con `'*': ask` ese `deny` (y cualquier regla estricta del padre que `general` no repita)
+      //    hace que el guardián BLOQUEE: falla cerrado. Y al FINAL se re-afirman TODOS los `deny` del bloque `permission` de la app (con o sin guion bajo,
+      //    incluidos los de mapas por patrón y los alias `"<clave> *"` de code-mcp-permission.ts): un `ask` nunca tapa un `deny` que la app conoce.
+      //    Lo que la app NO conoce (un `deny` solo en el `opencode.json` del PROYECTO) no se re-afirma y bloquea a `general` (usar `lazunox-helper`): residual cerrado.
       //  - `task: deny`: un ayudante no lanza ayudantes. `todowrite` lo conserva el motor (`allow`, su propia lista de la hija).
       //  - Las protecciones de la sesión del padre (`.git`, `opencode.json`, `.opencode/*` en `ask`) NO se heredan (solo `deny`), pero aquí `edit`/`write`
       //    ya son `ask` para todo, así que preguntan igual.
       general: {
         permission: {
-          '*_*': 'ask',
+          '*': 'ask',
+          glob: 'allow',
+          grep: 'allow',
+          list: 'allow',
+          lsp: 'allow',
+          skill: 'allow',
+          todowrite: 'allow',
+          execute: 'allow',
+          question: 'deny',
           doom_loop: 'ask',
           plan_enter: 'deny',
           plan_exit: 'deny',
@@ -369,7 +393,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           read: { '*': 'allow', '*.env': 'ask', '*.env.*': 'ask', '*.env.example': 'allow', 'mcp:*': 'ask' },
           external_directory: 'ask',
           task: 'deny',
-          ...Object.fromEntries(Object.entries(opts.permission ?? {}).filter(([k, v]) => k.includes('_') && v === 'deny'))
+          ...denyRules(opts.permission)
         }
       },
       computer: { disable: true }
