@@ -137,6 +137,34 @@ describe('carpeta de confianza', () => {
     expect(pr.projectAskOf(D).map((x) => x.permission)).toEqual(['crm_*', 'otro_*'])
   })
 
+  it('Windows, rareza A (1.8.12): lo aprobado SÍ persiste; si el motor crea `.opencode/package.json` después, sale la re-pregunta SOLO de eso y, aceptada, no vuelve', async () => {
+    // El motor puede crear `.opencode/package.json` (y `node_modules`) al instanciar la carpeta sin que la persona la haya abierto (Fallo 1 de Windows). Es un
+    // elemento riesgoso NUEVO respecto de lo aprobado: la re-pregunta es correcta (no es una huella que no persiste), pero solo trae lo nuevo.
+    const pkg: ProjectScanItem = {
+      id: 'package-.opencode/package.json',
+      kind: 'package',
+      name: 'package.json',
+      where: '.opencode/package.json',
+      risky: true
+    }
+    const before = result([agent('a')])
+    trusted(before)
+    expect(st().trustedScans[D]!.huella).toBe(before.huella) // persistió la huella aprobada
+    const after = result([agent('a'), pkg])
+    scan.mockResolvedValue(after)
+    const p = t.ensureTrusted(D)
+    await flush()
+    const pending = t.getPendingTrust()
+    expect(pending?.again).toBe(true)
+    expect(pending?.items.map((i) => i.id)).toEqual([pkg.id]) // solo lo nuevo, no la lista completa
+    t.resolveTrust(true)
+    await expect(p).resolves.toBe(true)
+    expect(st().trustedScans[D]!.huella).toBe(after.huella)
+    // Segunda apertura con lo mismo: sin diálogo.
+    await expect(t.ensureTrusted(D)).resolves.toBe(true)
+    expect(t.getPendingTrust()).toBeNull()
+  })
+
   it('entrada antigua sin huella: si no trae nada riesgoso se guarda en silencio; si trae un conector se pregunta una vez', async () => {
     st().trustFolder(D)
     scan.mockResolvedValue(result([agent('a')]))

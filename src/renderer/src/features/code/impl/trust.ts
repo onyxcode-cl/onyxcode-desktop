@@ -65,6 +65,9 @@ function updateEntry(dir: string, p: PendingTrust): void {
   if (e === current) setPendingTrust(p)
 }
 
+/** Lo mismo que el hook, sin React (pruebas). */
+export const getPendingTrust = (): PendingTrust | null => pendingTrust
+
 /** Hook: carpeta esperando confirmación de confianza (o `null`). */
 export function usePendingTrust(): PendingTrust | null {
   const [p, setP] = useState(pendingTrust)
