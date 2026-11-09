@@ -196,8 +196,9 @@ export interface CodeState {
   directory: string | null
   /**
    * Carpeta que tenía el foco al cerrar la app y que se restaura al arrancar. NO es `directory` (el foco) hasta que pasa por el escaneo y la
-   * decisión de confianza (`restoreFocusedProject`, `trust.ts`): mientras tanto nada del renderer puede hablar con el motor con esa carpeta
-   * (el compositor, los paneles y las listas piden al motor con `directory`, y el motor arranca los conectores del proyecto al cargarlo).
+   * decisión de confianza (`restoreFocusedProject`, `trust.ts`). Mientras está puesta, el compositor y los paneles (que piden al motor con
+   * `directory`) no se activan y Code muestra «revisando» en vez del selector de recientes. El motor carga la carpeta (complementos de código
+   * con cualquier petición con `directory`, conectores con `command.list` / `GET /mcp`) apenas algo le pide con ella.
    */
   restoredFocus: string | null
   /** Proyectos abiertos a la vez en la barra lateral, en orden de apertura. En escritorio `directory`, si no es `null`,

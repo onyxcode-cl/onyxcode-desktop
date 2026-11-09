@@ -950,9 +950,31 @@ interface CodeWorkspaceProps {
   showSessionList?: boolean
 }
 
+/** Pantalla mientras la carpeta restaurada al arrancar se revisa: no habla con el motor; el diálogo de confianza sale encima si hace falta. */
+function RestoringFolder({ dir }: { dir: string }): React.JSX.Element {
+  const t = useT()
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-3 bg-bg p-6 text-fg">
+      <TrustGate />
+      <p className="text-sm text-muted">{t('code.trust.restoring')}</p>
+      <p className="max-w-full truncate font-mono text-xs text-subtle" title={dir}>
+        {baseName(dir)}
+      </p>
+      <button
+        type="button"
+        onClick={() => useCode.getState().showProjectPicker()}
+        className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted hover:bg-hover hover:text-fg"
+      >
+        {t('code.trust.restoringOther')}
+      </button>
+    </div>
+  )
+}
+
 export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): React.JSX.Element {
   const client = useClient()
   const directory = useCode((s) => s.directory)
+  const restoredFocus = useCode((s) => s.restoredFocus)
   useEffect(() => ensureCodeSubscription(), [])
   // Memoria aprendida global (decisión del dueño, 2026-10-07): se relee al abrir Code, no en cada envío.
   useEffect(() => {
@@ -1039,6 +1061,8 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
 
   // Sin proyectos, o pidiendo agregar uno más (la barra lateral global sigue mostrando los ya abiertos: es un
   // componente aparte, `CodeSidebar`, que no depende de esto).
+  // Carpeta restaurada al arrancar que aún se revisa: sin selector de recientes (cada tarjeta pediría sesiones al motor) y sin llamadas.
+  if (!directory && restoredFocus && !projectPickerOpen) return <RestoringFolder dir={restoredFocus} />
   if (!directory || projectPickerOpen) return <ProjectPicker onCancel={directory ? hideProjectPicker : undefined} />
 
   // Celular: solo la conversación (la lista de sesiones, la barra y las pantallas de Cambios/Archivos son del armazón).

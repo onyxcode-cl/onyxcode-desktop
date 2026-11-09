@@ -890,6 +890,7 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
   const t = useT()
   const directory = useCode((s) => s.directory)
   const openDirectories = useCode((s) => s.openDirectories)
+  const restoredFocus = useCode((s) => s.restoredFocus)
   const sessions = useCode((s) => s.sessions)
   const permissions = useCode((s) => s.permissions)
   const questions = useCode((s) => s.questions)
@@ -913,13 +914,14 @@ export function SessionList({ compact = false }: { compact?: boolean }): React.J
     [permissions, questions, sessions]
   )
 
-  if (!directory) {
+  // Carpeta restaurada al arrancar que aún se revisa: sigue visible en la barra (escritorio), sin foco.
+  if (!directory && !(desktop && restoredFocus)) {
     // Escritorio: sin proyecto abierto el encabezado «Proyectos» de la barra lateral lleva el «+»; aquí va la pista.
     return desktop ? <NoProjectsList /> : null
   }
 
   // Celular: un solo proyecto, como siempre (openDirectories tiene como mucho uno). Escritorio: un grupo por abierto.
-  const groups = desktop ? openDirectories : [directory]
+  const groups = desktop ? openDirectories : directory ? [directory] : []
 
   return (
     <div data-session-list-root="" tabIndex={-1} className="flex min-h-0 flex-col gap-0.5 outline-none">

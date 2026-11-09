@@ -119,6 +119,48 @@ describe('foco restaurado al arrancar', () => {
     expect(t.isFolderVerified(F)).toBe(true)
   })
 
+  it('complemento de código nuevo (no conector): también se pregunta antes de abrir', async () => {
+    const plugin: ProjectScanItem = { id: 'plugin-x', kind: 'plugin', name: 'x.js', where: '.opencode/plugin/x.js', risky: true }
+    scan.mockResolvedValue(result([mcp('viejo'), plugin]))
+    const openProject = vi.fn(() => Promise.resolve())
+    useCode.setState({ openProject } as never)
+    const p = t.restoreFocusedProject()
+    await flush()
+    await flush()
+    expect(useCode.getState().restoredFocus).toBe(F) // sigue «revisando» mientras el diálogo está abierto
+    expect(openProject).not.toHaveBeenCalled()
+    t.resolveTrust(false)
+    await p
+    expect(useCode.getState().restoredFocus).toBeNull()
+    expect(engineCalls).toEqual([])
+  })
+
+  it('el escaneo falla: NO se abre sola; pregunta («no pudimos revisar») y Cancelar la cierra', async () => {
+    scan.mockRejectedValue(new Error('boom'))
+    const openProject = vi.fn(() => Promise.resolve())
+    useCode.setState({ openProject } as never)
+    const p = t.restoreFocusedProject()
+    await flush()
+    await flush()
+    expect(openProject).not.toHaveBeenCalled()
+    t.resolveTrust(false)
+    await p
+    expect(openProject).not.toHaveBeenCalled()
+    expect(useCode.getState().isTrusted(F)).toBe(false)
+    expect(engineCalls).toEqual([])
+  })
+
+  it('llamarla dos veces (reconexión del motor) comparte la misma espera: un solo diálogo', async () => {
+    scan.mockResolvedValue(result([mcp('viejo'), mcp('nuevo')]))
+    const p1 = t.restoreFocusedProject()
+    const p2 = t.restoreFocusedProject()
+    await flush()
+    await flush()
+    expect(scan).toHaveBeenCalledTimes(1)
+    t.resolveTrust(false)
+    await Promise.all([p1, p2])
+  })
+
   it('restoreOpenProjects no carga el foco restaurado por su cuenta (lo verifica restoreFocusedProject)', async () => {
     scan.mockResolvedValue(result([mcp('viejo'), mcp('nuevo')]))
     const loadSessions = vi.fn(() => Promise.resolve())

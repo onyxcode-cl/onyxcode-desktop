@@ -153,11 +153,56 @@ describe('carpeta de confianza', () => {
     expect(st().trustedScans[E]!.ids).toEqual(['mcp-crm'])
   })
 
-  it('el escaneo falla en una carpeta de confianza: se abre, con las reglas en «todo pregunta»', async () => {
+  it('el escaneo falla en una carpeta de confianza: NO se abre sola (falla cerrado): diálogo «no pudimos revisar»; Cancelar la cierra y quita la confianza', async () => {
     st().trustFolder(D)
     scan.mockRejectedValue(new Error('boom'))
-    await expect(t.ensureTrusted(D)).resolves.toBe(true)
+    const p = t.ensureTrusted(D)
+    await flush()
+    await flush()
+    let settled = false
+    void p.then(() => (settled = true))
+    await flush()
+    expect(settled).toBe(false)
     expect(pr.folderMcpOf(D)?.askAll).toBe(true)
+    t.resolveTrust(false)
+    await expect(p).resolves.toBe(false)
+    expect(st().isTrusted(D)).toBe(false)
+  })
+
+  it('el escaneo vence el plazo en una carpeta de confianza: tampoco se abre sola', async () => {
+    vi.useFakeTimers()
+    st().trustFolder(D)
+    scan.mockReturnValue(new Promise(() => undefined))
+    const p = t.ensureTrusted(D)
+    let settled = false
+    void p.then(() => (settled = true))
+    await vi.advanceTimersByTimeAsync(t.SCAN_TIMEOUT_MS + 100)
+    expect(settled).toBe(false)
+    t.resolveTrust(true)
+    await expect(p).resolves.toBe(true)
+  })
+
+  it('escaneo incompleto y distinto de lo aprobado, sin nada riesgoso nuevo visible: se pregunta, no se guarda en silencio', async () => {
+    const r = result([mcp('crm')])
+    st().trustFolder(D, { huella: r.huella, ids: r.items.map((i) => i.id) })
+    scan.mockResolvedValue(result([mcp('crm')], 'i-otra-huella', false))
+    const p = t.ensureTrusted(D)
+    await flush()
+    await flush()
+    let settled = false
+    void p.then(() => (settled = true))
+    await flush()
+    expect(settled).toBe(false)
+    expect(st().trustedScans[D]?.huella).toBe(r.huella)
+    t.resolveTrust(false)
+    await expect(p).resolves.toBe(false)
+  })
+
+  it('escaneo completo, misma carpeta de confianza sin novedades: abre sin diálogo', async () => {
+    const r = result([mcp('crm')])
+    st().trustFolder(D, { huella: r.huella, ids: r.items.map((i) => i.id) })
+    scan.mockResolvedValue(r)
+    await expect(t.ensureTrusted(D)).resolves.toBe(true)
   })
 })
 

@@ -296,6 +296,11 @@ export const code = {
   'code.trust.bodyAgain': 'Ya confías en esta carpeta, pero desde la última vez trae algo nuevo:',
   'code.trust.scanning': 'Revisando qué trae la carpeta…',
   'code.trust.bodyUnknown': 'No se pudo revisar qué trae esta carpeta.',
+  'code.trust.titleUnreviewed': 'No pudimos revisar esta carpeta',
+  'code.trust.bodyUnreviewed':
+    'Ya confiabas en esta carpeta, pero ahora no se pudo revisar qué trae (puede ser lenta, estar en una red o haber cambiado mucho). Si continúas, podrían arrancar conectores o complementos nuevos que no viste. Cancelar la cierra.',
+  'code.trust.restoring': 'Revisando la carpeta antes de abrirla…',
+  'code.trust.restoringOther': 'Elegir otra carpeta',
   'code.trust.confirm': 'Confiar y continuar',
   'code.trust.confirmAgain': 'Entendido, continuar',
   'code.trust.kind.mcp': 'Conector (se arrancará al abrir la carpeta)',

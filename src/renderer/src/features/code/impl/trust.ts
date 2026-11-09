@@ -28,6 +28,8 @@ export interface PendingTrust {
   wasTrusted: boolean
   /** El escaneo sigue en curso: se muestra «Revisando…» y no se puede confiar todavía. */
   scanning: boolean
+  /** Carpeta de confianza que NO se pudo revisar del todo (escaneo fallido, vencido o incompleto con huella distinta): falla cerrado, se pregunta. */
+  unreviewed?: boolean
 }
 
 /** Un diálogo (el visible o uno en cola) y quienes esperan su respuesta (varias peticiones de la misma carpeta comparten el diálogo). */
@@ -83,6 +85,12 @@ export const CONFIRM_DELAY_MS = 700
 export const SCAN_TIMEOUT_MS = 3500
 const inflight = new Map<string, Promise<ProjectScanResult | null>>()
 
+/** ¿Hay con qué revisar carpetas? Sin API nativa (pruebas, superficie sin escáner) no hay nada que fallar: no es un escaneo fallido. */
+const canScan = (): boolean => {
+  const native = nativeCode()
+  return !!native && typeof native.project?.scan === 'function'
+}
+
 /** Lee qué trae la carpeta. `null` si no hay API nativa (pruebas, celular sin motor), la lectura falla o vence el plazo: nunca lanza ni cuelga. */
 function scanFolder(dir: string): Promise<ProjectScanResult | null> {
   const native = nativeCode()
@@ -130,13 +138,20 @@ async function ensureTrustedAgain(dir: string): Promise<boolean> {
   setVerifying(dir, true)
   const scan = await scanFolder(dir)
   setFolderMcp(dir, scan)
-  if (!scan) return accept(dir) // no se pudo revisar ahora (o venció el plazo): no se bloquea; las reglas quedan en `askAll` (falla cerrado)
   const prev = useCode.getState().trustedScans[dir]
+  // No se pudo revisar (falló o venció el plazo): NO se abre sola. El motor arranca conectores y complementos al cargar la carpeta y no podemos
+  // saber si trae algo nuevo, así que se pregunta (falla cerrado). Las reglas quedan en `askAll`.
+  if (!scan && !canScan()) return accept(dir) // sin escáner en esta superficie: no hay revisión que hacer (como antes)
+  if (!scan) return showDialog({ dir, scan: null, items: [], again: !!prev, wasTrusted: true, scanning: false, unreviewed: true })
   if (prev && prev.huella === scan.huella) return accept(dir)
   // Confianza vieja sin huella (versión anterior) o huella distinta: solo repregunta si hay algo NUEVO que valga la pena ver.
   const seen = new Set(prev?.ids ?? [])
   const risky = scan.items.filter((i) => i.risky)
   const toShow = prev ? risky.filter((i) => !seen.has(i.id)) : risky
+  if (!scan.complete && toShow.length === 0) {
+    // Revisión incompleta (plazo, tope) y distinta de lo aprobado: lo que faltó por mirar podría ser lo nuevo. No se guarda en silencio.
+    return showDialog({ dir, scan, items: [], again: !!prev, wasTrusted: true, scanning: false, unreviewed: true })
+  }
   if (toShow.length === 0) {
     // Nada nuevo que importe (o primera huella de una carpeta vieja sin nada riesgoso): se guarda en silencio.
     useCode.getState().trustFolder(dir, scanToTrustedScan(scan))
@@ -229,16 +244,28 @@ export async function openProjectTrusted(dir: string, opts: { passive?: boolean;
   return true
 }
 
+let restoring: Promise<void> | null = null
+
 /**
  * Arranque: la carpeta que tenía el foco al cerrar la app (`restoredFocus`) pasa por el MISMO escaneo y la MISMA decisión de confianza que
- * cualquier otra ANTES de ser el foco. Hasta entonces `directory` es `null` y ninguna parte de la interfaz habla con el motor con esa carpeta
- * (el motor arranca los conectores del proyecto en cuanto carga la carpeta; no hay forma de pedírselo sin que lo haga).
- * Si la persona no la acepta (o no confía), la carpeta se cierra: no queda ni abierta ni con foco.
+ * cualquier otra ANTES de ser el foco. Mientras tanto `directory` es `null` y `restoredFocus` sigue puesto: Code muestra «revisando» (sin
+ * selector de recientes) y los componentes que piden al motor con `directory` (compositor, paneles) no se activan.
+ * El motor carga la carpeta (complementos con cualquier petición, conectores con `command.list`/`GET /mcp`) en cuanto algo le pide con ella.
+ * Si la persona no la acepta, o la carpeta no era de confianza, se cierra. Se puede llamar varias veces (reconexión): comparte la misma espera.
  */
-export async function restoreFocusedProject(): Promise<void> {
+export function restoreFocusedProject(): Promise<void> {
+  if (restoring) return restoring
   const dir = useCode.getState().restoredFocus
-  if (!dir) return
-  useCode.setState({ restoredFocus: null })
-  const ok = await openProjectTrusted(dir, { passive: true })
-  if (!ok) useCode.getState().closeOneProject(dir)
+  if (!dir) return Promise.resolve()
+  restoring = (async () => {
+    try {
+      const ok = await openProjectTrusted(dir, { passive: true })
+      if (!ok) useCode.getState().closeOneProject(dir)
+    } finally {
+      restoring = null
+      const st = useCode.getState()
+      if (st.restoredFocus && dirId(st.restoredFocus) === dirId(dir)) useCode.setState({ restoredFocus: null })
+    }
+  })()
+  return restoring
 }
