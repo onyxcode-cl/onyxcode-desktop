@@ -192,9 +192,40 @@ describe('ayudante general en Code (W-A3, D5=A)', () => {
     expect(general().read).toEqual({ '*': 'allow', '*.env': 'ask', '*.env.*': 'ask', '*.env.example': 'allow', 'mcp:*': 'ask' })
   })
 
+  it('pregunta en todo lo no listado (conectores), conserva lo que el motor daba (explorar allow; question/plan_* deny; doom_loop ask)', () => {
+    const p = general()
+    expect(p['*']).toBe('ask')
+    expect(Object.keys(p)[0]).toBe('*')
+    for (const k of ['glob', 'grep', 'list', 'lsp', 'skill', 'todowrite', 'execute']) expect(p[k], k).toBe('allow')
+    expect([p.question, p.plan_enter, p.plan_exit, p.doom_loop]).toEqual(['deny', 'deny', 'deny', 'ask'])
+  })
+
+  it('re-afirma AL FINAL todo deny de la app: con o sin guion bajo, comodines, alias `<clave> *` y mapas por patrón; los ask/allow no', () => {
+    const perm = {
+      'x_*': 'ask',
+      'x_secreto *': 'deny',
+      '*delete* *': 'deny',
+      '*start*': 'deny',
+      bash: 'deny',
+      y_mapa: { '*': 'deny', 'a/*': 'allow' },
+      z_ok: 'allow'
+    }
+    const p = (buildInlineConfig({ permission: perm }) as { agent: { general: { permission: Record<string, unknown> } } }).agent.general
+      .permission
+    const claves = Object.keys(p)
+    expect(claves.slice(-4)).toEqual(['x_secreto *', '*delete* *', '*start*', 'y_mapa'])
+    expect(p.bash).toBe('deny') // una clave que ya existía conserva su sitio, con el valor deny
+    expect(p['*delete* *']).toBe('deny')
+    expect(p['*start*']).toBe('deny')
+    expect(p.y_mapa).toEqual({ '*': 'deny' })
+    expect(p).not.toHaveProperty('z_ok')
+    expect(p['x_*']).toBeUndefined()
+  })
+
   it('no hay ningún `allow` fuera de `read` ni se tocan otros agentes nativos (explore, plan, build)', () => {
     const p = general()
-    for (const [k, v] of Object.entries(p)) if (k !== 'read') expect(v, k).not.toBe('allow')
+    const exploracion = ['glob', 'grep', 'list', 'lsp', 'skill', 'todowrite', 'execute']
+    for (const [k, v] of Object.entries(p)) if (k !== 'read' && !exploracion.includes(k)) expect(v, k).not.toBe('allow')
     const agents = (buildInlineConfig() as { agent: Record<string, unknown> }).agent
     for (const nombre of ['explore', 'plan', 'build', 'lazunox-helper']) expect(agents).not.toHaveProperty(nombre)
   })

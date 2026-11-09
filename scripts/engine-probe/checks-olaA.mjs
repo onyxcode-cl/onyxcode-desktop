@@ -72,6 +72,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       ...(await tsModule('src/main/opencode/config.ts')),
       ...(await tsModule('src/main/opencode/subagent-guard.ts')),
       ...(await tsModule('src/main/opencode/code-mcp-permission.ts')),
+      ...(await tsModule('src/shared/permission-rules.ts')),
       ...(await tsModule('src/shared/shell-bg-permissions.ts')),
       ...(await tsModule('src/shared/documents-permissions.ts')),
       ...(await tsModule('src/renderer/src/features/code/impl/permission-rules.ts'))
@@ -91,12 +92,12 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
 
   // ── 1. `general` desde Code (W-A3, D5=A: `general` declara «preguntar» y el guardián lo deja pasar) ─────────────────────────────────
   // Config inline como la de la app: bloque `agent` real + `permission` de bgshell y documentos (server.ts: `codeMcpPermission`).
-  const configReal = (m) => {
+  const configReal = (m, extra = {}) => {
     const permission = m.buildCodeMcpPermission({
-      servers: [],
-      trusted: [],
+      servers: extra.servers ?? [],
+      trusted: extra.trusted ?? [],
       internal: [],
-      base: {},
+      base: extra.base ?? {},
       fixed: { ...m.bgshellConfigPermission(), ...m.documentsConfigPermission() },
       fixedServers: [m.SHELL_BG_SERVER, m.DOCUMENTS_SERVER]
     })
@@ -108,10 +109,12 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     config: { name: 'write', args: { filePath: 'opencode.json', content: '{}' }, archivo: 'opencode.json', permiso: 'write' },
     git: { name: 'write', args: { filePath: '.git/config', content: '[core]\n' }, archivo: null, permiso: 'write' },
     opencode: { name: 'write', args: { filePath: '.opencode/x.md', content: 'x' }, archivo: '.opencode/x.md', permiso: 'write' },
-    shell: { name: 'bash', args: { command: 'echo hola > y.txt', description: 'escribe y.txt' }, archivo: 'y.txt', permiso: 'bash' }
+    shell: { name: 'bash', args: { command: 'echo hola > y.txt', description: 'escribe y.txt' }, archivo: 'y.txt', permiso: 'bash' },
+    // Conector de la carpeta (Fallo 2 de las pruebas en Mac): herramienta del conector `prueba` que declara el opencode.json del proyecto.
+    conector: { name: 'prueba_start', args: { command: 'a' }, archivo: null, permiso: 'prueba_start' }
   }
   /** Lanza `task general` desde un padre `build` con las reglas de sesión de `modo`; la hija hace `accion`. Contesta `respuesta` a lo que pregunte. */
-  const hija = async (modo, accion, respuesta, agente = 'build') => {
+  const hija = async (modo, accion, respuesta, agente = 'build', carpeta = null, extra = null) => {
     const m = await reales()
     const a = ACCIONES[accion]
     const preguntas = []
@@ -120,8 +123,23 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
       agentsDir,
       git: true,
       plugins: { 'lazunox-subagent-guard.js': m.subagentGuardPluginSource() },
-      inline: configReal(m),
-      sessionBody: { permission: m.rulesetFor(modo) },
+      inline: configReal(m, extra ?? {}),
+      // `carpeta`: carpeta con conector (como el escaneo de W-A2): `<conector>_*: ask` delante del bloque del modo, en la sesión del PADRE.
+      ...(carpeta
+        ? {
+            projectFiles: {
+              'opencode.json': JSON.stringify({
+                mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } },
+                // `extra.base` = deny de la config de la app/global (el motor también los carga); `extra.proyecto` = deny SOLO del opencode.json del proyecto.
+                ...(extra?.base || extra?.proyecto ? { permission: { ...extra.base, ...extra.proyecto } } : {})
+              })
+            },
+            pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000)
+          }
+        : {}),
+      sessionBody: {
+        permission: m.rulesetFor(modo, undefined, carpeta && !extra ? [{ permission: 'prueba_*', pattern: '*', action: 'ask' }] : [])
+      },
       decide: ({ tools, toolTexts, userTexts }) => {
         if (toolTexts.length) return null
         const u = userTexts.at(-1)
@@ -201,6 +219,79 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     })
   }
 
+  // Fallo 2 (pruebas en Mac): carpeta CON conectores. El padre tiene `prueba_*: ask` en su sesión (la hija no lo hereda); `general` debe pasar el guardián
+  // y la herramienta del conector debe PREGUNTAR en la sesión hija (nunca ejecutarse sola). Rechazada, no corre.
+  for (const modo of ['manual', 'acceptEdits', 'auto', 'bypass']) {
+    checkRun(
+      `olaA 1b (${modo}, carpeta con conector): task general PASA el guardián y la herramienta del conector PREGUNTA en la sesión hija`,
+      async () => {
+        const x = await hija(modo, 'conector', (p) => (p.permission === 'task' ? 'once' : 'reject'), 'build', true)
+        if (x.tp.status !== 'completed' && /bloqueado por Lazunox/.test(x.tp.output))
+          noSeReproduce(`el guardián bloqueó a general: ${resumen(x.tp)}`)
+        const q = x.preguntas.filter((p) => p.permission === 'prueba_start')
+        if (q.length !== 1)
+          noSeReproduce(
+            `se esperaba UNA pregunta por prueba_start de la hija y hubo ${q.length}: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`
+          )
+        if (!x.http.hijas.includes(q[0].sessionID) || q[0].sessionID === x.http.padre)
+          noSeReproduce(`la pregunta no es de la sesión HIJA: ${corto(q)}`)
+        confirmado(`pasa; prueba_start pregunta en la sesión hija ${q[0].sessionID}; rechazada, no se ejecuta`)
+        return true
+      }
+    )
+  }
+  // H1 (revisión independiente): un `deny` con comodín SIN guion bajo (`*start*`, en la config de la app Y en el opencode.json del proyecto) sobre un conector
+  // de confianza («Sin preguntar en Code»). El padre no tiene `prueba_start`; la hija tampoco debe tenerla NI poder pedirla (ninguna pregunta por ella).
+  for (const modo of ['manual', 'bypass']) {
+    checkRun(
+      `olaA 1c (${modo}): \`*start*: deny\` sobre un conector de confianza: la hija NO obtiene prueba_start ni puede pedirla`,
+      async () => {
+        const m = await reales()
+        const x = await hija(modo, 'conector', (p) => (p.permission === 'task' ? 'once' : 'reject'), 'build', true, {
+          servers: ['prueba'],
+          trusted: ['prueba'],
+          base: { '*start*': 'deny' }
+        })
+        void m
+        const q = x.preguntas.filter((p) => p.permission === 'prueba_start')
+        if (q.length) noSeReproduce(`la hija pudo PEDIR prueba_start pese al deny: ${corto(x.preguntas)}`)
+        confirmado(`sin pregunta por prueba_start (task=${resumen(x.tp)})`)
+        return true
+      }
+    )
+  }
+
+  // Un `deny` con comodín que SOLO está en el opencode.json del proyecto (la app no lo conoce): la hija lo recibe tapado por el `'*': ask` de `general`
+  // y el guardián tiene que BLOQUEAR el lanzamiento (falla cerrado). Se anota como residual en SEGURIDAD.md.
+  checkRun(
+    'olaA 1c (proyecto): `*start*: deny` solo en el opencode.json del proyecto → el guardián BLOQUEA a general (falla cerrado)',
+    async () => {
+      const x = await hija('manual', 'conector', (p) => (p.permission === 'task' ? 'once' : 'reject'), 'build', true, {
+        servers: ['prueba'],
+        trusted: ['prueba'],
+        proyecto: { '*start*': 'deny' }
+      })
+      if (
+        x.tp.status === 'error' &&
+        /bloqueado por Lazunox/.test(x.tp.output) &&
+        !x.preguntas.some((p) => p.permission === 'prueba_start')
+      ) {
+        confirmado(`bloqueado (${resumen(x.tp)})`)
+        return true
+      }
+      noSeReproduce(`se esperaba bloqueo del guardián: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`)
+    }
+  )
+
+  checkRun('olaA 1b (plan, carpeta con conector): Solo explorar sigue BLOQUEANDO a general', async () => {
+    const x = await hija('plan', 'conector', () => 'reject', 'build', true)
+    if (x.tp.status === 'error' && !x.preguntas.length) {
+      confirmado(`bloqueado (${resumen(x.tp)})`)
+      return true
+    }
+    noSeReproduce(`se esperaba bloqueo: task=${resumen(x.tp)}; preguntas=${corto(x.preguntas)}`)
+  })
+
   // «Solo explorar» (sesión con el bloque plan) sigue sin dejar trabajar a `general`: aquí lo para la regla `task general deny` del propio bloque
   // (permission-rules.ts); el guardián, por su parte, deja pasar la sesión porque la hija heredaría el `edit deny` (el motor copia los deny).
   checkRun('olaA 1 (plan, Solo explorar): task general sigue BLOQUEADO (regla task general deny) y no escribe nada', async () => {
@@ -274,6 +365,126 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     }
     noSeReproduce(`prueba_start=${tp.status}, preguntas=${corto(r.asked)}`)
   })
+
+  // Fallo de W-A2 (hallado por la revisión): en el PADRE, la regla de sesión `<conector>_*: ask` va DESPUÉS de los permisos de la config y tapaba lo que la config
+  // NIEGA (la dejaba en «preguntar»; con «una vez» se ejecutaba). Ahora `projectAskRules` manda DESPUÉS de los `ask` las reglas que niegan (`sessionConfigRules`).
+  // Aquí con las reglas reales (`configRulesOf` del escaneo → `projectAskRules` → `rulesetFor`) y el motor real; la config de la persona va en el `opencode.json` de la
+  // carpeta y la inline lleva lo fijo de la app (bgshell/documentos), como en producción. Sin nada que niegue, todo sigue preguntando.
+  const padreCon = async (modo, userCfg, tool = 'prueba_start', extra = {}) => {
+    const m = await reales()
+    const reglas = m.configRulesOf(userCfg)
+    // Reglas «globales» que ve la app (config del usuario/archivo de la app); el motor las ve en la config inline (`extra.inline`), que se fusiona DESPUÉS del opencode.json.
+    m.setGlobalConfigRules(extra.globalCfg ? m.configRulesOf(extra.globalCfg) : [])
+    const ask = m.projectAskRules(
+      { servers: [{ name: 'prueba', key: 'prueba_*', overrides: false }], askAll: false, config: reglas },
+      [],
+      'build'
+    )
+    const cmd = { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] }
+    const r = await motor({
+      agent: 'build',
+      projectFiles: { 'opencode.json': JSON.stringify({ mcp: { prueba: cmd, bgshell: cmd }, ...userCfg }) },
+      inline: { permission: { ...m.bgshellConfigPermission(), ...m.documentsConfigPermission(), ...(extra.inlinePerm ?? {}) } },
+      sessionBody: { permission: m.rulesetFor(modo, undefined, ask) },
+      pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).bgshell?.status === 'connected', 20_000),
+      call: { name: tool, args: { command: 'a' } }
+    })
+    const tp = r.toolParts.find((p) => p.tool === tool)
+    return {
+      ofrecida: r.toolsOffered.includes(tool),
+      ejecutada: tp?.status === 'completed',
+      preguntas: r.asked.filter((a) => a.permission === tool)
+    }
+  }
+  const CASOS_DENY = [
+    ['prueba_start: deny', { permission: { prueba_start: 'deny' } }],
+    ['*start*: deny (comodín sin guion bajo)', { permission: { '*start*': 'deny' } }],
+    ['"*": "deny" (G1)', { permission: { '*': 'deny' } }],
+    ['permission: "deny" (G1)', { permission: 'deny' }],
+    ['agent.build.permission: prueba_start deny (G2)', { agent: { build: { permission: { prueba_start: 'deny' } } } }]
+  ]
+  for (const modo of ['manual', 'bypass']) {
+    for (const [etiqueta, cfg] of CASOS_DENY) {
+      checkRun(
+        `olaA 1d (${modo}): \`${etiqueta}\` en la config + \`prueba_*: ask\` de W-A2 en la sesión del PADRE: el deny SIGUE valiendo`,
+        async () => {
+          const x = await padreCon(modo, cfg)
+          if (x.ofrecida || x.preguntas.length || x.ejecutada)
+            noSeReproduce(`el deny quedó en «preguntar»: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`)
+          confirmado('prueba_start no se ofrece ni pregunta ni se ejecuta')
+          return true
+        }
+      )
+    }
+    // «Negar todo menos X» (decisión de diseño, falla cerrado): cualquier deny gana, así que X también queda denegada (más estricto que el motor, nunca más laxo).
+    checkRun(
+      `olaA 1d (${modo}): «negar todo menos» (prueba_*: deny + prueba_start: allow): TAMBIÉN prueba_start queda denegada (más estricto que el motor)`,
+      async () => {
+        for (const tool of ['prueba_start', 'prueba_secret']) {
+          const x = await padreCon(modo, { permission: { 'prueba_*': 'deny', prueba_start: 'allow' } }, tool)
+          if (x.ofrecida || x.preguntas.length || x.ejecutada)
+            noSeReproduce(
+              `${tool} debía quedar denegada: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`
+            )
+        }
+        confirmado('prueba_start y prueba_secret denegadas')
+        return true
+      }
+    )
+    // N1 (revisión de la ronda 2): dos fuentes que se contradicen. El motor fusiona POR CLAVE y solo niega prueba_start; con lo anterior (re-emitir un ask tras un deny) la
+    // app lo dejaba en «preguntar». Aquí: opencode.json {prueba_*: deny, prueba_start: allow} y config inline (se fusiona después) {prueba_start: deny, prueba_*: allow}.
+    checkRun(`olaA 1d (${modo}): N1 fuentes contradictorias (deny en una, allow en la otra): prueba_start SIGUE denegada`, async () => {
+      const x = await padreCon(modo, { permission: { 'prueba_*': 'deny', prueba_start: 'allow' } }, 'prueba_start', {
+        inlinePerm: { prueba_start: 'deny', 'prueba_*': 'allow' },
+        globalCfg: { permission: { prueba_start: 'deny', 'prueba_*': 'allow' } }
+      })
+      if (x.ofrecida || x.preguntas.length || x.ejecutada)
+        noSeReproduce(
+          `prueba_start debía quedar denegada: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`
+        )
+      confirmado('prueba_start no se ofrece ni pregunta ni se ejecuta')
+      return true
+    })
+    // N2: un `*: deny` del usuario también apaga lo que la config inline de la app abre (p. ej. un conector «Sin preguntar en Code»: `prueba_*: allow`): es lo que el usuario pidió.
+    checkRun(
+      `olaA 1d (${modo}): N2 \`*: deny\` del usuario apaga también lo que la config inline de la app abría (conector de confianza)`,
+      async () => {
+        const x = await padreCon(modo, { permission: { '*': 'deny' } }, 'prueba_start', { inlinePerm: { 'prueba_*': 'allow' } })
+        if (x.ofrecida || x.preguntas.length || x.ejecutada)
+          noSeReproduce(`debía quedar denegada: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`)
+        confirmado('denegada (consecuencia aceptada y documentada)')
+        return true
+      }
+    )
+    // M5 (herramientas propias de la app): un deny amplio del usuario NO deja denegada a `bgshell_start`: sus reglas de sesión mandan como antes (manual: pregunta; bypass: pasa).
+    checkRun(
+      `olaA 1d (${modo}): \`*start*: deny\` y \`*_*: deny\` del usuario no deniegan bgshell_start de la app (igual que sin esas reglas)`,
+      async () => {
+        for (const cfg of [{ permission: { '*start*': 'deny' } }, { permission: { '*_*': 'deny' } }]) {
+          const x = await padreCon(modo, cfg, 'bgshell_start')
+          const esperadoPregunta = modo === 'manual' ? 1 : 0
+          if (!x.ofrecida || x.preguntas.length !== esperadoPregunta || (modo === 'bypass' && !x.ejecutada))
+            noSeReproduce(
+              `${JSON.stringify(cfg)}: bgshell_start ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`
+            )
+        }
+        confirmado(`bgshell_start sigue ${modo === 'manual' ? 'preguntando una vez' : 'pasando'} con esos deny`)
+        return true
+      }
+    )
+  }
+  checkRun(
+    'olaA 1d (control): sin deny, `prueba_*: ask` de W-A2 sigue haciendo que prueba_start PREGUNTE en manual y en bypass',
+    async () => {
+      for (const modo of ['manual', 'bypass']) {
+        const x = await padreCon(modo, {})
+        if (!x.ofrecida || x.preguntas.length !== 1)
+          noSeReproduce(`${modo}: se esperaba UNA pregunta; ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}`)
+      }
+      confirmado('pregunta una vez en ambos modos, como antes')
+      return true
+    }
+  )
 
   // ── 4. R4: web en el bloque «plan» ───────────────────────────────────────────────────────────────────────────────
   checkRun(

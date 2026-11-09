@@ -23,6 +23,7 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import type { ProjectScanItem, ProjectScanKind, ProjectScanReason, ProjectScanResult } from '@shared/ipc-code'
 import { MCP_NAME_RE } from '@shared/catalogo'
 import { mcpServerPermissionKey } from '@shared/mcp-permissions'
+import { configRulesOf, type ConfigRule } from '@shared/permission-rules'
 import { stripJsonc } from '../opencode/code-mcp-permission'
 
 /** Tope de bytes de un archivo JSON/JSONC que se interpreta. */
@@ -213,6 +214,8 @@ async function listDir(dir: string): Promise<{ names: string[]; more: boolean } 
 class Scan {
   readonly items: ProjectScanItem[] = []
   readonly instructionFiles: ProjectScanResult['instructionFiles'] = []
+  /** Reglas de permiso de los `opencode.json` leídos (dato no confiable: Code solo re-emite los `deny` y los `allow` posteriores como `ask`; topes). */
+  readonly configRules: ConfigRule[] = []
   readonly budget: HashBudget
   complete = true
   /** Tras devolver el resultado por plazo, lo que siga corriendo ya no añade nada. */
@@ -386,6 +389,8 @@ class Scan {
         this.add({ kind: 'provider', name: k, detail: hostOf(base), where, risky: true, digest: sha(base) })
       }
     }
+    // Reglas de permiso de esta config (todas las acciones y las de `agent.build|plan`): Code las usa para endurecer (ver `configRules`).
+    if (!this.closed && this.configRules.length < 400) this.configRules.push(...configRulesOf(o).slice(0, 400 - this.configRules.length))
     // Reglas de permiso que abren (`allow`)
     if (o.permission !== undefined) {
       const p = o.permission
@@ -655,7 +660,13 @@ export async function scanProjectConfig(dir: string, opts: ScanOptions = {}): Pr
   }
   const items = scan.items.slice().sort(byId)
   const huella = sha(`${scan.complete ? 'c' : 'i'}\n${items.map((i) => i.id).join('\n')}`)
-  return { items, huella, complete: scan.complete, instructionFiles: scan.instructionFiles }
+  return {
+    items,
+    huella,
+    complete: scan.complete,
+    instructionFiles: scan.instructionFiles,
+    configRules: scan.configRules
+  }
 }
 
 export type { ProjectScanItem, ProjectScanKind, ProjectScanResult }

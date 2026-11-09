@@ -207,7 +207,11 @@ describe('config global (~/.config/opencode)', () => {
   })
 
   it('sin carpeta: vacío', () => {
-    expect(readGlobalOpencodeConfig({ XDG_CONFIG_HOME: join(tmpdir(), 'no-existe-lazunox-xyz') })).toEqual({ servers: [], permission: {} })
+    expect(readGlobalOpencodeConfig({ XDG_CONFIG_HOME: join(tmpdir(), 'no-existe-lazunox-xyz') })).toEqual({
+      servers: [],
+      permission: {},
+      rules: []
+    })
   })
 })
 

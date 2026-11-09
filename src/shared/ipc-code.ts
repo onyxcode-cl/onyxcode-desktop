@@ -166,6 +166,14 @@ export interface ProjectScanResult {
   complete: boolean
   /** `AGENTS.md`/`CLAUDE.md` que el motor lee (solo tamaños; para el aviso de W-A8). */
   instructionFiles: Array<{ name: string; bytes: number; where: string }>
+  /**
+   * Reglas de permiso (todas las acciones, en su orden; `agent` si vienen de `agent.<build|plan>.permission`) del `opencode.json` de la carpeta y de las
+   * superiores que el motor lee. Code las usa para mandar DESPUÉS de las reglas `<conector>_*: ask` de la sesión lo que la config niega (gana la última
+   * regla que coincide y un `ask` de sesión taparía un `deny` de la config). Ausente = ninguna.
+   */
+  configRules?: Array<{ permission: string; pattern: string; action: 'allow' | 'ask' | 'deny'; agent?: 'build' | 'plan' }>
+  /** Lo mismo de la config global del usuario y del archivo de conectores de la app (las pone `project:scan` en main; valen para cualquier carpeta). */
+  globalConfigRules?: Array<{ permission: string; pattern: string; action: 'allow' | 'ask' | 'deny'; agent?: 'build' | 'plan' }>
 }
 
 export interface PtyCreateRequest {
@@ -543,7 +551,7 @@ export interface CodeInvokeContract {
   /** Abre Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas (solo macOS). */
   'dialog:openFolderPrivacy': { req: { pane?: FolderPrivacyPane } | undefined; res: void }
   /** Lista lo que trae la carpeta (conectores, complementos, ayudantes…) SOLO leyendo archivos; no toca el motor. */
-  'project:scan': { req: { path: string }; res: ProjectScanResult }
+  'project:scan': { req: { path: string; rulesOnly?: boolean }; res: ProjectScanResult }
   /** SOLO tras un clic: borra la decisión de privacidad de Lazunox para la zona de esa carpeta (`tccutil reset`, lista fija) para que macOS vuelva a preguntar. */
   'dialog:resetFolderPermission': { req: { path: string; scope?: FolderResetScope }; res: { result: FolderResetResult } }
 
@@ -644,7 +652,7 @@ export interface CodeApi {
     resetFolderPermission(path: string, scope?: FolderResetScope): Promise<{ result: FolderResetResult }>
   }
   project: {
-    scan(path: string): Promise<ProjectScanResult>
+    scan(path: string, rulesOnly?: boolean): Promise<ProjectScanResult>
   }
   files: {
     watch(folder: string, subId: string): Promise<{ mode: FilesWatchMode }>
