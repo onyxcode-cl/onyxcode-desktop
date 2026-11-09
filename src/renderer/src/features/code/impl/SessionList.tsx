@@ -240,7 +240,12 @@ export function SessionRow({
             const store = useCode.getState()
             // Sesión de un grupo que no tiene el foco: primero le da el foco, luego la abre (si no, quedaría
             // seleccionada una sesión de otro proyecto mientras el resto de la interfaz sigue mostrando el anterior).
-            if (!sameDir(store.directory ?? '', directory)) void store.focusProject(directory).then(() => selectSession(session.id))
+            if (!sameDir(store.directory ?? '', directory))
+              void store.focusProject(directory).then(() => {
+                // Solo si la carpeta quedó con el foco (una sin confianza o en verificación no lo recibe).
+                const st = useCode.getState()
+                if (st.directory && sameDir(st.directory, directory)) void selectSession(session.id)
+              })
             else void selectSession(session.id)
           }}
           onDoubleClick={() => setEditing(true)}
@@ -625,7 +630,16 @@ function ProjectGroup({
   // mientras la sesión activa pertenece a otro).
   const focusThen = (fn: () => void): void => {
     if (focused) fn()
-    else void useCode.getState().focusProject(directory).then(fn)
+    else
+      void useCode
+        .getState()
+        .focusProject(directory)
+        .then(() => {
+          // `focusProject` no da el foco a una carpeta sin confianza o que aún se verifica (diálogo en pantalla, o cancelado): sin foco no se
+          // actúa (crear o buscar aquí haría que el motor cargara la carpeta antes de que la persona decida).
+          const st = useCode.getState()
+          if (st.directory && sameDir(st.directory, directory)) fn()
+        })
   }
 
   return (

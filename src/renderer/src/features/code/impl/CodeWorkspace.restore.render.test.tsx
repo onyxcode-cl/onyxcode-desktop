@@ -29,6 +29,7 @@ import { useLang } from '../../../lib/i18n'
 import { useServer } from '../../../stores/server'
 import { useSettings } from '../../../stores/settings'
 import { CodeWorkspace } from './CodeWorkspace'
+import { SessionList } from './SessionList'
 import { CONFIRM_DELAY_MS, resolveTrust } from './trust'
 import { useCode } from './store'
 
@@ -108,5 +109,41 @@ describe('CodeWorkspace con la carpeta restaurada pendiente', () => {
     expect(host.textContent).not.toContain('Revisando la carpeta')
     expect(host.textContent).toContain('ajena-sin-confianza') // el selector SÍ se pintó
     expect(withDir()).toEqual([])
+  })
+
+  it('«+» de la barra en el grupo de la carpeta pendiente: no crea sesión ni llama al motor, ni durante el diálogo ni tras Cancelar', async () => {
+    useServer.setState({ client: fakeClient() } as never)
+    await act(async () => root.render(createElement('div', null, createElement(SessionList), createElement(CodeWorkspace))))
+    await flush()
+    const plus = host.querySelector('[data-testid="project-new-session"]') as HTMLButtonElement
+    expect(plus).toBeTruthy()
+    await act(async () => void plus.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })))
+    await flush()
+    await flush()
+    expect(host.textContent).toContain('Esta carpeta trae algo nuevo')
+    expect(withDir()).toEqual([])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(CONFIRM_DELAY_MS + 50)))
+    await act(async () => resolveTrust(false))
+    await flush()
+    await flush()
+    expect(useCode.getState().openDirectories).toEqual([])
+    expect(withDir()).toEqual([])
+  })
+
+  it('«+» en una carpeta abierta SIN confianza (diálogo en pantalla): no crea la sesión al instante', async () => {
+    useCode.setState({
+      directory: '/work/otra',
+      restoredFocus: null,
+      openDirectories: ['/work/otra', F],
+      trustedFolders: ['/work/otra']
+    } as never)
+    useServer.setState({ client: fakeClient() } as never)
+    await act(async () => root.render(createElement('div', null, createElement(SessionList))))
+    await flush()
+    const plusF = [...host.querySelectorAll('[data-testid="project-new-session"]')].at(-1) as HTMLButtonElement
+    await act(async () => void plusF.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })))
+    await flush()
+    await flush()
+    expect(withDir().filter((c) => c.includes(F))).toEqual([])
   })
 })

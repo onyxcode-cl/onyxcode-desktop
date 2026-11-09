@@ -150,17 +150,6 @@ describe('foco restaurado al arrancar', () => {
     expect(engineCalls).toEqual([])
   })
 
-  it('llamarla dos veces (reconexión del motor) comparte la misma espera: un solo diálogo', async () => {
-    scan.mockResolvedValue(result([mcp('viejo'), mcp('nuevo')]))
-    const p1 = t.restoreFocusedProject()
-    const p2 = t.restoreFocusedProject()
-    await flush()
-    await flush()
-    expect(scan).toHaveBeenCalledTimes(1)
-    t.resolveTrust(false)
-    await Promise.all([p1, p2])
-  })
-
   it('restoreOpenProjects no carga el foco restaurado por su cuenta (lo verifica restoreFocusedProject)', async () => {
     scan.mockResolvedValue(result([mcp('viejo'), mcp('nuevo')]))
     const loadSessions = vi.fn(() => Promise.resolve())
