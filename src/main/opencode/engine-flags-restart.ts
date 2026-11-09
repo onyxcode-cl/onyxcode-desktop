@@ -22,6 +22,7 @@ import { engineExperimentsFor, engineFlagEnvFor, engineFlagEnvForMainSidecar } f
 import { engineLimitEnvFor } from '@shared/engine-limits'
 import { permissionPersistEnvFor } from '@shared/permission-persist'
 import { userHooksEnvFor } from '@shared/user-hooks'
+import { recentWorkKeys, workKey } from '../code/work-registry'
 import { engineLastMileEnv } from './engine-lastmile'
 import type { OpencodeConnection, ServerStatus, Settings } from '@shared/types'
 
@@ -160,7 +161,7 @@ async function discoverSessions(baseUrl: string, authorization: string): Promise
 }
 
 /** Misma carpeta aunque difieran las mayúsculas, el separador o la barra final (Windows y macOS no distinguen mayúsculas). */
-const dirKey = (d: string): string => d.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+const dirKey = (d: string): string => workKey(d)
 
 /**
  * Consulta real a `GET /session/status?directory=…` SOLO de las carpetas dadas; cualquier fallo = no ocioso. El mapa de estados es por
@@ -181,6 +182,9 @@ export async function fetchSessionsIdle(
 ): Promise<boolean> {
   try {
     const allowed = new Set(directories.map(dirKey))
+    // Trabajo que Rutinas, Telegram, el celular o Comparar mandaron hace poco a una carpeta que no se consulta: se ve en el registro de `main`
+    // (un comando largo no mueve `time.updated`, pero el servicio sí anotó que mandó el turno).
+    for (const k of recentWorkKeys(now)) if (!allowed.has(k)) return false
     for (const k of await discoverSessions(baseUrl, authorization)) {
       if (allowed.has(dirKey(k.directory))) continue // esas se consultan abajo, con su estado real
       if (k.updated !== undefined && now() - k.updated < RECENT_WORK_MS) return false

@@ -69,6 +69,7 @@ export function registerTelegramHandlers(ipcMain: IpcMain, deps: { server: Openc
       }
       return out
     },
+    isCodeDirLive: (dir) => getLiveFolders().some((f) => f.replace(/[\\/]+$/, '') === dir.replace(/[\\/]+$/, '')),
     modelFor: (kind) => extrasPrefs.get().modelsByMode[kind] ?? settingsStore.get().defaultModel,
     // Desde dónde se puede mandar un archivo: Code, SOLO la carpeta del proyecto de esa sesión; Chat, su carpeta y la de documentos.
     fileRoots: (s) => (s.kind === 'chat' ? [deps.chatDirectory, chatDocsRoot()] : [s.directory]),

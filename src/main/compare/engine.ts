@@ -2,6 +2,7 @@
  * Cliente mínimo del motor para las comparaciones (SDK v2 del `opencode serve` principal). La interfaz permite
  * un motor falso en las pruebas; `createSdkEngine` la implementa con `@opencode-ai/sdk/v2/client`.
  */
+import { noteWork } from '../code/work-registry'
 import { createOpencodeClient, type PermissionRuleset } from '@opencode-ai/sdk/v2/client'
 import type { ComparePermissionMode } from '@shared/ipc-code'
 import { rulesetForMode } from '@shared/permission-rules'
@@ -80,6 +81,7 @@ export function createSdkEngine(conn: { baseUrl: string; authorization: string }
       return (data as { id: string }).id
     },
     async prompt(a) {
+      noteWork(a.directory)
       ok(
         await client.session.promptAsync({
           sessionID: a.sessionID,

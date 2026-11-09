@@ -23,6 +23,7 @@ export type RemoteHostDeps = Pick<
   | 'startEngine'
   | 'getConnection'
   | 'getRecentFolders'
+  | 'getLiveFolders'
   | 'modelFor'
   | 'onChanged'
   | 'onPairRequest'

@@ -3,7 +3,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '@shared/i18n'
 import { rulesetForMode } from '@shared/permission-rules'
 import { permissionModeOf } from './engine-link'
@@ -431,6 +431,30 @@ describe('reinicios y repeticiones', () => {
     r.tg.sendUser({ chatId: OWNER, text: 'sigamos' })
     await until(() => r.engine.prompts.length === 1)
     expect(r.engine.prompts[0]!.id).toBe('s_chat')
+  })
+
+  it('R2: al reiniciar NO retoma sola una sesión de Code cuya carpeta no está abierta con confianza: no pide nada al motor y la suelta', async () => {
+    let live = true
+    const r = await ready({ codeLive: () => live })
+    seed(r)
+    await pick(r, 'Arreglar el login')
+    expect(r.svc.getState().activeSession).toMatchObject({ kind: 'code' })
+    live = false
+    const spy = vi.spyOn(r.engine, 'getSession')
+    const svc2 = r.restart()
+    await until(() => svc2.getState().phase === 'linked')
+    await settle(300)
+    expect(spy).not.toHaveBeenCalled()
+    expect(r.store.load().active).toBeNull()
+  })
+
+  it('R2: una sesión de Chat sí se retoma aunque no haya carpetas de Code abiertas', async () => {
+    const r = await ready({ codeLive: () => false })
+    seed(r)
+    await pick(r, 'Revisar el informe')
+    const svc2 = r.restart()
+    await until(() => svc2.getState().phase === 'linked')
+    expect(svc2.getState().activeSession).toMatchObject({ title: 'Revisar el informe' })
   })
 
   it('el mismo mensaje de Telegram (repetido tras un reinicio a medio atender) no se envía dos veces', async () => {

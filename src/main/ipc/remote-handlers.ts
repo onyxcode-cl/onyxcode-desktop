@@ -2,6 +2,7 @@
  * Handlers IPC del control remoto (`remote:*`; solo la ventana principal). Son ligeros: con la función apagada
  * no cargan `ws`, `qrcode` ni `node-datachannel` (eso lo hace `remote/loader.ts` al pulsar «Activar»).
  */
+import { getLiveFolders } from '../code/live-folders'
 import { BrowserWindow, Notification, app, dialog, type IpcMain } from 'electron'
 import { DISPLAY_NAME } from '@shared/brand'
 import { askButtons } from '../util/native-dialog'
@@ -149,6 +150,7 @@ export function registerRemoteHandlers(ipcMain: IpcMain, deps: RemoteHandlersDep
     startEngine: () => deps.server.start(),
     getConnection: () => deps.server.getConnection(),
     getRecentFolders: () => settingsStore.get().recentFolders,
+    getLiveFolders,
     modelFor: (kind) => extrasPrefs.get().modelsByMode[kind] ?? settingsStore.get().defaultModel,
     confirmEnableApprove: (info) => confirmEnableApprove(deps, info),
     onChanged: (s) => sendMain(deps, 'remote:changed', s),

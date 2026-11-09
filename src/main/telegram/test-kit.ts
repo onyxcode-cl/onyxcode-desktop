@@ -250,6 +250,8 @@ export async function makeRig(
     sleep?: (ms: number) => Promise<void>
     editFloodMs?: number
     sessionDirs?: { directory: string; kind: 'chat' | 'code' }[]
+    /** ¿La carpeta de Code está abierta con confianza? Por defecto sí (las pruebas anteriores no lo miran). */
+    codeLive?: (directory: string) => boolean
     fileRoots?: (s: { directory: string; kind: 'chat' | 'code' }) => string[]
   } = {}
 ): Promise<Rig> {
@@ -282,6 +284,7 @@ export async function makeRig(
           { directory: '/proj', kind: 'code' }
         ],
       fileRoots: o.fileRoots,
+      isCodeDirLive: o.codeLive ?? (() => true),
       modelFor: () => ({ providerID: 'opencode', modelID: 'por-defecto' }),
       pollTimeoutSec: 1,
       codeGen: o.codeGen,

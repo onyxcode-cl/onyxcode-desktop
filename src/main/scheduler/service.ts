@@ -22,6 +22,7 @@
  *   pone en la bandeja para que la persona decida. Nunca se acumulan.
  * - Bandeja «Resultados por revisar» (`inbox`): cada ejecución terminada deja un elemento para aprobar o descartar.
  */
+import { noteWork } from '../code/work-registry'
 import { getLang, t } from '@shared/i18n'
 import { app, Notification, powerMonitor } from 'electron'
 import { EventEmitter } from 'node:events'
@@ -1008,6 +1009,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
         provs ? { providers: provs.providers as never, default: provs.default } : null
       )
       if (!model) throw new Error(t('merr.routine.noAi'))
+      noteWork(ocDirectory)
       const res = await client.session.promptAsync({
         sessionID,
         directory: ocDirectory,

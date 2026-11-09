@@ -7,6 +7,7 @@
  * principal). Las de Tareas viven en otros motores y nunca se exponen; tampoco las subsesiones ni las marcadas
  * como Tareas. Un id fuera de ese ámbito responde `not-found`.
  */
+import { noteWork } from '../code/work-registry'
 import { existsSync } from 'node:fs'
 import type { OpencodeClient, Session } from '@opencode-ai/sdk/v2/client'
 import { CHAT_AGENT } from '@shared/types'
@@ -118,7 +119,7 @@ export class SidecarBackend implements RemoteBackend, EventSource {
     return (this.d.now ?? Date.now)()
   }
 
-  /** Directorios expuestos: Chat y los proyectos recientes de Code que existen. */
+  /** Directorios expuestos: Chat y los proyectos de Code abiertos con confianza que existen (`getRecentFolders` trae ESAS carpetas, no las recientes). */
   allowedDirs(): Array<{ directory: string; kind: 'chat' | 'code' }> {
     const exists = this.d.dirExists ?? existsSync
     const out: Array<{ directory: string; kind: 'chat' | 'code' }> = [{ directory: this.d.chatDirectory, kind: 'chat' }]
@@ -227,6 +228,7 @@ export class SidecarBackend implements RemoteBackend, EventSource {
     const client = await this.d.getClient()
     const agent = e.kind === 'chat' ? CHAT_AGENT : e.agent === 'plan' ? 'plan' : 'build'
     const model = this.d.modelFor(e.kind)
+    noteWork(e.directory)
     const res = await client.session.promptAsync({
       sessionID: sessionId,
       directory: e.directory,

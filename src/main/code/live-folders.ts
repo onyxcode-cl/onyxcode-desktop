@@ -5,10 +5,16 @@
  * Solo en memoria: al arrancar la app está vacío hasta que el renderer lo informa (falla cerrado: nada que preguntar).
  */
 const MAX_LIVE = 24
+/**
+ * La lista caduca si el renderer no la renueva (latido cada 30 s): si el aviso falla o la ventana deja de responder, no se queda una lista vieja
+ * (carpetas ya cerradas o sin confianza); falla cerrado = vacía.
+ */
+export const LIVE_TTL_MS = 180_000
 let live: string[] = []
+let at = 0
 
 /** Sustituye la lista. Ignora lo que no sea una ruta absoluta de texto razonable. */
-export function setLiveFolders(dirs: unknown): string[] {
+export function setLiveFolders(dirs: unknown, now: () => number = Date.now): string[] {
   const next: string[] = []
   if (Array.isArray(dirs)) {
     for (const d of dirs) {
@@ -19,9 +25,10 @@ export function setLiveFolders(dirs: unknown): string[] {
     }
   }
   live = next
+  at = now()
   return live
 }
 
-export function getLiveFolders(): string[] {
-  return [...live]
+export function getLiveFolders(now: () => number = Date.now): string[] {
+  return now() - at > LIVE_TTL_MS ? [] : [...live]
 }

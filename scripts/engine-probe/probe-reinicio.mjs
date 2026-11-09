@@ -76,13 +76,20 @@ await probe('GET /experimental/session (sin directory)', '/experimental/session?
 await probe('GET /api/session/active (sin directory)', '/api/session/active')
 await probe('GET /session/status (sin directory)', '/session/status')
 await probe('GET /session/status?directory=<reciente>', `/session/status?directory=${encodeURIComponent(dir)}`)
-// El código real de la app: fetchSessionsIdle con la carpeta reciente NO dada (no debe cargarla) y luego dada (sí la consulta, y la carga).
-// Se importa con vite-node (el módulo es TypeScript): `npx vite-node scripts/engine-probe/probe-reinicio.mjs <motor>`.
+// El código real de la app sobre un motor RECIÉN arrancado (la carpeta reciente aún NO está cargada): fetchSessionsIdle con la carpeta no dada
+// no debe cargarla; el control (misma carpeta pedida con directory=) sí la carga en ese mismo motor. Se importa con vite-node:
+// `npx vite-node --config vitest.config.ts scripts/engine-probe/probe-reinicio.mjs <motor>`.
+b.stop()
+await sleep(1000)
+const c = await boot()
 const { fetchSessionsIdle } = await import('../../src/main/opencode/engine-flags-restart.ts')
 rmSync(marker, { force: true })
-const idle1 = await fetchSessionsIdle(b.url, '', [home])
+const idle1 = await fetchSessionsIdle(c.url, '', [home], () => Date.now() + 10 * 60_000) // «ahora» = 10 min después: la sesión de la fase A ya no es reciente
 await sleep(3000)
-out.push(`fetchSessionsIdle(url, [chat]) -> ocioso=${idle1} complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}`)
-b.stop()
+out.push(`motor nuevo: fetchSessionsIdle(url, [chat]) -> ocioso=${idle1} complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}   (esperado: true / no)`)
+await fetch(`${c.url}/session/status?directory=${encodeURIComponent(dir)}`)
+await sleep(3000)
+out.push(`control en ese mismo motor: GET /session/status?directory=<reciente> -> complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}   (esperado: SI)`)
+c.stop()
 console.log(out.join('\n'))
 rmSync(root, { recursive: true, force: true })

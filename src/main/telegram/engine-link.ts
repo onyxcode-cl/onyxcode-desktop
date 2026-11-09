@@ -9,6 +9,7 @@
  * `v2.session.permission.reply` (v2). El motor contesta 404 si ya no está pendiente (lo contestó la pantalla): se informa como
  * `not-found` para que el puente diga «ya respondido en el computador».
  */
+import { noteWork } from '../code/work-registry'
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/v2/client'
 import type { OpencodeConnection } from '@shared/types'
 import { CHAT_AGENT } from '@shared/types'
@@ -511,6 +512,7 @@ export function createEngineLink(deps: EngineLinkDeps): EngineLink {
       let res: { error?: unknown; response?: { status?: number } }
       try {
         const client = await clientOf()
+        noteWork(directory)
         res = (await client.session.promptAsync({
           sessionID: id,
           directory,

@@ -275,7 +275,7 @@ let liveSent = ''
  * Informa a main de las carpetas abiertas con confianza vigente Y verificada en esta ejecución: son las únicas por las que main puede preguntar
  * al motor (p. ej. «¿está ocioso?» antes de reiniciarlo). Preguntar por una carpeta la carga en el motor (complementos y conectores).
  */
-export function syncLiveFolders(): void {
+export function syncLiveFolders(force = false): void {
   if (typeof window === 'undefined') return
   let native: ReturnType<typeof nativeCode> = null
   try {
@@ -288,10 +288,12 @@ export function syncLiveFolders(): void {
   const open = [...s.openDirectories, ...(s.directory ? [s.directory] : [])]
   const dirs = [...new Set(open)].filter((d) => s.isTrusted(d) && isFolderVerified(d)).sort()
   const sig = JSON.stringify(dirs)
-  if (sig === liveSent) return
+  if (!force && sig === liveSent) return
   liveSent = sig
   void Promise.resolve(native.project.setLive(dirs)).catch(() => {
     liveSent = '' // no llegó: se reintenta con el próximo cambio
   })
 }
-useCode.subscribe(syncLiveFolders)
+useCode.subscribe(() => syncLiveFolders())
+// Latido: main descarta la lista si no se renueva (falla cerrado si el aviso se pierde o este proceso deja de responder).
+if (typeof window !== 'undefined') setInterval(() => syncLiveFolders(true), 30_000)
