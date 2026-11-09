@@ -77,8 +77,8 @@ Todas las claves son opcionales. Sin la clave, rige el comportamiento normal de 
 
 Desde la 1.8.12 la app pasa al motor `LAZUNOX_POLICY_FILE` apuntando a un archivo que solo un administrador escribe, y solo si existe:
 
-| Sistema | Ruta |
-|---|---|
+| Sistema | Ruta                                                     |
+| ------- | -------------------------------------------------------- |
 | macOS   | `/Library/Application Support/Lazunox/motor-policy.json` |
 | Windows | `%ProgramData%\Lazunox\motor-policy.json`                |
 
