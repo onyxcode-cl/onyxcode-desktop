@@ -365,29 +365,56 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     noSeReproduce(`prueba_start=${tp.status}, preguntas=${corto(r.asked)}`)
   })
 
-  // Observación de la revisión (W-A2, NO de este arreglo): en el PADRE, la regla de sesión `<conector>_*: ask` va DESPUÉS de los permisos del agente/config, así que
-  // tapa un `deny` de la config para esa herramienta. Esta comprobación es INFORMATIVA: pasa siempre y dice si el problema se reproduce en el motor real.
-  checkRun(
-    'olaA 1d (hallazgo W-A2, informativo): `prueba_start: deny` en la config + `prueba_*: ask` en la sesión del PADRE ¿sigue valiendo el deny?',
-    async () => {
-      const m = await reales()
-      const r = await motor({
-        agent: 'build',
-        projectFiles: {
-          'opencode.json': JSON.stringify({ mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } } })
-        },
-        inline: { permission: { prueba_start: 'deny' } },
-        sessionBody: { permission: m.rulesetFor('manual', undefined, [{ permission: 'prueba_*', pattern: '*', action: 'ask' }]) },
-        pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000),
-        call: { name: 'prueba_start', args: { command: 'a' } }
-      })
-      const ofrecida = r.toolsOffered.includes('prueba_start')
-      const preguntas = r.asked.filter((a) => a.permission === 'prueba_start')
-      confirmado(
-        ofrecida || preguntas.length
-          ? `SE REPRODUCE: el deny de la config quedó en «preguntar» en el padre (ofrecida=${ofrecida}, preguntas=${preguntas.length}); ver informe`
-          : 'no se reproduce: el deny de la config sigue valiendo en el padre'
+  // Fallo de W-A2 (hallado por la revisión): en el PADRE, la regla de sesión `<conector>_*: ask` va DESPUÉS de los permisos de la config y tapaba un `deny` de
+  // la config para esa herramienta (la dejaba en «preguntar»; con «una vez» se ejecutaba). Ahora `projectAskRules` manda los `deny` DESPUÉS de los `ask`
+  // (`denyRules` del escaneo). Aquí con las reglas reales (`projectAskRules` + `rulesetFor`) y el motor real; sin `deny` todo sigue preguntando.
+  const padreConDeny = async (modo, denyConfig) => {
+    const m = await reales()
+    const denies = Object.entries(denyConfig).map(([permission, v]) => ({ permission, pattern: '*', action: v }))
+    const ask = m.projectAskRules({ servers: [{ name: 'prueba', key: 'prueba_*', overrides: false }], askAll: false, denies }, [])
+    const r = await motor({
+      agent: 'build',
+      projectFiles: {
+        'opencode.json': JSON.stringify({ mcp: { prueba: { type: 'local', command: [process.execPath, join(here, 'probe-mcp.mjs')] } } })
+      },
+      inline: Object.keys(denyConfig).length ? { permission: denyConfig } : {},
+      sessionBody: { permission: m.rulesetFor(modo, undefined, ask) },
+      pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000),
+      call: { name: 'prueba_start', args: { command: 'a' } }
+    })
+    const tp = r.toolParts.find((p) => p.tool === 'prueba_start')
+    return {
+      ofrecida: r.toolsOffered.includes('prueba_start'),
+      ejecutada: tp?.status === 'completed',
+      preguntas: r.asked.filter((a) => a.permission === 'prueba_start')
+    }
+  }
+  for (const modo of ['manual', 'bypass']) {
+    for (const [etiqueta, deny] of [
+      ['prueba_start: deny', { prueba_start: 'deny' }],
+      ['*start*: deny (comodín sin guion bajo)', { '*start*': 'deny' }]
+    ]) {
+      checkRun(
+        `olaA 1d (${modo}): \`${etiqueta}\` en la config + \`prueba_*: ask\` de W-A2 en la sesión del PADRE: el deny SIGUE valiendo`,
+        async () => {
+          const x = await padreConDeny(modo, deny)
+          if (x.ofrecida || x.preguntas.length || x.ejecutada)
+            noSeReproduce(`el deny quedó en «preguntar»: ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}, ejecutada=${x.ejecutada}`)
+          confirmado('prueba_start no se ofrece ni pregunta ni se ejecuta')
+          return true
+        }
       )
+    }
+  }
+  checkRun(
+    'olaA 1d (control): sin deny, `prueba_*: ask` de W-A2 sigue haciendo que prueba_start PREGUNTE en manual y en bypass',
+    async () => {
+      for (const modo of ['manual', 'bypass']) {
+        const x = await padreConDeny(modo, {})
+        if (!x.ofrecida || x.preguntas.length !== 1)
+          noSeReproduce(`${modo}: se esperaba UNA pregunta; ofrecida=${x.ofrecida}, preguntas=${x.preguntas.length}`)
+      }
+      confirmado('pregunta una vez en ambos modos, como antes')
       return true
     }
   )

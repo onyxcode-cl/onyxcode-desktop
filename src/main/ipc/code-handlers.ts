@@ -3,7 +3,14 @@
  * Canales propios de Code (ya no comparten nombre con `shared/ipc.ts`).
  */
 import { app, BrowserWindow, shell, type IpcMain, type IpcMainInvokeEvent } from 'electron'
-import { CODE_EVENTS, type CodeEventChannel, type CodeEventContract, type CodeInvokeContract } from '@shared/ipc-code'
+import {
+  CODE_EVENTS,
+  type CodeEventChannel,
+  type CodeEventContract,
+  type CodeInvokeContract,
+  type ProjectScanResult
+} from '@shared/ipc-code'
+import { denyRulesOf } from '@shared/permission-rules'
 import * as git from '../git/service'
 import { GitError } from '../git/service'
 import * as dialogService from '../dialog/service'
@@ -11,7 +18,7 @@ import { checkFolderAccess, PANE_ALL_FILES, PANE_FILES_AND_FOLDERS, resetFolderP
 import { ENGINE_PROBE_TIMEOUT_MS, probeFolderAsEngine, type RunResult } from '../dialog/engine-folder-probe'
 import { findOpencodeBinary } from '../opencode/server'
 import { readGlobalOpencodeConfig } from '../opencode/code-mcp-permission'
-import { readAppMcpConfig } from '../extras/mcp-config'
+import { readAppMcpConfig, readAppPermission } from '../extras/mcp-config'
 import { scanProjectConfig } from '../code/project-scan'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
@@ -176,7 +183,20 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     }
     // Conectores que la app o la persona ya tienen: una carpeta que redefine uno de ellos hereda su permiso, así que se marca.
     const known = [...appServers, ...globalServers, ...CODE_INTERNAL_MCP, SHELL_BG_SERVER, DOCUMENTS_SERVER]
-    return scanProjectConfig(path, { known, deadline: Date.now() + 2800 })
+    // `deny` de la config global y del archivo de conectores de la app: Code los vuelve a mandar tras las reglas `ask` de la sesión (ver `denyRules`).
+    let globalDeny: ReturnType<typeof denyRulesOf> = []
+    try {
+      globalDeny = [...denyRulesOf(readGlobalOpencodeConfig().permission), ...denyRulesOf(readAppPermission())]
+    } catch {
+      /* sin config: ninguna */
+    }
+    const plain = (rs: ReturnType<typeof denyRulesOf>): NonNullable<ProjectScanResult['denyRules']> =>
+      rs.map((x) => ({ permission: x.permission, pattern: x.pattern, action: 'deny' as const }))
+    return scanProjectConfig(path, { known, deadline: Date.now() + 2800 }).then((res) => ({
+      ...res,
+      denyRules: [...plain(globalDeny), ...(res.denyRules ?? [])],
+      globalDenyRules: plain(globalDeny)
+    }))
   })
   on(ipcMain, 'dialog:revealInFinder', (r) => dialogService.revealInFinder(req(r, 'req').path))
   // Sin caché: cada llamada vuelve a leer la carpeta (la persona puede haber activado el permiso entre dos intentos).

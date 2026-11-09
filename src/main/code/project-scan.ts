@@ -23,6 +23,7 @@ import { basename, dirname, extname, join, relative, resolve, sep } from 'node:p
 import type { ProjectScanItem, ProjectScanKind, ProjectScanReason, ProjectScanResult } from '@shared/ipc-code'
 import { MCP_NAME_RE } from '@shared/catalogo'
 import { mcpServerPermissionKey } from '@shared/mcp-permissions'
+import { denyRulesOf, type PermissionRuleLike } from '@shared/permission-rules'
 import { stripJsonc } from '../opencode/code-mcp-permission'
 
 /** Tope de bytes de un archivo JSON/JSONC que se interpreta. */
@@ -213,6 +214,8 @@ async function listDir(dir: string): Promise<{ names: string[]; more: boolean } 
 class Scan {
   readonly items: ProjectScanItem[] = []
   readonly instructionFiles: ProjectScanResult['instructionFiles'] = []
+  /** `deny` del bloque `permission` de los `opencode.json` leídos (dato no confiable: solo se usan para ENDURECER, con topes). */
+  readonly denies: PermissionRuleLike[] = []
   readonly budget: HashBudget
   complete = true
   /** Tras devolver el resultado por plazo, lo que siga corriendo ya no añade nada. */
@@ -389,6 +392,7 @@ class Scan {
     // Reglas de permiso que abren (`allow`)
     if (o.permission !== undefined) {
       const p = o.permission
+      if (!this.closed && this.denies.length < 200) this.denies.push(...denyRulesOf(p).slice(0, 200 - this.denies.length))
       const allows: string[] = []
       if (p === 'allow') allows.push('*')
       else if (isPlain(p)) {
@@ -655,7 +659,13 @@ export async function scanProjectConfig(dir: string, opts: ScanOptions = {}): Pr
   }
   const items = scan.items.slice().sort(byId)
   const huella = sha(`${scan.complete ? 'c' : 'i'}\n${items.map((i) => i.id).join('\n')}`)
-  return { items, huella, complete: scan.complete, instructionFiles: scan.instructionFiles }
+  return {
+    items,
+    huella,
+    complete: scan.complete,
+    instructionFiles: scan.instructionFiles,
+    denyRules: scan.denies.map((d) => ({ permission: d.permission, pattern: d.pattern, action: 'deny' as const }))
+  }
 }
 
 export type { ProjectScanItem, ProjectScanKind, ProjectScanResult }

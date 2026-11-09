@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   approvalKindOf,
+  denyRulesOf,
   effectiveModeFor,
   endsWithRuleset,
   isAutoApprovableCommand,
@@ -588,5 +589,32 @@ describe('git con opciones que escriben o ejecutan', () => {
         expect(evaluate(permission, p, BUILD, rulesetForMode(mode)), `${mode} ${permission} ${p}`).toBe('ask')
       }
     }
+  })
+})
+
+describe('denyRulesOf (deny de una config del motor)', () => {
+  it('toma solo los deny: texto por clave, mapas por patrón, comodines y alias; en orden', () => {
+    const r = denyRulesOf({
+      'x_*': 'ask',
+      x_secreto: 'deny',
+      '*start* *': 'deny',
+      y: { '*': 'deny', 'a/*': 'allow', 'b/*': 'deny' },
+      z: 'allow'
+    })
+    expect(r).toEqual([
+      { permission: 'x_secreto', pattern: '*', action: 'deny' },
+      { permission: '*start* *', pattern: '*', action: 'deny' },
+      { permission: 'y', pattern: '*', action: 'deny' },
+      { permission: 'y', pattern: 'b/*', action: 'deny' }
+    ])
+  })
+  it('ignora la clave `*` suelta, lo que no es objeto y los textos enormes; tope de reglas', () => {
+    expect(denyRulesOf({ '*': 'deny' })).toEqual([])
+    expect(denyRulesOf('deny')).toEqual([])
+    expect(denyRulesOf(null)).toEqual([])
+    expect(denyRulesOf([1])).toEqual([])
+    expect(denyRulesOf({ ['a'.repeat(500)]: 'deny' })).toEqual([])
+    const grande = Object.fromEntries(Array.from({ length: 500 }, (_, i) => [`k${i}_x`, 'deny']))
+    expect(denyRulesOf(grande)).toHaveLength(200)
   })
 })

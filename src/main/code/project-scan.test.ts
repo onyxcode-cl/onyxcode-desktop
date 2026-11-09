@@ -447,4 +447,19 @@ describe('isWithin', () => {
     expect(isWithin(r('a', 'b'), r('a', 'bc'))).toBe(false)
     expect(isWithin(r('a', 'b'), r('a'))).toBe(false)
   })
+
+  it('trae los `deny` del opencode.json (para que un ask de sesión no los tape): texto, mapas, comodines; los allow/ask no', async () => {
+    const d = mk()
+    w(
+      join(d, 'opencode.json'),
+      JSON.stringify({ permission: { 'x_*': 'ask', x_borrar: 'deny', '*start*': 'deny', y: { '*': 'deny', 'a/*': 'allow' } } })
+    )
+    const r = await scanProjectConfig(d)
+    expect(r.denyRules).toEqual([
+      { permission: 'x_borrar', pattern: '*', action: 'deny' },
+      { permission: '*start*', pattern: '*', action: 'deny' },
+      { permission: 'y', pattern: '*', action: 'deny' }
+    ])
+    expect((await scanProjectConfig(mk())).denyRules).toEqual([])
+  })
 })

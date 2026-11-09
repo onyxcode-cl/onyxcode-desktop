@@ -346,3 +346,31 @@ export function effectiveModeFor(mode: PermissionModeId, agent: 'build' | 'plan'
   if (agent === 'plan') return 'plan'
   return mode === 'plan' ? 'manual' : mode
 }
+
+/** Tope de reglas `deny` que se toman de una config (defensa ante un archivo inflado) y largo máximo de cada clave. */
+const DENY_RULES_MAX = 200
+const DENY_TEXT_MAX = 200
+
+/**
+ * Reglas `deny` de un bloque `permission` de config del motor (texto por clave, o mapa por patrón), en el mismo orden. Solo `deny`: re-escribir un
+ * `deny` más tarde nunca aflojar nada. Se ignora la clave `*` suelta y lo que no sean textos. Las usa W-A2 para que las reglas `<conector>_*: ask` de la
+ * sesión no tapen un `deny` de la config (gana la ÚLTIMA regla que coincide, y las de sesión van después de las de la config).
+ */
+export function denyRulesOf(permission: unknown): PermissionRuleLike[] {
+  const out: PermissionRuleLike[] = []
+  if (!permission || typeof permission !== 'object' || Array.isArray(permission)) return out
+  const ok = (t: unknown): t is string => typeof t === 'string' && t.length > 0 && t.length <= DENY_TEXT_MAX
+  for (const [k, v] of Object.entries(permission as Record<string, unknown>)) {
+    if (out.length >= DENY_RULES_MAX) break
+    if (!ok(k)) continue
+    if (v === 'deny') {
+      if (k !== '*') out.push(rule(k, '*', 'deny'))
+    } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const [pat, a] of Object.entries(v as Record<string, unknown>)) {
+        if (out.length >= DENY_RULES_MAX) break
+        if (a === 'deny' && ok(pat)) out.push(rule(k, pat, 'deny'))
+      }
+    }
+  }
+  return out
+}

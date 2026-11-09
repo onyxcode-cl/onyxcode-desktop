@@ -166,6 +166,14 @@ export interface ProjectScanResult {
   complete: boolean
   /** `AGENTS.md`/`CLAUDE.md` que el motor lee (solo tamaños; para el aviso de W-A8). */
   instructionFiles: Array<{ name: string; bytes: number; where: string }>
+  /**
+   * Reglas `deny` sobre herramientas (conectores) de la config global del usuario, el archivo de conectores de la app y el `opencode.json` de la carpeta,
+   * en ese orden (las pone `project:scan` en main). Code las manda DESPUÉS de las reglas `<conector>_*: ask` de la sesión: gana la última regla que
+   * coincide y un `ask` de sesión taparía un `deny` de la config. Solo `deny`; ausente = ninguna.
+   */
+  denyRules?: Array<{ permission: string; pattern: string; action: 'deny' }>
+  /** Solo las de la config global y la de la app (sin las de la carpeta): valen también para carpetas sin escanear. */
+  globalDenyRules?: Array<{ permission: string; pattern: string; action: 'deny' }>
 }
 
 export interface PtyCreateRequest {

@@ -22,22 +22,38 @@ export interface FolderMcpState {
   servers: Array<{ name: string; trustName?: string; key: string; overrides: boolean }>
   /** Hay algo que no se pudo enumerar (archivo roto, enlace fuera, tope, escaneo fallido): la regla cubre CUALQUIER conector. */
   askAll: boolean
+  /** Reglas `deny` de la config (global, archivo de la app y `opencode.json` de la carpeta) que van DESPUÉS de los `ask` de conector. */
+  denies?: PermissionRuleLike[]
 }
+
+/**
+ * `deny` de la config global y del archivo de conectores de la app, del último escaneo visto. Valen para las carpetas que no se escanearon o cuyo
+ * escaneo falló (no dependen de la carpeta). Sin ningún escaneo previo queda vacío: ese caso no se puede cerrar desde aquí (ver SEGURIDAD.md).
+ */
+let knownGlobalDenies: PermissionRuleLike[] = []
 
 const folderMcp = new Map<string, FolderMcpState>()
 const dirKey = (dir: string): string => (dir.length > 1 ? dir.replace(/[/\\]+$/, '') : dir)
 
 /** Guarda el resultado del escaneo de `dir`; `null` = no se pudo escanear (falla cerrado: preguntan todos los conectores). */
-export function setFolderMcp(dir: string, scan: Pick<ProjectScanResult, 'items' | 'complete'> | null): void {
+export function setFolderMcp(
+  dir: string,
+  scan: Pick<ProjectScanResult, 'items' | 'complete' | 'denyRules' | 'globalDenyRules'> | null
+): void {
   if (!scan) {
-    folderMcp.set(dirKey(dir), { servers: [], askAll: true })
+    folderMcp.set(dirKey(dir), { servers: [], askAll: true, denies: knownGlobalDenies })
     return
   }
+  if (scan.globalDenyRules) knownGlobalDenies = scan.globalDenyRules.map((d) => ({ ...d }))
   const servers: FolderMcpState['servers'] = []
   for (const i of scan.items) {
     if (i.kind === 'mcp' && i.mcpKey) servers.push({ name: i.name, trustName: i.trustName, key: i.mcpKey, overrides: !!i.overrides })
   }
-  folderMcp.set(dirKey(dir), { servers, askAll: !scan.complete })
+  folderMcp.set(dirKey(dir), {
+    servers,
+    askAll: !scan.complete,
+    denies: (scan.denyRules ?? knownGlobalDenies).map((d) => ({ ...d }))
+  })
 }
 
 /** Carpetas de confianza cuya verificación (escaneo y, si hace falta, re-pregunta) aún no termina: ninguna ruta les pasa el foco. */
@@ -69,7 +85,7 @@ export function folderMcpOf(dir: string): FolderMcpState | undefined {
  */
 export function projectAskRules(state: FolderMcpState | undefined, trusted: readonly string[]): PermissionRuleLike[] {
   // Carpeta que no se escaneó en esta ejecución (restaurada al arrancar, abierta desde la barra…): falla cerrado, todo conector pregunta.
-  if (!state) return [{ permission: '*_*', pattern: '*', action: 'ask' }]
+  if (!state) return [{ permission: '*_*', pattern: '*', action: 'ask' }, ...knownGlobalDenies]
   const trustedNames = new Set(trusted)
   const keys = new Set<string>()
   for (const s of state.servers) {
@@ -79,7 +95,9 @@ export function projectAskRules(state: FolderMcpState | undefined, trusted: read
   }
   const rules: PermissionRuleLike[] = [...keys].sort().map((k) => ({ permission: k, pattern: '*', action: 'ask' as const }))
   if (state.askAll) rules.unshift({ permission: '*_*', pattern: '*', action: 'ask' })
-  return rules
+  // Los `deny` de la config van DESPUÉS de los `ask`: gana la última regla que coincide, y las de sesión van después de las de la config, así que un
+  // `ask` de conector taparía un `deny` (`prueba_start: deny` pasaría a «preguntar»). Re-escribir un `deny` después nunca afloja nada.
+  return [...rules, ...(state.denies ?? [])]
 }
 
 /** Reglas de conectores de la carpeta `dir` con la lista de confianza actual de Ajustes. Nunca lanza. */
