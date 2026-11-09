@@ -72,6 +72,7 @@ import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootS
 import { TodoList } from './ToolCard'
 import { PlanCard } from './PlanCard'
 import { PlanReadyCard } from './PlanReadyCard'
+import { StalePlanNotice } from './StalePlanNotice'
 import { ForeignAgentsNotice } from './ForeignAgentsNotice'
 import { planQuestionIds } from '@shared/plan-mode'
 import type { RightPanel } from './types'
@@ -937,6 +938,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           }}
         />
       </div>
+      {sid && <StalePlanNotice sessionID={sid} />}
       <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />
     </div>
   )

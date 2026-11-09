@@ -721,6 +721,7 @@
  "code.mode.plan",
  "code.mode.plan.hint",
  "code.mode.plan.short",
+ "code.mode.stalePlan",
  "code.mode.title",
  "code.msg.aborted",
  "code.msg.copy",

@@ -133,6 +133,8 @@ export const code = {
   'code.mode.bypass.short': 'Sin preguntar',
   'code.mode.note':
     'Salvo en «Todo sin preguntar», siempre pregunta por carpetas fuera del proyecto y archivos .env; si una acción se repite en bucle, avisa en cualquier modo. Los conectores que trae la carpeta preguntan antes de usarse en todos los modos, salvo los que marcaste «Sin preguntar en Code» en Ajustes.',
+  'code.mode.stalePlan':
+    'Esta conversación pasó por «Solo explorar»: aunque cambies de modo, los ayudantes (subagentes) no podrán editar archivos aquí y se bloquearán sin tarjeta. Abre una conversación nueva para usarlos.',
   'code.mode.laterNotice': 'El cambio vale desde el próximo mensaje',
   'code.mode.title': 'Modo de permisos',
   'code.agent.title': 'Modo de trabajo',

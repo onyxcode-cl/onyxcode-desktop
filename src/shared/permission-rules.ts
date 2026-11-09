@@ -331,6 +331,20 @@ export function endsWithModeBlock(sessionRules: readonly PermissionRuleLike[] | 
   return endsWithRuleset(withoutLinked(sessionRules ?? []), withoutLinked(block))
 }
 
+/**
+ * 1.8.12 (R4, residual): ¿la sesión lleva, MÁS ATRÁS, el bloque de «Solo explorar» sin terminar con él? Entonces la conversación pasó por «Solo explorar» y
+ * se cambió de modo. El motor AÑADE reglas y no deja quitarlas, y una sesión hija (ayudante) hereda TODOS los `deny` de la madre sin el `allow` de después:
+ * el `edit * deny` y el `write * deny` de ese bloque siguen valiendo para los ayudantes aunque el modo nuevo deje editar. Falla cerrado (no abre nada), pero
+ * hay que decírselo a la persona. Se reconoce por las cuatro primeras reglas del bloque (`edit`/`write` `*` denegados y los planes `.md` permitidos, seguidos).
+ */
+export function hasStalePlanBlock(sessionRules: readonly PermissionRuleLike[] | undefined): boolean {
+  const have = sessionRules ?? []
+  if (endsWithModeBlock(have, rulesetForMode('plan'))) return false // la conversación está AHORA en «Solo explorar»: no hay nada atrasado
+  const sig = rulesetForMode('plan').slice(0, 4)
+  for (let i = 0; i + sig.length <= have.length; i++) if (sig.every((r, j) => sameRule(have[i + j]!, r))) return true
+  return false
+}
+
 /** ¿Con qué bloque de aprobación termina la sesión? (para decidir si la app puede aprobar sola un comando de lectura). */
 export function approvalKindOf(sessionRules: readonly PermissionRuleLike[] | undefined): ApprovalKind | null {
   if (endsWithModeBlock(sessionRules, rulesetForMode('auto'))) return 'auto'

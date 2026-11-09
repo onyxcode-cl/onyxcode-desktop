@@ -8,6 +8,7 @@ import {
   wildcardMatch,
   effectiveModeFor,
   endsWithRuleset,
+  hasStalePlanBlock,
   isAutoApprovableCommand,
   rulesetForMode,
   type PermissionModeId,
@@ -688,5 +689,32 @@ describe('wildcardMatch', () => {
     expect(wildcardMatch('prueba_start', '*start*')).toBe(true)
     expect(wildcardMatch('x_secreto', 'x_secreto *')).toBe(true)
     expect(wildcardMatch('a', 'b')).toBe(false)
+  })
+})
+
+describe('hasStalePlanBlock (R4, 1.8.12): la sesión pasó por «Solo explorar» y cambió de modo', () => {
+  const plan = rulesetForMode('plan')
+  const auto = rulesetForMode('auto')
+  const manual = rulesetForMode('manual')
+  it('plan → automático: el bloque viejo sigue en la sesión (los ayudantes heredarían su deny)', () => {
+    expect(hasStalePlanBlock([...plan, ...auto])).toBe(true)
+    expect(hasStalePlanBlock([...manual, ...plan, ...auto, ...manual])).toBe(true)
+  })
+  it('sesión que termina en «Solo explorar», o que nunca lo tuvo: nada atrasado', () => {
+    expect(hasStalePlanBlock(plan)).toBe(false)
+    expect(hasStalePlanBlock([...auto, ...plan])).toBe(false)
+    expect(hasStalePlanBlock([...manual, ...auto])).toBe(false)
+    expect(hasStalePlanBlock(undefined)).toBe(false)
+    expect(hasStalePlanBlock([])).toBe(false)
+  })
+  it('un `edit * deny` suelto de la config no cuenta como el bloque de «Solo explorar»', () => {
+    expect(hasStalePlanBlock([{ permission: 'edit', pattern: '*', action: 'deny' }, ...auto])).toBe(false)
+  })
+  it('la regla no cambia nada de lo que da cada modo: el bloque nuevo sigue siendo autosuficiente y no abre más que desde una sesión nueva', () => {
+    // Documenta el límite: desde la madre gana la última regla (el modo nuevo manda), pero la hija hereda los `deny` viejos.
+    const inherited = (rules: PermissionRuleLike[]): PermissionRuleLike[] => rules.filter((r) => r.action === 'deny')
+    const hija = inherited([...plan, ...auto])
+    expect(hija.some((r) => r.permission === 'edit' && r.pattern === '*')).toBe(true)
+    expect(inherited(auto).some((r) => r.permission === 'edit' && r.pattern === '*')).toBe(false)
   })
 })

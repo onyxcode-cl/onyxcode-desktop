@@ -114,7 +114,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     conector: { name: 'prueba_start', args: { command: 'a' }, archivo: null, permiso: 'prueba_start' }
   }
   /** Lanza `task general` desde un padre `build` con las reglas de sesión de `modo`; la hija hace `accion`. Contesta `respuesta` a lo que pregunte. */
-  const hija = async (modo, accion, respuesta, agente = 'build', carpeta = null, extra = null) => {
+  const hija = async (modo, accion, respuesta, agente = 'build', carpeta = null, extra = null, despues = []) => {
     const m = await reales()
     const a = ACCIONES[accion]
     const preguntas = []
@@ -135,6 +135,19 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
               })
             },
             pre: async ({ q }) => espera(async () => (await J(await q('/mcp'))).prueba?.status === 'connected', 20_000)
+          }
+        : {}),
+      // `despues`: modos que la app manda DESPUÉS con `session.update` (PATCH), como al cambiar de modo en una conversación (R4: Solo explorar → Automático).
+      ...(despues.length
+        ? {
+            pre: async ({ q, sessionID }) => {
+              for (const d of despues)
+                await q(`/session/${sessionID}`, {
+                  method: 'PATCH',
+                  headers: { 'content-type': 'application/json' },
+                  body: JSON.stringify({ permission: m.rulesetFor(d, undefined, []) })
+                })
+            }
           }
         : {}),
       sessionBody: {
@@ -163,6 +176,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
         existe: a.archivo ? existsSync(join(h.proj, a.archivo)) : false,
         gitConfig: readFileSync(join(h.proj, '.git', 'config'), 'utf8'),
         padre: h.sessionID,
+        reglas: ((await J(await h.q(`/session/${h.sessionID}`))).permission ?? []).length,
         hijas: ((await J(await h.q(`/session/${h.sessionID}/children`))) || []).map((x) => x.id)
       })
     })
@@ -170,6 +184,7 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     if (!tp) throw new Error(`el padre no llegó a llamar a task. Herramientas ofrecidas: ${corto(r.toolsOffered)}`)
     return { tp, preguntas, http: r.http, a }
   }
+  const motorSesion = async (x) => x.http.reglas ?? '?'
   const resumen = (tp) => `${tp.status}: ${tp.output.replace(/\s+/g, ' ').slice(0, 300)}`
 
   // Los cuatro modos: el guardián deja pasar a `general`; en todos la hija PREGUNTA antes de escribir (permission.asked de la sesión hija) y,
@@ -307,6 +322,21 @@ export function registrarOlaA({ bin, checkRun: registrar, runEngine, tsModule, r
     }
     noSeReproduce(`se esperaba bloqueo: task=${resumen(x.tp)}; x.txt=${x.http.existe}; preguntas=${corto(x.preguntas)}`)
   })
+
+  // R4 (residual de la 1.8.12, «Limitación 2»): sesión que pasó por «Solo explorar» y luego a «Automático». `session.update` AÑADE el bloque nuevo; la
+  // hija hereda los `deny` viejos (`edit * deny`, `write * deny`) sin el `allow` posterior, así que el ayudante NO puede editar. Se deja fijado el
+  // comportamiento del motor (esto es lo que hay que dar la vuelta cuando el motor deje reemplazar o heredar solo el último bloque).
+  checkRun(
+    'olaA 1e (R4): plan → Automático en la MISMA sesión: la sesión conserva el deny de «Solo explorar» y el ayudante no puede editar',
+    async () => {
+      const x = await hija('plan', 'escribir', () => 'once', 'build', null, null, ['auto'])
+      const n = (await reales()).rulesetFor('plan', undefined, []).length
+      const s = await motorSesion(x)
+      if (x.http.existe) noSeReproduce(`el ayudante SÍ editó (x.txt existe): task=${resumen(x.tp)}; el motor ya no arrastra el deny`)
+      confirmado(`x.txt no existe; task=${resumen(x.tp)}; reglas de la sesión=${s} (bloque plan=${n})`)
+      return true
+    }
+  )
 
   // ── 2 y 3. R2: conector declarado en el opencode.json de la carpeta ─────────────────────────────────────────────
   const MARCA = 'MARCA-R2'

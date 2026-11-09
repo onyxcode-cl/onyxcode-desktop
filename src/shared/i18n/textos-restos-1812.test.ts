@@ -5,8 +5,8 @@ import { es } from './es'
 // Restos de las pruebas de la 1.8.12: textos que decían algo falso o no cabían.
 describe('textos del menú de modos y de Ajustes (1.8.12)', () => {
   it('la nota del menú de modos ya no dice que los conectores actúan sin avisar', () => {
-    for (const d of [es, en] as Array<Record<string, string>>) {
-      const n = d['code.mode.note']!
+    for (const d of [es, en]) {
+      const n = String(d['code.mode.note'])
       expect(n).not.toMatch(/sin avisar|without asking/i)
     }
     expect(es['code.mode.note']).toMatch(/preguntan antes de usarse/)
