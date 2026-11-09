@@ -17,7 +17,10 @@ const state = vi.hoisted(() => ({
   userData: process.platform === 'win32' ? 'C:\\tmp\\lazunox-test' : '/tmp/lazunox-test',
   node: null as string | null,
   script: null as string | null,
-  wakes: [] as Array<{ eventsFile: string; started: number; stopped: number }>
+  wakes: [] as Array<{ eventsFile: string; started: number; stopped: number }>,
+  // Confianza (lazunox.16): lo que se declaró al arrancar y el estado del sidecar en ese momento.
+  declared: [] as Array<{ baseUrl: string; always: string[]; statusThen: string | null }>,
+  statusProbe: null as null | (() => string)
 }))
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => state.userData } }))
@@ -58,6 +61,14 @@ vi.mock('node:child_process', async (orig) => {
     }
   }
 })
+vi.mock('./engine-trust', () => ({
+  engineTrust: {
+    declareAll: async (conn: { baseUrl: string }, always: string[]) => {
+      state.declared.push({ baseUrl: conn.baseUrl, always: [...always], statusThen: state.statusProbe ? state.statusProbe() : null })
+      return []
+    }
+  }
+}))
 vi.mock('../store', () => ({ settingsStore: { get: () => state.settings } }))
 vi.mock('../extras/mcp-config', () => ({
   appOpencodeConfigEnv: () => ({}),
@@ -421,5 +432,43 @@ describe('sidecar principal: «última milla» de la Ola A (búsqueda web, suger
   it('el override de desarrollo se ignora si no es una ruta absoluta (nunca llega al motor una ruta relativa)', async () => {
     process.env.LAZUNOX_MOTOR_POLICY = 'relativa/motor-policy.json'
     expect(String((await envWith({})).LAZUNOX_POLICY_FILE ?? '')).not.toContain('relativa')
+  })
+})
+
+describe('sidecar principal: contratos de lazunox.16 (permisos por capas y confianza obligatoria)', () => {
+  const prevBin = process.env.OPENCODE_BIN
+  beforeEach(() => {
+    process.env.OPENCODE_BIN = process.execPath
+    state.declared.length = 0
+    state.statusProbe = null
+  })
+  afterEach(() => {
+    if (prevBin === undefined) delete process.env.OPENCODE_BIN
+    else process.env.OPENCODE_BIN = prevBin
+  })
+
+  it('el motor arranca con las dos banderas encendidas, con cualquier ajuste', async () => {
+    for (const e of [ENGINE_EXPERIMENTS_DEFAULTS, exp({ codeMode: { chat: true, code: true, tasks: false } })]) {
+      const env = await envFor(e)
+      expect(env.LAZUNOX_TRUST_REQUIRED).toBe('1')
+      expect(env.LAZUNOX_PERMISOS_CAPAS).toBe('1')
+    }
+  })
+
+  it('antes de decir «listo» se declaran al motor la carpeta del Chat y las confiables ya conocidas', async () => {
+    state.settings = { engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS, language: 'es' }
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    state.statusProbe = () => server.getStatus().state
+    await server.start()
+    expect(state.declared).toEqual([{ baseUrl: 'http://127.0.0.1:4999', always: ['/tmp/lazunox-test/chat'], statusThen: 'starting' }])
+    expect(server.getStatus().state).toBe('ready')
+  })
+
+  it('un reinicio vuelve a declarar (la lista del motor es de memoria)', async () => {
+    state.settings = { engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS, language: 'es' }
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    await server.start()
+    await server.restart()
+    expect(state.declared).toHaveLength(2)
   })
 })

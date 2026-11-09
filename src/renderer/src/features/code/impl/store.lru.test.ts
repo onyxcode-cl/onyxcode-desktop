@@ -2,6 +2,9 @@
  * LRU de `useCode.messages` (docs/LRU-PLAN.md, paso 6, F6-B16).
  */
 import { rulesetFor } from './permission-rules'
+
+// Sesión ya marcada por el motor lazunox.16 (su bloque de modo ya se reemplazó): no hace falta reenviar el bloque antes de enviar.
+const MODE_MARK = { permission: 'lazunox_modo_inicio', pattern: 'modo', action: 'allow' as const }
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -48,7 +51,7 @@ const lruOn = (max: number): void => {
 }
 /** Sesión conocida con un mensaje (contenido) recibido por eventos. */
 function seed(id: string, extra: Partial<Session> = {}): void {
-  apply(sessionCreated(makeSession(id, D, { permission: rulesetFor('manual'), ...extra })))
+  apply(sessionCreated(makeSession(id, D, { permission: [MODE_MARK, ...rulesetFor('manual')] as never, ...extra })))
   apply(msgUpdated(userMessage(`msg_${id}`, id), D))
 }
 

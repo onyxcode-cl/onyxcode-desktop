@@ -32,6 +32,7 @@ const MAX_WANTED = 200
 
 const isAbs = (d: unknown): d is string =>
   typeof d === 'string' && d.length > 0 && d.length <= 4096 && !d.includes('\0') && /^(\/|[A-Za-z]:[\\/]|\\\\)/.test(d)
+const connKey = (c: TrustConn): string => `${c.baseUrl}|${c.authorization}`
 const norm = (d: string): string => (d.length > 1 ? d.replace(/[\\/]+$/, '') || d : d)
 
 /** Una llamada a `/lazunox/trust`. Nunca lanza. */
@@ -70,7 +71,7 @@ export interface EngineTrustBinding {
 export class EngineTrust {
   /** Carpetas que la app quiere ver declaradas en el motor principal; se reenvían en cada arranque. */
   private wanted = new Set<string>()
-  /** Lo ya declarado, por motor (la URL cambia en cada arranque, así que un reinicio empieza de cero). */
+  /** Lo ya declarado, por motor (URL + clave: ambas cambian en cada arranque, así que un reinicio empieza de cero aunque se reutilice el puerto). */
   private declared = new Map<string, Set<string>>()
   private inflight = new Map<string, Promise<TrustResult>>()
   private binding: EngineTrustBinding | null = null
@@ -95,12 +96,12 @@ export class EngineTrust {
   }
 
   private mark(conn: TrustConn, dir: string, on: boolean): void {
-    let set = this.declared.get(conn.baseUrl)
+    let set = this.declared.get(connKey(conn))
     if (!set) {
       // Un motor viejo deja su entrada: se acota para que reinicios repetidos no la hagan crecer sin fin.
       if (this.declared.size >= 8) this.declared.delete(this.declared.keys().next().value as string)
       set = new Set()
-      this.declared.set(conn.baseUrl, set)
+      this.declared.set(connKey(conn), set)
     }
     if (on) set.add(dir)
     else set.delete(dir)
@@ -110,8 +111,8 @@ export class EngineTrust {
   async declareOn(conn: TrustConn, directory: string): Promise<TrustResult> {
     if (!isAbs(directory)) return 'failed'
     const dir = norm(directory)
-    if (this.declared.get(conn.baseUrl)?.has(dir)) return 'ok'
-    const key = `${conn.baseUrl}\n${dir}`
+    if (this.declared.get(connKey(conn))?.has(dir)) return 'ok'
+    const key = `${connKey(conn)}\n${dir}`
     const have = this.inflight.get(key)
     if (have) return have
     const p = sendTrust(conn, 'POST', dir, this.fetchImpl)

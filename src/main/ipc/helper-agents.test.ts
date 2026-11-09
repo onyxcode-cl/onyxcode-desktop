@@ -225,6 +225,15 @@ describe('listar', () => {
     expect(r.claudeNames).toEqual(['de-claude'])
   })
 
+  it('motor con confianza obligatoria: 403 folder_not_trusted = carpeta sin confianza (sin error); otro 403 sigue siendo error', async () => {
+    const res = (status: number, body: unknown): typeof fetch => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch
+    expect(await listHelpers(deps({ fetchImpl: res(403, { error: 'folder_not_trusted' }) }), { directory: root })).toEqual({
+      available: false,
+      notTrusted: true
+    })
+    await expect(listHelpers(deps({ fetchImpl: res(403, { error: 'x' }) }), { directory: root })).rejects.toThrow('403')
+  })
+
   it('los .md que el motor aún no cargó salen como pendientes, sin duplicar los que sí cargó', async () => {
     await saveHelper(deps(), { directory: root, def: DEF, mode: 'create' })
     await saveHelper(deps(), {

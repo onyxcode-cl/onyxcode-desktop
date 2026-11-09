@@ -6,6 +6,22 @@ const json = (status: number, body: unknown): Response => new Response(JSON.stri
 type Call = [string, RequestInit | undefined]
 const callsOf = (f: ReturnType<typeof vi.fn>): Call[] => f.mock.calls as unknown as Call[]
 
+describe('motor con confianza obligatoria (lazunox.16)', () => {
+  const notTrusted = (): Response => json(403, { error: 'folder_not_trusted' })
+  it('403 folder_not_trusted al listar: la carpeta aún no es de confianza; no es un error ni «motor sin función»', async () => {
+    expect(await fetchAlwaysRules(conn, { directory: '/a' }, (async () => notTrusted()) as never)).toEqual({ available: false, notTrusted: true })
+  })
+  it('403 folder_not_trusted al quitar una regla: igual', async () => {
+    expect(await revokeAlwaysRule(conn, { directory: '/a', id: 'ab12' }, (async () => notTrusted()) as never)).toEqual({
+      available: false,
+      notTrusted: true
+    })
+  })
+  it('un 403 de otro tipo sigue siendo un error', async () => {
+    await expect(fetchAlwaysRules(conn, { directory: '/a' }, (async () => json(403, { error: 'otra cosa' })) as never)).rejects.toThrow('403')
+  })
+})
+
 describe('«siempre» guardados (fetch crudo)', () => {
   it('GET: ruta del contrato con autorización y carpeta codificada; normaliza las reglas', async () => {
     const f = vi.fn(async () =>

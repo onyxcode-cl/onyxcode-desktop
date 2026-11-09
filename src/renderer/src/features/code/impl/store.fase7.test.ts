@@ -2,6 +2,9 @@
  * Fase 7 · G3: correcciones de `features/code/impl/store.ts` (F7-B10, B11, B16, B17, B18).
  */
 import { rulesetFor } from './permission-rules'
+
+// Sesión ya marcada por el motor lazunox.16 (su bloque de modo ya se reemplazó): no hace falta reenviar el bloque antes de enviar.
+const MODE_MARK = { permission: 'lazunox_modo_inicio', pattern: 'modo', action: 'allow' as const }
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '@opencode-ai/sdk/v2/client'
 import {
@@ -39,7 +42,7 @@ beforeEach(async () => {
 const st = (): ReturnType<Store['useCode']['getState']> => useCode.getState()
 const apply = (te: TraceEvent): void => st().applyEvent(te.event, te.directory)
 const open = (id: string, extra: Partial<Session> = {}): void =>
-  apply(sessionCreated(makeSession(id, D, { permission: rulesetFor('manual'), ...extra })))
+  apply(sessionCreated(makeSession(id, D, { permission: [MODE_MARK, ...rulesetFor('manual')] as never, ...extra })))
 const idleEvt = (sessionID: string, id: string): void =>
   st().applyEvent({ id, type: 'session.idle', properties: { sessionID } } as never, D)
 function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void } {
