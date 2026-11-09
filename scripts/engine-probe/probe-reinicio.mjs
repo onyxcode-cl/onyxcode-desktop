@@ -23,7 +23,10 @@ mkdirSync(home, { recursive: true })
 const dir = join(root, 'reciente')
 const marker = join(root, 'MARCA-PLUGIN')
 mkdirSync(join(dir, '.opencode', 'plugin'), { recursive: true })
-writeFileSync(join(dir, '.opencode', 'plugin', 'p.js'), `import fs from 'node:fs'; fs.writeFileSync(${JSON.stringify(marker)}, 'x'); export const P = async () => ({})\n`)
+writeFileSync(
+  join(dir, '.opencode', 'plugin', 'p.js'),
+  `import fs from 'node:fs'; fs.writeFileSync(${JSON.stringify(marker)}, 'x'); export const P = async () => ({})\n`
+)
 const env = {
   PATH: '/usr/bin:/bin',
   HOME: home,
@@ -42,12 +45,24 @@ const env = {
 }
 async function boot() {
   const port = await freePort()
-  const child = spawn(bin, ['serve', '--port', String(port), '--hostname', '127.0.0.1'], { cwd: home, env, stdio: 'ignore', detached: true })
+  const child = spawn(bin, ['serve', '--port', String(port), '--hostname', '127.0.0.1'], {
+    cwd: home,
+    env,
+    stdio: 'ignore',
+    detached: true
+  })
   const url = `http://127.0.0.1:${port}`
   for (let i = 0; i < 100; i++) {
     try {
       await fetch(url + '/path')
-      return { url, stop: () => { try { process.kill(-child.pid, 'SIGKILL') } catch {} } }
+      return {
+        url,
+        stop: () => {
+          try {
+            process.kill(-child.pid, 'SIGKILL')
+          } catch {}
+        }
+      }
     } catch {
       await sleep(200)
     }
@@ -57,7 +72,11 @@ async function boot() {
 const out = []
 // Fase A
 let a = await boot()
-await fetch(`${a.url}/session?directory=${encodeURIComponent(dir)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+await fetch(`${a.url}/session?directory=${encodeURIComponent(dir)}`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: '{}'
+})
 await sleep(2500)
 out.push(`fase A (crear sesión en la carpeta): complemento cargado = ${existsSync(marker) ? 'SI' : 'no'}`)
 a.stop()
@@ -70,7 +89,9 @@ const probe = async (name, path) => {
   const r = await fetch(b.url + path, { signal: AbortSignal.timeout(15000) }).catch(() => null)
   const text = r ? await r.text() : ''
   await sleep(3000)
-  out.push(`${name.padEnd(46)} http=${r?.status} complemento_cargado=${existsSync(marker) ? 'SI' : 'no'} ${name.startsWith('GET /experimental') ? 'filas=' + (JSON.parse(text || '[]').length ?? '?') + ' ' + text.slice(0, 160) : ''}`)
+  out.push(
+    `${name.padEnd(46)} http=${r?.status} complemento_cargado=${existsSync(marker) ? 'SI' : 'no'} ${name.startsWith('GET /experimental') ? 'filas=' + (JSON.parse(text || '[]').length ?? '?') + ' ' + text.slice(0, 160) : ''}`
+  )
 }
 await probe('GET /experimental/session (sin directory)', '/experimental/session?limit=200&archived=false')
 await probe('GET /api/session/active (sin directory)', '/api/session/active')
@@ -86,10 +107,14 @@ const { fetchSessionsIdle } = await import('../../src/main/opencode/engine-flags
 rmSync(marker, { force: true })
 const idle1 = await fetchSessionsIdle(c.url, '', [home], () => Date.now() + 10 * 60_000) // «ahora» = 10 min después: la sesión de la fase A ya no es reciente
 await sleep(3000)
-out.push(`motor nuevo: fetchSessionsIdle(url, [chat]) -> ocioso=${idle1} complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}   (esperado: true / no)`)
+out.push(
+  `motor nuevo: fetchSessionsIdle(url, [chat]) -> ocioso=${idle1} complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}   (esperado: true / no)`
+)
 await fetch(`${c.url}/session/status?directory=${encodeURIComponent(dir)}`)
 await sleep(3000)
-out.push(`control en ese mismo motor: GET /session/status?directory=<reciente> -> complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}   (esperado: SI)`)
+out.push(
+  `control en ese mismo motor: GET /session/status?directory=<reciente> -> complemento_cargado=${existsSync(marker) ? 'SI' : 'no'}   (esperado: SI)`
+)
 c.stop()
 console.log(out.join('\n'))
 rmSync(root, { recursive: true, force: true })
