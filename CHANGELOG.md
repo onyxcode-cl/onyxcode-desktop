@@ -15,7 +15,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Carpetas de confianza
 
-- **El diálogo de confianza dice qué trae la carpeta** antes de cargar nada: conectores (MCP), complementos (plugins), ayudantes y comandos propios. Si una carpeta que ya confiaste empieza a traer algo nuevo, vuelve a preguntar.
+- **El diálogo de confianza dice qué trae la carpeta** (conectores y el programa que arrancan, complementos, ayudantes y comandos propios) cuando la abres por primera vez. Si una carpeta que ya confiaste empieza a traer algo nuevo, vuelve a preguntar.
 - **Las herramientas de un conector que trae la carpeta preguntan antes de usarse.**
 
 ### Ayudantes y ganchos
@@ -38,9 +38,11 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Lo que todavía no está cerrado
 
 - **Un repositorio Git «desnudo» falso** dentro de una carpeta puede seguir engañando a un `git status` aprobado solo en «Automático». El motor nuevo lo endurece; no lo damos por cerrado hasta probarlo más.
-- **Al confiar en una carpeta, el programa de un conector que ella trae se puede arrancar** antes de que lo uses. El diálogo lo avisa y sus herramientas preguntan, pero arrancar no se evita todavía.
+- **Los conectores de una carpeta pueden arrancar antes de que decidas.** Si confías en la carpeta, el programa de sus conectores se arranca. Y si la app se abre sola en una carpeta que ya tenía confianza y ahora trae un conector nuevo, ese conector puede arrancar mientras el aviso sigue en pantalla; cancelar después no lo deshace. Las herramientas del conector sí preguntan antes de usarse.
 - **Sin diálogo de confianza** en Tareas, Overdrive, Telegram, el celular, Rutinas y Comparar: ahí rigen las mismas preguntas de permiso, pero la carpeta no se revisa antes.
 - En Windows, `cmd.exe` y `git.bat` no tienen aún el mismo cuidado que PowerShell.
+- En «Comparar», las columnas canceladas o descartadas pueden seguir mostrando los botones «Permitir una vez / Rechazar» (no hacen nada).
+- «Permitir siempre» a una página web deja pasar las siguientes durante esa misma sesión, aunque no se guarda para la próxima.
 
 ## [1.8.11] - 2026-11-06
 
