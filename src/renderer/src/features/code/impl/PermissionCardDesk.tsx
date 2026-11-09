@@ -122,6 +122,14 @@ export function PermissionCardDesk({
   // Nace abierto si el resumen de una línea no muestra todo el comando (largo, varias líneas o caracteres ocultos).
   const openDetails = protectedPath || (!!previewText && !previewFits(previewText, hasHiddenChars(previewText)))
 
+  // Sugerencia de la IA: una línea visible fuera del desplegable; la nota «no decide nada» va como ayuda y para lectores de pantalla.
+  const suggestionNode = suggestion ? (
+    <p className="text-meta text-muted" title={t('code.perm.suggestion.note')}>
+      {t(`code.perm.suggestion.${suggestion.value}` as MsgKey, { reason: suggestion.reason })}
+      <span className="sr-only"> {t('code.perm.suggestion.note')}</span>
+    </p>
+  ) : undefined
+
   const details = (
     <>
       {protectedPath && (
@@ -130,7 +138,8 @@ export function PermissionCardDesk({
           {t('code.perm.protectedPath')}
         </p>
       )}
-      {command && (
+      {/* Si el resumen ya muestra el comando entero, no se repite aquí. */}
+      {command && !previewFits(command, hasHiddenChars(command)) && (
         <PermCommand text={command} prompt hasHidden={false} hiddenMessage="" longMessage={(n) => t('code.perm.cmdLong', { n })} />
       )}
       {!command && !diff && patterns.length > 0 && (
@@ -149,12 +158,6 @@ export function PermissionCardDesk({
         <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
           <p className="text-caption font-medium text-subtle">{t('code.perm.aiDesc')}</p>
           <p className="mt-0.5 text-ui text-muted">{description}</p>
-        </div>
-      )}
-      {suggestion && (
-        <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
-          <p className="text-ui text-muted">{t(`code.perm.suggestion.${suggestion.value}` as MsgKey, { reason: suggestion.reason })}</p>
-          <p className="mt-0.5 text-caption text-subtle">{t('code.perm.suggestion.note')}</p>
         </div>
       )}
       {root && (
@@ -182,7 +185,14 @@ export function PermissionCardDesk({
             : t('code.perm.subagentWantsAnon', { label })
           : t('code.perm.agentWants', { label })
       }
-      preview={previewNode}
+      preview={
+        previewNode || suggestionNode ? (
+          <>
+            {previewNode}
+            {suggestionNode}
+          </>
+        ) : undefined
+      }
       details={details}
       detailsOpen={openDetails}
       onKeyDown={onKeyDown}

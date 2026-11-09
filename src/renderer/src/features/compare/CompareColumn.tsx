@@ -193,6 +193,8 @@ export function CompareColumn(props: Props): React.JSX.Element {
   ].join(' · ')
   const canKeep = c.state === 'done' && !c.adopted && !c.discarded
   const streaming = c.state === 'running' || c.state === 'starting'
+  // Una columna que ya terminó, se canceló o se descartó no espera permiso: ocultar la tarjeta.
+  const columnAlive = !c.discarded && !c.adopted && c.state !== 'cancelled' && !c.interrupted && c.state !== 'error' && c.state !== 'done'
 
   return (
     <section
@@ -300,7 +302,7 @@ export function CompareColumn(props: Props): React.JSX.Element {
         ) : (
           <ColumnConversation entries={entries} streaming={streaming} />
         )}
-        {permissions.map((p) => (
+        {(columnAlive ? permissions : []).map((p) => (
           <div
             key={p.id}
             role="group"

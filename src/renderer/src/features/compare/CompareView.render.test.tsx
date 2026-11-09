@@ -318,6 +318,25 @@ describe('CompareViewContent', () => {
     expect(html).toContain('Permitir una vez')
     expect((html.match(/Permitir una vez/g) ?? []).length).toBe(1)
   })
+  it('una columna cancelada, terminada o descartada no muestra la tarjeta de permiso', () => {
+    const perm = (index: number): never =>
+      ({
+        id: `p${index}`,
+        sessionID: 'ses_1',
+        permission: 'bash',
+        patterns: ['ls *'],
+        metadata: {},
+        always: [],
+        api: 'v1',
+        index,
+        compareId: mkManifest().id
+      }) as never
+    const html = content(mkManifest({}, [mkCol(0, { state: 'cancelled' }), mkCol(1, { state: 'done' }), mkCol(2, { discarded: true })]), {
+      permissions: [perm(0), perm(1), perm(2)]
+    })
+    expect(html).not.toContain('Espera tu permiso')
+    expect(html).not.toContain('Permitir una vez')
+  })
   it('nada de «$0» en ninguna columna con métricas desconocidas', () => {
     const html = content(mkManifest({}, [mkCol(0, { state: 'done' }), mkCol(1, { state: 'done' })]))
     expect(html).not.toMatch(/\$\s?0([^,.\d]|$)/)

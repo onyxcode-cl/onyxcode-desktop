@@ -589,7 +589,7 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                         select(id)
                       }}
                       aria-current={current ? 'page' : undefined}
-                      className={`flex h-8 shrink-0 items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 ${current ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
+                      className={`flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm transition-colors duration-150 ${current ? 'bg-active font-medium text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}
                     >
                       <Icon size={14} className={current ? 'shrink-0 text-accent' : 'shrink-0'} />
                       {label()}
@@ -629,7 +629,9 @@ function SettingsPanel({ initial }: SettingsViewProps = {}): React.JSX.Element {
                         className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-[13.5px] transition-colors duration-150 desk:h-8 desk:py-0 desk:gap-2 desk:px-2 desk:text-sm ${current ? 'bg-elevated font-medium text-fg shadow-xs ring-1 ring-border/70 desk:bg-active desk:shadow-none desk:ring-0' : 'text-muted hover:bg-hover hover:text-fg'}`}
                       >
                         <Icon size={15} className={current ? 'shrink-0 text-accent desk:size-4' : 'shrink-0 desk:size-4'} />
-                        {label()}
+                        <span className="min-w-0 truncate whitespace-nowrap" title={label()}>
+                          {label()}
+                        </span>
                       </button>
                     )
                   })}

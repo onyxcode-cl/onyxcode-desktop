@@ -44,7 +44,11 @@ function TrustItemRow({ item }: { item: ProjectScanItem }): React.JSX.Element {
         <span className="min-w-0 truncate font-medium text-fg">{item.name}</span>
         <span className="shrink-0 text-subtle">{te(KIND_KEY[item.kind])}</span>
       </div>
-      {item.detail && <div className="truncate font-mono text-[11px] desk:text-meta text-subtle">{item.detail}</div>}
+      {item.detail && (
+        <div className="break-all font-mono text-[11px] desk:text-meta text-subtle" title={item.detail}>
+          {item.detail}
+        </div>
+      )}
       {item.overrides && (
         <div className="text-[11px] desk:text-meta text-warning">{te('code.trust.overrides', { name: item.overrides })}</div>
       )}
