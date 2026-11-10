@@ -91,6 +91,27 @@ describe('scanProjectConfig', () => {
     expect(r.items.find((i) => i.kind === 'package')!.risky).toBe(true)
   })
 
+  it('H2: package.json con la forma exacta del motor se marca engineGenerated (sigue riesgoso); otras formas o un lockfile ajeno, no', async () => {
+    const forma = '{\n  "dependencies": {\n    "@opencode-ai/plugin": "1.19.5"\n  }\n}\n'
+    const pk = async (pkg: string, lock?: string) => {
+      const d = mk()
+      w(join(d, '.opencode', 'package.json'), pkg)
+      if (lock !== undefined) w(join(d, '.opencode', 'package-lock.json'), lock)
+      return (await scanProjectConfig(d)).items.find((i) => i.kind === 'package')!
+    }
+    const ok = await pk(forma)
+    expect(ok.engineGenerated).toBe(true)
+    expect(ok.risky).toBe(true)
+    const lockOk = JSON.stringify({ packages: { '': {}, 'node_modules/x': { resolved: 'https://registry.npmjs.org/x/-/x-1.tgz' } } })
+    expect((await pk(forma, lockOk)).engineGenerated).toBe(true)
+    const lockMalo = JSON.stringify({ packages: { 'node_modules/x': { resolved: 'https://evil.example/x.tgz' } } })
+    expect((await pk(forma, lockMalo)).engineGenerated).toBeUndefined()
+    expect((await pk(forma, '{no json')).engineGenerated).toBeUndefined()
+    expect((await pk('{"dependencies":{"@opencode-ai/plugin":"1.19.5","x":"1"}}')).engineGenerated).toBeUndefined()
+    expect((await pk('{"dependencies":{"@opencode-ai/plugin":"https://evil.example/p.tgz"}}')).engineGenerated).toBeUndefined()
+    expect((await pk('{"scripts":{"postinstall":"x"},"dependencies":{"@opencode-ai/plugin":"1.19.5"}}')).engineGenerated).toBeUndefined()
+  })
+
   it('.OpenCode con otras mayúsculas: lo encuentra donde el sistema de archivos no distingue (APFS, NTFS)', async () => {
     const probe = mk(false)
     mkdirSync(join(probe, 'aBc'))

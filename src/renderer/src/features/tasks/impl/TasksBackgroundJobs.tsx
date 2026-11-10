@@ -11,5 +11,5 @@ export function TasksBackgroundJobs(): React.JSX.Element | null {
   const questions = useTasks((s) => s.questions)
   if (!activeTaskId || !folder) return null
   const pending = [...Object.values(permissions).map((p) => p.sessionID), ...Object.values(questions).map((q) => q.sessionID)]
-  return <SessionsBackgroundJobs rootId={activeTaskId} directory={sdkDir(folder)} client={client} pendingSessionIds={pending} />
+  return <SessionsBackgroundJobs rootId={activeTaskId} directory={sdkDir(folder)} client={client} pendingSessionIds={pending} engineJobs={false} />
 }

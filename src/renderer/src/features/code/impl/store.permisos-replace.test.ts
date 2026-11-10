@@ -109,6 +109,20 @@ describe('permissionMode: "replace" (motor lazunox.16)', () => {
     expect(rules.get(sid!)!.filter((r) => r.permission === MARK.permission)).toHaveLength(1)
   })
 
+  it('H3 (1.8.14): «Solo explorar» elegido en el borrador (sin conversación activa) crea la sesión con las reglas de «Solo explorar»', async () => {
+    const { create, rules } = installEngine(true)
+    useCode.setState({ activeSessionID: null, agent: 'build', permissionMode: 'manual' })
+    await st().setPermissionMode('plan')
+    expect(st().agent).toBe('plan')
+    const sid = await st().newSession()
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(rules.get(sid!)).toEqual([MARK, ...rulesetFor('plan')])
+    // Y volver a otro modo en el borrador suelta el agente `plan`.
+    useCode.setState({ activeSessionID: null })
+    await st().setPermissionMode('auto')
+    expect(st().agent).toBe('build')
+  })
+
   it('una sesión de la 1.8.12 que arrastra «Solo explorar» y termina con el bloque nuevo se REPARA al enviar (replace una vez)', async () => {
     const { update, promptAsync, rules } = installEngine(true)
     const stale = [...rulesetFor('plan'), ...rulesetFor('auto')] // lo que dejaba la 1.8.12: plan → auto acumulados, sin marca

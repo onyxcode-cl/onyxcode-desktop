@@ -33,6 +33,11 @@ describe('fetchEngineJobs', () => {
     }
   })
 
+  it('403 (carpeta no confiable para ese motor) = sin trabajos, sin error', async () => {
+    const r = await fetchEngineJobs(conn, { sessionID: 's' }, (async () => json(403, { error: 'folder_not_trusted' })) as never)
+    expect(r).toEqual({ available: true, jobs: [] })
+  })
+
   it('otros errores HTTP y de red se propagan (el panel conserva lo último)', async () => {
     await expect(fetchEngineJobs(conn, { sessionID: 's' }, (async () => json(500, {})) as never)).rejects.toThrow('500')
     await expect(

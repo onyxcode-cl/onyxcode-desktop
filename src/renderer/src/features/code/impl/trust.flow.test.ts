@@ -165,6 +165,30 @@ describe('carpeta de confianza', () => {
     expect(t.getPendingTrust()).toBeNull()
   })
 
+  it('H2 (1.8.14): el `.opencode/package.json` con la forma exacta del motor que aparece después de confiar se guarda en silencio; uno distinto sí repregunta', async () => {
+    const pkg = (engineGenerated?: boolean): ProjectScanItem => ({
+      id: `package-${engineGenerated ? 'gen' : 'otro'}`,
+      kind: 'package',
+      name: 'package.json',
+      where: '.opencode/package.json',
+      risky: true,
+      ...(engineGenerated ? { engineGenerated: true } : {})
+    })
+    trusted(result([agent('a')]))
+    const gen = result([agent('a'), pkg(true)])
+    scan.mockResolvedValue(gen)
+    await expect(t.ensureTrusted(D)).resolves.toBe(true)
+    expect(t.getPendingTrust()).toBeNull()
+    expect(st().trustedScans[D]!.huella).toBe(gen.huella)
+    // Otro contenido (sin la marca) después de confiar: sí se pregunta.
+    scan.mockResolvedValue(result([agent('a'), pkg(false)]))
+    const p = t.ensureTrusted(D)
+    await flush()
+    expect(t.getPendingTrust()?.items.map((i) => i.id)).toEqual(['package-otro'])
+    t.resolveTrust(false)
+    await p
+  })
+
   it('entrada antigua sin huella: si no trae nada riesgoso se guarda en silencio; si trae un conector se pregunta una vez', async () => {
     st().trustFolder(D)
     scan.mockResolvedValue(result([agent('a')]))

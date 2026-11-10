@@ -1830,10 +1830,12 @@ export const useCode = create<CodeState>((set, get) => {
     setPermissionMode: async (mode) => {
       lsSet(LS_PERM_MODE, mode)
       set({ permissionMode: mode })
-      const sid = get().activeSessionID
-      if (!sid) return
+      // El agente se iguala AUNQUE todavía no haya conversación (borrador): `effectiveModeFor('plan', 'build')` es «manual», así que sin esto una
+      // conversación creada tras elegir «Solo explorar» en el borrador nacía con las reglas de «Preguntar siempre» (H3, 1.8.13).
       if (mode === 'plan') get().setAgent('plan')
       else if (get().agent === 'plan') get().setAgent('build')
+      const sid = get().activeSessionID
+      if (!sid) return
       // El bloque del modo se manda ya (también «Solo explorar»: tiene que anular lo que dejó el modo anterior en esta sesión).
       // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
       // el cambio vale desde el próximo mensaje (la interfaz lo avisa).

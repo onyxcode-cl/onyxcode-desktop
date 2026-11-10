@@ -161,6 +161,12 @@ export interface ProjectScanItem {
   /** ¿Cuenta para volver a preguntar si cambia? (conectores, código, programas, instrucciones remotas, lo no revisado). */
   risky: boolean
   reason?: ProjectScanReason
+  /**
+   * Solo `package`: el contenido es EXACTAMENTE lo que escribe el motor al instalar su complemento (solo `@opencode-ai/plugin` con versión
+   * exacta, y sin lockfile o con uno solo del registro de npm). Sigue contando como `risky` en el primer diálogo; solo evita volver a
+   * preguntar cuando aparece DESPUÉS de haber confiado (lo creó el propio motor al cargar la carpeta).
+   */
+  engineGenerated?: boolean
 }
 
 export interface ProjectScanResult {

@@ -48,12 +48,15 @@ export function SessionsBackgroundJobs({
   rootId,
   directory,
   client,
-  pendingSessionIds
+  pendingSessionIds,
+  engineJobs = true
 }: {
   rootId: string | null | undefined
   directory: string
   client: OpencodeClient | null
   pendingSessionIds?: readonly string[]
+  /** false en Tareas/Overdrive: esas sesiones viven en otro motor y `jobs:list` solo habla con el principal. */
+  engineJobs?: boolean
 }): React.JSX.Element | null {
   const sessions = useSessions((s) => s.sessions)
   const status = useSessions((s) => s.status)
@@ -64,7 +67,7 @@ export function SessionsBackgroundJobs({
     if (!client) throw new Error('no-client')
     sdkData(await client.session.abort({ sessionID: id, directory }))
   }
-  const engine = useEngineView(rootId, directory, status, view.liveCount)
+  const engine = useEngineView(engineJobs ? rootId : null, directory, status, view.liveCount)
   return (
     <BackgroundJobs view={view} onCancel={abort} engineJobs={engine.rows} onStopEngineJob={engine.stop} onResumeEngineJob={engine.resume} />
   )

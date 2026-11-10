@@ -177,7 +177,9 @@ async function ensureTrustedAgain(dir: string): Promise<boolean> {
   // Confianza vieja sin huella (versión anterior) o huella distinta: solo repregunta si hay algo NUEVO que valga la pena ver.
   const seen = new Set(prev?.ids ?? [])
   const risky = scan.items.filter((i) => i.risky)
-  const toShow = prev ? risky.filter((i) => !seen.has(i.id)) : risky
+  // Un `.opencode/package.json` con la forma exacta que escribe el propio motor al instalar su complemento, que aparece DESPUÉS de haber
+  // confiado, lo creó el motor al cargar la carpeta: no es contenido nuevo. (En el primer diálogo, `prev` vacío, se muestra siempre.)
+  const toShow = prev ? risky.filter((i) => !seen.has(i.id) && !(i.kind === 'package' && i.engineGenerated)) : risky
   if (!scan.complete && toShow.length === 0) {
     // Revisión incompleta (plazo, tope) y distinta de lo aprobado: lo que faltó por mirar podría ser lo nuevo. No se guarda en silencio.
     return showDialog({ dir, scan, items: [], again: !!prev, wasTrusted: true, scanning: false, unreviewed: true })

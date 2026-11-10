@@ -640,14 +640,56 @@ class Scan {
     } catch {
       /* sin fecha */
     }
+    const generated = await this.isEngineGenerated(file, c, base)
     this.add({
       kind: 'package',
       name: 'package.json',
       where: this.rel(file),
       risky: true,
+      ...(generated ? { engineGenerated: true } : {}),
       digest: await hashFile(c.real, c.size, mtime, this.budget)
     })
     this.halt(file)
+  }
+
+  /**
+   * ¿`.opencode/package.json` es idéntico en forma a lo que escribe el motor al instalar `@opencode-ai/plugin`? Solo la clave `dependencies`
+   * con esa única dependencia a versión exacta. Si hay `package-lock.json` al lado, todo `resolved` debe ser del registro de npm y no puede haber
+   * enlaces. Ante cualquier duda (no se lee, no se interpreta, otra forma) es `false`: se trata como un `package.json` normal.
+   */
+  private async isEngineGenerated(file: string, c: { real: string; size: number }, base: string): Promise<boolean> {
+    if (c.size > MAX_JSON_BYTES) return false
+    const text = await readCapped(c.real, MAX_JSON_BYTES)
+    if (text === null) return false
+    try {
+      const o: unknown = JSON.parse(text)
+      if (!isPlain(o) || Object.keys(o).join() !== 'dependencies') return false
+      const deps = o.dependencies
+      if (!isPlain(deps) || Object.keys(deps).join() !== '@opencode-ai/plugin') return false
+      const v = deps['@opencode-ai/plugin']
+      if (typeof v !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v)) return false
+    } catch {
+      return false
+    }
+    const lockPath = join(dirname(file), 'package-lock.json')
+    const lc = await checkRegular(lockPath, base)
+    if (!lc.ok) return lc.reason === 'missing'
+    if (lc.size > 8 * 1024 * 1024) return false
+    const lock = await readCapped(lc.real, 8 * 1024 * 1024)
+    if (lock === null) return false
+    try {
+      const l: unknown = JSON.parse(lock)
+      const pk = isPlain(l) && isPlain(l.packages) ? l.packages : null
+      if (!pk) return false
+      for (const e of Object.values(pk)) {
+        if (!isPlain(e)) return false
+        if (e.link === true) return false
+        if (e.resolved !== undefined && !(typeof e.resolved === 'string' && e.resolved.startsWith('https://registry.npmjs.org/'))) return false
+      }
+    } catch {
+      return false
+    }
+    return true
   }
 
   /** Ayudantes del ayudante externo que el motor también lee (ver `ConfigAgent.loadClaude` en el motor): solo nombres. */

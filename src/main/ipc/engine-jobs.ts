@@ -30,6 +30,8 @@ export async function fetchEngineJobs(
     signal: AbortSignal.timeout(TIMEOUT_MS)
   })
   if (res.status === 404 || res.status === 405) return { available: false }
+  // 403 `folder_not_trusted`: el motor no confía en esa carpeta (p. ej. una tarea de otro motor): no hay trabajos que mostrar, no es un error.
+  if (res.status === 403) return { available: true, jobs: [] }
   if (!res.ok) throw new Error(`El motor respondió ${res.status}`)
   return { available: true, jobs: parseEngineJobs(await res.json().catch(() => null)) }
 }
