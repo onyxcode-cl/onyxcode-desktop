@@ -115,7 +115,7 @@ export const models = {
   'models.keyTest.httpSuffix': ' (HTTP {status})',
   'models.planExec.title': 'Planear y ejecutar en Code',
   'models.planExec.description':
-    'Opcional. En Code, el modo Planear puede usar un modelo (por ejemplo uno más fuerte) y Hacer otro (por ejemplo uno más barato), aunque sean de proveedores distintos. Vacío = se usa el modelo de la conversación.',
+    'Opcional. En Code, el modo Planear puede usar un modelo (por ejemplo uno más fuerte) y Hacer otro (por ejemplo uno más barato), aunque sean de servicios distintos. Vacío = se usa el modelo de la conversación.',
   'models.planExec.plan.label': 'Modelo para planear',
   'models.planExec.plan.description': 'Se usa mientras Code está en modo Planear.',
   'models.planExec.plan.aria': 'Modelo para planear',
