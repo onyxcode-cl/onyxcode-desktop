@@ -6,6 +6,7 @@
 import { t } from '@shared/i18n'
 import { appOpencodeConfigEnv, readAppMcpConfig, readAppPermission } from '../extras/mcp-config'
 import { getOpencodeEnv } from '../tasks/opencode-config'
+import { bundledRipgrepPathEnv } from '../tasks/ripgrep-runtime'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { embeddedBrowser } from '../embedded-browser/service'
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -310,6 +311,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       if (persistEnv.LAZUNOX_PERMISSION_DIR) ensurePermissionDir(persistEnv.LAZUNOX_PERMISSION_DIR)
       const childEnv = minimalEnv({
         ...getOpencodeEnv(),
+        // `rg` incluido al principio del PATH: el motor lo busca ahí y, si no lo halla, intenta bajarlo de internet (1.8.17).
+        ...bundledRipgrepPathEnv(),
         ...appOpencodeConfigEnv(),
         // Funciones experimentales del motor (Modo código, subagentes de fondo): solo las dos variables concretas y solo si
         // los Ajustes las encienden para Chat o Code (comparten este proceso). Cambiarlas exige reiniciar (`engine-flags-restart.ts`).

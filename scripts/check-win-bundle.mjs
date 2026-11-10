@@ -38,6 +38,9 @@ const PYTHON_WIN_ENTRY = {
   to: 'python-bin/win-x64',
   filter: ['**/*', '!**/__pycache__', '!**/__pycache__/**', '!**/*.pyc']
 }
+// ripgrep incluido (1.8.17): `rg.exe` va por win.extraResources a resources\\ripgrep\\rg.exe; el motor lo busca en el PATH (src/main/tasks/ripgrep-runtime.ts).
+export const RIPGREP_WIN_EXE = 'resources/ripgrep-bin/bin/rg.exe'
+const RIPGREP_WIN_ENTRY = { from: 'resources/ripgrep-bin/bin', to: 'ripgrep', filter: ['rg.exe'] }
 const norm = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '')
 
 /** ¿Debe estar activa la función en el paquete? Misma regla que electron-builder.js. */
@@ -208,6 +211,36 @@ export function checkPythonWinPackaging(config, exists) {
   return problems
 }
 
+/**
+ * ripgrep incluido en Windows (1.8.17). Devuelve los problemas (vacía si todo bien). Pura: `exists` inyectado.
+ * @param {any} config   lo que exporta electron-builder.js
+ * @param {(p: string) => boolean} exists   ¿existe la ruta (relativa a la raíz del repo)?
+ */
+export function checkRipgrepWinPackaging(config, exists) {
+  const problems = []
+  const isRg = (e) => typeof e === 'object' && /(^|\/)ripgrep-bin(\/|$)/.test(norm(e.from ?? ''))
+  for (const [plat, list] of [
+    ['comun', config.extraResources ?? []],
+    ['mac', config.mac?.extraResources ?? []]
+  ])
+    for (const e of list)
+      if (isRg(e) && (e.filter ?? []).includes('rg.exe')) problems.push(`${plat}.extraResources lleva rg.exe (solo win.extraResources)`)
+  if (!(config.files ?? []).map(String).includes('!resources/ripgrep-bin/**'))
+    problems.push('files ya no excluye resources/ripgrep-bin/** (rg entraría en el .asar)')
+  const win = (config.win?.extraResources ?? []).filter(isRg)
+  if (win.length !== 1) problems.push(`win.extraResources debe llevar UN bloque de ripgrep (hay ${win.length})`)
+  else if (
+    norm(win[0].from) !== RIPGREP_WIN_ENTRY.from ||
+    norm(win[0].to) !== RIPGREP_WIN_ENTRY.to ||
+    JSON.stringify(win[0].filter) !== JSON.stringify(RIPGREP_WIN_ENTRY.filter)
+  )
+    problems.push(
+      `win.extraResources de ripgrep: debe ser from «${RIPGREP_WIN_ENTRY.from}», to «${RIPGREP_WIN_ENTRY.to}» y filter ${JSON.stringify(RIPGREP_WIN_ENTRY.filter)}`
+    )
+  if (!exists(RIPGREP_WIN_EXE)) problems.push(`falta ${RIPGREP_WIN_EXE} (corre en Windows: npm run fetch:ripgrep)`)
+  return problems
+}
+
 /** Archivos del .asar que NO deben estar (lista de rutas del paquete). Pura. */
 export function wslLeaksInAsar(entries) {
   return entries
@@ -261,6 +294,12 @@ async function main() {
   console.log(
     '[check-win-bundle] OK: Python incluido en Windows (python.exe y sello .lazunox-python presentes; win.extraResources lo lleva)'
   )
+  const rgBad = checkRipgrepWinPackaging(config, (p) => existsSync(join(root, p)))
+  if (rgBad.length) {
+    console.error(`ripgrep incluido en Windows incorrecto (${rgBad.length}):\n- ${rgBad.join('\n- ')}`)
+    process.exit(1)
+  }
+  console.log('[check-win-bundle] OK: ripgrep incluido en Windows (rg.exe presente; win.extraResources lo lleva)')
   const asarArg = process.argv.indexOf('--asar')
   if (asarArg > 0) await checkAsar(process.argv[asarArg + 1])
   if (process.argv.includes('--config-only')) return

@@ -232,14 +232,14 @@ win_packcheck() {
   win_ssh 1500 "powershell -NoProfile -ExecutionPolicy Bypass -File $WIN_ROOT/wt/scripts/win/pack-check.ps1 -Branch $BRANCH_SAFE" || die "pack-check.ps1 falló (log en $WIN_ROOT/logs/$BRANCH_SAFE/pack-check.txt)."
 }
 
-# Ronda fija de paridad (W14): fetch-python (si falta), check-win-bundle (equivalente Windows de verify:bundled, que es solo de Mac:
+# Ronda fija de paridad (W14): fetch-python y fetch-ripgrep (si faltan), check-win-bundle (equivalente Windows de verify:bundled, que es solo de Mac:
 # .app/codesign/Seatbelt) y parity-check (app armada SIN elevar + CDP contra docs/PARIDAD-WINDOWS.json), todo por run.ps1 en el PC.
 win_parity() {
-  printf '   $ ssh %s powershell -File %s/run.ps1 -Branch %s -Steps python,bundle,parity\n' "$WIN_HOST" "$WIN_ROOT" "$BRANCH_SAFE"
+  printf '   $ ssh %s powershell -File %s/run.ps1 -Branch %s -Steps python,ripgrep,bundle,parity\n' "$WIN_HOST" "$WIN_ROOT" "$BRANCH_SAFE"
   info "npm run verify:bundled es solo de macOS (.app/codesign/Seatbelt): en Windows su equivalente es el paso bundle (check-win-bundle)."
   [ "$DRY" -eq 1 ] && return 0
   local rc=0
-  win_ssh 1800 "powershell -NoProfile -ExecutionPolicy Bypass -File $WIN_ROOT/run.ps1 -Branch $BRANCH_SAFE -Steps python,bundle,parity" || rc=$?
+  win_ssh 1800 "powershell -NoProfile -ExecutionPolicy Bypass -File $WIN_ROOT/run.ps1 -Branch $BRANCH_SAFE -Steps python,ripgrep,bundle,parity" || rc=$?
   win_ssh 60 "powershell -NoProfile -Command \"Get-Content $WIN_ROOT/logs/$BRANCH_SAFE/parity.log -ErrorAction SilentlyContinue\"" || true
   [ "$rc" -eq 0 ] || die "falló la ronda de paridad de Windows (python/bundle/parity; logs en $WIN_ROOT/logs/$BRANCH_SAFE/). Una sesión SSH elevada solo da AVISO en parity, no fallo."
 }
@@ -254,7 +254,7 @@ phase_win() {
   step win-publish   "Windows 3/6: ZIP + manifiesto firmado (publish-update --platform win32-x64)" win_publish
   step win-verify    "Windows 4/6: verificación del cliente (verify-update win32-x64)" win_verify
   step win-packcheck "Windows 5/6: pack-check.ps1 en el PC" win_packcheck
-  step win-parity    "Windows 6/6: ronda de paridad (fetch-python, check-win-bundle, parity-check)" win_parity
+  step win-parity    "Windows 6/6: ronda de paridad (fetch-python, fetch-ripgrep, check-win-bundle, parity-check)" win_parity
   need_file "$EXE"
   say "win: listo. Artefactos en dist/update-win/ y $EXE"
 }

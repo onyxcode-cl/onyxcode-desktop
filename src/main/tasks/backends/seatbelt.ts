@@ -11,6 +11,7 @@ import { join } from 'node:path'
 import { seedModelsCache } from '../models-cache'
 import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv } from '../sandbox-profile'
+import { bundledRipgrepPathEnv } from '../ripgrep-runtime'
 import { spawnOnHost } from './spawn'
 import type { SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './types'
 
@@ -97,7 +98,9 @@ export const seatbeltBackend: SandboxBackend = {
       allowDelete: spec.allowDelete,
       extraFolders: spec.extraFolders
     })
-    const env = { ...spec.baseEnv, ...sandboxEnv(dirs), ...spec.proxyEnv, ...spec.extraEnv }
+    // `rg` incluido al principio del PATH (1.8.17): dentro del encierro el motor no puede bajarlo de internet. El perfil ya deja LEER y
+    // EJECUTAR los recursos de la app (`(allow default)`); no se abre nada nuevo.
+    const env = { ...spec.baseEnv, ...bundledRipgrepPathEnv(), ...sandboxEnv(dirs), ...spec.proxyEnv, ...spec.extraEnv }
     // `-p <texto>`: sin archivo de perfil que un proceso encerrado pueda cambiar (ver `seatbeltProfileText`).
     const child = spawnOnHost(SANDBOX_EXEC, ['-p', profile, spec.bin, ...spec.serveArgs], spec.folder, env)
     return {

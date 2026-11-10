@@ -41,8 +41,8 @@ describe('electron-builder.js y LAZUNOX_SELF_SIGNED', () => {
     expect(c.afterSign).toBe('build/notarize.js')
     expect(c.mac).toMatchObject({ hardenedRuntime: true, entitlements: 'build/entitlements.mac.plist' })
     expect(c.mac.identity).toBeUndefined()
-    // cu-helper, cu-keys, lazunox-disclaim, lazunox-keybox y opencode
-    expect((c.mac.binaries as string[]).length).toBe(5)
+    // cu-helper, cu-keys, lazunox-disclaim, lazunox-keybox, ripgrep (rg) y opencode
+    expect((c.mac.binaries as string[]).length).toBe(6)
   })
   it('autofirmado: firma con CSC_NAME, sin hardened runtime y sin notarizar', () => {
     const c = config({

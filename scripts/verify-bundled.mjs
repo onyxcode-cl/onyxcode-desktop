@@ -17,6 +17,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pin = JSON.parse(readFileSync(join(root, 'resources/opencode-bin/pin.json'), 'utf8'))
+const rgPin = JSON.parse(readFileSync(join(root, 'resources/ripgrep-bin/pin.json'), 'utf8'))
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const argv = process.argv.slice(2)
 const arg = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined)
@@ -157,6 +158,19 @@ async function main() {
   } else {
     record('Python incluido (Contents/Resources/python)', false, 'falta: ¿se ejecutó `npm run fetch:python` antes de empaquetar?')
   }
+  // ripgrep incluido (1.8.17): sin él el motor intenta bajarlo de internet (imposible dentro del encierro de Tareas) y fallan grep, glob y la carga de skills.
+  const rg = join(res, 'ripgrep/rg')
+  if (existsSync(rg)) {
+    const st = statSync(rg)
+    record('ripgrep incluido y ejecutable (Contents/Resources/ripgrep/rg)', (st.mode & 0o111) !== 0 && st.size > 0, `${st.size} bytes`)
+    const v = run(rg, ['--version'], { env: { PATH: '/usr/bin:/bin', HOME: mkdtempSync(join(tmpdir(), 'vb-rg-home-')) } })
+    const got = /ripgrep (\d+\.\d+\.\d+)/.exec(v.stdout || '')?.[1]
+    record(`rg --version == pin de ripgrep (${rgPin.version})`, v.status === 0 && got === rgPin.version, `obtenido «${got}»`)
+    const rcs = run('codesign', ['--verify', '--strict', rg])
+    record('ripgrep: firma válida', rcs.status === 0, rcs.status === 0 ? sigInfo(rg) : (rcs.stderr || '').trim().slice(-120))
+  } else {
+    record('ripgrep incluido (Contents/Resources/ripgrep/rg)', false, 'falta: ¿se ejecutó `npm run fetch:ripgrep` antes de empaquetar?')
+  }
   // Dependencias completas dentro de app.asar: cada paquete de node_modules debe encontrar las suyas (la 0.5.24 salió sin is-number-object
   // —un enlace circular en node_modules confundió al empaquetador— y la app se caía al arrancar con «Cannot find module»).
   const asarFile = join(res, 'app.asar')
@@ -249,13 +263,16 @@ async function sandboxed() {
   const dirs = sandboxDirs(privateDir)
   for (const d of [home, folder, dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
   writeFileSync(join(userData, 'secreto.txt'), 'secreto')
+  writeFileSync(join(folder, 'hola.txt'), 'palabra-unica-xyz\n')
   const port = await freePort()
   // Como la app desde 1.8.16: el perfil va como texto (`sandbox-exec -p`), sin archivo.
   const profile = buildSandboxProfile({ folder, privateDir, userData, home, serverPort: port, allowedOutboundPorts: [] })
   const user = 'tasks'
   const pass = randomBytes(12).toString('base64url')
+  // Como la app (1.8.17): la carpeta del `rg` incluido va PRIMERA en el PATH del motor encerrado (sin ella intenta bajarlo de github.com).
+  const rgDir = join(res, 'ripgrep')
   const env = {
-    PATH: '/usr/bin:/bin',
+    PATH: existsSync(join(rgDir, 'rg')) ? `${rgDir}:/usr/bin:/bin` : '/usr/bin:/bin',
     HOME: home,
     ...sandboxEnv(dirs),
     OPENCODE_SERVER_USERNAME: user,
@@ -299,6 +316,26 @@ async function sandboxed() {
       ok,
       body ? `healthy=${body.healthy} version=${body.version} en ${ms} ms` : `sin respuesta (exit=${exited}) ${tail.trim().slice(-300)}`
     )
+    // El motor usa el `rg` incluido: la búsqueda (que pasa por ripgrep) responde y NO intenta descargar nada.
+    if (ok && existsSync(join(rgDir, 'rg'))) {
+      let found = null
+      let status = null
+      try {
+        const r = await fetch(`http://127.0.0.1:${port}/find?pattern=palabra-unica-xyz`, {
+          headers: { authorization: auth, 'x-opencode-directory': folder },
+          signal: AbortSignal.timeout(20_000)
+        })
+        status = r.status
+        if (r.ok) found = await r.json()
+      } catch {}
+      await new Promise((r) => setTimeout(r, 300))
+      const downloading = /downloading ripgrep/i.test(tail)
+      record(
+        'búsqueda del motor dentro del Seatbelt usa el rg incluido (sin descargar)',
+        Array.isArray(found) && found.length > 0 && !downloading,
+        `HTTP ${status}; ${Array.isArray(found) ? `${found.length} resultado(s)` : 'sin resultados'}${downloading ? '; el registro dice «downloading ripgrep»' : ''}`
+      )
+    }
     // El perfil sigue aislando: lectura de userData denegada dentro del sandbox.
     const deny = run('/usr/bin/sandbox-exec', ['-p', profile, '/bin/cat', join(userData, 'secreto.txt')])
     record(

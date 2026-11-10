@@ -133,7 +133,43 @@ bajo demanda (desde la bienvenida o desde Ajustes › Componentes opcionales) de
 (equipo de desarrollo fijado en `resources/craft/pin.json`) comprobados antes de usarlo, y lo guarda sin modificar en la carpeta de datos
 de la app. Las skills de oficina lo emplean para crear y previsualizar documentos.
 
-## 6. No afiliación
+## 6. ripgrep (búsqueda de texto incluida)
+
+Lazunox incluye `rg` (ripgrep) para que el motor pueda buscar en archivos y cargar las skills sin descargar nada de internet (dentro del
+encierro de Tareas no hay red). Se descarga con `scripts/fetch-ripgrep.mjs` (versión, tamaño y SHA-256 fijados en
+`resources/ripgrep-bin/pin.json`) del release oficial y se incluye **sin modificar**; solo se extrae el ejecutable.
+
+- ripgrep **15.1.0**, de Andrew Gallant (BurntSushi) y colaboradores: <https://github.com/BurntSushi/ripgrep> (release
+  <https://github.com/BurntSushi/ripgrep/releases/tag/15.1.0>).
+- Licencia: **MIT o Unlicense** (a elección de quien lo recibe). Se aplica aquí la licencia MIT.
+- Ubicación en la app: `Contents/Resources/ripgrep/rg` (macOS) y `resources\ripgrep\rg.exe` (Windows). Las Tareas en Windows usan el
+  `ripgrep` de la distro (paquete de Debian/Ubuntu, misma licencia).
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2015 Andrew Gallant
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## 7. No afiliación
 
 Lazunox es un proyecto independiente, no afiliado a OpenCode ni respaldado por sus autores. Los nombres de terceros se usan solo para
 indicar compatibilidad.

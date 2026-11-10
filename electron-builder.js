@@ -100,6 +100,8 @@ module.exports = {
     '!resources/opencode-bin/**',
     // El Python propio (scripts/fetch-python.mjs) va por extraResources (sellado y firmado), nunca dentro del .asar.
     '!resources/python-bin/**',
+    // El ripgrep propio (scripts/fetch-ripgrep.mjs) va por extraResources, nunca dentro del .asar.
+    '!resources/ripgrep-bin/**',
     // Cachés de bytecode de Python (las genera cualquier ejecución local de las skills): basura, nunca en el paquete.
     '!**/__pycache__/**',
     '!**/*.pyc'
@@ -209,6 +211,10 @@ module.exports = {
         to: 'opencode',
         filter: ['Lazunox Motor.app/**']
       },
+      // ripgrep propio (scripts/fetch-ripgrep.mjs, fijado en resources/ripgrep-bin/pin.json) → Contents/Resources/ripgrep/rg. El motor lo busca en
+      // el PATH y, si no lo halla, intenta bajarlo de internet (imposible dentro del encierro de Tareas); la app pone esta carpeta en su PATH
+      // (src/main/tasks/ripgrep-runtime.ts). Dentro del .app para que el perfil Seatbelt lo pueda LEER y EJECUTAR; electron-builder lo firma.
+      { from: 'resources/ripgrep-bin/bin', to: 'ripgrep', filter: ['rg'] },
       // Python propio con las librerías de oficina (scripts/fetch-python.mjs, solo macOS) → Contents/Resources/python/bin/python3,
       // para que las skills de oficina no dependan del Python del Mac del usuario. Solo si se descargó (en desarrollo no existe).
       ...(require('node:fs').existsSync(pythonMacDir) ? [{ from: pythonMacDir, to: 'python' }] : [])
@@ -239,6 +245,7 @@ module.exports = {
             'Contents/Resources/computer-use/bin/cu-keys',
             'Contents/Resources/launcher/lazunox-disclaim',
             'Contents/Resources/keybox/lazunox-keybox',
+            'Contents/Resources/ripgrep/rg',
             'Contents/Resources/opencode/Lazunox Motor.app'
           ]
         }
@@ -266,6 +273,8 @@ module.exports = {
     // OpenCode oficial para Windows (scripts/fetch-opencode.mjs) → resources\\opencode\\opencode.exe, fuera del asar.
     extraResources: [
       { from: 'resources/opencode-bin/bin', to: 'opencode', filter: ['opencode.exe'] },
+      // ripgrep propio para Windows (scripts/fetch-ripgrep.mjs) → resources\\ripgrep\\rg.exe (src/main/tasks/ripgrep-runtime.ts lo pone en el PATH del motor).
+      { from: 'resources/ripgrep-bin/bin', to: 'ripgrep', filter: ['rg.exe'] },
       // Script de reemplazo del actualizador propio → resources\updater\swap.ps1 (src/main/update/swap-win.ts lo COPIA a userData
       // antes de lanzarlo). Fuera del asar: no se puede ejecutar desde dentro.
       { from: 'resources/updater', to: 'updater', filter: ['swap.ps1'] },
