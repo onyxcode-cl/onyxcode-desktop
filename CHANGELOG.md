@@ -4,6 +4,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.17] - 2026-11-10
+
+### Arreglos
+
+- **En Tareas, el asistente ya puede abrir sus guías para crear documentos y buscar dentro de la carpeta.** Antes, al abrir una tarea el motor intentaba bajar un programa de búsqueda desde internet; el encierro de Tareas se lo impedía, aparecía un aviso de que se bloqueó el acceso a un sitio, y las guías de Word, Excel, PowerPoint y PDF no se podían abrir (los documentos se creaban igual, pero sin sus instrucciones). Ahora Lazunox trae ese programa incluido.
+- **Code y Chat ya no necesitan bajar ese programa la primera vez que buscan.**
+- **A quién afecta.** El fallo era de Mac. En Windows, Tareas ya traía ese programa.
+
+### Componente incluido nuevo
+
+- **ripgrep 15.1.0** (licencia MIT), el programa de búsqueda en carpetas. Su aviso está en los avisos de terceros.
+
+### Lo que todavía no está cerrado
+
+- **No se midió cuánto mejora la calidad de los documentos con las guías cargadas.** Solo se comprobó que ahora se abren y que la búsqueda funciona.
+- **Lo probado en la app armada se actualizará con el resultado de las pruebas a mano.**
+- **Los pendientes de la 1.8.16 siguen igual** (el encierro de Tareas sigue con lista de cosas prohibidas, y lo que no se pudo probar a mano).
+
 ## [1.8.16] - 2026-11-10
 
 ### Corrección de seguridad en Tareas en Mac
