@@ -184,6 +184,7 @@ export const mainErrors = {
   'merr.dialog.attachMessage': 'Los archivos se copiarán a la carpeta de trabajo.',
   'merr.dialog.textFilter': 'Texto',
   'merr.dialog.exportTitle': 'Exportar diagnóstico',
+  'merr.rating.saveFailed': 'No se pudo guardar la valoración: {detail}',
 
   // Control del Mac, atajos, conectores, actualización
   'merr.computer.macOnly': 'El control del computador solo está disponible en macOS.',

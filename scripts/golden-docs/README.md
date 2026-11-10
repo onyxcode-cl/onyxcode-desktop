@@ -9,7 +9,7 @@ node scripts/golden-docs.mjs --baseline <golden.json>     # compara con una corr
 node scripts/golden-docs.mjs --only d02,x03 --fail-on-hard
 ```
 
-Salida (por defecto `~/Documents/respaldo/OnyxCode/capturas-1-8-9/calidad-docs/golden/<fecha>-<rama>/`): `golden.md` (informe), `golden.json` (datos),
+Salida (por defecto una carpeta `golden/<fecha>-<rama>/` dentro de la carpeta de resultados de calidad de documentos): `golden.md` (informe), `golden.json` (datos),
 `files/` (los documentos generados), `png/` (imágenes por página o lámina) y `sheets/` (hoja de contacto por caso, para una mirada humana o un juez de IA).
 Además copia `golden-latest.{md,json}` un nivel más arriba.
 

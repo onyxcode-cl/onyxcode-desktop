@@ -180,6 +180,7 @@ export const mainErrors = {
   'merr.dialog.attachMessage': 'The files will be copied to the working folder.',
   'merr.dialog.textFilter': 'Text',
   'merr.dialog.exportTitle': 'Export diagnostics',
+  'merr.rating.saveFailed': 'Could not save the rating: {detail}',
 
   // Mac control, shortcuts, connectors, updates
   'merr.computer.macOnly': 'Computer control is only available on macOS.',

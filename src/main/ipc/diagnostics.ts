@@ -95,7 +95,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     try {
       return { saved: ratings.set(input) }
     } catch (e) {
-      recordProblem({ source: 'main', level: 'warn', message: `no se pudo guardar la valoración: ${e instanceof Error ? e.message : String(e)}` })
+      recordProblem({ source: 'main', level: 'warn', message: t('merr.rating.saveFailed', { detail: e instanceof Error ? e.message : String(e) }) })
       return { saved: false }
     }
   })
