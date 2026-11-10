@@ -18,6 +18,11 @@
  * son SOLO 8 líneas: `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` («Lazunox» y
  * `lazunox@localhost.invalid`) en el `env` de los dos lanzamientos con aislamiento. Sin ellas git firmaba con el nombre completo del usuario
  * de macOS y el nombre del equipo. Comando, argumentos, perfil, red, escritura, proxies y limpieza no cambiaron.
+ *
+ * Actualización DELIBERADA (1.8.16, apps lanzadas fuera del encierro): el fixture se recapturó (y se pasó por Prettier) y el diff son
+ * SOLO dos líneas nuevas en el bloque `(deny mach-lookup …)` de cada uno de los 11 perfiles (7 directos, 2 escritos y los 2 de los
+ * lanzamientos con aislamiento): `com.apple.coreservices.quarantine-resolver` y `com.apple.runningboard` (ver `DENIED_MACH`).
+ * Nada más cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
