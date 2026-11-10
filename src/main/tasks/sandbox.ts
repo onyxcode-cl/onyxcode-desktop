@@ -2,7 +2,7 @@
  * Sandbox de Tareas (macOS Seatbelt / `sandbox-exec`).
  *
  * Cada carpeta de Tareas tiene su PROPIO `opencode serve` lanzado dentro de
- * `sandbox-exec -f <perfil>`; todos los procesos hijos (bash, python, textutil…) heredan
+ * `sandbox-exec -p <perfil>` (texto, sin archivo: 1.8.16); todos los procesos hijos (bash, python, textutil…) heredan
  * el perfil (ver `sandbox-profile.ts`: qué se puede escribir/leer/ejecutar).
  *
  * Aislamiento de OpenCode (AUDIT.md S1): el servidor sandboxeado usa sus propios
@@ -33,7 +33,7 @@ import { IDENTITY_MAP, type PathMapWire } from '@shared/tasks-path-map'
 import { selectBackend, TasksSandboxNotReady, WinBackendUnavailable, type WinBackendProvider } from './backends'
 import { detectElevated } from './win-elevation'
 import { noneBackend } from './backends/none'
-import { SANDBOX_EXEC, seatbeltAvailable, writeSandboxProfile } from './backends/seatbelt'
+import { SANDBOX_EXEC, seatbeltAvailable, seatbeltProfileText } from './backends/seatbelt'
 import type { LaunchedSandbox, SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './backends/types'
 import { CredentialProxy, EgressProxy, randomToken, type EgressBlockedEvent, type EgressLogEntry } from './proxy'
 import { PROVIDER_TARGETS, buildProviderOverride, placeholderAuthContent, type ProviderAuthEntry } from './provider-egress'
@@ -41,7 +41,7 @@ import { PROVIDER_TARGETS, buildProviderOverride, placeholderAuthContent, type P
 export { buildSandboxProfile, defaultDeniedReadPaths, defaultWritablePaths, sandboxKey } from './sandbox-profile'
 
 // El perfil Seatbelt y su escritura viven ahora en `backends/seatbelt.ts` (F8-B81, extracción sin cambios).
-export { SANDBOX_EXEC, writeSandboxProfile }
+export { SANDBOX_EXEC, seatbeltProfileText }
 export type { SandboxIsolation, SandboxNetworkOptions }
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000

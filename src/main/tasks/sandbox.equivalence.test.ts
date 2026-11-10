@@ -3,7 +3,7 @@
  *
  * El fixture `__fixtures__/seatbelt-before.json` se capturó ejecutando el código de `sandbox.ts`
  * ANTES de extraer el backend (commit previo). Esta prueba ejecuta `startTasksServer` y
- * `writeSandboxProfile` con dobles (sin Electron, sin red, sin `sandbox-exec`) y compara, para
+ * `seatbeltProfileText` con dobles (sin Electron, sin red, sin `sandbox-exec`) y compara, para
  * entradas fijas: perfil SBPL, `command`, `args`, `env` y opciones de `spawn`, constructores de los
  * proxies, `trackPid`, `killTree` y limpieza. NO regeneres el fixture para que pase: revisa el diff.
  * (Captura inicial: `LAZUNOX_CAPTURE_SEATBELT_BEFORE=1`; solo se usó una vez, con el código original.)
@@ -23,6 +23,11 @@
  * SOLO dos líneas nuevas en el bloque `(deny mach-lookup …)` de cada uno de los 11 perfiles (7 directos, 2 escritos y los 2 de los
  * lanzamientos con aislamiento): `com.apple.coreservices.quarantine-resolver` y `com.apple.runningboard` (ver `DENIED_MACH`).
  * Nada más cambió.
+ *
+ * Actualización DELIBERADA (1.8.16, perfil sin archivo): `sandbox-exec` recibe el perfil como texto (`-p`) y no en un archivo temporal
+ * (`-f`) que un proceso encerrado podía reemplazar. El diff del fixture son SOLO 6 líneas: `-f` → `-p` en los dos lanzamientos con
+ * aislamiento y, al no haber archivo, `profileFileExistsBeforeStop` y `profileRemoved` pasan de `true` a `null`. El texto de los
+ * perfiles (incluido el que recibe `-p`), el comando, el entorno, la red, los proxies y la limpieza no cambiaron.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
@@ -56,10 +61,17 @@ vi.mock('node:child_process', async (orig) => {
   return {
     ...(await orig<typeof import('node:child_process')>()),
     spawn: (command: string, args: string[], opts: Record<string, unknown>) => {
-      const i = args.indexOf('-f')
+      // `-f <archivo>` (hasta 1.8.15) o `-p <texto>` (1.8.16): en `args` el perfil queda como `<PROFILE>` y su texto en `profileText`.
+      const f = args.indexOf('-f')
+      const p = args.indexOf('-p')
       let profileText: string | null = null
-      if (i >= 0) profileText = rf(args[i + 1]!, 'utf8')
-      rec.spawns.push({ command, args: [...args], opts: JSON.parse(JSON.stringify(opts)), profileText })
+      const shown = [...args]
+      if (f >= 0) profileText = rf(args[f + 1]!, 'utf8')
+      if (p >= 0) {
+        profileText = args[p + 1]!
+        shown[p + 1] = '<PROFILE>'
+      }
+      rec.spawns.push({ command, args: shown, opts: JSON.parse(JSON.stringify(opts)), profileText })
       const child = Object.assign(new EE(), { pid: 4242, exitCode: null, signalCode: null, stdout: new EE(), stderr: new EE() })
       rec.child = child
       return child
@@ -126,7 +138,7 @@ vi.mock('./proxy', () => {
 })
 
 import { appAuthFile } from '../opencode/data-dir'
-import { buildSandboxProfile, startTasksServer, writeSandboxProfile, type StartTasksServerOptions } from './sandbox'
+import { buildSandboxProfile, seatbeltProfileText, startTasksServer, type StartTasksServerOptions } from './sandbox'
 
 const FIXTURE = join(__dirname, '__fixtures__', 'seatbelt-before.json')
 const CAPTURE = process.env.LAZUNOX_CAPTURE_SEATBELT_BEFORE === '1'
@@ -279,8 +291,8 @@ function profiles() {
     ['sin-userdata', { folder: base.folder, privateDir: base.privateDir, home: base.home }]
   ]
   const direct = inputs.map(([name, o]) => [name, buildSandboxProfile(o)] as const)
-  // `writeSandboxProfile` (archivo temporal) con las mismas opciones de red/borrado.
-  const dir = mkdtempSync(join(root, 'prof-'))
+  // `seatbeltProfileText` (el texto que recibe `sandbox-exec -p`; hasta 1.8.15, `writeSandboxProfile` lo escribía en un archivo) con
+  // las mismas opciones de red/borrado. Los nombres `w-*` se conservan para comparar con el fixture.
   const written = [
     ['w-sin-red', undefined],
     [
@@ -293,14 +305,13 @@ function profiles() {
       }
     ]
   ].map(([name, net]) => {
-    const f = writeSandboxProfile(
+    const text = seatbeltProfileText(
       base.folder,
       { privateDir: base.privateDir, userData: base.userData },
       '/fixture/userData/opencode-config',
-      net as Parameters<typeof writeSandboxProfile>[3],
-      dir
+      net as Parameters<typeof seatbeltProfileText>[3]
     )
-    return [name as string, readFileSync(f, 'utf8')] as const
+    return [name as string, text] as const
   })
   return Object.fromEntries([...direct, ...written].map(([k, v]) => [k, v.replaceAll(osTmp, '<OSTMP>')]))
 }
@@ -346,7 +357,7 @@ describe.skipIf(!macOnly)('lanzamiento Seatbelt: equivalencia byte a byte con el
     expect(names).toEqual(['basico-sin-auth', 'completo', 'sin-isolation', 'sin-sandbox'])
     const completo = before.launches[1]
     expect(completo.spawns[0].command).toBe('/fixture/launcher/lazunox-disclaim')
-    expect(completo.spawns[0].args.slice(0, 2)).toEqual(['/usr/bin/sandbox-exec', '-f'])
+    expect(completo.spawns[0].args.slice(0, 3)).toEqual(['/usr/bin/sandbox-exec', '-p', '<PROFILE>'])
     expect(completo.spawns[0].profileText).toContain('(deny network*)')
   })
 })

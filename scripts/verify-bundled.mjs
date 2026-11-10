@@ -250,8 +250,8 @@ async function sandboxed() {
   for (const d of [home, folder, dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
   writeFileSync(join(userData, 'secreto.txt'), 'secreto')
   const port = await freePort()
-  const profile = join(tmp, 'perfil.sb')
-  writeFileSync(profile, buildSandboxProfile({ folder, privateDir, userData, home, serverPort: port, allowedOutboundPorts: [] }))
+  // Como la app desde 1.8.16: el perfil va como texto (`sandbox-exec -p`), sin archivo.
+  const profile = buildSandboxProfile({ folder, privateDir, userData, home, serverPort: port, allowedOutboundPorts: [] })
   const user = 'tasks'
   const pass = randomBytes(12).toString('base64url')
   const env = {
@@ -262,7 +262,7 @@ async function sandboxed() {
     OPENCODE_SERVER_PASSWORD: pass
   }
   let tail = ''
-  const child = spawn('/usr/bin/sandbox-exec', ['-f', profile, bin, 'serve', '--port', String(port), '--hostname', '127.0.0.1'], {
+  const child = spawn('/usr/bin/sandbox-exec', ['-p', profile, bin, 'serve', '--port', String(port), '--hostname', '127.0.0.1'], {
     cwd: folder,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -300,7 +300,7 @@ async function sandboxed() {
       body ? `healthy=${body.healthy} version=${body.version} en ${ms} ms` : `sin respuesta (exit=${exited}) ${tail.trim().slice(-300)}`
     )
     // El perfil sigue aislando: lectura de userData denegada dentro del sandbox.
-    const deny = run('/usr/bin/sandbox-exec', ['-f', profile, '/bin/cat', join(userData, 'secreto.txt')])
+    const deny = run('/usr/bin/sandbox-exec', ['-p', profile, '/bin/cat', join(userData, 'secreto.txt')])
     record(
       'el perfil deniega leer userData (control negativo)',
       deny.status !== 0 && !(deny.stdout || '').includes('secreto'),
