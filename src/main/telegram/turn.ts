@@ -170,7 +170,7 @@ export function analyzeTurn(
     running,
     title: n > 0 ? workTitle(n, workDurationMs(timed, live, now), live) : '',
     titleDone: n > 0 ? workTitle(n, workDurationMs(timed, false, now), false) : '',
-    summary: summarizeSteps(tools.map((p) => ({ tool: p.tool ?? '' }))),
+    summary: summarizeSteps(tools.map((p) => ({ tool: p.tool ?? '', state: { status: (p as { state?: { status?: string } }).state?.status } }))),
     error: asst.map((m) => m.error).find((e) => e) ?? '',
     files: [...created].slice(0, 20),
     lastAssistantId: last?.id ?? null,
