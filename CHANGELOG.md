@@ -4,6 +4,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.14] - 2026-11-10
+
+### Arreglos
+
+- **«Solo explorar» elegido antes del primer mensaje ahora se respeta.** En una conversación nueva de Code, si elegías «Solo explorar» antes de escribir, la conversación partía con las reglas de «Preguntar siempre» (preguntaba antes de editar en vez de no editar). Se corregía solo al cambiar de modo.
+- **Una carpeta de confianza ya no vuelve a preguntar por un archivo que crea el propio motor.** Al reabrir una carpeta con complementos salía «Esta carpeta trae algo nuevo: package.json». El primer diálogo de confianza lo sigue mostrando.
+- **Overdrive y Tareas ya no llenan el registro con un rechazo repetido** al consultar los trabajos de fondo. No se veía en pantalla.
+
+### Lo que todavía no está cerrado
+
+- **Si alguien con acceso a una carpeta ya confiada cambia los complementos instalados**, la app ya no vuelve a preguntar por eso.
+- **Los pendientes de la 1.8.13 siguen igual.**
+
 ## [1.8.13] - 2026-11-09
 
 ### Code: planear con un modelo y hacer con otro
