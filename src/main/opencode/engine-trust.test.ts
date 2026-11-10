@@ -4,7 +4,7 @@ import { EngineTrust, sendTrust } from './engine-trust'
 const A = { baseUrl: 'http://127.0.0.1:1111', authorization: 'Basic aaa' }
 const B = { baseUrl: 'http://127.0.0.1:2222', authorization: 'Basic bbb' }
 
-type Call = { url: string; method: string; body: { directory: string }; auth: string }
+type Call = { url: string; method: string; body: { directory: string; preload?: boolean }; auth: string }
 
 /** Motor falso: guarda las carpetas declaradas por motor; `routes:false` imita a un motor sin `/lazunox/trust`. */
 function fakeEngine(o: { routes?: boolean; failFor?: string[] } = {}) {
@@ -12,7 +12,7 @@ function fakeEngine(o: { routes?: boolean; failFor?: string[] } = {}) {
   const lists = new Map<string, Set<string>>()
   const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input)
-    const body = JSON.parse(String(init?.body ?? '{}')) as { directory: string }
+    const body = JSON.parse(String(init?.body ?? '{}')) as { directory: string; preload?: boolean }
     const headers = init?.headers as Record<string, string>
     calls.push({ url, method: init?.method ?? 'GET', body, auth: headers.Authorization! })
     if (o.routes === false) return new Response('{"name":"NotFoundError"}', { status: 404 })
@@ -53,6 +53,17 @@ describe('EngineTrust (motor principal)', () => {
     t.bind({ start: async () => conn, peek: () => conn })
     return { t, fe, setConn: (c: typeof A) => (conn = c) }
   }
+
+  it('declare con preload lo manda; declareAll (reinicio del motor) nunca lo manda', async () => {
+    const { t, fe } = setup()
+    await t.declare('/w/a', { preload: true })
+    await t.declare('/w/b')
+    expect(fe.calls.map((c) => c.body)).toEqual([{ directory: '/w/a', preload: true }, { directory: '/w/b' }])
+    fe.calls.length = 0
+    await t.declareAll(B, ['/w/chat'])
+    expect(fe.calls.length).toBe(3)
+    for (const c of fe.calls) expect(c.body.preload).toBeUndefined()
+  })
 
   it('declara una vez por motor (la segunda llamada no vuelve a pedir)', async () => {
     const { t, fe } = setup()

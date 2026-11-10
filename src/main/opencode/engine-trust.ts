@@ -40,13 +40,16 @@ export async function sendTrust(
   conn: TrustConn,
   method: 'POST' | 'DELETE',
   directory: string,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  preload = false
 ): Promise<TrustResult> {
   try {
     const res = await fetchImpl(`${conn.baseUrl}${ENGINE_TRUST_PATH}`, {
       method,
       headers: { Authorization: conn.authorization, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ directory }),
+      // `preload: true` solo lo manda la acción de la persona al confiar una carpeta (motor ≥ Q1.1: precarga la instancia plena). Un motor
+      // anterior (lazunox.16) ignora el campo (esquema sin `onExcessProperty`). Nunca se manda en la redeclaración al arrancar el motor.
+      body: JSON.stringify(preload ? { directory, preload: true } : { directory }),
       signal: AbortSignal.timeout(TIMEOUT_MS)
     })
     if (res.ok) return 'ok'
@@ -108,14 +111,14 @@ export class EngineTrust {
   }
 
   /** Declara `dir` en el motor de `conn` (cualquiera: el principal o uno de Tareas). No lo recuerda para reenviarlo. */
-  async declareOn(conn: TrustConn, directory: string): Promise<TrustResult> {
+  async declareOn(conn: TrustConn, directory: string, opts: { preload?: boolean } = {}): Promise<TrustResult> {
     if (!isAbs(directory)) return 'failed'
     const dir = norm(directory)
     if (this.declared.get(connKey(conn))?.has(dir)) return 'ok'
     const key = `${connKey(conn)}\n${dir}`
     const have = this.inflight.get(key)
     if (have) return have
-    const p = sendTrust(conn, 'POST', dir, this.fetchImpl)
+    const p = sendTrust(conn, 'POST', dir, this.fetchImpl, opts.preload === true)
       .then((r) => {
         // `unsupported` también se anota: contra un motor sin la ruta no se insiste en cada petición.
         if (r === 'ok' || r === 'unsupported') this.mark(conn, dir, true)
@@ -128,9 +131,10 @@ export class EngineTrust {
 
   /**
    * Declara `dir` en el motor principal y la recuerda para los reinicios. Espera a que el motor esté listo. Nunca lanza: si no se pudo,
+   * `opts.preload`: pide al motor precargar la instancia plena (solo la acción de la persona al confiar). Sin él, no se precarga.
    * devuelve `failed` y quien llama sigue (a lo sumo recibirá `403 folder_not_trusted`, que las pantallas tratan como «sin confianza»).
    */
-  async declare(directory: string): Promise<TrustResult> {
+  async declare(directory: string, opts: { preload?: boolean } = {}): Promise<TrustResult> {
     if (!isAbs(directory) || !this.binding) return 'failed'
     const dir = norm(directory)
     if (!this.wanted.has(dir) && this.wanted.size < MAX_WANTED) this.wanted.add(dir)
@@ -140,7 +144,7 @@ export class EngineTrust {
     } catch {
       return 'failed' // el motor no arrancó: al arrancar se reenvían las recordadas
     }
-    return this.declareOn(conn, dir)
+    return this.declareOn(conn, dir, opts)
   }
 
   /** Declara varias (Code: la carpeta y sus árboles de trabajo). */

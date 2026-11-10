@@ -16,12 +16,16 @@ const LIST = [
   wt('/r/.app-worktrees/sub/profundo')
 ]
 
-function deps(list: GitWorktreeDetailed[] | Error = LIST): CodeTrustDeps & { declared: string[]; revoked: string[] } {
+function deps(
+  list: GitWorktreeDetailed[] | Error = LIST
+): CodeTrustDeps & { declared: string[]; revoked: string[]; opts: unknown[] } {
   const d = {
     declared: [] as string[],
+    opts: [] as unknown[],
     revoked: [] as string[],
-    declare: async (x: string) => {
+    declare: async (x: string, o?: { preload?: boolean }) => {
       d.declared.push(x)
+      d.opts.push(o)
       return 'ok' as const
     },
     revoke: async (x: string) => {
@@ -45,6 +49,11 @@ describe('declareCodeFolder / revokeCodeFolder', () => {
     const d = deps()
     expect(await declareCodeFolder('/r/app', d)).toBe(true)
     expect(d.declared).toEqual(['/r/app', '/r/.app-worktrees/feat-x'])
+  })
+  it('pide precarga solo para la carpeta confiada, no para sus árboles de trabajo', async () => {
+    const d = deps()
+    await declareCodeFolder('/r/app', d)
+    expect(d.opts).toEqual([{ preload: true }, undefined])
   })
   it('si git falla, la carpeta igual queda declarada', async () => {
     const d = deps(new Error('sin git'))

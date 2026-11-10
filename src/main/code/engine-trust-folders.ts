@@ -14,13 +14,13 @@ import { listWorktrees } from '../git/service'
 import { engineTrust, type TrustResult } from '../opencode/engine-trust'
 
 export interface CodeTrustDeps {
-  declare: (dir: string) => Promise<TrustResult>
+  declare: (dir: string, opts?: { preload?: boolean }) => Promise<TrustResult>
   revoke: (dir: string) => Promise<TrustResult>
   worktrees: (dir: string) => Promise<GitWorktreeDetailed[]>
 }
 
 const realDeps: CodeTrustDeps = {
-  declare: (d) => engineTrust.declare(d),
+  declare: (d, opts) => engineTrust.declare(d, opts),
   revoke: (d) => engineTrust.revoke(d),
   worktrees: (d) => listWorktrees(d)
 }
@@ -35,7 +35,8 @@ export function appWorktreesOf(list: readonly GitWorktreeDetailed[]): string[] {
 
 /** `true` si el motor quedó enterado (o no tiene la función: motor anterior). */
 export async function declareCodeFolder(dir: string, deps: CodeTrustDeps = realDeps): Promise<boolean> {
-  const r = await deps.declare(dir)
+  // Solo la carpeta que la persona acaba de confiar pide precarga; los árboles de trabajo (abajo) y la redeclaración al arrancar, no.
+  const r = await deps.declare(dir, { preload: true })
   const ok = r === 'ok' || r === 'unsupported'
   if (ok) {
     // Los árboles de trabajo van aparte y sin bloquear: si git no responde, la carpeta ya quedó declarada.
