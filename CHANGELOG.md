@@ -4,6 +4,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.16] - 2026-11-10
+
+### Corrección de seguridad en Tareas en Mac
+
+- **Qué pasaba.** En Mac, un programa ejecutado dentro de una tarea podía salirse del encierro que lo contiene, de tres maneras: abriendo una aplicación que quedaba funcionando fuera del encierro; registrando un programa de inicio que quedaba funcionando fuera y volvía a ejecutarse en cada inicio de sesión; y cambiando el archivo de reglas del encierro para que las tareas lanzadas después quedaran sin él. Para que ocurriera, el modelo tenía que ejecutar ese código dentro de una tarea (por ejemplo, engañado por instrucciones escondidas en un archivo o en una página). Estaba así desde la primera versión. No tenemos señales de que se haya usado; lo encontramos nosotros al revisar.
+- **Qué cambia.** Las tres vías quedan cerradas. Además, las reglas del encierro ya no pasan por un archivo que la tarea pueda tocar. Lo normal de una tarea (Python, Node, git, crear documentos, el motor de Tareas) siguió funcionando en las pruebas.
+- **A quién afecta.** Solo a Mac. En Windows, Tareas usa otro mecanismo y no cambia.
+
+### Lo que todavía no está cerrado
+
+- **El encierro de Tareas sigue funcionando con una lista de cosas prohibidas.** Por eso puede existir otra vía que no hayamos encontrado. Rehacerlo al revés (prohibir todo y permitir solo una lista) queda para una versión propia.
+- **No se revisaron uno por uno todos los servicios del sistema.** Solo se probaron las vías conocidas y las que podían alcanzarse con las herramientas normales; los mensajes privados entre programas del sistema no se probaron.
+- **Un programa dentro de una tarea todavía puede enviar señales a otros programas tuyos** (cerrarlos o pausarlos). Ya no sirve para salir del encierro, pero sigue siendo posible.
+- **No se probó la generación de PDF o imágenes con el navegador sin ventana dentro del encierro.** En el equipo de pruebas ese navegador tampoco funcionó fuera del encierro, así que no hubo con qué comparar.
+- **Lo probado en la app ya armada se actualizará con el resultado de las pruebas a mano.** Hasta entonces, las pruebas se hicieron con el perfil del encierro y el lanzamiento reales, pero no con la app Lazunox completa.
+- **Los pendientes de la 1.8.15 siguen igual.**
+
 ## [1.8.15] - 2026-11-10
 
 ### Arreglos
