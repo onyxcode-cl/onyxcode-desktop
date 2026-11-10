@@ -917,6 +917,19 @@
       ],
       "nota": "Mac: /Library/Application Support/Lazunox/motor-policy.json. Windows: %ProgramData%\\Lazunox\\motor-policy.json. Solo si existe; sin archivo = sin política. W-A4 (1.8.12). Sin probar en un PC Windows real: ver SEGURIDAD.md.",
       "comprobacion": null
+    },
+    {
+      "id": "N04",
+      "funcion": "Programa de búsqueda rg incluido y en el PATH de los motores",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/ripgrep-runtime.ts:19",
+        "src/main/tasks/ripgrep-runtime.ts:65",
+        "src/main/opencode/server.ts:315",
+        "src/main/tasks/backends/seatbelt.ts:103"
+      ],
+      "nota": "Programa de búsqueda rg incluido en la app y puesto en el PATH de los motores (1.8.17). Motor principal (Mac y Windows): cubierto por pruebas unitarias src/main/opencode/server.ripgrep-path.test.ts y src/main/tasks/ripgrep-runtime.test.ts. Tareas en Mac: cubierto por src/main/tasks/backends/ripgrep-path.test.ts y por la prueba real src/main/tasks/sandbox-ripgrep.real.test.ts (pasó). Tareas en Windows: no aplica, el motor corre dentro de WSL y la distro ya trae su propio rg. En Windows no se ha probado todavía en una app armada: implementado, sin verificar en Windows.",
+      "comprobacion": null
     }
   ]
 }

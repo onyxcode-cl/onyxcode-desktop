@@ -335,6 +335,10 @@
     "src/main/tasks/restore-points.ts": {
       "win32": 1
     },
+    "src/main/tasks/ripgrep-runtime.ts": {
+      "darwin": 1,
+      "win32": 3
+    },
     "src/main/tasks/sandbox-profile.ts": {
       "usrBin": 8
     },
