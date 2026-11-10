@@ -76,9 +76,12 @@ describe('instantánea api-routes.json', () => {
       'DELETE /permission/siempre',
       'GET /session/{sessionID}/uso'
     ]
+    // lazunox.16: confianza de carpetas dentro del motor (dar, quitar y consultar): rutas propias del motor.
+    const CONFIANZA = ['GET /lazunox/trust', 'POST /lazunox/trust', 'DELETE /lazunox/trust']
     const propias = snapshot.routes.filter(
       (r: string) =>
         /\/experimental\/session\/[^\s]*\/trabajos/.test(r) ||
+        CONFIANZA.includes(r) ||
         FORMULARIOS.includes(r) ||
         REBOBINAR.includes(r) ||
         OBJETIVO.includes(r) ||
@@ -91,6 +94,7 @@ describe('instantánea api-routes.json', () => {
         ...REBOBINAR,
         ...OBJETIVO,
         ...OLA7,
+        ...CONFIANZA,
         'GET /experimental/session/{sessionID}/trabajos',
         'POST /experimental/session/{sessionID}/trabajos/{id}/terminar',
         'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar'

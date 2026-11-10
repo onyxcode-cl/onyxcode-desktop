@@ -1205,6 +1205,11 @@ const HTTP_X_ROUTES = [
   'GET /permission/siempre',
   'DELETE /permission/siempre/{id}',
   'DELETE /permission/siempre',
+  // Confianza de carpetas (motor lazunox.16): decidir en qué carpeta se confía es de quien está en el computador.
+  // Clase X incluso el listado (muestra rutas del disco). Nunca desde el celular.
+  'GET /lazunox/trust',
+  'POST /lazunox/trust',
+  'DELETE /lazunox/trust',
   'POST /experimental/workspace',
   'POST /experimental/workspace/sync-list',
   'POST /experimental/workspace/warp',
