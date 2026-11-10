@@ -20,6 +20,7 @@ import { collectMcpSecrets, collectStringValues, makeRedactor, type Redactor } f
 export const ENGINE_FILE_TAIL_BYTES = 256 * 1024
 export const DEFAULT_MAX_LINES = 500
 export const REPORT_ENGINE_LINES = 200
+const REPORT_RATING_LINES = 200
 export const REPORT_PROBLEM_LINES = 150
 
 export interface DiagnosticsDeps {
@@ -38,6 +39,8 @@ export interface DiagnosticsDeps {
   versions: () => Record<string, string>
   /** Registro permanente de problemas (opcional: sin él, la fuente `problems` sale vacía). */
   problems?: { readLines(max?: number): string[] }
+  /** Valoraciones de respuestas guardadas en el equipo (líneas JSON sin texto de la conversación). Opcional. */
+  ratings?: { readLines(max?: number): string[] }
   /**
    * Proveedores y modelos para el informe (opcional). Todo lo que devuelve son ids, `source`, nombres de tipo y modelos elegidos:
    * jamás claves. `refresh` (si existe) vuelve a pedir al motor la lista de proveedores conectados antes de generar el informe.
@@ -210,6 +213,8 @@ export class DiagnosticsService {
     const problems = deps.problems?.readLines(REPORT_PROBLEM_LINES) ?? []
     out.push('', `Últimos problemas guardados de la app (${problems.length} líneas)`)
     out.push(...(problems.length ? problems : ['  (ninguno)']))
+    const rated = deps.ratings?.readLines(REPORT_RATING_LINES) ?? []
+    if (rated.length) out.push('', `Valoraciones de respuestas guardadas (${rated.length} líneas)`, ...rated)
     out.push('', `Últimas ${REPORT_ENGINE_LINES} líneas del motor`)
     out.push(...deps.server.recentLog(REPORT_ENGINE_LINES))
     // Todo el informe (también los datos de estado) pasa por el redactor, una línea a la vez.

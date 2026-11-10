@@ -35,6 +35,7 @@ import type { ElicitationNotice } from '@shared/mcp-elicitation'
 import type { CodeMessage, PendingElicitation, PendingPermission, PendingQuestion } from './types'
 import { ConfirmButton } from './ui'
 import { compactBlockOf, useCode } from './store'
+import { RatingButtons, ratingContextOf } from './RatingButtons'
 import { useProviders } from '../../../stores/providers'
 import { useExtrasPrefs } from '../../settings/impl/extras'
 import { modelLabel } from '../../settings/impl/ModelSelect'
@@ -520,6 +521,7 @@ const TurnView = memo(
       .trim()
     const showCopy = !!replyText && !(busy && isLastTurn)
     const mobile = isRemoteSurface()
+    const ratingCtx = useMemo(() => (compaction ? null : ratingContextOf(assistant)), [compaction, assistant])
     // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
     const readingStored = useWorkView('code')
     const reading = mobile ? 'normal' : readingStored
@@ -674,6 +676,7 @@ const TurnView = memo(
             className={`-ml-1.5 flex items-center gap-0.5 transition-opacity ${isLastTurn ? 'opacity-100' : 'opacity-0 group-hover/turn:opacity-100 focus-within:opacity-100'}`}
           >
             <CopyButton text={replyText} label={t('code.msg.copyReply')} />
+            {ratingCtx && <RatingButtons key={ratingCtx.messageId} context={ratingCtx} />}
           </div>
         )}
       </div>
