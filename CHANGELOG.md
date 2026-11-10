@@ -4,6 +4,46 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.13] - 2026-11-09
+
+### Code: planear con un modelo y hacer con otro
+
+- **Puedes elegir un modelo para «Planear» y otro para «Hacer»** (Ajustes › Modelos). Por ejemplo, uno más fuerte para pensar el plan y uno más barato para ejecutarlo, aunque sean de servicios distintos. Si lo dejas vacío, se usa el modelo de la conversación.
+- **La conversación muestra qué modelo se está usando en cada paso**, y avisa si tuvo que usar otro.
+
+### Tablero de ayudantes
+
+- **Nuevo tablero en Code** con los ayudantes de la conversación: qué está haciendo cada uno, en qué estado está, con qué modelo y cuánto lleva gastado.
+- **Puedes detener un ayudante o todos**, y abrir lo que conversó cada uno.
+
+### Permisos más claros
+
+- **Después de «Solo explorar», los ayudantes ya pueden editar** cuando cambias de modo en la misma conversación. Antes quedaban bloqueados hasta abrir una conversación nueva.
+- **Lo que niegas en la configuración queda negado en todos los modos**, también en «Todo sin preguntar» y también para los ayudantes.
+- **Cuando un ayudante no puede arrancar, la tarjeta dice por qué** y qué hacer.
+
+### Carpetas de confianza
+
+- **El motor ya no carga nada de una carpeta hasta que confías en ella**: ni conectores, ni complementos, ni ayudantes, ni comandos propios. Antes eso lo cuidaba solo la app.
+- **El diálogo de confianza muestra el comando completo** que arranca cada conector (por ejemplo `npx -y @acme/mcp`), con las claves y direcciones tapadas.
+
+### Modelo de respaldo
+
+- **Nueva sección en Ajustes › Modelos**: elige hasta 3 modelos gratis para seguir cuando el principal se queda sin cuota. Usar otro servicio como respaldo viene apagado, porque envía la conversación a ese servicio.
+- **La conversación avisa** cuando un turno se hizo con el modelo de respaldo.
+
+### Motor nuevo (lazunox.16)
+
+- **Cada paso gasta menos**: la parte fija de cada pedido al modelo (instrucciones y herramientas) bajó cerca de un 20 % en nuestras mediciones, sin quitar herramientas.
+
+### Lo que todavía no está cerrado
+
+- **El ahorro se midió con un modelo de prueba.** No medimos todavía si algún modelo real usa peor una herramienta con las descripciones más cortas.
+- **Tareas, Overdrive, Rutinas, Comparar, el celular y Telegram siguen sin diálogo de confianza**: la app declara esas carpetas como confiables por ti, igual que en la 1.8.12.
+- **Ajustes › Ayudantes con una carpeta que nunca abriste** solo avisa que no es de confianza; para confiar hay que abrirla en Code.
+- **Un árbol de trabajo de Git hecho a mano** fuera de la carpeta que crea Lazunox hay que abrirlo y confiarlo aparte.
+- **Los pendientes de la 1.8.12 que no se nombran arriba siguen igual** (repositorio Git «desnudo» falso, `cmd.exe` y `git.bat` en Windows).
+
 ## [1.8.12] - 2026-11-09
 
 ### Code pregunta más antes de ejecutar cosas
