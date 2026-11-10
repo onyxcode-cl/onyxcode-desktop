@@ -1,0 +1,38 @@
+{
+ "theme": "blue",
+ "slides": [
+  {
+   "title": "Un solo dato largo en una tabla",
+   "bullets": [
+    "Portada"
+   ]
+  },
+  {
+   "title": "Tabla con una celda de 90 caracteres",
+   "layout": "table",
+   "table": {
+    "columns": [
+     "Concepto",
+     "Descripción"
+    ],
+    "rows": [
+     [
+      "Ítem 1",
+      "Esta celda tiene deliberadamente más de sesenta caracteres para ver cómo reacciona el esquema ante un dato largo"
+     ],
+     [
+      "Ítem 2",
+      "Corta"
+     ]
+    ]
+   }
+  },
+  {
+   "title": "Cierre",
+   "layout": "closing",
+   "bullets": [
+    "Fin"
+   ]
+  }
+ ]
+}

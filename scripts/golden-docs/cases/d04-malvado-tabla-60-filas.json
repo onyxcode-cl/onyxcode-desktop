@@ -1,0 +1,460 @@
+{
+ "title": "Catálogo de 60 productos",
+ "subtitle": "Tabla larga para probar el salto de página",
+ "blocks": [
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Catálogo"
+  },
+  {
+   "type": "paragraph",
+   "text": "La tabla siguiente tiene 60 filas y debe continuar en varias páginas con su encabezado."
+  },
+  {
+   "type": "table",
+   "columns": [
+    "Producto",
+    "SKU",
+    "Stock",
+    "Precio (CLP)",
+    "Activo"
+   ],
+   "rows": [
+    [
+     "Producto 01",
+     "SKU-1001",
+     8,
+     1537.5,
+     "Sí"
+    ],
+    [
+     "Producto 02",
+     "SKU-1002",
+     11,
+     1575.0,
+     "Sí"
+    ],
+    [
+     "Producto 03",
+     "SKU-1003",
+     14,
+     1612.5,
+     "No"
+    ],
+    [
+     "Producto 04",
+     "SKU-1004",
+     17,
+     1650.0,
+     "Sí"
+    ],
+    [
+     "Producto 05",
+     "SKU-1005",
+     20,
+     1687.5,
+     "Sí"
+    ],
+    [
+     "Producto 06",
+     "SKU-1006",
+     23,
+     1725.0,
+     "No"
+    ],
+    [
+     "Producto 07",
+     "SKU-1007",
+     26,
+     1762.5,
+     "Sí"
+    ],
+    [
+     "Producto 08",
+     "SKU-1008",
+     29,
+     1800.0,
+     "Sí"
+    ],
+    [
+     "Producto 09",
+     "SKU-1009",
+     32,
+     1837.5,
+     "No"
+    ],
+    [
+     "Producto 10",
+     "SKU-1010",
+     35,
+     1875.0,
+     "Sí"
+    ],
+    [
+     "Producto 11",
+     "SKU-1011",
+     38,
+     1912.5,
+     "Sí"
+    ],
+    [
+     "Producto 12",
+     "SKU-1012",
+     41,
+     1950.0,
+     "No"
+    ],
+    [
+     "Producto 13",
+     "SKU-1013",
+     44,
+     1987.5,
+     "Sí"
+    ],
+    [
+     "Producto 14",
+     "SKU-1014",
+     47,
+     2025.0,
+     "Sí"
+    ],
+    [
+     "Producto 15",
+     "SKU-1015",
+     50,
+     2062.5,
+     "No"
+    ],
+    [
+     "Producto 16",
+     "SKU-1016",
+     53,
+     2100.0,
+     "Sí"
+    ],
+    [
+     "Producto 17",
+     "SKU-1017",
+     56,
+     2137.5,
+     "Sí"
+    ],
+    [
+     "Producto 18",
+     "SKU-1018",
+     59,
+     2175.0,
+     "No"
+    ],
+    [
+     "Producto 19",
+     "SKU-1019",
+     62,
+     2212.5,
+     "Sí"
+    ],
+    [
+     "Producto 20",
+     "SKU-1020",
+     65,
+     2250.0,
+     "Sí"
+    ],
+    [
+     "Producto 21",
+     "SKU-1021",
+     68,
+     2287.5,
+     "No"
+    ],
+    [
+     "Producto 22",
+     "SKU-1022",
+     71,
+     2325.0,
+     "Sí"
+    ],
+    [
+     "Producto 23",
+     "SKU-1023",
+     74,
+     2362.5,
+     "Sí"
+    ],
+    [
+     "Producto 24",
+     "SKU-1024",
+     77,
+     2400.0,
+     "No"
+    ],
+    [
+     "Producto 25",
+     "SKU-1025",
+     80,
+     2437.5,
+     "Sí"
+    ],
+    [
+     "Producto 26",
+     "SKU-1026",
+     83,
+     2475.0,
+     "Sí"
+    ],
+    [
+     "Producto 27",
+     "SKU-1027",
+     86,
+     2512.5,
+     "No"
+    ],
+    [
+     "Producto 28",
+     "SKU-1028",
+     89,
+     2550.0,
+     "Sí"
+    ],
+    [
+     "Producto 29",
+     "SKU-1029",
+     92,
+     2587.5,
+     "Sí"
+    ],
+    [
+     "Producto 30",
+     "SKU-1030",
+     95,
+     2625.0,
+     "No"
+    ],
+    [
+     "Producto 31",
+     "SKU-1031",
+     98,
+     2662.5,
+     "Sí"
+    ],
+    [
+     "Producto 32",
+     "SKU-1032",
+     101,
+     2700.0,
+     "Sí"
+    ],
+    [
+     "Producto 33",
+     "SKU-1033",
+     104,
+     2737.5,
+     "No"
+    ],
+    [
+     "Producto 34",
+     "SKU-1034",
+     107,
+     2775.0,
+     "Sí"
+    ],
+    [
+     "Producto 35",
+     "SKU-1035",
+     110,
+     2812.5,
+     "Sí"
+    ],
+    [
+     "Producto 36",
+     "SKU-1036",
+     113,
+     2850.0,
+     "No"
+    ],
+    [
+     "Producto 37",
+     "SKU-1037",
+     116,
+     2887.5,
+     "Sí"
+    ],
+    [
+     "Producto 38",
+     "SKU-1038",
+     119,
+     2925.0,
+     "Sí"
+    ],
+    [
+     "Producto 39",
+     "SKU-1039",
+     122,
+     2962.5,
+     "No"
+    ],
+    [
+     "Producto 40",
+     "SKU-1040",
+     125,
+     3000.0,
+     "Sí"
+    ],
+    [
+     "Producto 41",
+     "SKU-1041",
+     128,
+     3037.5,
+     "Sí"
+    ],
+    [
+     "Producto 42",
+     "SKU-1042",
+     131,
+     3075.0,
+     "No"
+    ],
+    [
+     "Producto 43",
+     "SKU-1043",
+     134,
+     3112.5,
+     "Sí"
+    ],
+    [
+     "Producto 44",
+     "SKU-1044",
+     137,
+     3150.0,
+     "Sí"
+    ],
+    [
+     "Producto 45",
+     "SKU-1045",
+     140,
+     3187.5,
+     "No"
+    ],
+    [
+     "Producto 46",
+     "SKU-1046",
+     143,
+     3225.0,
+     "Sí"
+    ],
+    [
+     "Producto 47",
+     "SKU-1047",
+     146,
+     3262.5,
+     "Sí"
+    ],
+    [
+     "Producto 48",
+     "SKU-1048",
+     149,
+     3300.0,
+     "No"
+    ],
+    [
+     "Producto 49",
+     "SKU-1049",
+     152,
+     3337.5,
+     "Sí"
+    ],
+    [
+     "Producto 50",
+     "SKU-1050",
+     155,
+     3375.0,
+     "Sí"
+    ],
+    [
+     "Producto 51",
+     "SKU-1051",
+     158,
+     3412.5,
+     "No"
+    ],
+    [
+     "Producto 52",
+     "SKU-1052",
+     161,
+     3450.0,
+     "Sí"
+    ],
+    [
+     "Producto 53",
+     "SKU-1053",
+     164,
+     3487.5,
+     "Sí"
+    ],
+    [
+     "Producto 54",
+     "SKU-1054",
+     167,
+     3525.0,
+     "No"
+    ],
+    [
+     "Producto 55",
+     "SKU-1055",
+     170,
+     3562.5,
+     "Sí"
+    ],
+    [
+     "Producto 56",
+     "SKU-1056",
+     173,
+     3600.0,
+     "Sí"
+    ],
+    [
+     "Producto 57",
+     "SKU-1057",
+     176,
+     3637.5,
+     "No"
+    ],
+    [
+     "Producto 58",
+     "SKU-1058",
+     179,
+     3675.0,
+     "Sí"
+    ],
+    [
+     "Producto 59",
+     "SKU-1059",
+     182,
+     3712.5,
+     "Sí"
+    ],
+    [
+     "Producto 60",
+     "SKU-1060",
+     185,
+     3750.0,
+     "No"
+    ]
+   ],
+   "zebra": true,
+   "caption": "Tabla 1. Catálogo completo",
+   "align": [
+    "left",
+    "left",
+    "right",
+    "right",
+    "center"
+   ]
+  },
+  {
+   "type": "paragraph",
+   "text": "Fin del catálogo."
+  }
+ ]
+}

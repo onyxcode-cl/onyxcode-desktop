@@ -1,0 +1,157 @@
+{
+ "sheets": [
+  {
+   "name": "Presupuesto 2026",
+   "rows": [
+    [
+     "Concepto",
+     "Categoría",
+     "Presupuesto",
+     "Real",
+     "Diferencia",
+     "% ejecución"
+    ],
+    [
+     "Arriendo oficina",
+     "Fijos",
+     2400000,
+     2400000,
+     {
+      "formula": "D2-C2",
+      "value": 0
+     },
+     {
+      "formula": "D2/C2",
+      "value": 1.0
+     }
+    ],
+    [
+     "Sueldos",
+     "Personal",
+     9800000,
+     10150000,
+     {
+      "formula": "D3-C3",
+      "value": 350000
+     },
+     {
+      "formula": "D3/C3",
+      "value": 1.0357
+     }
+    ],
+    [
+     "Marketing digital",
+     "Marketing",
+     1500000,
+     1890000,
+     {
+      "formula": "D4-C4",
+      "value": 390000
+     },
+     {
+      "formula": "D4/C4",
+      "value": 1.26
+     }
+    ],
+    [
+     "Software y licencias",
+     "Tecnología",
+     820000,
+     790000,
+     {
+      "formula": "D5-C5",
+      "value": -30000
+     },
+     {
+      "formula": "D5/C5",
+      "value": 0.9634
+     }
+    ],
+    [
+     "Transporte",
+     "Operación",
+     640000,
+     712000,
+     {
+      "formula": "D6-C6",
+      "value": 72000
+     },
+     {
+      "formula": "D6/C6",
+      "value": 1.1125
+     }
+    ],
+    [
+     "Servicios básicos",
+     "Fijos",
+     380000,
+     365000,
+     {
+      "formula": "D7-C7",
+      "value": -15000
+     },
+     {
+      "formula": "D7/C7",
+      "value": 0.9605
+     }
+    ],
+    [
+     "Capacitación",
+     "Personal",
+     450000,
+     210000,
+     {
+      "formula": "D8-C8",
+      "value": -240000
+     },
+     {
+      "formula": "D8/C8",
+      "value": 0.4667
+     }
+    ],
+    [
+     "Insumos de oficina",
+     "Operación",
+     260000,
+     248000,
+     {
+      "formula": "D9-C9",
+      "value": -12000
+     },
+     {
+      "formula": "D9/C9",
+      "value": 0.9538
+     }
+    ],
+    [
+     "Total",
+     "",
+     {
+      "formula": "SUM(C2:C9)",
+      "value": 16250000
+     },
+     {
+      "formula": "SUM(D2:D9)",
+      "value": 16765000
+     },
+     {
+      "formula": "D10-C10",
+      "value": 515000
+     },
+     {
+      "formula": "D10/C10",
+      "value": 1.0317
+     }
+    ]
+   ],
+   "columnFormats": [
+    null,
+    null,
+    "currency",
+    "currency",
+    "currency",
+    "percent"
+   ]
+  }
+ ]
+}

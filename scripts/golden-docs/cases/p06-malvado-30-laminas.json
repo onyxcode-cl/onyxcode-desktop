@@ -1,0 +1,243 @@
+{
+ "theme": "dark",
+ "style": "geometric",
+ "slides": [
+  {
+   "title": "Portada de la presentación larga",
+   "bullets": [
+    "30 diapositivas para probar el tope"
+   ]
+  },
+  {
+   "title": "Diapositiva 1: tema número 1",
+   "bullets": [
+    "Punto uno del tema 1",
+    "Punto dos del tema 1 con algo más de texto",
+    "Punto tres del tema 1"
+   ]
+  },
+  {
+   "title": "Diapositiva 2: tema número 2",
+   "bullets": [
+    "Punto uno del tema 2",
+    "Punto dos del tema 2 con algo más de texto",
+    "Punto tres del tema 2"
+   ]
+  },
+  {
+   "title": "Diapositiva 3: tema número 3",
+   "bullets": [
+    "Punto uno del tema 3",
+    "Punto dos del tema 3 con algo más de texto",
+    "Punto tres del tema 3"
+   ]
+  },
+  {
+   "title": "Diapositiva 4: tema número 4",
+   "bullets": [
+    "Punto uno del tema 4",
+    "Punto dos del tema 4 con algo más de texto",
+    "Punto tres del tema 4"
+   ]
+  },
+  {
+   "title": "Diapositiva 5: tema número 5",
+   "bullets": [
+    "Punto uno del tema 5",
+    "Punto dos del tema 5 con algo más de texto",
+    "Punto tres del tema 5"
+   ]
+  },
+  {
+   "title": "Diapositiva 6: tema número 6",
+   "bullets": [
+    "Punto uno del tema 6",
+    "Punto dos del tema 6 con algo más de texto",
+    "Punto tres del tema 6"
+   ]
+  },
+  {
+   "title": "Diapositiva 7: tema número 7",
+   "bullets": [
+    "Punto uno del tema 7",
+    "Punto dos del tema 7 con algo más de texto",
+    "Punto tres del tema 7"
+   ]
+  },
+  {
+   "title": "Diapositiva 8: tema número 8",
+   "bullets": [
+    "Punto uno del tema 8",
+    "Punto dos del tema 8 con algo más de texto",
+    "Punto tres del tema 8"
+   ]
+  },
+  {
+   "title": "Diapositiva 9: tema número 9",
+   "bullets": [
+    "Punto uno del tema 9",
+    "Punto dos del tema 9 con algo más de texto",
+    "Punto tres del tema 9"
+   ]
+  },
+  {
+   "title": "Diapositiva 10: tema número 10",
+   "bullets": [
+    "Punto uno del tema 10",
+    "Punto dos del tema 10 con algo más de texto",
+    "Punto tres del tema 10"
+   ]
+  },
+  {
+   "title": "Diapositiva 11: tema número 11",
+   "bullets": [
+    "Punto uno del tema 11",
+    "Punto dos del tema 11 con algo más de texto",
+    "Punto tres del tema 11"
+   ]
+  },
+  {
+   "title": "Diapositiva 12: tema número 12",
+   "bullets": [
+    "Punto uno del tema 12",
+    "Punto dos del tema 12 con algo más de texto",
+    "Punto tres del tema 12"
+   ]
+  },
+  {
+   "title": "Diapositiva 13: tema número 13",
+   "bullets": [
+    "Punto uno del tema 13",
+    "Punto dos del tema 13 con algo más de texto",
+    "Punto tres del tema 13"
+   ]
+  },
+  {
+   "title": "Diapositiva 14: tema número 14",
+   "bullets": [
+    "Punto uno del tema 14",
+    "Punto dos del tema 14 con algo más de texto",
+    "Punto tres del tema 14"
+   ]
+  },
+  {
+   "title": "Diapositiva 15: tema número 15",
+   "bullets": [
+    "Punto uno del tema 15",
+    "Punto dos del tema 15 con algo más de texto",
+    "Punto tres del tema 15"
+   ]
+  },
+  {
+   "title": "Diapositiva 16: tema número 16",
+   "bullets": [
+    "Punto uno del tema 16",
+    "Punto dos del tema 16 con algo más de texto",
+    "Punto tres del tema 16"
+   ]
+  },
+  {
+   "title": "Diapositiva 17: tema número 17",
+   "bullets": [
+    "Punto uno del tema 17",
+    "Punto dos del tema 17 con algo más de texto",
+    "Punto tres del tema 17"
+   ]
+  },
+  {
+   "title": "Diapositiva 18: tema número 18",
+   "bullets": [
+    "Punto uno del tema 18",
+    "Punto dos del tema 18 con algo más de texto",
+    "Punto tres del tema 18"
+   ]
+  },
+  {
+   "title": "Diapositiva 19: tema número 19",
+   "bullets": [
+    "Punto uno del tema 19",
+    "Punto dos del tema 19 con algo más de texto",
+    "Punto tres del tema 19"
+   ]
+  },
+  {
+   "title": "Diapositiva 20: tema número 20",
+   "bullets": [
+    "Punto uno del tema 20",
+    "Punto dos del tema 20 con algo más de texto",
+    "Punto tres del tema 20"
+   ]
+  },
+  {
+   "title": "Diapositiva 21: tema número 21",
+   "bullets": [
+    "Punto uno del tema 21",
+    "Punto dos del tema 21 con algo más de texto",
+    "Punto tres del tema 21"
+   ]
+  },
+  {
+   "title": "Diapositiva 22: tema número 22",
+   "bullets": [
+    "Punto uno del tema 22",
+    "Punto dos del tema 22 con algo más de texto",
+    "Punto tres del tema 22"
+   ]
+  },
+  {
+   "title": "Diapositiva 23: tema número 23",
+   "bullets": [
+    "Punto uno del tema 23",
+    "Punto dos del tema 23 con algo más de texto",
+    "Punto tres del tema 23"
+   ]
+  },
+  {
+   "title": "Diapositiva 24: tema número 24",
+   "bullets": [
+    "Punto uno del tema 24",
+    "Punto dos del tema 24 con algo más de texto",
+    "Punto tres del tema 24"
+   ]
+  },
+  {
+   "title": "Diapositiva 25: tema número 25",
+   "bullets": [
+    "Punto uno del tema 25",
+    "Punto dos del tema 25 con algo más de texto",
+    "Punto tres del tema 25"
+   ]
+  },
+  {
+   "title": "Diapositiva 26: tema número 26",
+   "bullets": [
+    "Punto uno del tema 26",
+    "Punto dos del tema 26 con algo más de texto",
+    "Punto tres del tema 26"
+   ]
+  },
+  {
+   "title": "Diapositiva 27: tema número 27",
+   "bullets": [
+    "Punto uno del tema 27",
+    "Punto dos del tema 27 con algo más de texto",
+    "Punto tres del tema 27"
+   ]
+  },
+  {
+   "title": "Diapositiva 28: tema número 28",
+   "bullets": [
+    "Punto uno del tema 28",
+    "Punto dos del tema 28 con algo más de texto",
+    "Punto tres del tema 28"
+   ]
+  },
+  {
+   "title": "Cierre",
+   "layout": "closing",
+   "bullets": [
+    "Fin"
+   ]
+  }
+ ]
+}

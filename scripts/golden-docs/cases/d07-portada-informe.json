@@ -1,0 +1,97 @@
+{
+ "title": "Propuesta de transformación digital",
+ "subtitle": "Plan 2027 para la red de sucursales",
+ "author": "Equipo de Proyectos",
+ "date": "hoy",
+ "cover": true,
+ "toc": true,
+ "header": "Confidencial",
+ "blocks": [
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Contexto"
+  },
+  {
+   "type": "paragraph",
+   "text": "Contexto: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Contexto: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Contexto: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. "
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Propuesta"
+  },
+  {
+   "type": "paragraph",
+   "text": "Propuesta: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Propuesta: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Propuesta: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. "
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Plan de trabajo"
+  },
+  {
+   "type": "table",
+   "columns": [
+    "Fase",
+    "Duración",
+    "Costo"
+   ],
+   "rows": [
+    [
+     "Diagnóstico",
+     "2 semanas",
+     3200000
+    ],
+    [
+     "Implementación",
+     "8 semanas",
+     14800000
+    ],
+    [
+     "Cierre",
+     "1 semana",
+     1500000
+    ],
+    [
+     "Total",
+     "11 semanas",
+     19500000
+    ]
+   ],
+   "total_row": true,
+   "caption": "Tabla 1. Fases"
+  },
+  {
+   "type": "paragraph",
+   "text": "Plan de trabajo: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Plan de trabajo: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Plan de trabajo: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. "
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Inversión"
+  },
+  {
+   "type": "paragraph",
+   "text": "Inversión: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Inversión: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Inversión: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. "
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Riesgos"
+  },
+  {
+   "type": "paragraph",
+   "text": "Riesgos: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Riesgos: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Riesgos: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. "
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Próximos pasos"
+  },
+  {
+   "type": "paragraph",
+   "text": "Próximos pasos: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Próximos pasos: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. Próximos pasos: texto de desarrollo de la sección con **datos clave** y una explicación clara de lo que se propone, para que la persona lea con comodidad en varias líneas de ancho completo. "
+  }
+ ]
+}

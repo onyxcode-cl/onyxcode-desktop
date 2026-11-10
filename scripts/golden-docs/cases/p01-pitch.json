@@ -1,0 +1,112 @@
+{
+ "palette": {
+  "bg": "#0B1F2A",
+  "text": "#F2F5F3",
+  "accent": "#3DDC97",
+  "accent2": "#F6C945"
+ },
+ "fonts": {
+  "title": "Georgia",
+  "body": "Arial"
+ },
+ "style": "geometric",
+ "footer": "VoltaRuta · Ronda semilla 2026",
+ "transition": "fade",
+ "slides": [
+  {
+   "title": "VoltaRuta",
+   "bullets": [
+    "Última milla eléctrica para el comercio chileno"
+   ]
+  },
+  {
+   "title": "El reparto urbano es caro, lento y contamina",
+   "eyebrow": "El problema",
+   "bullets": [
+    "Costo: 38% del precio final de un envío urbano",
+    "Tiempo: 2,4 intentos de entrega por pedido en promedio",
+    "Impacto: el reparto genera 21% de las emisiones del transporte urbano"
+   ]
+  },
+  {
+   "title": "-41%",
+   "layout": "stat",
+   "eyebrow": "Nuestra solución",
+   "bullets": [
+    "menos costo por entrega con rutas dinámicas y bicicletas de carga eléctricas"
+   ]
+  },
+  {
+   "title": "Cómo funciona",
+   "layout": "steps",
+   "bullets": [
+    "El comercio publica sus pedidos en la app",
+    "El algoritmo agrupa y ordena las rutas",
+    "El repartidor recibe la ruta optimizada",
+    "El cliente sigue su pedido en vivo"
+   ]
+  },
+  {
+   "title": "Crecimiento de pedidos mensuales",
+   "layout": "chart",
+   "eyebrow": "Tracción",
+   "chart": {
+    "type": "bar",
+    "categories": [
+     "Abr",
+     "May",
+     "Jun",
+     "Jul",
+     "Ago",
+     "Sep"
+    ],
+    "values": [
+     1200,
+     1900,
+     2800,
+     4100,
+     5900,
+     8200
+    ]
+   },
+   "note": "Miles de pedidos, datos internos"
+  },
+  {
+   "title": "Resultados en 6 meses",
+   "layout": "kpis",
+   "kpis": [
+    {
+     "label": "Comercios activos",
+     "value": "214",
+     "delta": "+38% vs. trimestre anterior"
+    },
+    {
+     "label": "Entrega a tiempo",
+     "value": "96%",
+     "delta": "+7 pts"
+    },
+    {
+     "label": "CO2 evitado",
+     "value": "48 t"
+    }
+   ]
+  },
+  {
+   "title": "Plan de crecimiento",
+   "layout": "timeline",
+   "bullets": [
+    "2026: Santiago y Valparaíso",
+    "2027: Concepción y Temuco",
+    "2028: Lima y Bogotá"
+   ]
+  },
+  {
+   "title": "Buscamos US$ 1,2 M",
+   "layout": "closing",
+   "bullets": [
+    "Para llegar a 1.000 comercios en 2027",
+    "contacto@voltaruta.example"
+   ]
+  }
+ ]
+}

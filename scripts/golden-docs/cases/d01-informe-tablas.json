@@ -1,0 +1,165 @@
+{
+ "title": "Informe de gestión 2026",
+ "subtitle": "Operaciones y finanzas · Primer semestre",
+ "author": "Gerencia de Operaciones",
+ "date": "hoy",
+ "toc": true,
+ "footer": "Informe interno · Confidencial",
+ "blocks": [
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Resumen ejecutivo"
+  },
+  {
+   "type": "paragraph",
+   "text": "Durante el primer semestre los ingresos crecieron **11,2%** frente al mismo período de 2025, con un margen operacional de **18,4%**. El resultado se explica por el aumento de clientes recurrentes y por la reducción de costos logísticos."
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "Ingresos totales por $4.820 millones",
+    "Margen operacional sobre la meta del año",
+    "Plan de inversión en bodegas aprobado"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Resultados financieros"
+  },
+  {
+   "type": "heading",
+   "level": 2,
+   "text": "Ingresos por línea de negocio"
+  },
+  {
+   "type": "paragraph",
+   "text": "La línea de servicios lidera el crecimiento. La tabla resume los ingresos y su variación respecto del año anterior."
+  },
+  {
+   "type": "table",
+   "columns": [
+    "Línea",
+    "Ingresos (M$)",
+    "Variación",
+    "Participación"
+   ],
+   "rows": [
+    [
+     "Servicios",
+     2210,
+     "+14,5%",
+     "45,9 %"
+    ],
+    [
+     "Productos",
+     1760,
+     "+8,2%",
+     "36,5 %"
+    ],
+    [
+     "Licencias",
+     850,
+     "+9,9%",
+     "17,6 %"
+    ],
+    [
+     "Total",
+     4820,
+     "+11,2%",
+     "100 %"
+    ]
+   ],
+   "total_row": true,
+   "caption": "Tabla 1. Ingresos del semestre",
+   "align": [
+    "left",
+    "right",
+    "right",
+    "right"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 2,
+   "text": "Costos operacionales"
+  },
+  {
+   "type": "paragraph",
+   "text": "Los costos crecieron **6,3%**, por debajo de los ingresos. Destaca la baja del costo de transporte por la consolidación de rutas."
+  },
+  {
+   "type": "table",
+   "columns": [
+    "Concepto",
+    "Primer semestre 2025",
+    "Primer semestre 2026"
+   ],
+   "rows": [
+    [
+     "Personal",
+     "1.420",
+     "1.510"
+    ],
+    [
+     "Logística",
+     "690",
+     "655"
+    ],
+    [
+     "Tecnología",
+     "310",
+     "362"
+    ],
+    [
+     "Total",
+     "2.420",
+     "2.527"
+    ]
+   ],
+   "total_row": true,
+   "caption": "Tabla 2. Costos (M$)",
+   "align": [
+    "left",
+    "right",
+    "right"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Operaciones"
+  },
+  {
+   "type": "paragraph",
+   "text": "Se despacharon 184 mil pedidos con un cumplimiento de plazo de **94,6%**. El tiempo medio de preparación bajó de 5,1 a 4,2 horas."
+  },
+  {
+   "type": "numbered",
+   "items": [
+    "Consolidar las dos bodegas del sur",
+    "Implementar lectura por código en recepción",
+    "Capacitar al 100% del personal de turno"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Riesgos y próximos pasos"
+  },
+  {
+   "type": "paragraph",
+   "text": "Los principales riesgos son la variación del tipo de cambio y la dependencia de dos proveedores de transporte. Se propone diversificar y fijar precios en dólares con cobertura."
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Conclusiones"
+  },
+  {
+   "type": "paragraph",
+   "text": "El semestre cierra con resultados sólidos. Se recomienda mantener el plan de inversión y revisar las metas de margen en enero."
+  }
+ ]
+}

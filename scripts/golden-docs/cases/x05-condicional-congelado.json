@@ -1,0 +1,160 @@
+{
+ "sheets": [
+  {
+   "name": "Ventas por región",
+   "freeze": "both",
+   "filter": true,
+   "columnWidths": [
+    22,
+    14,
+    14,
+    14,
+    14
+   ],
+   "columnFormats": [
+    null,
+    "currency",
+    "currency",
+    "currency",
+    "percent"
+   ],
+   "rows": [
+    [
+     "Región",
+     "Meta",
+     "Real",
+     "Diferencia",
+     "Cumplimiento"
+    ],
+    [
+     "Norte",
+     1000000,
+     1180000,
+     {
+      "formula": "C2-B2",
+      "value": 180000
+     },
+     {
+      "formula": "C2/B2",
+      "value": 1.18
+     }
+    ],
+    [
+     "Centro",
+     1500000,
+     1320000,
+     {
+      "formula": "C3-B3",
+      "value": -180000
+     },
+     {
+      "formula": "C3/B3",
+      "value": 0.88
+     }
+    ],
+    [
+     "Sur",
+     900000,
+     910000,
+     {
+      "formula": "C4-B4",
+      "value": 10000
+     },
+     {
+      "formula": "C4/B4",
+      "value": 1.0111
+     }
+    ],
+    [
+     "Oriente",
+     700000,
+     540000,
+     {
+      "formula": "C5-B5",
+      "value": -160000
+     },
+     {
+      "formula": "C5/B5",
+      "value": 0.7714
+     }
+    ],
+    [
+     "Poniente",
+     1200000,
+     1260000,
+     {
+      "formula": "C6-B6",
+      "value": 60000
+     },
+     {
+      "formula": "C6/B6",
+      "value": 1.05
+     }
+    ],
+    [
+     "Austral",
+     600000,
+     655000,
+     {
+      "formula": "C7-B7",
+      "value": 55000
+     },
+     {
+      "formula": "C7/B7",
+      "value": 1.0917
+     }
+    ],
+    [
+     "Total",
+     {
+      "formula": "SUM(B2:B7)",
+      "value": 5900000
+     },
+     {
+      "formula": "SUM(C2:C7)",
+      "value": 5865000
+     },
+     {
+      "formula": "SUM(D2:D7)",
+      "value": -35000
+     },
+     null
+    ]
+   ],
+   "conditional": [
+    {
+     "range": "E2:E7",
+     "rule": "less",
+     "value": 1,
+     "color": "red"
+    },
+    {
+     "range": "E2:E7",
+     "rule": "greater",
+     "value": 1,
+     "color": "green"
+    },
+    {
+     "range": "C2:C7",
+     "rule": "bars"
+    }
+   ],
+   "validations": [
+    {
+     "range": "B2:B7",
+     "type": "decimal",
+     "min": 0,
+     "max": 100000000
+    }
+   ],
+   "charts": [
+    {
+     "type": "column",
+     "range": "A1:C7",
+     "title": "Meta vs real por región",
+     "at": "G2"
+    }
+   ]
+  }
+ ]
+}

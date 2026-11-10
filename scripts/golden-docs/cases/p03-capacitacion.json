@@ -1,0 +1,98 @@
+{
+ "theme": "green",
+ "style": "classic",
+ "footer": "Capacitación interna · Seguridad en bodega",
+ "slides": [
+  {
+   "title": "Seguridad en bodega: lo esencial",
+   "bullets": [
+    "Capacitación para personal nuevo · 45 minutos"
+   ]
+  },
+  {
+   "title": "Agenda",
+   "layout": "agenda",
+   "bullets": [
+    "Por qué importa",
+    "Reglas básicas de circulación",
+    "Manejo de cargas",
+    "Qué hacer ante un incidente",
+    "Evaluación final"
+   ]
+  },
+  {
+   "title": "Por qué importa",
+   "eyebrow": "Contexto",
+   "bullets": [
+    "Cada año ocurren 120 accidentes evitables en bodegas del país",
+    "La mayoría pasa en los primeros 6 meses de trabajo",
+    "Una regla simple evita casi todos"
+   ]
+  },
+  {
+   "title": "Reglas básicas de circulación",
+   "layout": "cards",
+   "eyebrow": "Reglas",
+   "bullets": [
+    "Peatones: usa siempre el pasillo verde",
+    "Grúas: preferencia absoluta, detente y mira",
+    "Velocidad: máximo 6 km/h en pasillos",
+    "Chaleco: visible en todo momento"
+   ]
+  },
+  {
+   "title": "Levantar una carga en 4 pasos",
+   "layout": "steps",
+   "bullets": [
+    "Evalúa el peso y pide ayuda sobre 25 kg",
+    "Acércate y separa los pies al ancho de hombros",
+    "Flexiona rodillas, espalda recta",
+    "Levanta con las piernas y carga pegada al cuerpo"
+   ]
+  },
+  {
+   "title": "Bien y mal hecho",
+   "layout": "two-col",
+   "columns": [
+    {
+     "heading": "Correcto",
+     "bullets": [
+      "Carga pegada al cuerpo",
+      "Espalda recta",
+      "Pide ayuda"
+     ]
+    },
+    {
+     "heading": "Incorrecto",
+     "bullets": [
+      "Torcer la cintura",
+      "Cargar sobre 25 kg solo",
+      "Apilar sobre el hombro"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Ante un incidente",
+   "layout": "timeline",
+   "bullets": [
+    "0 min: detén la actividad",
+    "1 min: avisa al supervisor",
+    "3 min: primeros auxilios si corresponde",
+    "15 min: completa el registro"
+   ]
+  },
+  {
+   "title": "Evaluación",
+   "layout": "section",
+   "bullets": []
+  },
+  {
+   "title": "Gracias",
+   "layout": "closing",
+   "bullets": [
+    "Preguntas al correo de prevención"
+   ]
+  }
+ ]
+}
