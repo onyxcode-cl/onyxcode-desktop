@@ -13,10 +13,13 @@
  *
  * Tampoco se puede registrar un agente de launchd con `SMAppService` (revisión 1 de 1.8.16): una `.app` creada dentro, firmada ad
  * hoc, con `Contents/Library/LaunchAgents/<id>.plist`, llamaba a `registerAndReturnError:` (Python incluido + `ctypes`, o Swift) y
- * el agente corría fuera del encierro y en cada inicio de sesión. Lo cierra `com.apple.xpc.smd` en `DENIED_MACH`. Esta prueba SOLO
- * comprueba que con el perfil actual el registro FALLA: el control sin esa línea registra un agente real en la sesión del usuario y
- * se hizo una vez a mano, no aquí. Aun así, al terminar (también si falla) se desregistra el servicio si quedó, se quita de launchd y
- * de LaunchServices y se borra la app; el identificador es único y reconocible (`cl.lazunox.prueba.smd-<pid>-<azar>`).
+ * el agente corría fuera del encierro y en cada inicio de sesión. Lo cierra `com.apple.xpc.smd` en `DENIED_MACH`. Esta prueba NUNCA
+ * debe instalar un agente en la máquina de quien la corra: ANTES de llamar a `register` comprueba, desde dentro del encierro
+ * (`bootstrap_look_up`), que el servicio `com.apple.xpc.smd` NO es alcanzable. Si lo es (una regresión quitó la protección), la
+ * prueba FALLA sin registrar nada. Solo si está negado llama al registro y comprueba que FALLA. El control sin la línea registra un
+ * agente real y se hizo una vez a mano, no aquí. Por si acaso, al terminar (también si falla) se desregistra el servicio si quedó,
+ * se quita de launchd y de LaunchServices y se borra la app; el identificador es único (`cl.lazunox.prueba.smd-<pid>-<azar>`).
+ * Límite: si Apple cambiara el nombre del servicio, esta comprobación previa no lo notaría y el registro sí se intentaría.
  */
 import { spawnSync } from 'node:child_process'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
@@ -60,6 +63,15 @@ elif op == 'un': print('unregister', msg(svc, 'unregisterAndReturnError:', None,
 else:
     ok = msg(svc, 'registerAndReturnError:', None, at=(ctypes.c_void_p,), rt=ctypes.c_bool)
     print('register', ok, 'status', msg(svc, 'status', rt=ctypes.c_long))
+`
+
+/** ¿Es alcanzable un servicio Mach desde dentro del encierro? argv: <nombre>. Imprime `ALCANZABLE` o `NEGADO`. */
+const SMD_CHECK_PY = `import ctypes, sys
+libc = ctypes.CDLL('/usr/lib/libSystem.B.dylib')
+bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')
+port = ctypes.c_uint(0)
+kr = libc.bootstrap_look_up(bp, sys.argv[1].encode(), ctypes.byref(port))
+print(sys.argv[1], 'kr', kr, 'ALCANZABLE' if kr == 0 and port.value else 'NEGADO')
 `
 
 /** Lo mismo en Swift (compilado dentro con `swiftc`). */
@@ -164,6 +176,7 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
     writeFileSync(join(work, 'oa.swift'), OA_SWIFT)
     writeFileSync(join(work, 'dibujo.swift'), DRAW_SWIFT)
     writeFileSync(join(dir, 'sm.py'), SM_PY)
+    writeFileSync(join(dir, 'smd-check.py'), SMD_CHECK_PY)
     writeFileSync(join(work, 'sm.swift'), SM_SWIFT)
   })
 
@@ -338,7 +351,7 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
   }
 
   const PY_HOME = existsSync(PY_BUNDLED) ? dirname(dirname(realpathSync(PY_BUNDLED))) : ''
-  const smAttacks: Array<[string, boolean, (label: string) => Agent & { inside: string }]> = [
+  const smAttacks: Array<[string, boolean, (label: string) => Agent & { inside: string; check: string }]> = [
     [
       'Python incluido + ctypes (sin compilador)',
       !!PY_HOME,
@@ -349,7 +362,15 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
         chmodSync(exe, 0o755)
         const env = { PATH: '/usr/bin:/bin', PYTHONHOME: PY_HOME }
         const py = `PYTHONHOME="${PY_HOME}" "${exe}" "${join(dir, 'sm.py')}"`
-        return { label, app, exe, env, cmd: [exe, join(dir, 'sm.py')], inside: `/usr/bin/codesign -s - --force "${app}" && ${py} ${label}` }
+        return {
+          label,
+          app,
+          exe,
+          env,
+          cmd: [exe, join(dir, 'sm.py')],
+          inside: `/usr/bin/codesign -s - --force "${app}" && ${py} ${label}`,
+          check: `PYTHONHOME="${PY_HOME}" "${exe}" "${join(dir, 'smd-check.py')}" com.apple.xpc.smd`
+        }
       }
     ],
     [
@@ -363,6 +384,7 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
           app,
           exe,
           cmd: [exe],
+          check: `/usr/bin/python3 "${join(dir, 'smd-check.py')}" com.apple.xpc.smd`,
           inside: `/usr/bin/swiftc -o "${exe}" sm.swift && /usr/bin/codesign -s - --force "${app}" && "${exe}" ${label}`
         }
       }
@@ -376,6 +398,13 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
         const a = make(label)
         agents.push(a)
         try {
+          // ANTES de registrar nada: el servicio tiene que estar negado desde dentro. Si es alcanzable, falla sin llamar a `register`.
+          const pre = run(profile, ['/bin/sh', '-c', a.check], work)
+          expect(
+            pre.out,
+            `com.apple.xpc.smd alcanzable desde dentro (la protección se perdió); NO se registró nada: ${pre.out}`
+          ).not.toMatch(/ALCANZABLE/)
+          expect(pre.out, `no se pudo comprobar el servicio; NO se registró nada: ${pre.out}`).toMatch(/NEGADO/)
           const r = run(profile, ['/bin/sh', '-c', a.inside], work)
           // Llegó a llamar al registro (la app se armó y firmó dentro) y el registro falló.
           expect(r.out, r.out).toMatch(/register (False|err)/)
