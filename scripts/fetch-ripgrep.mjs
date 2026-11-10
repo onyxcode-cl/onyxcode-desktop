@@ -1,0 +1,266 @@
+#!/usr/bin/env node
+// Descarga el `ripgrep` (`rg`) OFICIAL fijado en resources/ripgrep-bin/pin.json y lo deja en
+// resources/ripgrep-bin/bin/rg (macOS) o rg.exe (Windows); lo empaqueta electron-builder vía extraResources.
+// Motivo (1.8.17): el motor busca `rg` en el PATH y, si no lo halla, intenta bajarlo de github.com; dentro del encierro de Tareas
+// eso falla y con él grep, glob y la carga de skills. La app lleva el suyo y lo pone en el PATH del motor (src/main/tasks/ripgrep-runtime.ts).
+// Sin dependencias: `https`/`http` de Node, `crypto` y `tar` del sistema (bsdtar en macOS; `tar.exe` de System32 en Windows).
+//
+// Uso: node scripts/fetch-ripgrep.mjs [--if-missing]
+//   --if-missing  no hace nada si ya hay un `rg` que responde con `pin.version` y es el archivo fijado (huella en `.pin-sha256`).
+//
+// Garantías: el archivo se verifica (tamaño y SHA-256) ANTES de extraer; si no coincide se borra lo descargado y NO se extrae nada.
+// Solo se extrae el ejecutable `rg`. Sin red falla con un error explícito (nunca deja un binario a medias).
+import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  chmodSync,
+  writeFileSync
+} from 'node:fs'
+import { get as httpGet } from 'node:http'
+import { get as httpsGet } from 'node:https'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+export const PIN_PATH = join(ROOT, 'resources', 'ripgrep-bin', 'pin.json')
+export const BIN_DIR = join(ROOT, 'resources', 'ripgrep-bin', 'bin')
+/** Archivo junto al binario con el SHA-256 (del archivo descargado) con el que se extrajo. */
+export const PIN_MARKER = '.pin-sha256'
+const MAX_REDIRECTS = 5
+const NET_TIMEOUT_MS = 60_000
+
+/** Clave de plataforma del pin: `darwin-arm64`, `win32-x64`… */
+export function platformKey(platform = process.platform, arch = process.arch) {
+  return `${platform}-${arch}`
+}
+
+/** Nombre del ejecutable de ripgrep en la plataforma. */
+export function binaryName(platform = process.platform) {
+  return platform === 'win32' ? 'rg.exe' : 'rg'
+}
+
+const validAsset = (a) => !!a && typeof a.url === 'string' && /^[0-9a-f]{64}$/.test(a.sha256) && Number.isInteger(a.size)
+
+export function readPin(path = PIN_PATH) {
+  const pin = JSON.parse(readFileSync(path, 'utf8'))
+  if (!pin || typeof pin.version !== 'string' || !pin.assets || typeof pin.assets !== 'object')
+    throw new Error(`pin.json inválido: ${path}`)
+  for (const [key, asset] of Object.entries(pin.assets)) {
+    if (!validAsset(asset)) throw new Error(`pin.json inválido (asset ${key}): ${path}`)
+  }
+  return pin
+}
+
+/** Asset del pin para una plataforma; lanza un error claro si no hay binario fijado para ella. */
+export function assetFor(pin, key = platformKey()) {
+  const asset = pin.assets?.[key]
+  if (!validAsset(asset))
+    throw new Error(`No hay binario de ripgrep fijado para ${key} (disponibles: ${Object.keys(pin.assets ?? {}).join(', ') || 'ninguno'}).`)
+  return asset
+}
+
+/**
+ * Extrae SOLO `member` (p. ej. `ripgrep-15.1.0-aarch64-apple-darwin/rg`) de un .tar.gz o .zip con la herramienta del sistema
+ * (bsdtar en macOS; `tar.exe` de System32 en Windows; los dos entienden ambos formatos).
+ */
+export function extractCommand(platform, archive, dest, member) {
+  if (platform === 'win32') {
+    const tar = join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+    return [tar, ['-xf', archive, '-C', dest, member]]
+  }
+  if (platform === 'darwin' || platform === 'linux') return ['/usr/bin/tar', ['-xf', archive, '-C', dest, member]]
+  throw new Error(`Plataforma no soportada para extraer ripgrep: ${platform}`)
+}
+
+/** Carpeta raíz del archivo oficial: `ripgrep-<versión>-<triple>` (nombre del archivo sin `.tar.gz`/`.zip`). */
+export function archiveRoot(url) {
+  const file = decodeURIComponent(new URL(url).pathname.split('/').pop() ?? '')
+  const root = file.replace(/\.(tar\.gz|zip)$/, '')
+  if (!/^ripgrep-\d+\.\d+\.\d+-[0-9A-Za-z._-]+$/.test(root)) throw new Error(`Nombre de archivo de ripgrep inesperado: ${file}`)
+  return root
+}
+
+/** SHA-256 (hex) de un archivo, en streaming. */
+export function sha256File(file) {
+  return new Promise((resolveHash, reject) => {
+    const hash = createHash('sha256')
+    createReadStream(file)
+      .on('error', reject)
+      .on('data', (d) => hash.update(d))
+      .on('end', () => resolveHash(hash.digest('hex')))
+  })
+}
+
+/** Lanza si el tamaño o el SHA-256 del archivo no coinciden con el pin. */
+export async function verifyDownload(file, asset) {
+  const size = statSync(file).size
+  if (size !== asset.size) throw new Error(`Tamaño distinto al fijado: ${size} bytes (esperado ${asset.size}).`)
+  const actual = await sha256File(file)
+  if (actual !== asset.sha256) throw new Error(`SHA-256 distinto al fijado: ${actual} (esperado ${asset.sha256}).`)
+}
+
+/** Descarga `url` a `dest` siguiendo redirects (https, o http solo para el servidor de fixture de los tests). */
+export function downloadFile(url, dest, redirects = 0) {
+  return new Promise((resolveDl, reject) => {
+    let u
+    try {
+      u = new URL(url)
+    } catch {
+      return reject(new Error(`URL inválida: ${url}`))
+    }
+    const get = u.protocol === 'https:' ? httpsGet : u.protocol === 'http:' ? httpGet : null
+    if (!get) return reject(new Error(`Protocolo no soportado: ${u.protocol}`))
+    const req = get(u, { headers: { 'user-agent': 'lazunox-fetch-ripgrep' }, timeout: NET_TIMEOUT_MS }, (res) => {
+      const status = res.statusCode ?? 0
+      if (status >= 300 && status < 400 && res.headers.location) {
+        res.resume()
+        if (redirects >= MAX_REDIRECTS) return reject(new Error('Demasiadas redirecciones.'))
+        return resolveDl(downloadFile(new URL(res.headers.location, u).toString(), dest, redirects + 1))
+      }
+      if (status !== 200) {
+        res.resume()
+        return reject(new Error(`La descarga respondió HTTP ${status}.`))
+      }
+      const out = createWriteStream(dest)
+      res.on('error', (e) => out.destroy(e))
+      out.on('error', reject)
+      out.on('finish', () => resolveDl())
+      res.pipe(out)
+    })
+    req.on('timeout', () => req.destroy(new Error('La descarga se quedó sin respuesta (timeout).')))
+    req.on('error', reject)
+  })
+}
+
+function run(cmd, args, options = {}) {
+  return new Promise((resolveRun, reject) => {
+    execFile(cmd, args, { timeout: 30_000, maxBuffer: 1024 * 1024, ...options }, (err, stdout, stderr) => {
+      if (err) return reject(new Error(`${cmd} ${args.join(' ')} falló: ${stderr.toString().trim() || err.message}`))
+      resolveRun(stdout.toString().trim() || stderr.toString().trim())
+    })
+  })
+}
+
+/** `<bin> --version` con entorno mínimo y HOME/XDG temporales (nunca toca los del usuario). */
+export async function binaryVersion(bin) {
+  const home = mkdtempSync(join(tmpdir(), 'lazunox-fetch-home-'))
+  try {
+    const win = process.platform === 'win32'
+    const sysRoot = process.env.SystemRoot || 'C:\\Windows'
+    const out = await run(bin, ['--version'], {
+      cwd: home,
+      windowsHide: true,
+      env: {
+        PATH: win ? `${sysRoot}\\System32;${sysRoot}` : '/usr/bin:/bin',
+        ...(win
+          ? {
+              SystemRoot: sysRoot,
+              USERPROFILE: home,
+              APPDATA: join(home, 'appdata'),
+              LOCALAPPDATA: join(home, 'localappdata'),
+              TEMP: home,
+              TMP: home
+            }
+          : {}),
+        HOME: home,
+        XDG_CONFIG_HOME: join(home, 'config'),
+        XDG_DATA_HOME: join(home, 'data'),
+        XDG_CACHE_HOME: join(home, 'cache'),
+        XDG_STATE_HOME: join(home, 'state'),
+        TMPDIR: home
+      }
+    })
+    return /\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/.exec(out)?.[0] ?? null
+  } finally {
+    rmSync(home, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Descarga, verifica y extrae. Devuelve `{ status: 'present' | 'fetched', path, version }`.
+ * `binDir` y `log` se inyectan para los tests.
+ */
+export async function fetchRipgrep({
+  pin,
+  binDir = BIN_DIR,
+  ifMissing = false,
+  log = console.log,
+  platform = process.platform,
+  key = platformKey(platform),
+  versionOf = binaryVersion
+} = {}) {
+  pin ??= readPin()
+  const asset = assetFor(pin, key)
+  const name = binaryName(platform)
+  const target = join(binDir, name)
+  const marker = join(binDir, PIN_MARKER)
+  if (ifMissing && existsSync(target)) {
+    try {
+      const version = await versionOf(target)
+      // Además de la versión se exige que el binario sea el MISMO archivo fijado (huella del pin guardada al extraerlo):
+      // un motor distinto con el mismo número de versión (p. ej. el oficial frente al nuestro) no se da por bueno.
+      const sameFile = existsSync(marker) && readFileSync(marker, 'utf8').trim() === asset.sha256
+      if (version === pin.version && !sameFile) {
+        log(`[fetch-ripgrep] el binario existente es ${version} pero no es el archivo fijado en el pin: se vuelve a descargar`)
+      } else if (version === pin.version) {
+        log(`[fetch-ripgrep] ya presente: ripgrep ${version} (${target})`)
+        return { status: 'present', path: target, version }
+      }
+      log(`[fetch-ripgrep] hay un binario ${version ?? 'ilegible'} pero el pin es ${pin.version}: se vuelve a descargar`)
+    } catch {
+      log('[fetch-ripgrep] el binario existente no responde: se vuelve a descargar')
+    }
+  }
+
+  mkdirSync(dirname(binDir), { recursive: true })
+  const work = mkdtempSync(join(dirname(binDir), '.fetch-'))
+  try {
+    const archive = join(work, 'ripgrep-archive')
+    log(`[fetch-ripgrep] descargando ripgrep ${pin.version}…`)
+    try {
+      await downloadFile(asset.url, archive)
+    } catch (err) {
+      throw new Error(`No se pudo descargar ${asset.url} (¿sin red?): ${err instanceof Error ? err.message : err}`)
+    }
+    await verifyDownload(archive, asset) // ANTES de extraer
+    const extracted = join(work, 'out')
+    mkdirSync(extracted)
+    const member = `${archiveRoot(asset.url)}/${name}`
+    const [cmd, args] = extractCommand(platform, archive, extracted, member)
+    try {
+      await run(cmd, args)
+    } catch (err) {
+      throw new Error(`El archivo no contiene \`${member}\` o no se pudo extraer: ${err instanceof Error ? err.message : err}`)
+    }
+    const bin = join(extracted, ...member.split('/'))
+    if (!existsSync(bin)) throw new Error(`El archivo no contiene el binario \`${name}\`.`)
+    if (platform !== 'win32') chmodSync(bin, 0o755)
+    const version = await versionOf(bin)
+    if (version !== pin.version) throw new Error(`El binario dice ser ${version ?? 'desconocido'}, el pin es ${pin.version}.`)
+    rmSync(binDir, { recursive: true, force: true })
+    mkdirSync(binDir, { recursive: true })
+    renameSync(bin, target)
+    writeFileSync(marker, asset.sha256 + '\n')
+    log(`[fetch-ripgrep] OK: ripgrep ${version} → ${target}`)
+    return { status: 'fetched', path: target, version }
+  } finally {
+    rmSync(work, { recursive: true, force: true }) // borra el archivo y cualquier resto
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  fetchRipgrep({ ifMissing: process.argv.includes('--if-missing') }).catch((err) => {
+    console.error(`[fetch-ripgrep] ERROR: ${err instanceof Error ? err.message : err}`)
+    process.exit(1)
+  })
+}

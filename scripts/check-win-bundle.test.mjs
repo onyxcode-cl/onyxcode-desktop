@@ -13,6 +13,8 @@ import {
   HELPER_EXE,
   PYTHON_WIN_EXE,
   PYTHON_WIN_SEAL,
+  RIPGREP_WIN_EXE,
+  checkRipgrepWinPackaging,
   checkPythonWinPackaging,
   checkComputerWinPackaging,
   checkWslBundlePackaging,
@@ -171,6 +173,37 @@ test('Python de Windows: falla sin sello o sin python.exe, y detecta bloques mal
   assert.ok(has(c, /entraría en el \.asar/))
 })
 
+test('ripgrep de Windows: la config real lleva UN bloque solo en win.extraResources y pasa con rg.exe', () => {
+  const cfg = loadConfig({ flagLiteral: 'false' })
+  assert.deepEqual(
+    checkRipgrepWinPackaging(cfg, () => true),
+    []
+  )
+  const rg = cfg.win.extraResources.filter((e) => /ripgrep-bin/.test(e.from))
+  assert.equal(rg.length, 1)
+  assert.deepEqual(rg[0], { from: 'resources/ripgrep-bin/bin', to: 'ripgrep', filter: ['rg.exe'] })
+  assert.ok(cfg.files.includes('!resources/ripgrep-bin/**'))
+})
+
+test('ripgrep de Windows: falla sin rg.exe y detecta bloques mal puestos', () => {
+  const good = loadConfig({ flagLiteral: 'false' })
+  const clone = () => JSON.parse(JSON.stringify(good))
+  const has = (cfg, re, exists = () => true) => checkRipgrepWinPackaging(cfg, exists).some((p) => re.test(p))
+  assert.ok(has(good, /falta resources\/ripgrep-bin\/bin\/rg\.exe/, (p) => p !== RIPGREP_WIN_EXE))
+  let c = clone()
+  c.win.extraResources = c.win.extraResources.filter((e) => !/ripgrep-bin/.test(e.from))
+  assert.ok(has(c, /debe llevar UN bloque/))
+  c = clone()
+  c.win.extraResources.find((e) => /ripgrep-bin/.test(e.from)).to = 'otra'
+  assert.ok(has(c, /debe ser from/))
+  c = clone()
+  c.mac.extraResources.push({ from: 'resources/ripgrep-bin/bin', to: 'ripgrep', filter: ['rg.exe'] })
+  assert.ok(has(c, /solo win\.extraResources/))
+  c = clone()
+  c.files = c.files.filter((f) => f !== '!resources/ripgrep-bin/**')
+  assert.ok(has(c, /entraría en el \.asar/))
+})
+
 // El script con la función activa exige las dos imágenes de WSL (`resources/wsl-images/`, gitignored, las deja
 // `npm run stage:wsl-bundle`) y `cu-helper.exe` (gitignored, lo compila `build-native.mjs --win-helper`). Ninguno existe
 // en el CI de GitHub (macOS limpio), así que esta prueba de integración se SALTA ahí cuando falte algo. El script no
@@ -179,6 +212,7 @@ const flagsSource = readFileSync(join(root, 'src', 'shared', 'feature-flags.ts')
 const packagingStaged = (() => {
   // El Python de Windows (fetch-python.mjs, solo se baja en un PC con Windows) también es un artefacto local.
   if (!fsMod.existsSync(join(root, PYTHON_WIN_SEAL))) return false
+  if (!fsMod.existsSync(join(root, RIPGREP_WIN_EXE))) return false
   if (!wslBundlePackExpected(flagsSource)) return true
   const pinForStaging = JSON.parse(readFileSync(join(root, 'resources', 'opencode-bin', 'pin.json'), 'utf8'))
   const imagesOk = bundleFilesFromPin(pinForStaging).files.every((f) => fsMod.existsSync(join(root, STAGING_DIR, f.name)))
@@ -190,7 +224,7 @@ test(
   {
     skip: packagingStaged
       ? false
-      : 'faltan artefactos locales (no están en git): resources/python-bin/win-x64 (npm run fetch:python en Windows) o, con la función activa, resources/wsl-images/* o cu-helper.exe'
+      : 'faltan artefactos locales (no están en git): resources/python-bin/win-x64 (npm run fetch:python en Windows), resources/ripgrep-bin/bin/rg.exe (npm run fetch:ripgrep) o, con la función activa, resources/wsl-images/* o cu-helper.exe'
   },
   () => {
     const out = execFileSync(process.execPath, [script, '--config-only'], { encoding: 'utf8' })

@@ -16,7 +16,7 @@ SSHO="-o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerA
 # Lista de archivos: versionados + nuevos sin ignorar + fixtures de e2e ignorados por .gitignore (p. ej. *.log
 # que usan las pruebas de migracion). Sin binarios descargados ni los que ya no existen en disco.
 { git ls-files -co --exclude-standard -z; git ls-files -o -i --exclude-standard -z -- e2e/fixtures; } \
-  | perl -0ne 'chomp; next if m{^resources/opencode-bin/bin/}; print "$_\0" if -e $_ || -l $_' \
+  | perl -0ne 'chomp; next if m{^resources/(opencode|ripgrep)-bin/bin/}; print "$_\0" if -e $_ || -l $_' \
   | COPYFILE_DISABLE=1 tar --null -T - -czf "$TMP" || exit 2
 
 # El fichero va a C:/onyx/inbox (se crea si falta)
