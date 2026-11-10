@@ -297,6 +297,12 @@ export const DENIED_EXEC = [
  * de la app, fuera del encierro y suspendido; un `kill -CONT` desde dentro (mismo usuario) lo despertaba y corría sin encierro.
  * Hacen falta los dos: con solo `runningboard` negado, LaunchServices lanza la app por `quarantine-resolver`.
  * Lo normal de una tarea (python3, Node, git, swift, textutil, sips, AppKit dibujando, el motor) no usa ninguno de los dos.
+ *
+ * `com.apple.xpc.smd` (ServiceManagement): sin negarlo, una `.app` creada dentro de la tarea (firmada ad hoc con `codesign`, con
+ * `Contents/Library/LaunchAgents/x.plist`) registraba con `SMAppService` (`registerAndReturnError:` desde el Python incluido con
+ * `ctypes`, sin compilador, o desde Swift) un agente de launchd que corría FUERA del encierro y volvía a correr en cada inicio de
+ * sesión. Con `smd` negado el registro falla (Python: status 3; Swift: «Socket is not connected»). Negar `backgroundtaskmanagement`
+ * en su lugar NO lo cierra. Lo normal de una tarea tampoco lo usa (1.8.16, revisión 1).
  */
 export const DENIED_MACH = [
   'com.apple.coreservices.launchservicesd',
@@ -306,7 +312,8 @@ export const DENIED_MACH = [
   'com.apple.pasteboard.1',
   'com.apple.screencapture.interactive',
   'com.apple.coreservices.quarantine-resolver',
-  'com.apple.runningboard'
+  'com.apple.runningboard',
+  'com.apple.xpc.smd'
 ]
 
 export interface SandboxProfileOptions {

@@ -28,6 +28,10 @@
  * (`-f`) que un proceso encerrado podía reemplazar. El diff del fixture son SOLO 6 líneas: `-f` → `-p` en los dos lanzamientos con
  * aislamiento y, al no haber archivo, `profileFileExistsBeforeStop` y `profileRemoved` pasan de `true` a `null`. El texto de los
  * perfiles (incluido el que recibe `-p`), el comando, el entorno, la red, los proxies y la limpieza no cambiaron.
+ *
+ * Actualización DELIBERADA (1.8.16, revisión 1, agentes de launchd con `SMAppService`): el fixture se recapturó (y se pasó por Prettier)
+ * y el diff es SOLO una línea nueva, `(global-name "com.apple.xpc.smd")`, en el bloque `(deny mach-lookup …)` de cada uno de los 11
+ * perfiles (ver `DENIED_MACH`). Nada más cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

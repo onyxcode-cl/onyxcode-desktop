@@ -10,11 +10,18 @@
  * puede no haber sesión gráfica). Y lo normal de una tarea sigue funcionando dentro: python3, Node, git en `.lazunox/trabajo`,
  * swift, AppKit dibujando (lo que usan los programas de documentos), textutil y el Python incluido si está.
  * Todo en una carpeta temporal con HOME de prueba; las apps de prueba se quitan de LaunchServices al terminar. Solo macOS.
+ *
+ * Tampoco se puede registrar un agente de launchd con `SMAppService` (revisión 1 de 1.8.16): una `.app` creada dentro, firmada ad
+ * hoc, con `Contents/Library/LaunchAgents/<id>.plist`, llamaba a `registerAndReturnError:` (Python incluido + `ctypes`, o Swift) y
+ * el agente corría fuera del encierro y en cada inicio de sesión. Lo cierra `com.apple.xpc.smd` en `DENIED_MACH`. Esta prueba SOLO
+ * comprueba que con el perfil actual el registro FALLA: el control sin esa línea registra un agente real en la sesión del usuario y
+ * se hizo una vez a mano, no aquí. Aun así, al terminar (también si falla) se desregistra el servicio si quedó, se quita de launchd y
+ * de LaunchServices y se borra la app; el identificador es único y reconocible (`cl.lazunox.prueba.smd-<pid>-<azar>`).
  */
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { buildSandboxProfile, DENIED_MACH, sandboxDirs, sandboxEnv } from './sandbox-profile'
 import { macOnly } from '../../test/platform'
@@ -33,7 +40,37 @@ const PY_BUNDLED = join(
   'bin',
   'python3'
 )
-const NEW_MACH = ['com.apple.coreservices.quarantine-resolver', 'com.apple.runningboard']
+const NEW_MACH = ['com.apple.coreservices.quarantine-resolver', 'com.apple.runningboard', 'com.apple.xpc.smd']
+const UID = process.getuid?.() ?? 0
+
+/** `SMAppService` con `ctypes` (sin compilar). argv: <id> [status|un]. Sin modo: registra. */
+const SM_PY = `import ctypes, sys
+objc = ctypes.cdll.LoadLibrary('/usr/lib/libobjc.A.dylib')
+ctypes.cdll.LoadLibrary('/System/Library/Frameworks/ServiceManagement.framework/ServiceManagement')
+objc.objc_getClass.restype = ctypes.c_void_p; objc.objc_getClass.argtypes = [ctypes.c_char_p]
+objc.sel_registerName.restype = ctypes.c_void_p; objc.sel_registerName.argtypes = [ctypes.c_char_p]
+def msg(o, s, *a, at=(), rt=ctypes.c_void_p):
+    return ctypes.CFUNCTYPE(rt, ctypes.c_void_p, ctypes.c_void_p, *at)(('objc_msgSend', objc))(o, objc.sel_registerName(s.encode()), *a)
+C = lambda n: objc.objc_getClass(n.encode())
+name = msg(C('NSString'), 'stringWithUTF8String:', (sys.argv[1] + '.plist').encode(), at=(ctypes.c_char_p,))
+svc = msg(C('SMAppService'), 'agentServiceWithPlistName:', name, at=(ctypes.c_void_p,))
+op = sys.argv[2] if len(sys.argv) > 2 else ''
+if op == 'status': print('status', msg(svc, 'status', rt=ctypes.c_long))
+elif op == 'un': print('unregister', msg(svc, 'unregisterAndReturnError:', None, at=(ctypes.c_void_p,), rt=ctypes.c_bool))
+else:
+    ok = msg(svc, 'registerAndReturnError:', None, at=(ctypes.c_void_p,), rt=ctypes.c_bool)
+    print('register', ok, 'status', msg(svc, 'status', rt=ctypes.c_long))
+`
+
+/** Lo mismo en Swift (compilado dentro con `swiftc`). */
+const SM_SWIFT = `import ServiceManagement
+let s = SMAppService.agent(plistName: CommandLine.arguments[1] + ".plist")
+switch CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "" {
+case "status": print("status", s.status.rawValue)
+case "un": do { try s.unregister(); print("unregister true") } catch { print("unregister err", error) }
+default: do { try s.register(); print("register OK status", s.status.rawValue) } catch { print("register err", error) }
+}
+`
 
 /** NSWorkspace / LaunchServices solo con `ctypes` (sin PyObjC ni compilar). */
 const WS_PY = `import ctypes, ctypes.util, sys
@@ -126,10 +163,13 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
     writeFileSync(join(dir, 'cont.py'), CONT_PY)
     writeFileSync(join(work, 'oa.swift'), OA_SWIFT)
     writeFileSync(join(work, 'dibujo.swift'), DRAW_SWIFT)
+    writeFileSync(join(dir, 'sm.py'), SM_PY)
+    writeFileSync(join(work, 'sm.swift'), SM_SWIFT)
   })
 
   afterAll(() => {
     killStray()
+    for (const a of agents) cleanupAgent(a)
     for (const a of apps) spawnSync(LSREGISTER, ['-u', a])
     rmSync(dir, { recursive: true, force: true })
   })
@@ -189,7 +229,7 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
     expect(readdirSync(fuera)).not.toContain('directo')
   })
 
-  it('el perfil niega quarantine-resolver y runningboard (una línea cada uno, en el bloque mach-lookup)', () => {
+  it('el perfil niega quarantine-resolver, runningboard y xpc.smd (una línea cada uno, en el bloque mach-lookup)', () => {
     for (const n of NEW_MACH) expect(DENIED_MACH).toContain(n)
     const start = profile.indexOf('(deny mach-lookup\n')
     const block = profile.slice(start, profile.indexOf('\n)\n', start))
@@ -241,6 +281,117 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: ninguna app se lanza fuera del encierr
     },
     180000
   )
+
+  // ── SMAppService: registrar un agente de launchd desde una .app creada dentro ──
+  interface Agent {
+    label: string
+    app: string
+    exe: string
+    /** Orden (fuera del encierro) para consultar o quitar el registro: [...cmd, label, modo]. */
+    cmd: string[]
+    env?: Record<string, string>
+  }
+  const agents: Agent[] = []
+  const launchctl = (...args: string[]): string => {
+    const r = spawnSync('/bin/launchctl', args, { encoding: 'utf8' })
+    return `${r.stdout ?? ''}${r.stderr ?? ''}`
+  }
+  const inLaunchd = (label: string): boolean =>
+    launchctl('list')
+      .split('\n')
+      .some((l) => l.split('\t')[2] === label)
+  const inDisabled = (label: string): boolean => launchctl('print-disabled', `gui/${UID}`).includes(`"${label}"`)
+
+  /** App con `Contents/Library/LaunchAgents/<label>.plist`: el agente escribe `fuera/<label>` al cargarse. */
+  const mkAgentApp = (label: string, exeName: string): string => {
+    const app = join(work, `${label}.app`)
+    mkdirSync(join(app, 'Contents', 'MacOS'), { recursive: true })
+    mkdirSync(join(app, 'Contents', 'Library', 'LaunchAgents'), { recursive: true })
+    writeFileSync(
+      join(app, 'Contents', 'Info.plist'),
+      `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>${exeName}</string>` +
+        `<key>CFBundleIdentifier</key><string>${label}.app</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>`
+    )
+    writeFileSync(
+      join(app, 'Contents', 'Library', 'LaunchAgents', `${label}.plist`),
+      `<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>Label</key><string>${label}</string>` +
+        `<key>ProgramArguments</key><array><string>/usr/bin/touch</string><string>${join(fuera, label)}</string></array>` +
+        `<key>RunAtLoad</key><true/></dict></plist>`
+    )
+    return app
+  }
+
+  /** Deshace TODO lo que el intento pudo dejar en el sistema: registro, trabajo de launchd, LaunchServices y la app. */
+  function cleanupAgent(a: Agent): void {
+    if (existsSync(a.exe)) {
+      const st = spawnSync(a.cmd[0], [...a.cmd.slice(1), a.label, 'status'], { env: a.env, encoding: 'utf8', timeout: 30000 })
+      // status: 0 sin registrar, 1 activo, 2 pendiente de aprobación, 3 no encontrado.
+      if (/status [12]\b/.test(st.stdout ?? '') || inLaunchd(a.label))
+        spawnSync(a.cmd[0], [...a.cmd.slice(1), a.label, 'un'], { env: a.env, encoding: 'utf8', timeout: 30000 })
+    }
+    if (inLaunchd(a.label)) {
+      launchctl('bootout', `gui/${UID}/${a.label}`)
+      launchctl('remove', a.label)
+    }
+    spawnSync(LSREGISTER, ['-u', a.app])
+    rmSync(a.app, { recursive: true, force: true })
+  }
+
+  const PY_HOME = existsSync(PY_BUNDLED) ? dirname(dirname(realpathSync(PY_BUNDLED))) : ''
+  const smAttacks: Array<[string, boolean, (label: string) => Agent & { inside: string }]> = [
+    [
+      'Python incluido + ctypes (sin compilador)',
+      !!PY_HOME,
+      (label) => {
+        const app = mkAgentApp(label, 'sm')
+        const exe = join(app, 'Contents', 'MacOS', 'sm')
+        copyFileSync(realpathSync(PY_BUNDLED), exe)
+        chmodSync(exe, 0o755)
+        const env = { PATH: '/usr/bin:/bin', PYTHONHOME: PY_HOME }
+        const py = `PYTHONHOME="${PY_HOME}" "${exe}" "${join(dir, 'sm.py')}"`
+        return { label, app, exe, env, cmd: [exe, join(dir, 'sm.py')], inside: `/usr/bin/codesign -s - --force "${app}" && ${py} ${label}` }
+      }
+    ],
+    [
+      'binario Swift compilado dentro (swiftc)',
+      HAS_CLT,
+      (label) => {
+        const app = mkAgentApp(label, 'sm')
+        const exe = join(app, 'Contents', 'MacOS', 'sm')
+        return {
+          label,
+          app,
+          exe,
+          cmd: [exe],
+          inside: `/usr/bin/swiftc -o "${exe}" sm.swift && /usr/bin/codesign -s - --force "${app}" && "${exe}" ${label}`
+        }
+      }
+    ]
+  ]
+  for (const [title, available, make] of smAttacks) {
+    it.skipIf(!available)(
+      `SMAppService (${title}): el registro FALLA, el agente no corre fuera y launchd no lo conserva`,
+      async () => {
+        const label = `cl.lazunox.prueba.smd-${process.pid}-${Math.random().toString(36).slice(2, 8)}`
+        const a = make(label)
+        agents.push(a)
+        try {
+          const r = run(profile, ['/bin/sh', '-c', a.inside], work)
+          // Llegó a llamar al registro (la app se armó y firmó dentro) y el registro falló.
+          expect(r.out, r.out).toMatch(/register (False|err)/)
+          expect(r.out, r.out).not.toMatch(/register (True|OK)/)
+          expect(await escaped(label, 6000), `marca fuera; salida: ${r.out}`).toBe(false)
+          expect(inLaunchd(label), `trabajo en launchctl list; salida: ${r.out}`).toBe(false)
+        } finally {
+          cleanupAgent(a)
+        }
+        expect(inLaunchd(label)).toBe(false)
+        expect(inDisabled(label), 'marca residual en print-disabled').toBe(false)
+        expect(existsSync(a.app)).toBe(false)
+      },
+      240000
+    )
+  }
 
   describe('lo normal de una tarea sigue funcionando dentro del perfil', () => {
     it('Node (el mismo de las pruebas) lee y escribe en la carpeta', () => {
