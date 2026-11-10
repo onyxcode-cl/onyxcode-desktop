@@ -300,3 +300,25 @@ describe('herramienta `equipo` (comandos aprobados fuera del aislamiento)', () =
     expect(JSON.stringify(buildInlineConfig({ ...empty, fullAccess: true, hostMcp: HOST }))).not.toContain('equipo')
   })
 })
+
+describe('modelo de respaldo en Tareas', () => {
+  const fb = { models: ['opencode/big-pickle', 'anthropic/claude-x', 'noexiste/m'], otherProvider: true }
+  const ids = ['anthropic']
+
+  it('sin respaldo: la config queda igual que hoy', () => {
+    expect(buildInlineConfig({ ...empty })).toEqual(buildInlineConfig({ ...empty, modelFallback: undefined, credentialProviderIds: ids }))
+    expect('respaldo' in buildInlineConfig({ ...empty, modelFallback: { models: [], otherProvider: false } })).toBe(false)
+  })
+  it('sandbox: deja solo opencode y servicios de la tabla fija con credencial; el resto se omite', () => {
+    const c = buildInlineConfig({ ...empty, modelFallback: fb, credentialProviderIds: ids })
+    expect(c.respaldo).toEqual({ modelos: ['opencode/big-pickle', 'anthropic/claude-x'], otro_proveedor: true })
+  })
+  it('sandbox: si ninguno es alcanzable no se escribe la clave', () => {
+    const c = buildInlineConfig({ ...empty, modelFallback: { models: ['noexiste/m'], otherProvider: false }, credentialProviderIds: [] })
+    expect('respaldo' in c).toBe(false)
+  })
+  it('control total: pasa la lista tal cual', () => {
+    const c = buildInlineConfig({ ...empty, fullAccess: true, modelFallback: fb })
+    expect((c.respaldo as { modelos: string[] }).modelos).toHaveLength(3)
+  })
+})

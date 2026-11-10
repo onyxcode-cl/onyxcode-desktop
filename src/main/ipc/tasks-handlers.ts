@@ -101,6 +101,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     tasksWin: deps.tasksWin,
     computerWin: deps.computerWin,
     winBackend: deps.winBackend,
+    modelFallback: () => settingsStore.get().modelFallback,
     extraEngineEnv: () => ({
       ...engineFlagEnvFor(settingsStore.get(), 'tasks'),
       ...engineLimitEnvFor(settingsStore.get()),

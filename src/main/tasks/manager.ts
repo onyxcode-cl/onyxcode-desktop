@@ -293,6 +293,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       credentialIds?: () => string[]
       /** Variables de entorno de las funciones experimentales del motor (Modo código, subagentes de fondo), ya validadas por `engineFlagEnvFor`. */
       extraEngineEnv?: () => Record<string, string>
+      /** «Modelo de respaldo» de los ajustes (el mismo del motor principal); lo trae `main`. Ausente: sin respaldo. */
+      modelFallback?: () => unknown
     } = {}
   ) {
     super()
@@ -1498,6 +1500,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       mcpContribution: c,
       rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
       skills: skillsInlineConfig(),
+      modelFallback: this.opts.modelFallback?.(),
+      credentialProviderIds: fullAccess ? undefined : this.credentialIds(),
       // Windows: las carpetas vinculadas se conceden con su ruta DENTRO de la distro (`/win/d/…`), no con la de Windows.
       toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })

@@ -8,6 +8,10 @@ import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
 import { HOST_ROUTE_NAME } from '../host-exec/names'
 import { deepMerge } from './config-merge'
+import { modelFallbackInline, normalizeModelFallback } from '@shared/model-fallback'
+
+/** Servicio gratuito propio: su host (`opencode.ai`) ya está siempre permitido en la red del sandbox. */
+const SANDBOX_FREE_PROVIDER = 'opencode'
 
 export interface InlineConfigInput {
   fullAccess: boolean
@@ -48,6 +52,27 @@ export interface InlineConfigInput {
    * byte a byte el de siempre). OpenCode corre dentro de la distro y solo entiende sus rutas.
    */
   toSandbox?: (hostPath: string) => string
+  /**
+   * «Modelo de respaldo» de los ajustes (`Settings.modelFallback`), igual que en el motor principal. Ausente o sin modelos = no se escribe nada.
+   * En el sandbox solo quedan los modelos que se pueden alcanzar desde ahí: los gratuitos del servicio propio (`opencode`) y los servicios de
+   * la tabla fija con clave guardada (`credentialProviderIds`); los demás se omiten sin romper nada.
+   */
+  modelFallback?: unknown
+  /** Ids (nunca claves) de servicios con credencial utilizable en el sandbox. Solo se usa con `modelFallback` y sin Control total. */
+  credentialProviderIds?: readonly string[]
+}
+
+/** Bloque `respaldo` de Tareas, o `{}` si no hay nada que escribir. */
+function fallbackBlock(i: InlineConfigInput): Record<string, unknown> {
+  const n = normalizeModelFallback(i.modelFallback)
+  const models = i.fullAccess
+    ? n.models
+    : n.models.filter((m) => {
+        const id = m.slice(0, m.indexOf('/'))
+        return id === SANDBOX_FREE_PROVIDER || (i.credentialProviderIds ?? []).includes(id)
+      })
+  const block = modelFallbackInline({ models, otherProvider: n.otherProvider })
+  return block ? { respaldo: block } : {}
 }
 
 export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown> {
@@ -128,5 +153,5 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     ? { agent: { [TASKS_AGENT_ID]: { permission: i.rulesPermission }, [COMPUTER_AGENT_ID]: { permission: i.rulesPermission } } }
     : {}
   const instr = !i.fullAccess && i.instructions?.length ? i.instructions.map((p) => (i.toSandbox ? i.toSandbox(p) : p)) : []
-  return deepMerge(base, mcpBlock, rulesBlock, i.skills, instr.length ? { instructions: instr } : {})
+  return deepMerge(base, mcpBlock, rulesBlock, i.skills, instr.length ? { instructions: instr } : {}, fallbackBlock(i))
 }
