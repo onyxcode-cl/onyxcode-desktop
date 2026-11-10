@@ -194,9 +194,14 @@ function plural(n: number, key: MsgKey): string {
 }
 
 /** "Leyó 3 archivos · Editó 2 archivos · Ejecutó 1 comando". */
-export function summarizeSteps(parts: readonly { tool: string }[]): string {
+export function summarizeSteps(parts: readonly { tool: string; state?: { status?: string } }[]): string {
   const c: Record<ToolKind, number> = { edit: 0, bash: 0, read: 0, search: 0, web: 0, todo: 0, task: 0, other: 0 }
-  for (const p of parts) c[toolKind(p.tool)]++
+  for (const p of parts) {
+    const kind = toolKind(p.tool)
+    // Una edición negada o fallida no cambió nada: no se cuenta como «Editó».
+    if (kind === 'edit' && p.state?.status === 'error') continue
+    c[kind]++
+  }
   const out: string[] = []
   if (c.read) out.push(t('code.sum.read', { items: plural(c.read, 'code.n.file') }))
   if (c.search) out.push(t('code.sum.search', { count: c.search }))
@@ -236,7 +241,7 @@ export function stepLine(p: StepFacts): string {
     case 'read':
       return `${t(running ? 'code.tool.reading' : 'code.tool.read')} ${file}`.trim()
     case 'edit':
-      return `${t(p.tool === 'write' ? 'code.tool.created' : 'code.tool.edited')} ${file || s(p.state.title)}`.trim()
+      return `${t(p.state.status === 'error' ? 'code.tool.notDone' : p.tool === 'write' ? 'code.tool.created' : 'code.tool.edited')} ${file || s(p.state.title)}`.trim()
     case 'bash': {
       const cmd = s(input.command).split('\n')[0] ?? ''
       return `${t(running ? 'code.tool.running' : 'code.tool.ran')}: ${s(input.description) || cmd}`.trim()

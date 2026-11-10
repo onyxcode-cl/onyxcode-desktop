@@ -214,7 +214,8 @@ export function EditChip({ part, root }: { part: ToolPart; root: string | null }
   const [open, setOpen] = useState(false)
   const t = useT()
   const { file, patch, exists } = useMemo(() => editInfo(part, root), [part, root])
-  const rejected = part.state.status === 'error' && isRejectedText(part.state.error)
+  // Negada (regla deny), rechazada o fallida: no se hizo nada, nunca «Editó».
+  const rejected = part.state.status === 'error'
   // Mientras espera tu permiso (o se aplica) aún no cambió nada: «Quiere editar»; «Editó» solo cuando ya se aplicó (U5).
   const waiting = part.state.status === 'pending' || part.state.status === 'running'
   const label = rejected
