@@ -1,0 +1,43 @@
+{
+ "page_numbers": false,
+ "blocks": [
+  {
+   "type": "paragraph",
+   "text": "Santiago, 5 de noviembre de 2026",
+   "align": "right"
+  },
+  {
+   "type": "paragraph",
+   "text": "Señora\nMarcela Ibáñez Toro\nGerente de Compras\nDistribuidora Austral S.A.\nAv. Providencia 1234, Santiago"
+  },
+  {
+   "type": "paragraph",
+   "text": "**Asunto: Solicitud de renovación del contrato de suministro N.º 4471**"
+  },
+  {
+   "type": "paragraph",
+   "text": "De mi consideración:"
+  },
+  {
+   "type": "paragraph",
+   "text": "Me dirijo a usted en representación de Comercial Los Aromos Ltda. para solicitar la renovación del contrato de suministro N.º 4471, que vence el próximo 31 de diciembre. Durante los últimos tres años hemos mantenido una relación comercial ejemplar, con un cumplimiento de plazos superior al 97%."
+  },
+  {
+   "type": "paragraph",
+   "text": "Proponemos renovar el contrato por 24 meses, conservando las condiciones actuales de precio y pago a 45 días, e incorporar una cláusula de reajuste semestral según IPC. Quedamos disponibles para una reunión durante las próximas dos semanas.",
+   "align": "justify"
+  },
+  {
+   "type": "paragraph",
+   "text": "Agradezco de antemano su atención y quedo atento a su respuesta."
+  },
+  {
+   "type": "paragraph",
+   "text": "Atentamente,"
+  },
+  {
+   "type": "paragraph",
+   "text": "\n\nJuan Pérez Soto\nGerente General\nComercial Los Aromos Ltda."
+  }
+ ]
+}

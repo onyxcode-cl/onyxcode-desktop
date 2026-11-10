@@ -1,0 +1,98 @@
+{
+ "sheets": [
+  {
+   "name": "Resumen",
+   "rows": [
+    [
+     "Mes",
+     "Ventas (M$)",
+     "Costos (M$)",
+     "Margen (M$)"
+    ],
+    [
+     "Ene",
+     1850,
+     1200,
+     {
+      "formula": "B2-C2",
+      "value": 650
+     }
+    ],
+    [
+     "Feb",
+     2010,
+     1290,
+     {
+      "formula": "B3-C3",
+      "value": 720
+     }
+    ],
+    [
+     "Mar",
+     2240,
+     1390,
+     {
+      "formula": "B4-C4",
+      "value": 850
+     }
+    ],
+    [
+     "Abr",
+     2100,
+     1330,
+     {
+      "formula": "B5-C5",
+      "value": 770
+     }
+    ],
+    [
+     "May",
+     2480,
+     1500,
+     {
+      "formula": "B6-C6",
+      "value": 980
+     }
+    ],
+    [
+     "Jun",
+     2710,
+     1590,
+     {
+      "formula": "B7-C7",
+      "value": 1120
+     }
+    ],
+    [
+     "Total",
+     {
+      "formula": "SUM(B2:B7)",
+      "value": 13390
+     },
+     {
+      "formula": "SUM(C2:C7)",
+      "value": 8300
+     },
+     {
+      "formula": "SUM(D2:D7)",
+      "value": 5090
+     }
+    ]
+   ],
+   "columnFormats": [
+    null,
+    "integer",
+    "integer",
+    "integer"
+   ],
+   "charts": [
+    {
+     "type": "column",
+     "range": "A1:C7",
+     "title": "Ventas y costos por mes (M$)",
+     "at": "F2"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,144 @@
+{
+ "theme": "mono",
+ "style": "minimal",
+ "footer": "Retail Andes · Resultados tercer trimestre 2026",
+ "slides": [
+  {
+   "title": "Resultados del tercer trimestre 2026",
+   "bullets": [
+    "Informe ejecutivo para el directorio"
+   ]
+  },
+  {
+   "title": "Resumen del trimestre",
+   "layout": "kpis",
+   "eyebrow": "Cifras clave",
+   "kpis": [
+    {
+     "label": "Ventas",
+     "value": "$12.480 M",
+     "delta": "+9,4% vs. T3 2025"
+    },
+    {
+     "label": "Margen bruto",
+     "value": "31,2%",
+     "delta": "-0,8 pts"
+    },
+    {
+     "label": "Clientes activos",
+     "value": "412 mil",
+     "delta": "+6,1%"
+    },
+    {
+     "label": "NPS",
+     "value": "58",
+     "delta": "+4"
+    }
+   ]
+  },
+  {
+   "title": "Ventas por canal",
+   "layout": "chart",
+   "eyebrow": "Ventas",
+   "chart": {
+    "type": "pie",
+    "categories": [
+     "Tiendas",
+     "E-commerce",
+     "Mayorista",
+     "Marketplace"
+    ],
+    "values": [
+     46,
+     31,
+     15,
+     8
+    ]
+   },
+   "note": "% de las ventas del trimestre"
+  },
+  {
+   "title": "Desempeño por región",
+   "layout": "table",
+   "table": {
+    "columns": [
+     "Región",
+     "Ventas (M$)",
+     "Variación",
+     "Margen"
+    ],
+    "rows": [
+     [
+      "Metropolitana",
+      "6.120",
+      "+8,1%",
+      "32,0%"
+     ],
+     [
+      "Valparaíso",
+      "2.040",
+      "+11,3%",
+      "30,4%"
+     ],
+     [
+      "Biobío",
+      "1.760",
+      "+7,9%",
+      "30,9%"
+     ],
+     [
+      "Norte",
+      "1.430",
+      "+12,6%",
+      "29,8%"
+     ],
+     [
+      "Sur",
+      "1.130",
+      "+6,2%",
+      "31,5%"
+     ]
+    ]
+   }
+  },
+  {
+   "title": "Lo que explica el margen",
+   "layout": "two-col",
+   "columns": [
+    {
+     "heading": "Presiona a la baja",
+     "bullets": [
+      "Costo de transporte: +14%",
+      "Promociones de septiembre",
+      "Mayor mezcla de e-commerce"
+     ]
+    },
+    {
+     "heading": "Compensa",
+     "bullets": [
+      "Renegociación con 3 proveedores",
+      "Marca propia: +2,1 pts de mezcla",
+      "Menor merma en perecibles"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Próximos pasos",
+   "layout": "steps",
+   "bullets": [
+    "Aprobar el plan de logística regional",
+    "Cerrar contratos de transporte antes de noviembre",
+    "Lanzar la campaña de cierre de año",
+    "Revisar metas de margen en enero"
+   ]
+  },
+  {
+   "title": "Decisiones que pedimos hoy",
+   "layout": "closing",
+   "bullets": [
+    "Aprobar presupuesto de logística por $480 M"
+   ]
+  }
+ ]
+}

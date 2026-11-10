@@ -1,0 +1,313 @@
+{
+ "version": 2,
+ "nota": "Set dorado de calidad de documentos. Cada caso es el contenido que escribiría el modelo (JSON del Chat, o HTML para PDF). No cambiar los casos entre noches: si se agregan, subir 'version'.",
+ "cases": [
+  {
+   "id": "p01-pitch",
+   "kind": "pptx",
+   "file": "cases/p01-pitch.json",
+   "title": "Pitch de 8 láminas con gráfico",
+   "tags": [],
+   "expect": {
+    "slides": [
+     8,
+     8
+    ]
+   }
+  },
+  {
+   "id": "p02-informe-ejecutivo",
+   "kind": "pptx",
+   "file": "cases/p02-informe-ejecutivo.json",
+   "title": "Informe ejecutivo (kpis, torta, tabla)",
+   "tags": [],
+   "expect": {
+    "slides": [
+     7,
+     7
+    ]
+   }
+  },
+  {
+   "id": "p03-capacitacion",
+   "kind": "pptx",
+   "file": "cases/p03-capacitacion.json",
+   "title": "Capacitación (se pidió con imágenes; el motor no las admite)",
+   "tags": [
+    "pide-imagenes"
+   ],
+   "expect": {
+    "slides": [
+     9,
+     9
+    ]
+   }
+  },
+  {
+   "id": "p04-malvado-texto-largo",
+   "kind": "pptx",
+   "file": "cases/p04-malvado-texto-largo.json",
+   "title": "Textos muy largos en viñetas, tarjetas, pasos y tabla",
+   "tags": [
+    "malvado"
+   ],
+   "expect": {
+    "slides": [
+     6,
+     6
+    ]
+   }
+  },
+  {
+   "id": "p05-malvado-no-latino",
+   "kind": "pptx",
+   "file": "cases/p05-malvado-no-latino.json",
+   "title": "Japonés, chino, árabe, ruso y emojis",
+   "tags": [
+    "malvado",
+    "no-latino"
+   ],
+   "expect": {
+    "slides": [
+     7,
+     7
+    ]
+   }
+  },
+  {
+   "id": "p06-malvado-30-laminas",
+   "kind": "pptx",
+   "file": "cases/p06-malvado-30-laminas.json",
+   "title": "30 láminas (tope del esquema)",
+   "tags": [
+    "malvado"
+   ],
+   "expect": {
+    "slides": [
+     30,
+     30
+    ]
+   }
+  },
+  {
+   "id": "p07-malvado-celda-larga-rechazo",
+   "kind": "pptx",
+   "file": "cases/p07-malvado-celda-larga-rechazo.json",
+   "title": "Celda de tabla de 90 caracteres (el esquema rechaza TODA la presentación)",
+   "tags": [
+    "malvado",
+    "espera-rechazo"
+   ],
+   "expect": {}
+  },
+  {
+   "id": "d01-informe-tablas",
+   "kind": "docx",
+   "file": "cases/d01-informe-tablas.json",
+   "title": "Informe con portada, índice y dos tablas",
+   "tags": [],
+   "expect": {
+    "pages": [
+     2,
+     4
+    ]
+   }
+  },
+  {
+   "id": "d02-carta-formal",
+   "kind": "docx",
+   "file": "cases/d02-carta-formal.json",
+   "title": "Carta formal (regresión de la negrita contagiada)",
+   "tags": [
+    "regresion-negrita"
+   ],
+   "expect": {
+    "pages": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "d03-manual-indice",
+   "kind": "docx",
+   "file": "cases/d03-manual-indice.json",
+   "title": "Manual con índice, listas y tabla",
+   "tags": [],
+   "expect": {
+    "pages": [
+     2,
+     4
+    ]
+   }
+  },
+  {
+   "id": "d04-malvado-tabla-60-filas",
+   "kind": "docx",
+   "file": "cases/d04-malvado-tabla-60-filas.json",
+   "title": "Tabla de 60 filas",
+   "tags": [
+    "malvado"
+   ],
+   "expect": {
+    "pages": [
+     2,
+     4
+    ]
+   }
+  },
+  {
+   "id": "d05-malvado-no-latino-negrita",
+   "kind": "docx",
+   "file": "cases/d05-malvado-no-latino-negrita.json",
+   "title": "Texto no latino y párrafos que terminan en negrita",
+   "tags": [
+    "malvado",
+    "no-latino",
+    "regresion-negrita"
+   ],
+   "expect": {
+    "pages": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "id": "d06-malvado-contrato-largo",
+   "kind": "docx",
+   "file": "cases/d06-malvado-contrato-largo.json",
+   "title": "12 cláusulas largas con índice",
+   "tags": [
+    "malvado"
+   ],
+   "expect": {
+    "pages": [
+     3,
+     8
+    ]
+   }
+  },
+  {
+   "id": "x01-presupuesto",
+   "kind": "xlsx",
+   "file": "cases/x01-presupuesto.json",
+   "title": "Presupuesto con fórmulas (se pidió formato condicional; el esquema no lo admite)",
+   "tags": [
+    "pide-formato-condicional"
+   ],
+   "expect": {}
+  },
+  {
+   "id": "x02-tablero-grafico",
+   "kind": "xlsx",
+   "file": "cases/x02-tablero-grafico.json",
+   "title": "Tablero con gráfico nativo",
+   "tags": [],
+   "expect": {}
+  },
+  {
+   "id": "x03-malvado-500-filas",
+   "kind": "xlsx",
+   "file": "cases/x03-malvado-500-filas.json",
+   "title": "500 filas, 2 hojas, fórmulas IF y SUMIF",
+   "tags": [
+    "malvado"
+   ],
+   "expect": {}
+  },
+  {
+   "id": "x04-malvado-no-latino-formulas",
+   "kind": "xlsx",
+   "file": "cases/x04-malvado-no-latino-formulas.json",
+   "title": "Hoja y celdas no latinas con fórmulas",
+   "tags": [
+    "malvado",
+    "no-latino"
+   ],
+   "expect": {}
+  },
+  {
+   "id": "f01-propuesta-comercial",
+   "kind": "pdf",
+   "file": "cases/f01-propuesta-comercial.html",
+   "title": "Propuesta comercial (2 páginas esperadas como máximo)",
+   "tags": [],
+   "expect": {
+    "pages": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "id": "f02-factura",
+   "kind": "pdf",
+   "file": "cases/f02-factura.html",
+   "title": "Factura de una página",
+   "tags": [],
+   "expect": {
+    "pages": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "f03-malvado-largo-60-filas",
+   "kind": "pdf",
+   "file": "cases/f03-malvado-largo-60-filas.html",
+   "title": "Informe largo con tabla de 60 filas y texto no latino",
+   "tags": [
+    "malvado",
+    "no-latino"
+   ],
+   "expect": {
+    "pages": [
+     2,
+     5
+    ]
+   }
+  },
+  {
+   "id": "f04-certificado-pagina-completa",
+   "kind": "pdf",
+   "file": "cases/f04-certificado-pagina-completa.html",
+   "title": "Certificado apaisado a página completa",
+   "tags": [
+    "malvado"
+   ],
+   "expect": {
+    "pages": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "x05-condicional-congelado",
+   "kind": "xlsx",
+   "file": "cases/x05-condicional-congelado.json",
+   "title": "Excel con formato condicional, filas congeladas, filtros y validación",
+   "tags": [
+    "nuevo"
+   ],
+   "expect": {}
+  },
+  {
+   "id": "d07-portada-informe",
+   "kind": "docx",
+   "file": "cases/d07-portada-informe.json",
+   "title": "Informe con portada, índice y tabla",
+   "tags": [
+    "nuevo"
+   ],
+   "expect": {
+    "pages": [
+     3,
+     6
+    ]
+   }
+  }
+ ]
+}

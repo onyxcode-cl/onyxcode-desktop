@@ -1,0 +1,126 @@
+{
+ "title": "Manual de usuario",
+ "subtitle": "Sistema de gestión de inventario · Versión 2.1",
+ "author": "Equipo de Soporte",
+ "date": "hoy",
+ "toc": true,
+ "blocks": [
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Introducción"
+  },
+  {
+   "type": "paragraph",
+   "text": "Este manual explica cómo usar el sistema de inventario para registrar entradas, salidas y ajustes de stock. Está dirigido al personal de bodega y a los supervisores."
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Primeros pasos"
+  },
+  {
+   "type": "heading",
+   "level": 2,
+   "text": "Ingresar al sistema"
+  },
+  {
+   "type": "numbered",
+   "items": [
+    "Abre el navegador e ingresa a la dirección entregada por TI",
+    "Escribe tu usuario y clave",
+    "Selecciona tu bodega en el menú superior"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 2,
+   "text": "Conocer la pantalla principal"
+  },
+  {
+   "type": "paragraph",
+   "text": "La pantalla principal muestra el resumen de stock, las alertas de quiebre y el acceso rápido a las operaciones más usadas."
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Operaciones diarias"
+  },
+  {
+   "type": "heading",
+   "level": 2,
+   "text": "Registrar una entrada"
+  },
+  {
+   "type": "numbered",
+   "items": [
+    "Haz clic en «Nueva entrada»",
+    "Escanea o escribe el código del producto",
+    "Indica la cantidad recibida",
+    "Confirma con «Guardar»"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 2,
+   "text": "Registrar una salida"
+  },
+  {
+   "type": "paragraph",
+   "text": "El proceso es igual al de entrada, pero eliges el motivo: venta, merma o traslado."
+  },
+  {
+   "type": "table",
+   "columns": [
+    "Motivo",
+    "Cuándo usarlo",
+    "Requiere aprobación"
+   ],
+   "rows": [
+    [
+     "Venta",
+     "Despacho a un cliente",
+     "No"
+    ],
+    [
+     "Merma",
+     "Producto dañado o vencido",
+     "Sí"
+    ],
+    [
+     "Traslado",
+     "Entre bodegas",
+     "Sí"
+    ]
+   ],
+   "caption": "Tabla 1. Motivos de salida",
+   "widths_cm": [
+    3,
+    8,
+    4
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Solución de problemas"
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "No puedo ingresar: revisa tu clave o pide un restablecimiento",
+    "El producto no aparece: verifica el código y la bodega seleccionada",
+    "El stock no cuadra: realiza un ajuste y registra el motivo"
+   ]
+  },
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Contacto de soporte"
+  },
+  {
+   "type": "paragraph",
+   "text": "Escribe a soporte@empresa.example o llama al anexo 2200 en horario de oficina."
+  }
+ ]
+}

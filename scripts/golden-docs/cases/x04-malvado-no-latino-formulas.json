@@ -1,0 +1,88 @@
+{
+ "sheets": [
+  {
+   "name": "Ventas 売上",
+   "rows": [
+    [
+     "Producto / 製品",
+     "Unidades",
+     "Precio",
+     "Total",
+     "Estado"
+    ],
+    [
+     "Café ☕",
+     10,
+     2500,
+     {
+      "formula": "B2*C2",
+      "value": 25000
+     },
+     {
+      "formula": "IF(D2>20000,\"Alto\",\"Bajo\")",
+      "value": "Alto"
+     }
+    ],
+    [
+     "Té 茶",
+     4,
+     1800,
+     {
+      "formula": "B3*C3",
+      "value": 7200
+     },
+     {
+      "formula": "IF(D3>20000,\"Alto\",\"Bajo\")",
+      "value": "Bajo"
+     }
+    ],
+    [
+     "Чай",
+     7,
+     1200,
+     {
+      "formula": "B4*C4",
+      "value": 8400
+     },
+     {
+      "formula": "IF(D4>20000,\"Alto\",\"Bajo\")",
+      "value": "Bajo"
+     }
+    ],
+    [
+     "قهوة",
+     12,
+     3000,
+     {
+      "formula": "B5*C5",
+      "value": 36000
+     },
+     {
+      "formula": "IF(D5>20000,\"Alto\",\"Bajo\")",
+      "value": "Alto"
+     }
+    ],
+    [
+     "Total",
+     "",
+     {
+      "formula": "AVERAGE(C2:C5)",
+      "value": 2125
+     },
+     {
+      "formula": "SUM(D2:D5)",
+      "value": 76600
+     },
+     ""
+    ]
+   ],
+   "columnFormats": [
+    null,
+    "integer",
+    "currency",
+    "currency",
+    null
+   ]
+  }
+ ]
+}

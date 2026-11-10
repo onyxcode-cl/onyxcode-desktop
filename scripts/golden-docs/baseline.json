@@ -1,0 +1,136 @@
+{
+ "casos": 23,
+ "pasan": 23,
+ "defectos": 30,
+ "porTipo": {
+  "pptx": 26,
+  "docx": 0,
+  "xlsx": 4,
+  "pdf": 0
+ },
+ "porCaso": {
+  "p01-pitch": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "p02-informe-ejecutivo": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "p03-capacitacion": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "p04-malvado-texto-largo": {
+   "pasa": true,
+   "defectos": 24,
+   "detalle": {
+    "letra_chica": 24
+   }
+  },
+  "p05-malvado-no-latino": {
+   "pasa": true,
+   "defectos": 1,
+   "detalle": {
+    "cajas_montadas": 1
+   }
+  },
+  "p06-malvado-30-laminas": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "p07-malvado-celda-larga-rechazo": {
+   "pasa": true,
+   "defectos": 1,
+   "detalle": {
+    "rechazo_total_por_un_dato": 1
+   }
+  },
+  "d01-informe-tablas": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "d02-carta-formal": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "d03-manual-indice": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "d04-malvado-tabla-60-filas": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "d05-malvado-no-latino-negrita": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "d06-malvado-contrato-largo": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "x01-presupuesto": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "x02-tablero-grafico": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "x03-malvado-500-filas": {
+   "pasa": true,
+   "defectos": 4,
+   "detalle": {
+    "valor_declarado_distinto": 4
+   }
+  },
+  "x04-malvado-no-latino-formulas": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "f01-propuesta-comercial": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "f02-factura": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "f03-malvado-largo-60-filas": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "f04-certificado-pagina-completa": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "x05-condicional-congelado": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  },
+  "d07-portada-informe": {
+   "pasa": true,
+   "defectos": 0,
+   "detalle": {}
+  }
+ }
+}

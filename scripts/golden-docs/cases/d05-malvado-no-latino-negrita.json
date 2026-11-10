@@ -1,0 +1,69 @@
+{
+ "title": "Documento multilingüe",
+ "subtitle": "日本語 · 中文 · العربية · Русский",
+ "blocks": [
+  {
+   "type": "heading",
+   "level": 1,
+   "text": "Resumen / 概要 / Резюме"
+  },
+  {
+   "type": "paragraph",
+   "text": "**Importante: este párrafo termina en negrita.**"
+  },
+  {
+   "type": "paragraph",
+   "text": "Este párrafo NO debe salir en negrita aunque el anterior terminó en negrita (prueba de regresión)."
+  },
+  {
+   "type": "paragraph",
+   "text": "日本語の段落です。売上は前年比12%増加しました。**重要**"
+  },
+  {
+   "type": "paragraph",
+   "text": "Este párrafo tampoco debe salir en negrita."
+  },
+  {
+   "type": "paragraph",
+   "text": "Русский текст: выручка выросла на 12% по сравнению с прошлым годом."
+  },
+  {
+   "type": "paragraph",
+   "text": "النص العربي: ارتفعت المبيعات بنسبة 12٪ مقارنة بالعام الماضي."
+  },
+  {
+   "type": "bullets",
+   "items": [
+    "Ítem con ñ y acentos: canción",
+    "項目その一",
+    "Пункт второй"
+   ]
+  },
+  {
+   "type": "table",
+   "columns": [
+    "Idioma",
+    "Saludo"
+   ],
+   "rows": [
+    [
+     "Japonés",
+     "こんにちは"
+    ],
+    [
+     "Ruso",
+     "Здравствуйте"
+    ],
+    [
+     "Árabe",
+     "مرحبا"
+    ],
+    [
+     "Chino",
+     "你好"
+    ]
+   ],
+   "caption": "Tabla 1. Saludos"
+  }
+ ]
+}

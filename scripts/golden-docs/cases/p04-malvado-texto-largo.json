@@ -1,0 +1,99 @@
+{
+ "theme": "blue",
+ "style": "classic",
+ "slides": [
+  {
+   "title": "Informe con textos muy largos para medir los desbordes de las cajas de texto",
+   "bullets": [
+    "Subtítulo largo de la portada con más de cien caracteres para ver si el motor lo corta o lo reduce de tamaño correctamente"
+   ]
+  },
+  {
+   "title": "Cinco viñetas largas",
+   "bullets": [
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo de cambio y los costos logísticos sobre el margen de cada línea de negocio antes de proponer un plan de contingencia con",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo de cambio y los costos logísticos sobre el margen de cada línea de negocio antes de proponer un plan de contingencia con",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo de cambio y los costos logísticos sobre el margen de cada línea de negocio antes de proponer un plan de contingencia con",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo de cambio y los costos logísticos sobre el margen de cada línea de negocio antes de proponer un plan de contingencia con",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo de cambio y los costos logísticos sobre el margen de cada línea de negocio antes de proponer un plan de contingencia con"
+   ]
+  },
+  {
+   "title": "Tarjetas con texto largo",
+   "layout": "cards",
+   "bullets": [
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo ",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo ",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo ",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo ",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo ",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó durante semanas el efecto combinado de la inflación, el tipo "
+   ]
+  },
+  {
+   "title": "Pasos con texto largo",
+   "layout": "steps",
+   "bullets": [
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó d",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó d",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó d",
+    "Este es un texto deliberadamente largo para comprobar el comportamiento del motor ante desbordes: la dirección analizó d"
+   ]
+  },
+  {
+   "title": "Tabla con celdas largas",
+   "layout": "table",
+   "table": {
+    "columns": [
+     "Concepto",
+     "Descripción detallada",
+     "Responsable"
+    ],
+    "rows": [
+     [
+      "Ítem 1",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ],
+     [
+      "Ítem 2",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ],
+     [
+      "Ítem 3",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ],
+     [
+      "Ítem 4",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ],
+     [
+      "Ítem 5",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ],
+     [
+      "Ítem 6",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ],
+     [
+      "Ítem 7",
+      "Este es un texto deliberadamente largo para comprobar e",
+      "Gerencia de Operaciones"
+     ]
+    ]
+   }
+  },
+  {
+   "title": "Cierre",
+   "layout": "closing",
+   "bullets": [
+    "Gracias por su atención"
+   ]
+  }
+ ]
+}

@@ -22,6 +22,7 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck:pwa": "tsc --noEmit -p pwa/tsconfig.json",
     "typecheck:viewer": "tsc --noEmit -p tsconfig.viewer.json",
+    "docs:dorado": "node scripts/golden-docs/dorado.mjs",
     "typecheck": "npm run typecheck:node && npm run typecheck:web && npm run typecheck:pwa && npm run typecheck:viewer",
     "fetch:python": "node scripts/fetch-python.mjs --if-missing",
     "package": "node scripts/check-node-modules.mjs && node scripts/fetch-opencode.mjs --if-missing && node scripts/stage-motor-app.mjs && npm run fetch:python && npm run build && electron-builder --mac --arm64",
