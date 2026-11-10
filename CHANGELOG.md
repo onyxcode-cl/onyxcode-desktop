@@ -4,6 +4,39 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.15] - 2026-11-10
+
+### Arreglos
+
+- **Una edición negada o fallida ya no se muestra ni se cuenta como hecha.** Antes, si el motor no podía editar un archivo (porque lo negaste o porque falló), la conversación igual lo mostraba como una edición lograda y la sumaba al conteo. Ahora aparece como lo que fue. Lo mismo vale para el resumen que llega por Telegram.
+- **El modelo de respaldo de Ajustes ahora llega también a Tareas.** Si elegiste modelos de respaldo, Tareas los usa cuando el principal se queda sin cuota. Solo se pasan los modelos que Tareas puede alcanzar desde su entorno aislado. Se aplica la próxima vez que arranque Tareas, no a las que ya están corriendo.
+- **Al confiar en una carpeta, la app le pide al motor que la vaya preparando** en segundo plano. Así el primer mensaje, si lo escribes enseguida, espera menos. Esto no ocurre cuando la app vuelve a declarar tus carpetas al arrancar.
+
+### Valorar la respuesta
+
+- **Nuevos botones de pulgar arriba y pulgar abajo en Code**, junto a «Copiar respuesta», al final de cada respuesta terminada. Si marcas «mala», puedes escribir en una línea qué salió mal (es opcional). Volver a pulsar el mismo pulgar quita tu valoración; pulsar el otro la cambia.
+- **Se guarda solo en tu equipo y no se envía a ninguna parte.** No lleva el texto de la conversación ni rutas de carpetas. Si exportas el informe de diagnóstico, las valoraciones guardadas van dentro de él.
+
+### Motor nuevo (lazunox.17)
+
+- **El primer mensaje ya no se queda esperando a un conector lento.** Espera como máximo 2 segundos y sigue con los conectores que ya estén listos; los que faltan se suman en el paso siguiente. En una prueba con un conector que tardaba 8 segundos, el primer mensaje pasó de 8,3 a 2,4 segundos. Mientras un conector sigue conectando, el modelo recibe una nota que lo dice.
+- **Al confiar en una carpeta, el motor la prepara de antemano.** Con la carpeta ya confiada, el primer mensaje no paga esa carga (la carga completa cuesta unos 0,2 a 0,3 segundos).
+- **Las claves que aparecen en lo que devuelve una herramienta ahora se tapan también en lo que se envía al servicio de IA y en el historial guardado.** Antes solo se tapaban en pantalla. En la prueba del banco (una clave falsa dentro de un archivo de entorno), pasó de 0 de 3 a 3 de 3, y con el tapado encendido las 60 tareas del banco siguieron pasando (60 de 60), así que no vimos que rompa nada útil.
+
+### Lo que todavía no está cerrado
+
+- **Nada de esto se probó aún en Windows ni a mano en la app real.** Se probó el motor desde el código en Mac, con servicios de prueba, y la app con sus pruebas automáticas. Esta sección se actualizará tras esas pruebas.
+- **Una tabla de PowerPoint con una celda muy larga queda toda en letra chica.** Una sola celda larga hace que toda la tabla baje a letra pequeña (9 puntos), por debajo del mínimo que la propia app pide en las láminas. Con celdas cortas no pasa.
+- **Los conectores remotos (por internet) no se probaron con el plazo nuevo**; solo los que se ejecutan en tu equipo. Tampoco se probó que la pantalla de conectores muestre el estado «conectando» (esa pantalla sigue esperando a todos).
+- **No sabemos si todos los modelos obedecen la nota de «conectando».** Y si un conector termina de conectar justo mientras el modelo ya tiene su lista de herramientas, sus herramientas aparecen en el paso siguiente.
+- **Si niegas solo algunas herramientas de un conector**, la nota de «conectando» igual lo nombra, porque todavía no se sabe qué herramientas trae.
+- **Si quitas la confianza de una carpeta mientras se está preparando**, esa preparación no se interrumpe; sigue hasta terminar.
+- **El tapado de claves no reconoce todo.** No tapa direcciones con usuario y clave (por ejemplo `postgres://usuario:clave@...`), ni variables cuyo nombre no lleve palabras típicas (como `AUTH` o `COOKIE`), ni valores sueltos sin un formato conocido. Además, el modelo ya no ve el valor real: una edición que cite exactamente una clave no la va a encontrar, y un comando que copie la clave de una salida llevará la marca `[REDACTED_SECRET]`. Se puede apagar con `LAZUNOX_SANITIZAR_MODELO=0`.
+- **El tapado no se probó con un conector real de punta a punta**, ni con la compactación o reanudación de conversaciones con la marca puesta.
+- **Los botones de valorar solo están en Code de escritorio**: no aparecen en Tareas, Chat, el celular ni Telegram. Tampoco se vio aún el archivo guardado ni el informe de diagnóstico con ellos en la app real.
+- **El motor lazunox.17 está armado, pero todavía no está publicado ni probado dentro de un instalador.**
+- **Los pendientes de la 1.8.14 y la 1.8.13 siguen igual.**
+
 ## [1.8.14] - 2026-11-10
 
 ### Arreglos
