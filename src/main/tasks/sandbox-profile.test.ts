@@ -3,6 +3,8 @@
  * fija el texto exacto. El scratch por defecto es `.lazunox/trabajo`:
  * solo pueden cambiar las líneas de esa ruta y sus comentarios. No cambies el snapshot para
  * que pase: revisa el diff.
+ * Actualización DELIBERADA (1.8.16): el diff del snapshot son SOLO dos líneas en `(deny mach-lookup …)` de cada perfil
+ * (`com.apple.coreservices.quarantine-resolver` y `com.apple.runningboard`: apps lanzadas fuera del encierro).
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 

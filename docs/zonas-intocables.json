@@ -27,8 +27,8 @@
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "21f36a387c0a460419338425ddf248ea238a5ec608cd05e97c22f3b478e8af3f",
     "src/main/tasks/proxy.ts": "50c6898856c97a23a4b577f509bff653ad10f406cf51102f00bda246458955a5",
-    "src/main/tasks/sandbox-profile.ts": "574855eb36538d5bace0d9c8e707dd408696c9b7af3a4d22e7bc96ca48bc8185",
-    "src/main/tasks/sandbox.ts": "c92bb0e48918c26296dab738e76cbca2a8b338321e5370c767704a38cff200c7",
+    "src/main/tasks/sandbox-profile.ts": "a5fe97633e2045fa1119deec569d4507ae034ec331945cd794a73fa9b5ca6b0d",
+    "src/main/tasks/sandbox.ts": "1a70e1f703a5b1dc03d30e77d57615c158696e1e7f4b03880b08b92e0c764c1a",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
     "src/main/tasks/win-context.ts": "baadaa16b2127ec3157591474ff35ee173cd38e4fef91265774f556fa567c0f3",
     "src/preload/assist.ts": "b51cbf39a22698cc16d9a4b2a2dc830b9806a652b71c5b498bc65261fa1147fc",
@@ -135,6 +135,33 @@
       "motivo": "1.8.13: el entorno de Tareas enciende las banderas del motor lazunox.16 (permisos por capas y confianza de carpetas)",
       "cambiados": [
         "src/main/tasks/sandbox.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-10",
+      "motivo": "1.8.16: el perfil de Tareas niega quarantine-resolver y runningboard (una tarea lanzaba apps fuera del encierro)",
+      "cambiados": [
+        "src/main/tasks/sandbox-profile.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-10",
+      "motivo": "1.8.16: Tareas pasa el perfil a sandbox-exec como texto (-p), sin archivo que un proceso encerrado pueda cambiar",
+      "cambiados": [
+        "src/main/tasks/sandbox.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-10",
+      "motivo": "1.8.16 revisión 1: com.apple.xpc.smd en DENIED_MACH (SMAppService registraba agentes de launchd fuera del encierro)",
+      "cambiados": [
+        "src/main/tasks/sandbox-profile.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

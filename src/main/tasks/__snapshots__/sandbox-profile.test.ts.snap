@@ -187,6 +187,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
@@ -382,6 +385,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
@@ -584,6 +590,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
@@ -789,6 +798,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
@@ -997,6 +1009,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
@@ -1201,6 +1216,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
@@ -1394,6 +1412,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
   (global-name "com.apple.coreservices.appleevents")
   (global-name "com.apple.pasteboard.1")
   (global-name "com.apple.screencapture.interactive")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.runningboard")
+  (global-name "com.apple.xpc.smd")
 )
 
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.

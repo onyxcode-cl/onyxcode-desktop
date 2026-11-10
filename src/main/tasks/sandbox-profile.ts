@@ -285,14 +285,35 @@ export const DENIED_EXEC = [
   '/usr/bin/pbpaste'
 ]
 
-/** Servicios Mach de LaunchServices/launchd que permiten abrir apps o registrar trabajos. */
+/**
+ * Servicios Mach de LaunchServices/launchd que permiten abrir apps o registrar trabajos.
+ *
+ * `com.apple.coreservices.quarantine-resolver` (CoreServicesUIAgent): por él pasan `NSWorkspace.open`/`openURL`/`openApplication`
+ * y `LSOpenCFURLRef` aunque `launchservicesd` y `lsd.open` estén negados. Sin negarlo, cualquier programa de la tarea (`python3` con
+ * `ctypes`, `swift -e`, un binario compilado dentro) abría una `.app`, un documento con su app asociada o una URL con esquema propio
+ * FUERA del encierro (hijo de launchd, sin límites de disco, red ni secretos). Probado con Seatbelt real (1.8.16).
+ *
+ * `com.apple.runningboard`: con solo lo anterior negado, `LSOpenCFURLRef`/`NSWorkspace` fallan PERO RunningBoard ya creó el proceso
+ * de la app, fuera del encierro y suspendido; un `kill -CONT` desde dentro (mismo usuario) lo despertaba y corría sin encierro.
+ * Hacen falta los dos: con solo `runningboard` negado, LaunchServices lanza la app por `quarantine-resolver`.
+ * Lo normal de una tarea (python3, Node, git, swift, textutil, sips, AppKit dibujando, el motor) no usa ninguno de los dos.
+ *
+ * `com.apple.xpc.smd` (ServiceManagement): sin negarlo, una `.app` creada dentro de la tarea (firmada ad hoc con `codesign`, con
+ * `Contents/Library/LaunchAgents/x.plist`) registraba con `SMAppService` (`registerAndReturnError:` desde el Python incluido con
+ * `ctypes`, sin compilador, o desde Swift) un agente de launchd que corría FUERA del encierro y volvía a correr en cada inicio de
+ * sesión. Con `smd` negado el registro falla (Python: status 3; Swift: «Socket is not connected»). Negar `backgroundtaskmanagement`
+ * en su lugar NO lo cierra. Lo normal de una tarea tampoco lo usa (1.8.16, revisión 1).
+ */
 export const DENIED_MACH = [
   'com.apple.coreservices.launchservicesd',
   'com.apple.lsd.open',
   'com.apple.lsd.modifydb',
   'com.apple.coreservices.appleevents',
   'com.apple.pasteboard.1',
-  'com.apple.screencapture.interactive'
+  'com.apple.screencapture.interactive',
+  'com.apple.coreservices.quarantine-resolver',
+  'com.apple.runningboard',
+  'com.apple.xpc.smd'
 ]
 
 export interface SandboxProfileOptions {
