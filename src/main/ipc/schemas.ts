@@ -14,6 +14,7 @@ import { MODEL_FALLBACK_MAX, MODEL_FALLBACK_REF_MAX, MODEL_FALLBACK_REF_RE } fro
 import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
 import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 import { DIAG_SOURCES } from '@shared/diagnostics'
+import { RATING_ID_RE, RATING_LABEL_RE, RATING_VALUES } from '@shared/ratings'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
 import { TRANSLATE_CLEAN_HTML_MAX, TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
 import { PROJECT_LIMITS } from '@shared/project-knowledge'
@@ -710,6 +711,26 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'translate:pdfDiscard': obj({ jobId: str({ max: 16, min: 16 }) }),
   'diag:export': none,
   'diag:problem': obj({ message: str({ max: 2000 }), stack: optional(str({ max: 4000 })), origin: optional(literal('chat-doc')) }),
+  'rating:set': obj({
+    sessionId: str({ pattern: RATING_ID_RE }),
+    messageId: str({ pattern: RATING_ID_RE }),
+    value: nullable(literal(...RATING_VALUES)),
+    comment: optional(str({ max: 2000 })),
+    model: str({ pattern: RATING_LABEL_RE }),
+    service: str({ pattern: RATING_LABEL_RE }),
+    mode: str({ pattern: RATING_LABEL_RE }),
+    durationMs: optional(num({ min: 0, max: 1e12 })),
+    tokens: optional(
+      obj({
+        input: num({ min: 0, max: 1e12 }),
+        output: num({ min: 0, max: 1e12 }),
+        reasoning: num({ min: 0, max: 1e12 }),
+        cacheRead: num({ min: 0, max: 1e12 }),
+        cacheWrite: num({ min: 0, max: 1e12 })
+      })
+    )
+  }),
+  'rating:list': obj({ sessionId: str({ pattern: RATING_ID_RE }) }),
   'settings:get': none,
   'settings:set': partial({
     defaultModel: modelRef,

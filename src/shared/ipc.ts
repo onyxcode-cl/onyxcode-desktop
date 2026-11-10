@@ -7,6 +7,7 @@
  * Para agregar un canal: añadir la entrada aquí, registrarlo en `src/main/ipc/<modulo>.ts`
  * con `handle(...)` y usarlo en el renderer con `api.invoke('<canal>', req)`.
  */
+import type { RatingEntry, RatingInput } from './ratings'
 import type { AccessLevel, LinkResult, PickLinkedResult, ProjectProfileView, VaultSetView } from './project-profile'
 import type { PasteResult, PasteScope } from './paste-files'
 import type { OfficeExtractRequest, OfficeExtractResult } from './attach-office'
@@ -170,6 +171,10 @@ export interface IpcInvokeContract {
   'diag:export': { req: void; res: { saved: boolean } }
   /** La ventana avisa de un error suyo (error no capturado, fallo de render) para dejarlo en el registro de problemas. */
   'diag:problem': { req: { message: string; stack?: string; origin?: 'chat-doc' }; res: void }
+  /** Valorar una respuesta de Code («buena»/«mala»; `value: null` la quita). Se guarda solo en el equipo, sin texto de la conversación. */
+  'rating:set': { req: RatingInput; res: { saved: boolean } }
+  /** Valoraciones ya guardadas de una conversación, para pintar el estado de los botones. */
+  'rating:list': { req: { sessionId: string }; res: RatingEntry[] }
 
   // settings
   'settings:get': { req: void; res: Settings }
@@ -265,6 +270,8 @@ export const IPC_INVOKE_CHANNELS = [
   'translate:pdfDiscard',
   'diag:export',
   'diag:problem',
+  'rating:set',
+  'rating:list',
   'settings:get',
   'settings:set',
   'settings:addRecentFolder',

@@ -9,6 +9,8 @@ import { SANDBOX_PROVIDER_IDS } from '@shared/sandbox-providers'
 import { reportLines } from '@shared/preflight'
 import { getProblemLog, recordProblem } from '../diagnostics/problem-log'
 import { DiagnosticsService } from '../diagnostics/service'
+import { RatingStore } from '../diagnostics/ratings'
+import { join } from 'node:path'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { appOpencodeConfigPath } from '../extras/mcp-config'
 import { knownMcpProxyTokens } from '../tasks/mcp-proxy'
@@ -38,12 +40,19 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
       connectedCache = null
     }
   }
+  // Valoraciones de respuestas: solo en este equipo, junto a los demás registros (`userData/logs`).
+  const ratings = new RatingStore({
+    dir: join(app.getPath('userData'), 'logs'),
+    appVersion: () => app.getVersion(),
+    engineVersion: () => server.getStatus().version ?? 'desconocida'
+  })
   const service = new DiagnosticsService({
     userData: app.getPath('userData'),
     home: homedir(),
     mcpConfigPath: appOpencodeConfigPath(),
     server,
     problems: { readLines: (max) => getProblemLog()?.readLines(max) ?? [] },
+    ratings: { readLines: (max) => ratings.readLines(max) },
     extraSecrets: () => [
       ...embeddedBrowserMcp.knownTokens(),
       ...documentsMcp.knownTokens(),
@@ -81,6 +90,17 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     if (origin === 'chat-doc') recordProblem({ source: 'document', level: 'warn', message, stack })
     else recordProblem({ source: 'renderer', message, stack })
   })
+
+  handle(ipcMain, 'rating:set', (input) => {
+    try {
+      return { saved: ratings.set(input) }
+    } catch (e) {
+      recordProblem({ source: 'main', level: 'warn', message: `no se pudo guardar la valoración: ${e instanceof Error ? e.message : String(e)}` })
+      return { saved: false }
+    }
+  })
+
+  handle(ipcMain, 'rating:list', ({ sessionId }) => ratings.list(sessionId))
 
   handle(ipcMain, 'diag:copy', async ({ source }) => {
     if (source === 'report') await service.refresh()

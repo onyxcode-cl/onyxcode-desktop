@@ -327,6 +327,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'attach:extractOffice': 'X', // parsea documentos en el Mac con bytes que manda la ventana: el celular no lo usa
   'diag:export': 'X',
   'diag:problem': 'X',
+  'rating:set': 'X', // la valoración se guarda en el Mac y solo se hace desde la ventana de Code; el celular queda fuera
+  'rating:list': 'X',
   // ── ajustes ──
   'settings:get': 'R',
   'settings:set': fieldwise(SETTINGS_FIELDS),
