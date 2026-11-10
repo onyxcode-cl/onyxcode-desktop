@@ -25,7 +25,11 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Lo que todavía no está cerrado
 
-- **Nada de esto se probó aún en Windows ni a mano en la app real.** Se probó el motor desde el código en Mac, con servicios de prueba, y la app con sus pruebas automáticas. Esta sección se actualizará tras esas pruebas.
+- **Se probó a mano en Mac y en Windows, una ronda en cada uno, con la app ya armada**: arranque, una conversación en Code, la edición negada, los botones de valorar, el primer mensaje con un conector lento, confiar y no confiar una carpeta, una clave falsa en un archivo y una tarea de Tareas (en Windows, con WSL). Todo pasó. **No se probó**: el celular, Telegram, la actualización automática hacia esta versión, ni el instalador de Windows en un equipo limpio.
+- **El indicador de modo puede no coincidir con lo que rige.** Con «Hacer» y «Solo explorar» elegidos, las reglas reales son las de «Preguntar siempre»: el motor pide permiso en vez de negar. Nada se edita sin tu permiso, pero la pantalla dice otra cosa. Viene de antes de esta versión.
+- **En Tareas, el primer envío justo al abrir puede decir «El servidor de las tareas no está listo».** Al reenviar funciona.
+- **La tarjeta «No se hizo» todavía muestra el cambio propuesto y el botón «Revertir».**
+- **No se forzó una caída de cuota para ver que Tareas use de verdad el modelo de respaldo**; se comprobó que lo recibe.
 - **Una tabla de PowerPoint con una celda muy larga queda toda en letra chica.** Una sola celda larga hace que toda la tabla baje a letra pequeña (9 puntos), por debajo del mínimo que la propia app pide en las láminas. Con celdas cortas no pasa.
 - **Los conectores remotos (por internet) no se probaron con el plazo nuevo**; solo los que se ejecutan en tu equipo. Tampoco se probó que la pantalla de conectores muestre el estado «conectando» (esa pantalla sigue esperando a todos).
 - **No sabemos si todos los modelos obedecen la nota de «conectando».** Y si un conector termina de conectar justo mientras el modelo ya tiene su lista de herramientas, sus herramientas aparecen en el paso siguiente.
@@ -33,8 +37,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Si quitas la confianza de una carpeta mientras se está preparando**, esa preparación no se interrumpe; sigue hasta terminar.
 - **El tapado de claves no reconoce todo.** No tapa direcciones con usuario y clave (por ejemplo `postgres://usuario:clave@...`), ni variables cuyo nombre no lleve palabras típicas (como `AUTH` o `COOKIE`), ni valores sueltos sin un formato conocido. Además, el modelo ya no ve el valor real: una edición que cite exactamente una clave no la va a encontrar, y un comando que copie la clave de una salida llevará la marca `[REDACTED_SECRET]`. Se puede apagar con `LAZUNOX_SANITIZAR_MODELO=0`.
 - **El tapado no se probó con un conector real de punta a punta**, ni con la compactación o reanudación de conversaciones con la marca puesta.
-- **Los botones de valorar solo están en Code de escritorio**: no aparecen en Tareas, Chat, el celular ni Telegram. Tampoco se vio aún el archivo guardado ni el informe de diagnóstico con ellos en la app real.
-- **El motor lazunox.17 está armado, pero todavía no está publicado ni probado dentro de un instalador.**
+- **Los botones de valorar solo están en Code de escritorio**: no aparecen en Tareas, Chat, el celular ni Telegram. El botón «Exportar» del diagnóstico no se probó; se revisó el informe en pantalla.
 - **Los pendientes de la 1.8.14 y la 1.8.13 siguen igual.**
 
 ## [1.8.14] - 2026-11-10
