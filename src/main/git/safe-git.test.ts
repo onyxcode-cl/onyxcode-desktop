@@ -83,3 +83,64 @@ describe('Git de la app con configuración local hostil', () => {
     expect(readFileSync(sentinel, 'utf8')).toBe('gancho\n')
   })
 })
+
+it('incluidos, stash, mezcla, alias y nombres Unicode', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lzx-git-vuelta2-'))
+  roots.push(dir)
+  process.env.GIT_CONFIG_GLOBAL = join(dir, 'global')
+  writeFileSync(process.env.GIT_CONFIG_GLOBAL, '')
+  const g = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8' })
+  g('init', '-q', '-b', 'base')
+  g('config', 'user.name', 'Prueba')
+  g('config', 'user.email', 'p@example.invalid')
+  writeFileSync(join(dir, 'año.txt'), 'base\n')
+  writeFileSync(join(dir, '😀.txt'), 'emoji\n')
+  writeFileSync(join(dir, '.gitattributes'), '*.txt merge=trampa filter=trampa diff=trampa\n')
+  g('add', '.')
+  g('commit', '-qm', 'base')
+  g('branch', 'otra')
+  writeFileSync(join(dir, 'año.txt'), 'primera\n')
+  g('add', '.')
+  g('commit', '-qm', 'primera')
+  g('switch', '-q', 'otra')
+  writeFileSync(join(dir, 'año.txt'), 'segunda\n')
+  g('add', '.')
+  g('commit', '-qm', 'segunda')
+  g('switch', '-q', 'base')
+  const sentinel = join(dir, 'centinela.txt')
+  const program = join(dir, 'programa')
+  writeFileSync(program, `#!/bin/sh\necho activado >> '${sentinel}'\ncat\n`)
+  chmodSync(program, 0o755)
+  writeFileSync(join(dir, 'incluido'), `[filter "trampa"]\n clean = ${program}\n`)
+  g('config', 'include.path', join(dir, 'incluido'))
+  for (const key of [
+    'merge.trampa.driver',
+    'diff.trampa.command',
+    'diff.trampa.textconv',
+    'mergetool.trampa.cmd',
+    'difftool.trampa.cmd',
+    'core.editor',
+    'sequence.editor',
+    'core.gitProxy',
+    'credential.helper',
+    'uploadpack.packObjectsHook',
+    'core.alternateRefsCommand',
+    'gpg.program',
+    'gpg.ssh.program'
+  ])
+    g('config', key, program)
+  g('config', 'alias.atacar', `!${program}`)
+  const safe = (args: string[]) => execSafeGit(args, { cwd: dir })
+  writeFileSync(join(dir, '😀.txt'), 'cambio\n')
+  expect((await service.status(dir)).files.some((f) => JSON.stringify(f).includes('😀'))).toBe(true)
+  await service.commit(dir, 'unicode', true)
+  expect(g('ls-tree', '-z', '--name-only', 'HEAD')).toContain('año.txt')
+  writeFileSync(join(dir, 'año.txt'), 'temporal\n')
+  expect((await safe(['stash', 'push', '-m', 'temporal'])).error).toBeNull()
+  const merge = await safe(['merge', '--no-edit', 'otra'])
+  expect(merge.error).not.toBeNull() // el driver seguro informa conflicto, no ejecuta el del repositorio
+  expect(existsSync(sentinel)).toBe(false)
+  await expect(safe(['atacar'])).rejects.toThrow('no permitido')
+  await expect(safe(['submodule', 'update', '--recursive'])).rejects.toThrow('submódulos')
+  expect(existsSync(sentinel)).toBe(false)
+})
