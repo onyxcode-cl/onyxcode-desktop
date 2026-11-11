@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { request } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -584,5 +584,40 @@ describe('pdf con imágenes de la carpeta', () => {
   it('localImageRefs encuentra rutas relativas y descarta data: y http (una ruta absoluta se deja pasar para que se rechace con mensaje)', () => {
     const html = '<img src="logo.png"><img src="data:image/png;base64,xx"><img src="https://x/y.png"><div style="background:url(fondo.jpg)"></div><img src="/abs.png">'
     expect(localImageRefs(html).sort()).toEqual(['/abs.png', 'fondo.jpg', 'logo.png'])
+  })
+})
+
+describe('errores de datos: mensaje accionable, no «Error interno»', () => {
+  const bad: Array<[string, Record<string, unknown>, RegExp]> = [
+    ['Word: blocks es un objeto', { tipo: 'docx', spec: { blocks: { item: [1] } } }, /`blocks` debe ser una lista[\s\S]*Ejemplo/],
+    ['Word: blocks con un null', { tipo: 'docx', spec: { blocks: [null] } }, /blocks\[0\]/],
+    ['Word: tabla con filas de otro largo', { tipo: 'docx', spec: { blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['1']] }] } }, /rows\[0\][\s\S]*2 celdas/],
+    ['Excel: sheets es un objeto', { tipo: 'xlsx', spec: { sheets: { a: 1 } } }, /`sheets` debe ser una lista[\s\S]*Ejemplo/],
+    ['PowerPoint: slides es un objeto', { tipo: 'pptx', spec: { slides: { a: 1 } } }, /`slides` debe ser una lista[\s\S]*Ejemplo/],
+    ['PowerPoint: lámina null', { tipo: 'pptx', spec: { slides: [null] } }, /slides\[0\]/],
+    ['PDF: html no es texto', { tipo: 'pdf', html: { a: 1 } }, /pasa `html`/]
+  ]
+  for (const [name, args, re] of bad)
+    it(name, async () => {
+      const { token, port } = await server.clientFor({ folder })
+      const r = await call(port, token, args)
+      expect(r.body.error).toBeUndefined()
+      expect(r.body.result.isError).toBe(true)
+      expect(textOf(r)).toMatch(re)
+      expect(textOf(r)).not.toContain(folder)
+      expect(renders.length).toBe(0)
+    })
+
+  it('un fallo inesperado del programa no es «Error interno»: avisa que no es del contenido, sin rutas ni traza, y lo deja en el registro', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(server as any, 'callToolInner').mockRejectedValue(new Error(`boom en ${folder}/secreto`))
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'docx', spec: DOCX })
+    expect(r.body.error).toBeUndefined()
+    expect(r.body.result.isError).toBe(true)
+    expect(textOf(r)).toMatch(/no es un error de tu contenido/)
+    expect(textOf(r)).not.toContain(folder)
+    expect(warn.mock.calls.flat().join(' ')).toContain('boom')
+    warn.mockRestore()
   })
 })
