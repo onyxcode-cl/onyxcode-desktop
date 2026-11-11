@@ -747,6 +747,7 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     engineExperiments: engineExperimentsShape,
     engineLimits: engineLimitsShape,
     rememberAlways: bool,
+    gitHooksEnabled: bool,
     userHooksEnabled: bool,
     // 1.8.12: búsqueda web con cualquier IA y sugerencia en las tarjetas de permiso (ambas apagadas por defecto).
     // `userHooksSha256` y `userHooksReview` NO se aceptan desde el renderer: la huella de los ganchos solo la escribe main al guardar el archivo

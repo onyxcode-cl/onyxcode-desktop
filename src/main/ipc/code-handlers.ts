@@ -145,7 +145,9 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
     return wt
   })
   on(ipcMain, 'git:removeWorktree', (r) => git.removeWorktree(req(r, 'req').cwd, r.path, r.force === true))
-  on(ipcMain, 'git:commit', (r) => git.commit(req(r, 'req').cwd, r.message, r.stageAll === true))
+  on(ipcMain, 'git:commit', (r) =>
+    git.commit(req(r, 'req').cwd, r.message, r.stageAll === true, settingsStore.get().gitHooksEnabled === true)
+  )
   on(ipcMain, 'git:log', (r) => git.log(req(r, 'req').cwd, r.n))
   // Descartar cambios: siempre a la Papelera para lo nuevo; el contenido previo queda en una copia
   // (userData/code-discard) para «Rehacer». Solo ventana principal (no está en CHANNEL_ROLES).

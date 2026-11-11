@@ -313,6 +313,15 @@ export function GeneralSection(): React.JSX.Element {
             </Row>
           </>
         )}
+        {!phone && (
+          <Row label={t('settings.general.gitHooks.label')} description={t('settings.general.gitHooks.description')}>
+            <Toggle
+              checked={settings.gitHooksEnabled === true}
+              onChange={(v) => void update({ gitHooksEnabled: v })}
+              label={t('settings.general.gitHooks.label')}
+            />
+          </Row>
+        )}
         {!phone && <FirstStepsRow />}
         {caps.tasks && <KeepAwakeRow />}
       </Card>

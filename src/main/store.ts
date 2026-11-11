@@ -145,6 +145,7 @@ function normalize(s: Settings): Settings {
     engineLimits: normalizeEngineLimits(s.engineLimits),
     // Solo `false` exacto lo apaga: ausente o basura = encendido (defecto).
     rememberAlways: s.rememberAlways !== false,
+    gitHooksEnabled: s.gitHooksEnabled === true,
     // Solo `true` exacto lo enciende: ausente o basura = apagado (ejecuta comandos de la persona).
     userHooksEnabled: s.userHooksEnabled === true,
     // Huella con forma exacta (64 hex) o `null`; basura = `null` (los ganchos no corren hasta guardar de nuevo desde la pantalla).

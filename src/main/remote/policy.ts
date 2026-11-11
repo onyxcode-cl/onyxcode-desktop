@@ -202,6 +202,7 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   engineLimits: 'X',
   // «Recordar mis "siempre"»: ampliar o recortar lo que el motor da por permitido es decisión de la persona en el Mac; el celular NO.
   rememberAlways: 'X',
+  gitHooksEnabled: 'X',
   // «Activar ganchos»: ejecuta comandos de la persona en el Mac; el celular NO lo enciende.
   userHooksEnabled: 'X',
   // 1.8.12: huella de los ganchos (la escribe main; nunca desde fuera), aviso de revisión, búsqueda web con un tercero (Exa) y sugerencia en

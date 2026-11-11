@@ -68,6 +68,9 @@ export const settings = {
     'Al ejecutar un comando de una respuesta con ▶, la salida (sin claves) se envía sola a la misma conversación para que la IA continúe. Apagado: queda adjunta a tu próximo mensaje.',
   'settings.general.sound.label': 'Sonido',
   'settings.general.sound.description': 'Reproduce el sonido del sistema al mostrar una notificación.',
+  'settings.general.gitHooks.label': 'Ejecutar los ganchos de Git del repositorio al guardar cambios',
+  'settings.general.gitHooks.description':
+    'Los ganchos pueden ejecutar programas del repositorio en tu equipo. Actívalo solo si confías en él.',
   'settings.general.firstSteps.label': 'Primeros pasos',
   'settings.general.firstSteps.description': 'Muestra en la barra lateral la lista corta con lo básico para empezar.',
   'settings.general.keepAwake.label': 'Mantener el Mac despierto',
