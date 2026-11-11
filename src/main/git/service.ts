@@ -2,7 +2,7 @@
  * Git vía `child_process.execFile('git', ...)` — sin shell, sin dependencias extra.
  * No importa `electron`, así que puede probarse con Node puro.
  */
-import { execFile } from 'node:child_process'
+import { execSafeGit } from './safe-git'
 import { t } from '@shared/i18n'
 import { createHash, randomUUID } from 'node:crypto'
 import {
@@ -56,6 +56,7 @@ interface RunOptions {
   /** Códigos de salida aceptados además de 0. */
   okCodes?: number[]
   input?: string
+  allowHooks?: boolean
 }
 
 interface RunResult {
@@ -64,39 +65,26 @@ interface RunResult {
   code: number
 }
 
-function run(cwd: string, args: string[], opts: RunOptions = {}): Promise<RunResult> {
-  return new Promise((resolvePromise, reject) => {
-    const child = execFile(
-      'git',
-      // `core.quotepath=off`: rutas no ASCII tal cual en diff/status sin `-z` (si no, git las cita con escapes octales y el
-      // panel Cambios no las casa con las de `status -z`), como en `compare/git.ts`.
-      ['-c', 'core.quotepath=off', ...args],
-      {
-        cwd,
-        shell: false,
-        maxBuffer: MAX_BUFFER,
-        timeout: TIMEOUT_MS,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          GIT_TERMINAL_PROMPT: '0',
-          GIT_OPTIONAL_LOCKS: '0',
-          LC_ALL: 'C',
-          LANG: 'C'
-        }
-      },
-      (err, stdout, stderr) => {
-        if (!err) return resolvePromise({ stdout, stderr, code: 0 })
-        const e = err as NodeJS.ErrnoException & { code?: number | string }
-        if (e.code === 'ENOENT') return reject(new GitError(t('common.git.notInstalled')))
-        const code = typeof e.code === 'number' ? e.code : null
-        if (code !== null && opts.okCodes?.includes(code)) return resolvePromise({ stdout, stderr, code })
-        const msg = (stderr.trim() || stdout.trim() || e.message).trim().split('\n').slice(-3).join('\n')
-        reject(new GitError(msg || t('common.git.failed', { cmd: String(args[0]) }), stderr, code))
-      }
-    )
-    if (opts.input !== undefined) child.stdin?.end(opts.input)
+async function run(cwd: string, args: string[], opts: RunOptions = {}): Promise<RunResult> {
+  const {
+    error,
+    stdout: out,
+    stderr: errout
+  } = await execSafeGit(args, {
+    cwd,
+    input: opts.input,
+    timeout: TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER,
+    allowHooks: opts.allowHooks
   })
+  const stdout = out.toString('utf8')
+  const stderr = errout.toString('utf8')
+  if (!error) return { stdout, stderr, code: 0 }
+  if (error.code === 'ENOENT') throw new GitError(t('common.git.notInstalled'))
+  const code = typeof error.code === 'number' ? error.code : null
+  if (code !== null && opts.okCodes?.includes(code)) return { stdout, stderr, code }
+  const msg = (stderr.trim() || stdout.trim() || error.message).trim().split('\n').slice(-3).join('\n')
+  throw new GitError(msg || t('common.git.failed', { cmd: String(args[0]) }), stderr, code)
 }
 
 async function git(cwd: string, args: string[], opts?: RunOptions): Promise<string> {
@@ -506,7 +494,7 @@ async function gitDir(root: string): Promise<string> {
   return isAbsolute(d) ? d : join(root, d)
 }
 
-export async function commit(cwd: string, message: string, stageAll = false): Promise<GitCommitResult> {
+export async function commit(cwd: string, message: string, stageAll = false, allowHooks = false): Promise<GitCommitResult> {
   const root = await requireRoot(cwd)
   if (typeof message !== 'string' || !message.trim()) throw new GitError(t('common.git.emptyCommit'))
   let secretosExcluidos = false
@@ -524,7 +512,7 @@ export async function commit(cwd: string, message: string, stageAll = false): Pr
   const mergeEnCurso = existsSync(join(await gitDir(root), 'MERGE_HEAD'))
   if (!hayCambios && !mergeEnCurso)
     throw new GitError(t(secretosExcluidos ? 'common.git.nothingToCommitSecrets' : 'common.git.nothingToCommit'))
-  await git(root, ['commit', '-F', '-'], { input: message })
+  await git(root, ['commit', '-F', '-'], { input: message, allowHooks })
   const out = (await git(root, ['log', '-1', '--format=%H%x1f%h%x1f%s'])).trim()
   const [hash = '', shortHash = '', summary = ''] = out.split('\x1f')
   return { hash, shortHash, summary }

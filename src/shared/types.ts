@@ -94,6 +94,8 @@ export interface Settings {
    * anterior lo recibe encendido al leer (no hace falta migración: no cambia ningún valor ya guardado). Ver `permission-persist.ts`.
    */
   rememberAlways: boolean
+  /** Permitir los ganchos del repositorio al guardar cambios desde Código. */
+  gitHooksEnabled?: boolean
   /**
    * «Activar ganchos» (Ajustes › Funciones experimentales › Ganchos): el motor ejecuta los comandos de `userData/hooks/hooks.json` antes o después
    * de las herramientas. APAGADO por defecto (ejecuta comandos de la persona); solo `true` exacto lo enciende. Nunca llega al sandbox de Tareas.
@@ -164,6 +166,7 @@ export const DEFAULT_SETTINGS: Settings = {
   engineExperiments: ENGINE_EXPERIMENTS_DEFAULTS,
   engineLimits: {},
   rememberAlways: true,
+  gitHooksEnabled: false,
   userHooksEnabled: false,
   userHooksSha256: null,
   userHooksReview: false,

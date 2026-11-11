@@ -969,6 +969,17 @@
       ],
       "nota": "Bloqueados por ejecutable, AUMID y nombre: cmd, powershell, pwsh, Windows Terminal (wt, WindowsTerminal), wscript, cscript, mshta, regedit, mmc, control, SystemSettings, taskmgr y explorer (también su «Ejecutar»). Cubierto por pruebas unitarias; no probado en una app armada en Windows (ruta real del ejecutable, AUMID de Configuración y del Terminal).",
       "comprobacion": null
+    },
+    {
+      "id": "N08",
+      "funcion": "Git de la app sin ganchos ni filtros locales por defecto",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/git/safe-git.ts:1",
+        "src/main/git/safe-git.test.ts:1"
+      ],
+      "nota": "Probado en macOS con un repositorio temporal; falta comprobar Git para Windows, la ruta del dispositivo nulo, el ajuste de ganchos y Git LFS en Windows.",
+      "comprobacion": null
     }
   ]
 }

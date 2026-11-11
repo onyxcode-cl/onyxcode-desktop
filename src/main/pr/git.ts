@@ -20,9 +20,9 @@ import { filterRawDiff } from '../remote/diff-filter'
 import { isSensitivePath } from '../remote/path-guard'
 import { diff as gitDiff, status as gitStatus } from '../git/service'
 import { clipDiff, countFiles, formatStat, statFromDiff } from '@shared/pr-diff-lines'
-import { PrError, runFile, minimalEnv, type RunOptions, type RunResult } from './exec'
+import { PrError, minimalEnv, type RunOptions, type RunResult } from './exec'
+import { execSafeGit } from '../git/safe-git'
 
-const SAFE_GIT = ['-c', 'core.quotepath=off', '-c', 'core.fsmonitor=false']
 const MAX_COMMITS_SCANNED = 500
 const SCAN_BUFFER = 12 * 1024 * 1024
 const PUSH_TIMEOUT = 120_000
@@ -34,7 +34,25 @@ export function perr(code: string, key: Parameters<typeof t>[0], params?: Record
 /** `git` sin shell. Convierte «git no está» en un error entendible. */
 export async function runGit(cwd: string, args: readonly string[], opts: RunOptions = {}): Promise<RunResult> {
   try {
-    return await runFile('git', [...SAFE_GIT, ...args], { cwd, ...opts })
+    const {
+      error,
+      stdout: out,
+      stderr: errout
+    } = await execSafeGit(args, {
+      cwd,
+      env: opts.env ?? minimalEnv(),
+      input: opts.input,
+      timeout: opts.timeoutMs,
+      maxBuffer: opts.maxBuffer
+    })
+    const stdout = out.toString('utf8'),
+      stderr = errout.toString('utf8')
+    if (!error) return { stdout, stderr, code: 0, truncated: false }
+    if (error.code === 'ENOENT') throw new PrError('not-found', 'git: not found')
+    if (error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return { stdout, stderr, code: 0, truncated: true }
+    if (error.killed || error.signal === 'SIGTERM') throw new PrError('timeout', 'git: timeout', stderr)
+    if (typeof error.code !== 'number') throw new PrError('spawn', error.message, stderr)
+    return { stdout, stderr, code: error.code, truncated: false }
   } catch (e) {
     if (e instanceof PrError && e.code === 'not-found') throw perr('git-missing', 'common.git.notInstalled')
     if (e instanceof PrError && e.code === 'timeout') throw perr('timeout', 'pr.err.timeout')
