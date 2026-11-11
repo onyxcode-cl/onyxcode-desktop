@@ -10,7 +10,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 - **Comandos fuera del aislamiento sin tu aprobación.** Un programa ejecutado dentro de una tarea podía hacer que se ejecutara un comando en tu computador, fuera del aislamiento, sin que lo aprobaras: la pregunta la hacía y la respondía el motor, que corre dentro del aislamiento. Estaba así desde la 1.8.10. Lo encontramos nosotros al revisar y no tenemos señales de que se haya usado. Como en los casos anteriores, el modelo tenía que ejecutar ese código (por ejemplo, engañado por instrucciones escondidas en un archivo o en una página). Ahora cada comando fuera del aislamiento lo pregunta la propia app, mostrando el comando completo. No hay «permitir siempre» para estos comandos, y si no respondes, no se ejecuta.
 - **Lo mismo para tus conectores marcados «preguntar cada vez»** (los que pasan por la app): ahora la pregunta la hace la app y no el motor, también para leer un recurso o una plantilla del conector. La app revisa lo que se envía tal como lo leerá el conector, y solo deja usar la dirección del conector, no otras del mismo servicio.
-- **En Tareas con aislamiento, el motor ya no carga programas que vengan de la carpeta de la tarea**: complementos, herramientas, conectores locales y formateadores. Los ayudantes y los comandos de texto del proyecto siguen funcionando, pero ya no pueden darse permisos.
+- **En Tareas con aislamiento, el motor ya no carga programas que vengan de la carpeta de la tarea**: complementos, herramientas, conectores locales y formateadores. Los ayudantes y los comandos de texto del proyecto siguen funcionando, pero ya no pueden elegir sus propios permisos, herramientas ni modelo.
 - **Los «permitir siempre» de Tareas ahora los guarda la app**, fuera del alcance de la tarea. Antes quedaban donde un programa de la tarea podía cambiarlos. Un «siempre» dado en una tarea aislada no vale cuando abres esa carpeta en «Control total».
 - **Carpeta extra de solo lectura dentro de la carpeta de la tarea:** ya no se pueden sacar archivos de ella.
 - **En Mac, desde una tarea ya no se puede cambiar la configuración interna del motor, ni crear o cambiar los ganchos de git de un repositorio, ni usar Docker y programas parecidos.** Así un programa de la tarea no puede dejar algo preparado para que se ejecute después.
@@ -28,7 +28,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Con la ventana de Lazunox minimizada u oculta, el aviso del sistema ya no deja permitir** un comando fuera del aislamiento ni un conector: solo «No» o «Abrir Lazunox». El permiso se da siempre en la tarjeta de la app, viendo el comando completo. Así un clic apurado para quitar el aviso de en medio no ejecuta nada.
 - **Un comando del proyecto que contenga `` !` `` ya no aparece**, aunque no esté cerrado.
 - **Un «siempre» respondido desde el celular en una tarea aislada dura hasta que se detiene la tarea.**
-- **En Tareas con aislamiento dejan de cargarse** los complementos, herramientas, conectores locales y formateadores del proyecto, las reglas por ruta y las instrucciones de carpetas superiores. Un ayudante del proyecto usa el modelo y los permisos de la tarea. En «Control total» nada cambia.
+- **En Tareas con aislamiento dejan de cargarse** los complementos, herramientas, conectores locales y formateadores del proyecto, las reglas por ruta y las instrucciones de carpetas superiores. Un ayudante del proyecto usa el modelo de la tarea y los permisos generales del motor; sigue dentro del mismo aislamiento que la tarea. En «Control total» nada cambia.
 
 ### Otros arreglos
 
@@ -41,6 +41,9 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Lo que todavía no está cerrado
 
+- **Un ayudante del proyecto no hereda las reglas finas de la tarea** (por ejemplo, preguntar antes de borrar): usa las reglas generales del motor. Sigue encerrado en el mismo aislamiento, que es la barrera real, pero las preguntas pueden ser menos. Se corrige en la próxima versión.
+- **Un conector marcado «permitir» no se revisa mensaje por mensaje**: desde la tarea se puede usar cualquiera de sus herramientas y otras direcciones del mismo servicio. La revisión estricta aplica a los marcados «preguntar cada vez».
+- **La vista previa de un documento recién creado puede salir en blanco** (visto con la ventana minimizada). El documento se crea bien y se puede abrir desde la carpeta.
 - **La configuración de un repositorio de git todavía se puede cambiar desde una tarea** (bloquearla rompe git). Si después abres esa carpeta en Código y guardas cambios desde la app, git podría ejecutar algo que la tarea dejó preparado. Se corrige en la próxima versión.
 - **Algunos conectores siguen protegidos solo por la pregunta del motor:** los remotos que el motor contacta directo (públicos o con inicio de sesión propio) y los conectores locales.
 - **El control de apps del Mac y el navegador integrado desde una tarea** tienen barreras propias, pero todavía no una aprobación por cada acción.
