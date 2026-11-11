@@ -632,8 +632,7 @@ export const tasks = {
   'tasks.sandbox.unavailable.body':
     'Esta versión todavía no incluye el entorno aislado que Overdrive necesita en Windows. Por seguridad no se ejecuta sin él.',
   'tasks.sandbox.elevated.title': 'Lazunox está abierto como administrador',
-  'tasks.sandbox.elevated.body':
-    'Abriste Lazunox como administrador. Ciérralo y ábrelo de forma normal para usar Overdrive.',
+  'tasks.sandbox.elevated.body': 'Abriste Lazunox como administrador. Ciérralo y ábrelo de forma normal para usar Overdrive.',
   'tasks.sandbox.broken.title': 'El entorno de Overdrive necesita atención',
   'tasks.sandbox.broken.payload': 'Faltan archivos del entorno aislado. Puedes repararlo.',
   'tasks.sandbox.broken.repair': 'Reparar',
@@ -780,5 +779,16 @@ export const tasks = {
   'project.linked.reason.duplicate': 'Esa carpeta ya está añadida.',
   'project.dialog.linkedHint': 'La IA entra sin preguntar a las carpetas añadidas; en «Solo lectura» no puede cambiarlas.',
   'tasks.groups.remove': 'Quitar carpeta',
-  'tasks.groups.removeAria': 'Quitar la carpeta {name}'
+  'tasks.groups.removeAria': 'Quitar la carpeta {name}',
+  'tasks.hostExec.title': '¿Ejecutar este comando en tu computador?',
+  'tasks.hostExec.intro': 'Correrá fuera del espacio protegido de la tarea, con tus permisos. Revisa el comando completo.',
+  'tasks.hostExec.command': 'Comando',
+  'tasks.hostExec.reason': 'Motivo del agente',
+  'tasks.hostExec.folder': 'Carpeta de la tarea',
+  'tasks.hostExec.background': 'Quedará corriendo en segundo plano.',
+  'tasks.hostExec.timeout': 'Se detendrá si tarda más de {seconds} s.',
+  'tasks.hostExec.once': 'Solo se permite este comando, una vez. Cada comando vuelve a preguntar.',
+  'tasks.hostExec.no': 'No',
+  'tasks.hostExec.allowOnce': 'Permitir esta vez',
+  'tasks.hostExec.expiresIn': 'Si no respondes en {seconds} s, no se ejecuta.'
 } as const

@@ -1,13 +1,17 @@
 /**
  * Servidor MCP `equipo` (nivel 2 de acceso de las Tareas): la IA propone UN comando exacto que corre en el equipo, FUERA del aislamiento, y la
- * persona lo aprueba viéndolo completo (la tarjeta de permiso del motor, con `equipo_*: ask` en la config; nunca «siempre» en esta versión).
- * Es el mismo patrón que los permisos escalados de Codex y el reintento sin aislamiento de Claude Code.
+ * persona lo aprueba viéndolo completo. Es el mismo patrón que los permisos escalados de Codex y el reintento sin aislamiento de Claude Code.
  *
- * Esta capa NO es la aprobación: es la segunda defensa. Rechaza lo que nunca debería ejecutarse (`policy.ts`), exige el motivo, limita la
- * concurrencia y la frecuencia, corre con entorno mínimo y tiempo máximo (`runner.ts`) y deja un registro de auditoría. Lo que el motor devuelve
- * nunca incluye rutas internas ni claves de la app. Transporte: `util/loopback-mcp.ts` (token por atadura, Origin 403, cuerpo ≤ 1 MiB).
+ * La aprobación la pide y la decide ESTE proceso (main), fuera de la jaula (`approve`, por defecto `approvals.ts`): la tarjeta muestra el
+ * comando real, el motivo y la carpeta; «No» es lo seguro; no hay «siempre»; vencer o cortarse la petición deniega. La pregunta del motor
+ * (`equipo_*: ask`) ya no protege nada (el motor vive dentro de la jaula, con los programas de la tarea), así que el motor la deja en `allow`.
+ *
+ * Además: rechaza lo que nunca debería ejecutarse (`policy.ts`), exige el motivo, limita la concurrencia (una aprobación o comando a la vez
+ * por carpeta) y la frecuencia, corre con entorno mínimo y tiempo máximo (`runner.ts`) y deja un registro de auditoría. Lo que el motor
+ * devuelve nunca incluye rutas internas ni claves de la app. Transporte: `util/loopback-mcp.ts` (token por atadura, Origin 403, cuerpo ≤ 1 MiB).
  */
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
+import { HOST_APPROVAL_TIMEOUT_MS, type HostApprovalInput, type HostApprovalOutcome } from './approvals'
 import { checkHostCommand } from './policy'
 import {
   backgroundCount,
@@ -39,7 +43,9 @@ export interface AuditEntry {
   tool: string
   result: 'ok' | 'rechazado' | 'error'
   detail?: string
-  /** Primeros caracteres del comando (la persona ya lo vio y lo aprobó); sirve para auditar. */
+  /** Qué decidió la persona en la tarjeta de main (solo en `ejecutar`, cuando se llegó a preguntar). */
+  approval?: 'aprobado' | 'rechazado' | 'sin-respuesta'
+  /** Primeros caracteres del comando, con los valores de la Bóveda tapados (la persona vio el comando real en la tarjeta). */
   cmd?: string
   exitCode?: number | null
   ms: number
@@ -57,7 +63,21 @@ export interface HostExecDeps {
   start?: typeof startBackground
   now?: () => number
   audit?: (e: AuditEntry) => void
+  /**
+   * Pide la aprobación de la persona desde main. Sin función: no se ejecuta nada (falla cerrado). `signal` se aborta si la petición MCP
+   * se corta; eso cuenta como «sin respuesta».
+   */
+  approve?: (req: HostApprovalInput, signal?: AbortSignal) => Promise<HostApprovalOutcome>
+  /** Tiempo máximo esperando a la persona (para la config del motor y del proxy). */
+  approvalTimeoutMs?: number
 }
+
+/** Texto que recibe el agente cuando la persona dice «No». Claro y sin invitar a reintentar en bucle. */
+export const DENIED_TEXT =
+  'La persona no aprobó este comando. No lo vuelvas a pedir igual: sigue sin él dentro de la carpeta de la tarea o pregúntale qué prefiere.'
+/** Texto cuando nadie respondió a tiempo. */
+export const NO_ANSWER_TEXT =
+  'La persona no respondió a tiempo y el comando no se ejecutó. No lo repitas en bucle: avísale en el chat de lo que necesitas y espera su respuesta.'
 
 export const HOST_TOOLS = [
   {
@@ -105,6 +125,10 @@ interface Quota {
 
 export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
   private readonly quotas = new WeakMap<HostBinding, Quota>()
+  /** Carpetas con una aprobación o un comando en curso (aunque el token de la carpeta haya cambiado entre medias). */
+  private readonly busyFolders = new Set<string>()
+  /** Esperas de aprobación de cada atadura: al terminar la tarea (o sustituir su token) se cortan y cuentan como «sin respuesta». */
+  private readonly waits = new Map<HostBinding, Set<AbortController>>()
   private active = 0
 
   constructor(private readonly deps: HostExecDeps = {}) {
@@ -120,12 +144,19 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
     return this.deps.enabled && !this.deps.enabled() ? [] : HOST_TOOLS
   }
 
+  /** Lo que una llamada puede tardar como máximo: esperar a la persona + el comando + margen. El motor y el proxy deben esperar eso. */
+  responseTimeoutMs(): number {
+    return (this.deps.approvalTimeoutMs ?? HOST_APPROVAL_TIMEOUT_MS) + MAX_TIMEOUT_MS + 15_000
+  }
+
   protected configTimeoutMs(): number {
-    return MAX_TIMEOUT_MS + 15_000
+    return this.responseTimeoutMs()
   }
 
   /** Al terminar la tarea (o sustituir su token) se detienen sus procesos en segundo plano. */
   protected onBindingGone(binding: HostBinding): void {
+    for (const c of this.waits.get(binding) ?? []) c.abort()
+    this.waits.delete(binding)
     stopAllBackground(binding.folder)
   }
 
@@ -163,7 +194,12 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
     return this.deps.redact ? this.deps.redact(folder, text) : text
   }
 
-  protected async callTool(binding: HostBinding, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+  protected async callTool(
+    binding: HostBinding,
+    name: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal
+  ): Promise<McpToolResult> {
     const now = this.deps.now ?? Date.now
     const t0 = now()
     if (this.deps.enabled && !this.deps.enabled()) {
@@ -200,10 +236,11 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'cuota', cmd, ms: 0 })
       return this.text('Ya se ejecutaron muchos comandos en esta hora; espera un rato.', true)
     }
-    if (quota.busy || this.active >= MAX_CONCURRENT_GLOBAL) {
+    if (quota.busy || this.busyFolders.has(binding.folder) || this.active >= MAX_CONCURRENT_GLOBAL) {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'ocupado', cmd, ms: 0 })
       return this.text('Hay otro comando en curso; espera a que termine.', true)
     }
+    // Antes de preguntar (no tiene sentido pedir permiso para algo que no se podrá lanzar); se vuelve a mirar tras la aprobación.
     if (background && backgroundCount(binding.folder) >= MAX_BACKGROUND_PER_OWNER) {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'muchos-en-fondo', cmd, ms: 0 })
       return this.text(
@@ -211,13 +248,68 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
         true
       )
     }
+    // El comando EXACTO de esta llamada: lo que se muestra a la persona y lo que se ejecuta es este mismo valor (nada de vales reutilizables).
+    const command = String(args.comando)
+    // Ocupado desde que se pregunta: una segunda llamada de la misma carpeta mientras la persona decide se rechaza (no se apilan tarjetas).
     quota.busy = true
-    this.active++
+    this.busyFolders.add(binding.folder)
     quota.stamps.push(t0)
+    let running = false
+    // Se corta si se corta la petición MCP o si la atadura deja de valer (tarea terminada, token sustituido).
+    const wait = new AbortController()
+    const onCut = (): void => wait.abort()
+    if (signal?.aborted) wait.abort()
+    else signal?.addEventListener('abort', onCut, { once: true })
+    let waits = this.waits.get(binding)
+    if (!waits) this.waits.set(binding, (waits = new Set()))
+    waits.add(wait)
     try {
+      let outcome: HostApprovalOutcome = 'no-answer'
+      try {
+        outcome =
+          this.deps.approve && !wait.signal.aborted
+            ? await this.deps.approve(
+                { folder: binding.folder, command, reason: motivo, background, timeoutS: timeoutMs / 1000 },
+                wait.signal
+              )
+            : 'no-answer'
+      } catch {
+        outcome = 'no-answer'
+      } finally {
+        signal?.removeEventListener('abort', onCut)
+        waits.delete(wait)
+        if (!waits.size && this.waits.get(binding) === waits) this.waits.delete(binding)
+      }
+      if (outcome !== 'allow') {
+        const approval = outcome === 'deny' ? 'rechazado' : 'sin-respuesta'
+        this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'persona', approval, cmd, ms: now() - t0 })
+        return this.text(outcome === 'deny' ? DENIED_TEXT : NO_ANSWER_TEXT, true)
+      }
+      if (wait.signal.aborted) {
+        this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'cortado', approval: 'sin-respuesta', cmd, ms: now() - t0 })
+        return this.text(NO_ANSWER_TEXT, true)
+      }
+      // La organización pudo apagarla mientras la persona decidía.
+      if (this.deps.enabled && !this.deps.enabled()) {
+        this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'politica', approval: 'aprobado', cmd, ms: now() - t0 })
+        return this.text('Esta herramienta está desactivada por la organización.', true)
+      }
+      if (this.active >= MAX_CONCURRENT_GLOBAL) {
+        this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'ocupado', approval: 'aprobado', cmd, ms: now() - t0 })
+        return this.text('Hay otro comando en curso; espera a que termine.', true)
+      }
+      if (background && backgroundCount(binding.folder) >= MAX_BACKGROUND_PER_OWNER) {
+        this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'muchos-en-fondo', approval: 'aprobado', cmd, ms: now() - t0 })
+        return this.text(
+          `Ya hay ${MAX_BACKGROUND_PER_OWNER} comandos en segundo plano; detén uno con \`detener\` antes de lanzar otro.`,
+          true
+        )
+      }
+      this.active++
+      running = true
       const platform = this.deps.platform ?? process.platform
       if (background) {
-        const r: BackgroundResult = await (this.deps.start ?? startBackground)(String(args.comando), binding.folder, {
+        const r: BackgroundResult = await (this.deps.start ?? startBackground)(command, binding.folder, {
           cwd: binding.folder,
           platform,
           extraEnv: this.deps.envFor?.(binding.folder)
@@ -227,6 +319,7 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
           tool: name,
           result: r.pid ? 'ok' : 'error',
           detail: 'segundo-plano',
+          approval: 'aprobado',
           cmd,
           exitCode: r.exitCode,
           ms: now() - t0
@@ -241,20 +334,29 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
           : `El comando ya terminó (código ${r.exitCode ?? '?'}).`
         return this.text(`${head}\n${this.formatResult(r, binding.folder)}`)
       }
-      const r = await (this.deps.run ?? runHostCommand)(String(args.comando), {
+      const r = await (this.deps.run ?? runHostCommand)(command, {
         cwd: binding.folder,
         platform,
         timeoutMs,
         extraEnv: this.deps.envFor?.(binding.folder)
       })
-      this.audit({ at: t0, tool: name, result: r.exitCode === 0 ? 'ok' : 'error', cmd, exitCode: r.exitCode, ms: now() - t0 })
+      this.audit({
+        at: t0,
+        tool: name,
+        result: r.exitCode === 0 ? 'ok' : 'error',
+        approval: 'aprobado',
+        cmd,
+        exitCode: r.exitCode,
+        ms: now() - t0
+      })
       return this.text(this.formatResult(r, binding.folder), r.exitCode !== 0)
     } catch {
       this.audit({ at: t0, tool: name, result: 'error', detail: 'motor', cmd, ms: now() - t0 })
       return this.text('No se pudo ejecutar el comando.', true)
     } finally {
       quota.busy = false
-      this.active--
+      this.busyFolders.delete(binding.folder)
+      if (running) this.active--
     }
   }
 

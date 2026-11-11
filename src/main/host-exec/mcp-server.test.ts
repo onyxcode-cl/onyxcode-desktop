@@ -27,6 +27,8 @@ beforeEach(() => {
   runImpl = async () => OK
   server = new HostExecMcpServer({
     enabled: () => enabled,
+    // Aquí la persona siempre aprueba: la aprobación de main se prueba en `mcp-server.approval.test.ts`.
+    approve: async () => 'allow',
     audit: (e) => audits.push(e),
     run: async (command, o) => {
       ran.push({ command, cwd: o?.cwd, timeoutMs: o?.timeoutMs })
@@ -120,7 +122,7 @@ describe('ejecutar', () => {
     expect(textOf(r)).toContain('Código de salida: 0')
     expect(textOf(r)).toContain('hecho')
     expect(ran[0]).toMatchObject({ command: good.comando, cwd: folder })
-    expect(audits.at(-1)).toMatchObject({ tool: 'ejecutar', result: 'ok', exitCode: 0 })
+    expect(audits.at(-1)).toMatchObject({ tool: 'ejecutar', result: 'ok', approval: 'aprobado', exitCode: 0 })
   })
 
   it('un código distinto de 0 es error para el agente, con su salida', async () => {
@@ -196,7 +198,7 @@ describe('ejecutar', () => {
 
   it('tope por hora', async () => {
     let t = 1_000_000
-    const s = new HostExecMcpServer({ run: async () => OK, audit: () => undefined, now: () => t })
+    const s = new HostExecMcpServer({ run: async () => OK, audit: () => undefined, now: () => t, approve: async () => 'allow' })
     try {
       const { token, port } = await s.clientFor({ folder })
       for (let i = 0; i < MAX_PER_BINDING_PER_HOUR; i++) {
@@ -265,6 +267,7 @@ describe('Bóveda del proyecto', () => {
   beforeEach(() => {
     seenEnv = []
     withVault = new HostExecMcpServer({
+      approve: async () => 'allow',
       audit: (e) => audits.push(e),
       envFor: (f): Record<string, string> => (f === folder ? { API_KEY: SECRET } : {}),
       redact: (f, text) => (f === folder ? text.split(SECRET).join('«API_KEY»') : text),

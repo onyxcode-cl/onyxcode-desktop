@@ -174,6 +174,13 @@ describe('recorte de eventos del motor', () => {
       owner: { kind: 'code', directory: proj },
       id: 'a'
     })
+    // Tarjeta de `equipo`: solo si la carpeta de la tarea está en el ámbito; el comando va completo (es lo que se aprueba).
+    expect(trimIpcEvent('tasks:hostExec:approval', { id: 'a', folder: outside, command: 'open x' }, trim)).toBeNull()
+    expect(trimIpcEvent('tasks:hostExec:approval', { id: 'a', folder: proj, command: 'open "x y"' }, trim)).toEqual({
+      id: 'a',
+      folder: proj,
+      command: 'open "x y"'
+    })
     expect(trimIpcEvent('opencode:status', { state: 'ready' }, trim)).toEqual({ state: 'ready' })
   })
 

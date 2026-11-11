@@ -244,7 +244,8 @@ describe('D: confirmación en el Mac', () => {
     ['files:trash', { cwd: P, path: 'desconocido' }],
     ['browser:agent', { owner: { kind: 'code', directory: P }, action: 'resume' }],
     ['browser:respond', { id: 'ab', decision: 'always' }],
-    ['browser:respond', { id: 'ab', decision: 'allow' }]
+    ['browser:respond', { id: 'ab', decision: 'allow' }],
+    ['tasks:hostExec:respond', { id: 'ab', decision: 'allow' }]
   ]
   it.each(D_IPC.map((c, i) => [i, c[0], c[1]] as const))('#%i %s pide confirmación con resumen es/en', (_i, ch, payload) => {
     const d = decide(ipc(ch, payload), ctx)
@@ -265,6 +266,17 @@ describe('D: confirmación en el Mac', () => {
       'POST /session'
     ])
     for (const k of Object.keys(CELULAR_SUMMARIES)) expect(covered.has(k) || httpKeys.has(k), k).toBe(true)
+  })
+  it('equipo: «Permitir esta vez» desde el celular se confirma en el Mac con el comando completo (de main, no del celular)', () => {
+    const cmd = 'open "/Users/me/p/informe final.pdf"'
+    const d = decide(ipc('tasks:hostExec:respond', { id: 'ab12', decision: 'allow' }), {
+      ...ctx,
+      hostApprovalDetail: (id) => (id === 'ab12' ? [cmd, 'Abrir el informe', '/Users/me/p'] : undefined)
+    })
+    expect('confirm' in d && d.detail).toEqual([cmd, 'Abrir el informe', '/Users/me/p'])
+    expect(eventPolicy('tasks:hostExec:approval')).toBe('sanitize')
+    expect(eventPolicy('tasks:hostExec:approvalDone')).toBe('allow')
+    expect(cls(ipc('tasks:hostExec:pending'))).toMatch(/^deny/)
   })
   it('el detalle muestra rutas con ~ y nº de archivos', () => {
     const d = decide(ipc('git:discard', { cwd: '/Users/me/p', paths: Array.from({ length: 25 }, (_, i) => `f${i}`) }), {
@@ -652,6 +664,7 @@ describe('git, archivos, navegador y Tareas', () => {
     expect(cls(ipc('browser:navigate', { owner, tabId: 't12345678', input: 'localhost:3000' }))).toBe('M')
     expect(cls(ipc('browser:agent', { owner, action: 'stop' }))).toBe('M')
     expect(cls(ipc('browser:respond', { id: 'ab', decision: 'deny' }))).toBe('M')
+    expect(cls(ipc('tasks:hostExec:respond', { id: 'ab', decision: 'deny' }))).toBe('M')
   })
   it('Tareas: iniciar sin control total M, con él D; revocar M', () => {
     expect(cls(ipc('tasks:start', { folder: '/work/tasks/a' }))).toBe('M')

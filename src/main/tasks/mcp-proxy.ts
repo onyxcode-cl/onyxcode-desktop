@@ -78,6 +78,11 @@ export interface McpRouteSpec {
    * modo unificado). Cualquier otra ruta → 404.
    */
   exactPath?: boolean
+  /**
+   * Espera máxima hasta las cabeceras del destino para ESTA ruta (por defecto, `limits.headersTimeoutMs`). La usa `equipo`, que espera a
+   * que la persona apruebe en main antes de responder.
+   */
+  headersTimeoutMs?: number
 }
 
 /** Lo que recibe el servidor del sandbox: nunca contiene el secreto real. */
@@ -96,6 +101,7 @@ interface Route {
   query: URLSearchParams
   injected: Array<[string, string]>
   exactPath: boolean
+  headersTimeoutMs?: number
   hash: Buffer
   expiresAt: number
   revoked: boolean
@@ -230,6 +236,10 @@ export class McpProxy {
       query: new URLSearchParams(url.search),
       injected,
       exactPath: spec.exactPath === true,
+      headersTimeoutMs:
+        typeof spec.headersTimeoutMs === 'number' && Number.isFinite(spec.headersTimeoutMs) && spec.headersTimeoutMs > 0
+          ? spec.headersTimeoutMs
+          : undefined,
       hash: sha256(token),
       expiresAt: this.now() + this.limits.ttlMs,
       revoked: false,
@@ -407,7 +417,7 @@ export class McpProxy {
       upstream.destroy()
       done()
     })
-    upstream.setTimeout(this.limits.headersTimeoutMs, () => {
+    upstream.setTimeout(route.headersTimeoutMs ?? this.limits.headersTimeoutMs, () => {
       if (!res.headersSent) this.reply(res, 504, 'upstream timeout')
       upstream.destroy()
     })

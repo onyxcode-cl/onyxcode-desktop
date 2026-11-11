@@ -415,6 +415,22 @@ describe('McpProxy: límites', () => {
     expect(r.status).toBe(502)
     expect(await r.text()).not.toContain('real-bbbbbbb')
   })
+
+  it('una ruta puede esperar más que el límite general (equipo espera a que la persona apruebe en main)', async () => {
+    let answer: (() => void) | undefined
+    const up = await fake((_req, res) => {
+      answer = () => {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end('{}')
+      }
+    })
+    const p = await proxy({ headersTimeoutMs: 100 })
+    const slow = p.addRoute({ name: 'equipo', url: up.url(), headers: {}, headersTimeoutMs: 2_000 })
+    const pending = post(slow.url, slow.token)
+    await new Promise((r) => setTimeout(r, 300))
+    answer?.()
+    expect((await pending).status).toBe(200)
+  })
 })
 
 describe('McpProxy: manejador local de solo lectura (canal del guardián, F8-B208)', () => {

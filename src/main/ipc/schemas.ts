@@ -1035,6 +1035,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'computer:revokeGrant': obj({ bundleId: str({ max: 255, min: 1 }) }),
   'computer:denyApp': obj({ bundleId: str({ max: 255, min: 1 }), name: str({ max: 255, min: 1 }) }),
   'computer:undenyApp': obj({ bundleId: str({ max: 255, min: 1 }) }),
+  'tasks:hostExec:respond': obj({ id: hexId, decision: literal('allow', 'deny') }),
+  'tasks:hostExec:pending': none,
   'computer:respondAccess': obj({
     id: str({ max: 100, min: 1 }),
     decisions: arr(

@@ -50,6 +50,8 @@ export interface PolicyContext {
   permissionKind?: (requestId: string) => string | undefined
   /** Qué pide el permiso pendiente (comando, rutas o patrones), ya recortado, para mostrarlo en la confirmación. */
   permissionDetail?: (requestId: string) => string[] | undefined
+  /** Comando completo, motivo y carpeta de una tarjeta de `equipo` pendiente (de main, no del celular), para la confirmación en el Mac. */
+  hostApprovalDetail?: (id: string) => string[] | undefined
   /** Este celular tiene encendido «Aprobar comandos desde este celular» (por dispositivo, apagado por defecto). */
   canApproveCommands?: boolean
   /** Texto íntegro que pide el permiso pendiente (aprendido del motor, no del celular), para la lista de denegación. */
@@ -449,6 +451,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   },
   'computer:revokePlan': 'M',
   'computer:approvedPlans': 'R',
+  // Comandos de `equipo` (fuera del aislamiento): denegar es M; «Permitir esta vez» se confirma en el Mac con el comando completo a la vista.
+  'tasks:hostExec:respond': (p) => (p.decision === 'deny' ? 'M' : 'D'),
+  'tasks:hostExec:pending': 'X', // la lista trae carpetas de todas las tareas: el celular recibe las tarjetas por el evento, ya filtrado
   'computer:showMainWindow': 'X',
   'computer:promptVisible': 'X',
   'tasks:keepAwakeState': 'R',
@@ -782,6 +787,8 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'computer:overlay': 'deny',
   'computer:accessRequest': 'sanitize',
   'computer:accessResolved': 'allow',
+  'tasks:hostExec:approval': 'sanitize', // solo si la carpeta de la tarea está en el ámbito del celular
+  'tasks:hostExec:approvalDone': 'allow',
   'computer:planState': 'allow',
   'computer:blockedApps': 'allow',
   'tasks:networkBlocked': 'allow',
@@ -1544,6 +1551,15 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     detail: [...folderLine(p, 'cwd', h), String(p.path)]
   }),
   'browser:agent': () => ({ text: t('Reanudar el agente del navegador', 'Resume the browser agent'), detail: [] }),
+  'tasks:hostExec:respond': (p, _h, x) => ({
+    text: t(
+      'Permitir una vez que una tarea ejecute este comando en el Mac, fuera de su espacio protegido',
+      'Allow a task to run this command once on the Mac, outside its protected space'
+    ),
+    detail: (isStr(p.id) ? x.ctx.hostApprovalDetail?.(p.id) : undefined)?.map((l) => headTail(l, 2000)) ?? [
+      t('La petición ya no está pendiente', 'The request is no longer pending').es
+    ]
+  }),
   'browser:respond': (p) => ({
     text: t('Permitir a un sitio o acción del navegador', 'Allow a browser site or action'),
     detail: [String(p.decision)]

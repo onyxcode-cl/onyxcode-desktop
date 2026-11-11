@@ -158,6 +158,28 @@ export interface GrantsSnapshot {
 /** Decisión del usuario sobre una app pedida por `request_access`. */
 export type AccessDecision = AppTier | 'deny'
 
+/**
+ * Tarjeta «¿Ejecutar este comando fuera del aislamiento?» (herramienta `equipo` de las Tareas). La pide y la decide main: el comando es el
+ * REAL y completo, el que se ejecutará si la persona dice «Permitir esta vez». Cada comando pregunta; no hay «siempre».
+ */
+export interface HostExecApprovalRequest {
+  id: string
+  /** Carpeta de la tarea (donde corre el comando). */
+  folder: string
+  command: string
+  /** Motivo que dio el agente. */
+  reason: string
+  /** Se deja corriendo en segundo plano (un servidor). */
+  background: boolean
+  /** Segundos máximos de espera del comando (si no va en segundo plano). */
+  timeoutS: number
+  createdAt: number
+  /** Pasada esta hora, main lo deniega solo. */
+  expiresAt: number
+}
+
+export type HostExecDecision = 'allow' | 'deny'
+
 export interface AccessRequestApp {
   bundleId: string
   name: string
@@ -1254,6 +1276,10 @@ export interface TasksInvokeContract {
    * `approvePlan` = aprueba el plan de la tarjeta aunque no se conceda ninguna app (plan sin apps).
    * `cancel` = Esc, ✕ o "Cancelar": no toca ninguna concesión ni aprueba nada (`decisions` puede ser `[]`).
    */
+  /** Respuesta a una tarjeta de `equipo` (`tasks:hostExec:approval`). Una id desconocida o ya resuelta no hace nada. */
+  'tasks:hostExec:respond': { req: { id: string; decision: HostExecDecision }; res: void }
+  /** Tarjetas de `equipo` pendientes (para repintarlas al abrir la ventana). */
+  'tasks:hostExec:pending': { req: void; res: HostExecApprovalRequest[] }
   'computer:respondAccess': {
     req: {
       id: string
@@ -1452,6 +1478,10 @@ export interface TasksEventContract {
   'routines:run': RoutineRunRecord
   'routines:inbox': RoutineInboxItem[]
   'computer:action': ComputerActionEvent
+  /** Tarjeta de aprobación de un comando de `equipo` (fuera del aislamiento), pedida por main. */
+  'tasks:hostExec:approval': HostExecApprovalRequest
+  /** La tarjeta de `equipo` con ese id ya se resolvió (respuesta, tiempo agotado o tarea terminada). */
+  'tasks:hostExec:approvalDone': { id: string }
   /** Se detuvo el control (atajo global Cmd+Shift+Escape o computer:stop). */
   'computer:stopped': { at: number }
   /** Cambio del kill-switch (parada, reanudación o fallo al registrar el atajo global). */
@@ -1574,6 +1604,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'computer:denyApp',
   'computer:undenyApp',
   'computer:respondAccess',
+  'tasks:hostExec:respond',
+  'tasks:hostExec:pending',
   'computer:revokePlan',
   'computer:approvedPlans',
   'computer:showMainWindow',
@@ -1658,6 +1690,8 @@ export const TASKS_EVENT_CHANNELS = [
   'computer:overlay',
   'computer:accessRequest',
   'computer:accessResolved',
+  'tasks:hostExec:approval',
+  'tasks:hostExec:approvalDone',
   'computer:planState',
   'computer:blockedApps',
   'tasks:networkBlocked',

@@ -634,8 +634,7 @@ export const tasks = {
   'tasks.sandbox.unavailable.body':
     'This version doesn’t include yet the isolated environment Overdrive needs on Windows. For safety it doesn’t run without it.',
   'tasks.sandbox.elevated.title': 'Lazunox is open as administrator',
-  'tasks.sandbox.elevated.body':
-    'You opened Lazunox as administrator. Close it and open it normally to use Overdrive.',
+  'tasks.sandbox.elevated.body': 'You opened Lazunox as administrator. Close it and open it normally to use Overdrive.',
   'tasks.sandbox.broken.title': 'The Overdrive environment needs attention',
   'tasks.sandbox.broken.payload': 'Some files of the isolated environment are missing. You can repair it.',
   'tasks.sandbox.broken.repair': 'Repair',
@@ -780,5 +779,16 @@ export const tasks = {
   'project.linked.reason.duplicate': 'That folder is already added.',
   'project.dialog.linkedHint': 'The AI enters added folders without asking; in “Read only” it cannot change them.',
   'tasks.groups.remove': 'Remove folder',
-  'tasks.groups.removeAria': 'Remove the folder {name}'
+  'tasks.groups.removeAria': 'Remove the folder {name}',
+  'tasks.hostExec.title': 'Run this command on your computer?',
+  'tasks.hostExec.intro': 'It will run outside the task’s protected space, with your permissions. Check the full command.',
+  'tasks.hostExec.command': 'Command',
+  'tasks.hostExec.reason': 'Agent’s reason',
+  'tasks.hostExec.folder': 'Task folder',
+  'tasks.hostExec.background': 'It will keep running in the background.',
+  'tasks.hostExec.timeout': 'It stops if it takes longer than {seconds} s.',
+  'tasks.hostExec.once': 'Only this command is allowed, once. Each command asks again.',
+  'tasks.hostExec.no': 'No',
+  'tasks.hostExec.allowOnce': 'Allow this time',
+  'tasks.hostExec.expiresIn': 'If you don’t answer within {seconds} s, it won’t run.'
 } as const satisfies Messages<typeof es>

@@ -275,11 +275,13 @@ describe('herramienta `equipo` (comandos aprobados fuera del aislamiento)', () =
     expect(buildInlineConfig({ ...empty, hostMcp: null })).toEqual(buildInlineConfig(empty))
   })
 
-  it('en el sandbox añade mcp.equipo y SIEMPRE con permiso `ask` (nunca allow)', () => {
+  it('en el sandbox añade mcp.equipo con `allow` en el motor: la aprobación la pide main, no el motor (que vive en la jaula)', () => {
     const c = buildInlineConfig({ ...empty, hostMcp: HOST })
     expect((c.mcp as Record<string, unknown>).equipo).toEqual(HOST)
     const perm = agentsOf(c)[TASKS_AGENT_ID]?.permission as Record<string, unknown>
-    expect(perm['equipo_*']).toBe('ask')
+    expect(perm['equipo_*']).toBe('allow')
+    // Ninguna regla `ask` para equipo en toda la config que recibe el motor (la persona no ve dos preguntas).
+    expect(JSON.stringify(c)).not.toMatch(/"equipo_[^"]*":"ask"/)
     expect(agentsOf(c)[COMPUTER_AGENT_ID]?.permission?.['equipo_*']).toBeUndefined()
   })
 
@@ -293,7 +295,7 @@ describe('herramienta `equipo` (comandos aprobados fuera del aislamiento)', () =
     expect(Object.keys(c.mcp as object).sort()).toEqual(['browser', 'documentos', 'equipo'])
     const perm = agentsOf(c)[TASKS_AGENT_ID]?.permission as Record<string, unknown>
     expect(perm['documentos_*']).toBe('allow')
-    expect(perm['equipo_*']).toBe('ask')
+    expect(perm['equipo_*']).toBe('allow')
   })
 
   it('con Control total no se añade (solo sandbox)', () => {

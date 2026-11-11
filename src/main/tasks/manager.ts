@@ -1409,7 +1409,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         realDocumentsToken = null
       }
     }
-    // Herramienta `equipo` (nivel 2: UN comando exacto que corre en el equipo, fuera del aislamiento, tras la aprobación visible de la persona): una ruta
+    // Herramienta `equipo` (nivel 2: UN comando exacto que corre en el equipo, fuera del aislamiento, tras la aprobación de la persona EN MAIN): una ruta
     // más del MISMO proxy. Solo en el servidor aislado y solo si la organización no la apagó (`disableHostCommands`, falla cerrado).
     let hostCfg: Record<string, unknown> | null = null
     let realHostToken: string | null = null
@@ -1422,7 +1422,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             name: HOST_ROUTE_NAME,
             url: real.url,
             exactPath: true,
-            headers: { Authorization: `Bearer ${realHostToken}` }
+            headers: { Authorization: `Bearer ${realHostToken}` },
+            // `equipo` no responde hasta que la persona decide en main (y luego corre el comando): el proxy espera lo mismo que el motor.
+            headersTimeoutMs: hostExecMcp.responseTimeoutMs()
           })
           hostCfg = { ...real, url: route.url, headers: route.headers }
         }
