@@ -23,7 +23,12 @@ import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { PERMISSION_DIR_NAME } from '../../shared/permission-persist'
+
+/**
+ * Nombre de la carpeta de permisos «siempre» (igual a `PERMISSION_DIR_NAME` de `@shared/permission-persist`; lo comprueba una prueba).
+ * Se repite aquí porque este módulo solo puede importar `node:*` y tipos: `scripts/verify-bundled.mjs` lo carga directo con Node, sin alias.
+ */
+export const PERMISSION_DIR_NAME = 'permisos-siempre'
 
 function real(p: string): string {
   try {
