@@ -218,6 +218,44 @@ echo x > "${victimDir}/desde-dentro" 2>/dev/null && echo ESCRIBE-FUERA`
     })
   })
 
+  describe('3. la memoria de la tarea como enlace', () => {
+    it('.lazunox/memoria.md → un archivo de fuera: no se lee para el prompt ni se escribe a través del enlace', () => {
+      const secret = join(fuera, 'secreto.txt')
+      writeFileSync(secret, 'SECRETO-MEMORIA\n')
+      const out = inside(`ln -s "${secret}" .lazunox/memoria.md && echo LINK-OK; cat .lazunox/memoria.md 2>&1 | head -1`)
+      expect(out).toContain('LINK-OK')
+      expect(out).not.toContain('SECRETO-MEMORIA')
+      expect(getMemory(folder).content).not.toContain('SECRETO-MEMORIA')
+      expect(() => saveMemory(folder, 'pisado')).toThrow(t('merr.projects.memoryLink'))
+      expect(readFileSync(secret, 'utf8')).toBe('SECRETO-MEMORIA\n')
+    })
+
+    it('.lazunox → una carpeta de fuera: tampoco se lee ni se escribe ahí', () => {
+      const f2 = join(dir, 'tarea2')
+      mkdirSync(f2, { recursive: true })
+      writeFileSync(join(fuera, 'memoria.md'), 'SECRETO-CARPETA\n')
+      const r = spawnSync(
+        '/usr/bin/sandbox-exec',
+        [
+          '-p',
+          buildSandboxProfile({ folder: f2, privateDir, userData, home }),
+          '/bin/sh',
+          '-c',
+          `ln -s "${fuera}" .lazunox && echo LINK-OK`
+        ],
+        {
+          cwd: f2,
+          env: { PATH: '/usr/bin:/bin', HOME: home },
+          encoding: 'utf8'
+        }
+      )
+      expect(`${r.stdout}${r.stderr}`).toContain('LINK-OK')
+      expect(getMemory(f2).content).not.toContain('SECRETO-CARPETA')
+      expect(() => saveMemory(f2, 'pisado')).toThrow(t('merr.projects.memoryLink'))
+      expect(readFileSync(join(fuera, 'memoria.md'), 'utf8')).toBe('SECRETO-CARPETA\n')
+    })
+  })
+
   describe('lo normal sigue', () => {
     it('«Permitir borrar» sigue funcionando dentro de la carpeta (y sin él, no)', () => {
       writeFileSync(join(folder, 'borrame.txt'), 'x')

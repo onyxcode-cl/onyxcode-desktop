@@ -30,6 +30,7 @@ import { moveDownloadIntoTaskFolder } from '../embedded-browser/downloads'
 import { ensureSandboxPermissionDir, forgetSavedPermissions, sandboxPermissionDir } from '../opencode/permission-store'
 import { importFilesInto } from './files'
 import { removeSkill, writeApprovedSkill } from './learned-skills'
+import { deleteMemory, getMemory, saveMemory } from './projects'
 import { seedBinaries, seedModelsCache } from './models-cache'
 import { storageClean } from './storage'
 
@@ -198,5 +199,35 @@ describe.skipIf(!posixOnly)('carpeta de la tarea: skills, importar archivos, des
     symlinkSync(join(outside, 'y.plist'), join(dir, 'y.plist'))
     expect(moveDownloadIntoTaskFolder(staged, f, dir, 'y.plist')).toBe(join(dir, 'y (2).plist'))
     expect(existsSync(join(outside, 'y.plist'))).toBe(false)
+  })
+})
+
+describe.skipIf(!posixOnly)('memoria de la tarea (.lazunox/memoria.md)', () => {
+  it('memoria.md como enlace: no se lee, no se escribe y borrar quita solo el enlace', () => {
+    const f = join(root, 'm1')
+    mkdirSync(join(f, '.lazunox'), { recursive: true })
+    writeFileSync(join(outside, 's.txt'), 'SECRETO')
+    symlinkSync(join(outside, 's.txt'), join(f, '.lazunox', 'memoria.md'))
+    expect(getMemory(f)).toMatchObject({ content: '', exists: false })
+    expect(() => saveMemory(f, 'x')).toThrow(t('merr.projects.memoryLink'))
+    deleteMemory(f)
+    expect(readFileSync(join(outside, 's.txt'), 'utf8')).toBe('SECRETO')
+    expect(existsSync(join(f, '.lazunox', 'memoria.md'))).toBe(false)
+  })
+  it('.lapis (memoria antigua) como enlace a una carpeta: no se lee ni se borra su memoria.md', () => {
+    const f = join(root, 'm2')
+    mkdirSync(f)
+    writeFileSync(join(outside, 'memoria.md'), 'AJENA')
+    symlinkSync(outside, join(f, '.lapis'))
+    expect(getMemory(f).content).toBe('')
+    deleteMemory(f)
+    expect(readFileSync(join(outside, 'memoria.md'), 'utf8')).toBe('AJENA')
+  })
+  it('lo normal: guardar, leer y borrar', () => {
+    const f = join(root, 'm3')
+    mkdirSync(f)
+    expect(saveMemory(f, 'nota').content).toBe('nota')
+    expect(getMemory(f).exists).toBe(true)
+    expect(deleteMemory(f).exists).toBe(false)
   })
 })

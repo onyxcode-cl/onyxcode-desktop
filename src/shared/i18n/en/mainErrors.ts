@@ -251,6 +251,8 @@ export const mainErrors = {
   'merr.projects.notFile': 'AGENTS.md isn’t a file.',
   'merr.projects.tooBig': 'AGENTS.md is too large to edit here.',
   'merr.projects.overLimit': 'AGENTS.md can’t exceed {max} characters.',
+  'merr.projects.memoryLink':
+    'The memory wasn’t saved: .lazunox/memoria.md (or the .lazunox folder) is a shortcut (link) to another place. Delete it and try again.',
   'merr.computer.appBlocked': 'That app is blocked and cannot be granted.',
   'merr.computer.noConsentWin': 'PC control is not turned on: turn it on in Settings › PC control.',
   'merr.computer.notInteractiveWin':

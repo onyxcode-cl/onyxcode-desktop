@@ -259,6 +259,8 @@ export const mainErrors = {
   'merr.projects.notFile': 'AGENTS.md no es un archivo.',
   'merr.projects.tooBig': 'AGENTS.md es demasiado grande para editarlo aquí.',
   'merr.projects.overLimit': 'AGENTS.md no puede superar {max} caracteres.',
+  'merr.projects.memoryLink':
+    'No se guardó la memoria: .lazunox/memoria.md (o la carpeta .lazunox) es un acceso directo (enlace) a otro lugar. Bórralo y vuelve a intentarlo.',
   'merr.computer.appBlocked': 'Esa app está bloqueada y no se puede conceder.',
   'merr.computer.noConsentWin': 'Control del PC no está activado: actívalo en Ajustes › Control del PC.',
   'merr.computer.notInteractiveWin':
