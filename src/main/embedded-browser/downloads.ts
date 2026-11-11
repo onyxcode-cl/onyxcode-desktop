@@ -10,8 +10,8 @@
  * - Destinos: Tareas → `<carpeta>/.lazunox/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
  */
 import { execFile } from 'node:child_process'
-import { lstatSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { copyFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { app, dialog, Notification, type DownloadItem, type WebContents } from 'electron'
@@ -39,6 +39,24 @@ let deps: DownloadsDeps | null = null
 
 export function initDownloads(d: DownloadsDeps): void {
   deps = d
+  cleanStagingLeftovers()
+}
+
+/** Una vez por arranque: borra las carpetas de paso (`d-*`) que dejó una sesión anterior (cierre brusco). Sin seguir enlaces; no falla. */
+export function cleanStagingLeftovers(): void {
+  try {
+    const base = join(app.getPath('userData'), 'descargas-pendientes')
+    for (const entry of readdirSync(base)) {
+      if (!entry.startsWith('d-')) continue
+      try {
+        rmSync(join(base, entry), { recursive: true, force: true })
+      } catch (err) {
+        console.warn('[embedded-browser] no se pudo borrar un resto de descarga anterior:', entry, err)
+      }
+    }
+  } catch {
+    /* la carpeta no existe (o no se puede leer): nada que limpiar */
+  }
 }
 
 function destinationDir(owner: BrowserOwner): string {
@@ -125,13 +143,15 @@ function ownerOf(wc: WebContents): BrowserOwner | null {
 }
 
 /**
- * Descargas a la carpeta de una TAREA (1.8.18): la tarea controla `<carpeta>/.lazunox/trabajo/descargas` desde dentro del encierro y
- * podía dejar ahí enlaces (la carpeta entera, el nombre del archivo o el temporal `<nombre>.crdownload` que usa Chromium) hacia, por
- * ejemplo, `~/Library/LaunchAgents`: el proceso principal escribía la descarga a través del enlace, fuera del encierro. Ahora Chromium
- * descarga en una carpeta de `userData` (ilegible e inescribible desde dentro) y al terminar el archivo se mueve a la carpeta de la tarea
- * con la ruta comprobada tramo a tramo (sin enlaces) y con un nombre libre (`rename`, que nunca sigue un enlace en el destino).
+ * Carpeta de paso de TODA descarga (1.8.19: antes solo Tareas). Electron solo respeta `setSavePath` si se llama de forma SÍNCRONA dentro de
+ * `will-download`; si no, abre su propio diálogo «Guardar como». Por eso toda descarga se fija aquí al empezar, se pausa mientras se decide
+ * el destino y al terminar se mueve a él.
+ * Para Tareas, además (1.8.18): la tarea controla `<carpeta>/.lazunox/trabajo/descargas` desde dentro del encierro y podía dejar ahí
+ * enlaces (la carpeta, el nombre del archivo o el temporal `.crdownload`) hacia, por ejemplo, `~/Library/LaunchAgents`. Chromium descarga
+ * en una carpeta de `userData` (ilegible e inescribible desde dentro) y al terminar el archivo se mueve a la carpeta de la tarea con la
+ * ruta comprobada tramo a tramo (sin enlaces) y con un nombre libre.
  */
-export function stagingDirForTaskDownload(userData: string): string {
+export function stagingDirForDownload(userData: string): string {
   const base = join(userData, 'descargas-pendientes')
   mkdirSync(base, { recursive: true, mode: 0o700 })
   return mkdtempSync(join(base, 'd-'))
@@ -149,9 +169,30 @@ export async function moveDownloadIntoTaskFolder(staged: string, folder: string,
   try {
     return await safeCopyIntoDir(folder, dir, staged, candidateNames(name))
   } catch (err) {
-    console.warn('[embedded-browser] no se pudo dejar la descarga en la carpeta de la tarea (¿hay un enlace en el camino?):', err)
+    const code = (err as NodeJS.ErrnoException)?.code ?? 'sin código'
+    console.warn(
+      `[embedded-browser] no se pudo dejar la descarga en la carpeta de la tarea (error ${code}; puede ser un enlace en el camino, un archivo de paso que ya no existe u otro fallo de disco):`,
+      err
+    )
     return null
   }
+}
+
+/**
+ * Mueve el archivo de la carpeta de paso a su destino (Code o ruta elegida por la persona): `rename`; si es otro disco (`EXDEV`), copia y
+ * borra. Persona: lo elegido en el diálogo se reemplaza (el sistema ya pidió confirmación). Agente: no pisa nada; si apareció algo con ese
+ * nombre mientras tanto, se calcula un nombre libre. Devuelve la ruta final.
+ */
+export async function moveDownloadToPath(staged: string, dest: string, avoidOverwrite: boolean): Promise<string> {
+  const target = avoidOverwrite && taken(dest) ? uniquePath(dirname(dest), basename(dest)) : dest
+  try {
+    await rename(staged, target)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== 'EXDEV') throw err
+    await copyFile(staged, target)
+    await unlink(staged)
+  }
+  return target
 }
 
 export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc: WebContents): void {
@@ -190,35 +231,80 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
   }
   const fileName = sanitizeFileName(item.getFilename())
   const attribution = deps.attributionFor(owner)
+
+  // SÍNCRONO y antes de cualquier espera: Electron solo respeta `setSavePath` dentro de `will-download`.
+  let staging: string
+  try {
+    staging = stagingDirForDownload(app.getPath('userData'))
+    item.setSavePath(join(staging, fileName))
+  } catch (err) {
+    console.error('[embedded-browser] no se pudo preparar la carpeta de paso de la descarga: cancelada', err)
+    event.preventDefault()
+    return
+  }
   item.pause()
 
+  const cleanStaging = (): void => {
+    try {
+      rmSync(staging, { recursive: true, force: true })
+    } catch (err) {
+      console.warn('[embedded-browser] no se pudo borrar la carpeta de paso:', err)
+    }
+  }
+  let closed = false
+  let decide: (savePath: string | null) => void = () => {}
+  const decision = new Promise<string | null>((resolve) => {
+    decide = resolve
+  })
+
+  // `done` se registra ya, para no perder uno temprano (p. ej. la página cancela la descarga mientras se espera la decisión).
+  item.once('done', (_e, state) => {
+    void (async () => {
+      closed = true
+      if (state !== 'completed') {
+        cleanStaging()
+        decide(null)
+        return
+      }
+      const savePath = await decision
+      if (!savePath) {
+        cleanStaging()
+        return
+      }
+      const staged = join(staging, fileName)
+      let finalPath: string | null = null
+      try {
+        if (owner.kind === 'tasks' && dirname(savePath) === dir) {
+          finalPath = await moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath))
+        } else {
+          finalPath = await moveDownloadToPath(staged, savePath, attribution.agent)
+        }
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException)?.code ?? 'sin código'
+        console.warn(`[embedded-browser] no se pudo mover la descarga a su destino (error ${code}):`, err)
+      } finally {
+        cleanStaging()
+      }
+      if (!finalPath) return
+      if (attribution.agent) applyQuarantine(finalPath)
+      void applyZoneIdentifier(finalPath, item.getURL())
+    })().catch((err) => console.warn('[embedded-browser] al terminar la descarga:', err))
+  })
+
   const finish = (savePath: string | null): void => {
-    if (!savePath) {
-      item.cancel()
+    if (closed) {
+      // La descarga ya terminó (o se canceló) mientras se decidía: `done` se encarga de limpiar.
+      decide(null)
       return
     }
-    // Tareas, destino dentro de su carpeta de descargas: Chromium escribe en una carpeta de la app y luego se mueve (ver arriba).
-    const staged =
-      owner.kind === 'tasks' && dirname(savePath) === dir
-        ? join(stagingDirForTaskDownload(app.getPath('userData')), basename(savePath))
-        : null
-    item.setSavePath(staged ?? savePath)
+    if (!savePath) {
+      decide(null)
+      item.cancel()
+      cleanStaging()
+      return
+    }
+    decide(savePath)
     item.resume()
-    item.once('done', (_e, state) => {
-      void (async () => {
-        let finalPath: string | null = item.getSavePath()
-        if (staged) {
-          finalPath =
-            state === 'completed' && owner.kind === 'tasks'
-              ? await moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath))
-              : null
-          rmSync(dirname(staged), { recursive: true, force: true })
-        }
-        if (state !== 'completed' || !finalPath) return
-        if (attribution.agent) applyQuarantine(finalPath)
-        void applyZoneIdentifier(finalPath, item.getURL())
-      })().catch((err) => console.warn('[embedded-browser] al terminar la descarga:', err))
-    })
   }
 
   if (attribution.agent) {
@@ -233,7 +319,12 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
       site: host ? siteOf(host) : '',
       fileName,
       savePath: uniquePath(dir, fileName)
-    }).then((decision) => finish(decision === 'allow' ? uniquePath(dir, fileName) : null))
+    })
+      .then((d) => finish(d === 'allow' ? uniquePath(dir, fileName) : null))
+      .catch((err) => {
+        console.error('[embedded-browser] aprobación de descarga:', err)
+        finish(null)
+      })
   } else {
     void dialog
       .showSaveDialog({ defaultPath: uniquePath(dir, fileName) })
