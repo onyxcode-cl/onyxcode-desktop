@@ -61,8 +61,29 @@ import { ensureRealDir, LinkRefusedError } from './no-follow'
 
 const O_NOFOLLOW = (constants as Record<string, number | undefined>).O_NOFOLLOW ?? 0
 /** Windows: sin comparaciones de dispositivo e inodo (ver cabecera). */
-const CHECK_INODES = process.platform !== 'win32'
+const IS_WIN = process.platform === 'win32'
+const CHECK_INODES = !IS_WIN
 const CHUNK = 1024 * 1024
+
+/** Espera síncrona corta (reintentos en Windows). */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+/**
+ * Solo pruebas: las llamadas al sistema que deciden el resultado y la espera de los reintentos, para simular los códigos de error de
+ * Windows (antivirus u OneDrive con el archivo abierto) y de discos sin enlaces duros sin necesitar ese sistema.
+ */
+export const safeWriteOps = {
+  link: linkSync as (existing: string, newPath: string) => void,
+  unlink: unlinkSync as (path: string) => void,
+  rename: renameSync as (from: string, to: string) => void,
+  sleep: sleepSync,
+  isWindows: (): boolean => IS_WIN
+}
+
+/** Esperas (ms) entre los reintentos de borrar el temporal ya innecesario (mejor esfuerzo). */
+const TMP_UNLINK_WAITS = [50, 100]
 
 /** Solo pruebas: se llaman en los momentos intermedios para simular una carrera. */
 export interface SafeWriteHooks {
@@ -255,15 +276,22 @@ export class SafeTempFile {
       if (opts.refuseLinkTarget && lstatOrNull(final)?.isSymbolicLink()) throw new LinkRefusedError(final, 'link')
       renameSync(this.tmpPath, final) // mismo directorio: si la carpeta cambió por un enlace, ENOENT (el temporal no está allí)
     } else {
+      let linked = false
       try {
-        linkSync(this.tmpPath, final)
-        unlinkSync(this.tmpPath)
+        // El resultado lo decide SOLO el `link`: quitar el temporal después no puede cambiarlo (un antivirus con el temporal abierto da
+        // EPERM al borrarlo y antes eso se tomaba por «este disco no admite enlaces» o por «ya existe»: copias «(2)» o un falso «ya existe»).
+        safeWriteOps.link(this.tmpPath, final)
+        linked = true
       } catch (e) {
         const code = errno(e)
         if (code === 'EEXIST') return null
         if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EOPNOTSUPP' && code !== 'ENOSYS') throw e
         // Sin enlaces duros (FAT, exFAT, algunas unidades de red): el destino se abre exclusivo, se verifica igual y se copia.
         if (!this.copyIntoExclusive(final)) return null
+      }
+      if (linked) {
+        this.closeFd()
+        this.dropTmp()
       }
     }
     this.done = true
@@ -293,8 +321,29 @@ export class SafeTempFile {
     } finally {
       closeSync(out)
     }
-    unlinkSync(this.tmpPath)
+    this.closeFd()
+    this.dropTmp()
     return true
+  }
+
+  /**
+   * Quita el temporal que ya cumplió su función, sin cambiar el resultado: se reintenta un par de veces con una espera corta y, si no
+   * se puede (antivirus con el archivo abierto en Windows), se deja y se registra.
+   */
+  private dropTmp(): void {
+    for (let i = 0; ; i++) {
+      try {
+        safeWriteOps.unlink(this.tmpPath)
+        return
+      } catch (e) {
+        if (errno(e) === 'ENOENT') return
+        if (i >= TMP_UNLINK_WAITS.length) {
+          console.warn(`[safe-write] no se pudo borrar el temporal ${this.tmpPath} (${errno(e) ?? e}); queda sobrante`)
+          return
+        }
+        safeWriteOps.sleep(TMP_UNLINK_WAITS[i])
+      }
+    }
   }
 
   private closeFd(): void {
