@@ -9,14 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ app: { getPath: () => '/no/se/usa' } }))
 
-import {
-  ensurePermissionDir,
-  ensureSandboxPermissionDir,
-  isPersistableRule,
-  isWildcardOnly,
-  sandboxPermissionDir,
-  sanitizeSavedPermissions
-} from './permission-store'
+import { ensurePermissionDir, isPersistableRule, isWildcardOnly, sanitizeSavedPermissions } from './permission-store'
 
 const dirs: string[] = []
 const tmp = (): string => {
@@ -95,15 +88,6 @@ describe('sanitizeSavedPermissions (al cargar lo ya guardado)', () => {
     expect(sanitizeSavedPermissions(d)).toBe(0)
   })
 
-  it('al preparar la carpeta de una tarea aislada (antes de arrancar su motor) se limpia sola', () => {
-    const priv = tmp()
-    const sb = sandboxPermissionDir(priv)
-    mkdirSync(sb, { recursive: true })
-    const f = file(sb, [{ permission: 'bash', pattern: '* *' }])
-    ensureSandboxPermissionDir(priv)
-    expect(JSON.parse(readFileSync(f, 'utf8')).rules).toEqual([])
-  })
-
   it('también la carpeta general', () => {
     const d = tmp()
     const f = file(d, [{ permission: 'edit', pattern: '*' }])
@@ -130,11 +114,10 @@ describe('sanitizeSavedPermissions (al cargar lo ya guardado)', () => {
     expect(sanitizeSavedPermissions(d)).toBe(2)
     expect(readdirSync(d).sort()).toEqual(['otro.txt'])
     expect(readFileSync(target, 'utf8')).toBe(original)
-    // Una carpeta que es un enlace tampoco se recorre (la prepara `ensureSandboxPermissionDir`).
+    // Una carpeta que es un enlace tampoco se recorre .
     const linkDir = join(tmp(), 'permisos')
     symlinkSync(fuera, linkDir)
     expect(sanitizeSavedPermissions(linkDir)).toBe(0)
     expect(readFileSync(target, 'utf8')).toBe(original)
   })
-
 })

@@ -7,7 +7,7 @@ import { app } from 'electron'
 import { chmodSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { PERMISSION_DIR_NAME } from '@shared/permission-persist'
-import { chmodDirNoFollow, ensureRealDir, isRealDir, readFileNoFollow, writeFileNoFollow } from '../tasks/no-follow'
+import { isRealDir, readFileNoFollow, writeFileNoFollow } from '../tasks/no-follow'
 
 /**
  * Herramientas propias del motor (copia de `PROPIAS` en `permission/siempre-disco.ts` del motor). Para ellas un «siempre» cuyo patrón es
@@ -153,21 +153,6 @@ export function ensurePermissionDir(dir: string = permissionDir()): void {
     console.error('[permisos] no se pudo preparar la carpeta de permisos guardados:', err)
   }
   sanitizeSavedPermissions(dir)
-}
-
-/**
- * Lo mismo para la carpeta de un servidor de Tareas aislado, que vive dentro de su carpeta privada (que la tarea controla) (1.8.18): sin
- * seguir enlaces. Si `permisos-siempre` es un enlace (o un archivo), se borra ESE nombre y se crea una carpeta real; el modo se fija con
- * `fchmod`. Mejor esfuerzo: nunca lanza.
- */
-export function ensureSandboxPermissionDir(privateDir: string): void {
-  try {
-    chmodDirNoFollow(ensureRealDir(privateDir, sandboxPermissionDir(privateDir), { create: true, replace: true, mode: 0o700 }), 0o700)
-  } catch (err) {
-    console.error('[permisos] no se pudo preparar la carpeta de permisos guardados de la tarea:', err)
-  }
-  // La tarea pudo escribir aquí (por ejemplo `{bash, "?*"}`): se limpia antes de que su motor arranque y lo cargue.
-  sanitizeSavedPermissions(sandboxPermissionDir(privateDir))
 }
 
 /** Vacía una carpeta de guardado (no la borra). Devuelve cuántos elementos quitó. Los enlaces se borran sin seguirlos. */

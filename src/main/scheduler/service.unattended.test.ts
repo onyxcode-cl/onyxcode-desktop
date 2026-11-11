@@ -95,22 +95,6 @@ const record = (): RoutineRunRecord => ({
   startedAt: Date.now()
 })
 
-function mockReply(text: string): void {
-  const sentAt = Date.now()
-  fakeClient.session.promptAsync.mockImplementationOnce(async () => {
-    fakeClient.session.messages.mockResolvedValueOnce({
-      data: [
-        { info: { id: 'u1', role: 'user', time: { created: sentAt } }, parts: [] },
-        {
-          info: { id: 'a1', role: 'assistant', parentID: 'u1', time: { completed: Date.now() } },
-          parts: [{ type: 'text', text }]
-        }
-      ]
-    })
-    return { data: {} }
-  })
-}
-
 beforeEach(() => {
   state.dir = mkdtempSync(join(tmpdir(), 'sched-unatt-userdata-'))
   projectDir = mkdtempSync(join(tmpdir(), 'sched-unatt-proyecto-'))
