@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setLang } from '@shared/i18n'
 import type { ManagedPolicy } from '@shared/ipc-tasks'
-import { customHostsBlockedMessage, networkErrorMessage } from './NetworkSection'
+import { customHostsBlockedMessage, networkErrorMessage, parseExtraPorts } from './NetworkSection'
 
 afterEach(() => setLang('es'))
 
@@ -24,5 +24,13 @@ describe('networkErrorMessage', () => {
       'Your organization policy blocks this'
     )
     expect(networkErrorMessage('boom', null)).toBe('boom')
+  })
+})
+
+describe('puertos extra', () => {
+  it('acepta una lista corta y rechaza valores inválidos', () => {
+    expect(parseExtraPorts('')).toEqual([])
+    expect(parseExtraPorts('8443, 8080, 8443')).toEqual([8443, 8080])
+    for (const bad of ['0', '65536', '80,,443', '3.5', '-1', Array(11).fill('1').join(',')]) expect(parseExtraPorts(bad)).toBeNull()
   })
 })

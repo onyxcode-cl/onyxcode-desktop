@@ -7,13 +7,14 @@
  */
 import { useEffect, useState } from 'react'
 import { Globe, Plus, ShieldCheck, Trash2 } from 'lucide-react'
-import type { TasksMcpInfo, ManagedPolicy, NetworkPolicyState } from '@shared/ipc-tasks'
+import type { TasksMcpInfo, ManagedPolicy, NetworkPolicyState, NetworkHostException } from '@shared/ipc-tasks'
 import { t as tr } from '@shared/i18n'
 import { UI_LABELS } from '@shared/labels'
 import { cw, hasTasksBridge } from '../../tasks/impl/bridge'
 import { policyLocks } from './TasksSection'
 import { Badge, Card, NOTICE_DESK, Row, SectionHeader, SubTitle, TextInput, Toggle } from './ui'
 import { useT } from '../../../lib/i18n'
+import { isRemoteSurface } from '../../../lib/platform'
 import { isSubmitKey } from '../../../lib/textarea'
 
 /** Mensaje mostrado cuando la política gestionada rechaza añadir un sitio a la red. */
@@ -35,10 +36,69 @@ export function networkErrorMessage(err: unknown, policy: ManagedPolicy | null):
   return err instanceof Error ? err.message : String(err)
 }
 
+/** Lista corta y explícita; no se corrigen valores ambiguos en silencio. */
+export function parseExtraPorts(value: string): number[] | null {
+  const tokens = value.trim() ? value.split(',').map((p) => p.trim()) : []
+  if (tokens.length > 10 || tokens.some((p) => !/^\d+$/.test(p) || Number(p) < 1 || Number(p) > 65535)) return null
+  return [...new Set(tokens.map(Number))]
+}
+
+function HostOptions({
+  host,
+  entry,
+  disabled,
+  onState,
+  onError
+}: {
+  host: string
+  entry?: NetworkHostException
+  disabled: boolean
+  onState: (state: NetworkPolicyState) => void
+  onError: (error: string | null) => void
+}): React.JSX.Element {
+  const t = useT()
+  const [ports, setPorts] = useState((entry?.ports ?? []).join(', '))
+  const [internal, setInternal] = useState(entry?.internal === true)
+  const save = (): void => {
+    const parsed = parseExtraPorts(ports)
+    if (!parsed) {
+      onError(t('misc.net.portsError'))
+      return
+    }
+    onError(null)
+    void cw('tasks:network:setException', { host, internal, ports: parsed })
+      .then(onState)
+      .catch((e: unknown) => onError(e instanceof Error ? e.message : String(e)))
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Toggle checked={internal} onChange={setInternal} disabled={disabled} label={t('misc.net.internal')} />
+        <span>{t('misc.net.internal')}</span>
+      </div>
+      <label className="text-xs">
+        {t('misc.net.ports')}
+        <TextInput
+          value={ports}
+          onChange={(e) => setPorts(e.target.value)}
+          disabled={disabled}
+          aria-label={t('misc.net.ports')}
+          placeholder="8443, 8080"
+        />
+      </label>
+      <button type="button" disabled={disabled} onClick={save} className="rounded-lg border border-border px-2 py-1 text-xs">
+        {t('misc.net.saveEntry')}
+      </button>
+    </div>
+  )
+}
+
 export function NetworkSection(): React.JSX.Element {
   const t = useT()
   const [state, setState] = useState<NetworkPolicyState | null>(null)
   const [newHost, setNewHost] = useState('')
+  const [newInternal, setNewInternal] = useState(false)
+  const phone = isRemoteSurface()
   const [error, setError] = useState<string | null>(null)
   const [policy, setPolicy] = useState<ManagedPolicy | null>(null)
   const [mcpHosts, setMcpHosts] = useState<TasksMcpInfo[]>([])
@@ -81,9 +141,12 @@ export function NetworkSection(): React.JSX.Element {
     if (!host) return
     setNewHost('')
     setError(null)
-    void cw('tasks:network:setHost', { host, decision: 'allow' })
-      .then(setState)
-      .catch((err: unknown) => setError(networkErrorMessage(err, policy)))
+    const request =
+      newInternal && !phone
+        ? cw('tasks:network:setException', { host, internal: true, ports: [] })
+        : cw('tasks:network:setHost', { host, decision: 'allow' })
+    setNewInternal(false)
+    void request.then(setState).catch((err: unknown) => setError(networkErrorMessage(err, policy)))
   }
 
   const removeHost = (host: string): void => {
@@ -197,11 +260,30 @@ export function NetworkSection(): React.JSX.Element {
             <Plus size={13} /> {t('misc.add')}
           </button>
         </div>
+        {!phone && (
+          <Row label={t('misc.net.internal')} description={t('misc.net.internalDesc')}>
+            <Toggle checked={newInternal} onChange={setNewInternal} disabled={locks.customHosts} label={t('misc.net.internal')} />
+          </Row>
+        )}
         {(state?.custom.length ?? 0) === 0 ? (
           <Row label={t('misc.net.none')} description={t('misc.net.noneDesc')} />
         ) : (
           state?.custom.map((host) => (
-            <Row key={host} label={host}>
+            <Row
+              key={host}
+              label={host}
+              description={
+                !phone && !host.startsWith('*.') ? (
+                  <HostOptions
+                    host={host}
+                    entry={state?.exceptions?.find((e) => e.host === host)}
+                    disabled={locks.customHosts}
+                    onState={setState}
+                    onError={setError}
+                  />
+                ) : undefined
+              }
+            >
               <button
                 type="button"
                 onClick={() => removeHost(host)}
