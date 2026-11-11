@@ -341,6 +341,32 @@ describe('equipo: la aprobación la decide main', () => {
     expect(cards).toEqual([])
   })
 
+  it('(C1) rutina sin nadie mirando: se niega al momento, sin tarjeta ni espera, y se anota en la rutina', async () => {
+    const notes: Array<{ permission: string; detail: string }> = []
+    const s = new HostExecMcpServer({
+      audit: () => undefined,
+      approve: (req, signal) => requestHostApproval(req, { signal }),
+      run: async () => (
+        ran.push({ command: 'x' }),
+        { exitCode: 0, signal: null, stdout: '', stderr: '', truncated: false, timedOut: false, ms: 1 }
+      ),
+      unattended: (f) => (f === folder ? (w) => notes.push(w) : null)
+    })
+    try {
+      const c = await s.clientFor({ folder })
+      const t0 = Date.now()
+      const r = await call(c.port, c.token, good)
+      expect(Date.now() - t0).toBeLessThan(2000)
+      expect(textOf(r)).toContain('necesita que la persona esté presente')
+      expect(cards).toEqual([])
+      expect(ran).toEqual([])
+      expect(notes).toHaveLength(1)
+      expect(notes[0]!.permission).toBe('equipo_ejecutar')
+    } finally {
+      await s.stop()
+    }
+  })
+
   it('`detener` no pregunta y solo detiene lo lanzado por esa misma carpeta', async () => {
     const { token, port } = await server.clientFor({ folder })
     const r = await call(port, token, { pid: 1 }, 'detener')

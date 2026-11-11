@@ -15,6 +15,7 @@ import { randomBytes } from 'node:crypto'
 import type { ConnectorApprovalRequest, ConnectorDecision } from '@shared/ipc-tasks'
 import { revealHiddenChars } from '../host-exec/policy'
 import type { McpRouteSpec, ToolCallGate, ToolCallVerdict } from './mcp-proxy'
+import { UNATTENDED_TEXT, unattendedFor, type UnattendedNote } from './unattended'
 
 export const CONNECTOR_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000
 export const CONNECTOR_COOLDOWN_MS = 30_000
@@ -172,6 +173,8 @@ export function createConnectorGate(opts: {
   approve?: (input: Omit<ConnectorApprovalRequest, 'id' | 'createdAt' | 'expiresAt'>, signal: AbortSignal) => Promise<ConnectorOutcome>
   now?: () => number
   audit?: (e: { at: number; folder: string; server: string; tool: string; result: string }) => void
+  /** Rutina sin nadie mirando en la carpeta (por defecto, `unattended.ts`): se niega al momento y se anota. */
+  unattended?: (folder: string) => UnattendedNote | null
 }): ToolCallGate {
   const now = opts.now ?? Date.now
   const approve = opts.approve ?? ((input, signal) => requestConnectorApproval(input, { signal }))
@@ -194,6 +197,12 @@ export function createConnectorGate(opts: {
     if (allowedInTask.has(call.tool)) {
       audit(call.tool, 'permitido-en-esta-tarea')
       return { ok: true }
+    }
+    const unattended = (opts.unattended ?? unattendedFor)(opts.folder)
+    if (unattended) {
+      unattended({ permission: `${opts.server}_${call.tool}`, detail: '' })
+      audit(call.tool, 'desatendida')
+      return { ok: false, message: UNATTENDED_TEXT }
     }
     const st = stateOf(key)
     const t0 = now()

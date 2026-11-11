@@ -13,6 +13,7 @@
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
 import { HOST_APPROVAL_TIMEOUT_MS, type HostApprovalInput, type HostApprovalOutcome } from './approvals'
 import { checkHostCommand, unsafeTextChars } from './policy'
+import { UNATTENDED_TEXT, type UnattendedNote } from '../tasks/unattended'
 import {
   backgroundCount,
   DEFAULT_TIMEOUT_MS,
@@ -74,6 +75,11 @@ export interface HostExecDeps {
    * se corta; eso cuenta como «sin respuesta».
    */
   approve?: (req: HostApprovalInput, signal?: AbortSignal) => Promise<HostApprovalOutcome>
+  /**
+   * ¿Corre una rutina (nadie mirando) en esa carpeta? Devuelve con qué anotarlo en su resultado. Entonces no se pregunta: se niega al
+   * momento (`unattended.ts`).
+   */
+  unattended?: (folder: string) => UnattendedNote | null
   /** Tiempo máximo esperando a la persona (para la config del motor y del proxy). */
   approvalTimeoutMs?: number
 }
@@ -278,6 +284,13 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
         `Ya hay ${MAX_BACKGROUND_PER_OWNER} comandos en segundo plano; detén uno con \`detener\` antes de lanzar otro.`,
         true
       )
+    }
+    // Rutina sin nadie mirando: no se pregunta ni se espera; queda anotado en el resultado de la rutina.
+    const unattended = this.deps.unattended?.(binding.folder)
+    if (unattended) {
+      unattended({ permission: 'equipo_ejecutar', detail: cmd ?? '' })
+      this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'desatendida', cmd, ms: 0 })
+      return this.text(UNATTENDED_TEXT, true)
     }
     // El comando EXACTO de esta llamada: lo que se muestra a la persona y lo que se ejecuta es este mismo valor (nada de vales reutilizables).
     const command = String(args.comando)
