@@ -164,6 +164,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/tasks/impl/ComputerConsentWin.tsx',
   'src/renderer/src/features/tasks/impl/ConfirmFolderDialog.tsx',
   'src/renderer/src/features/tasks/impl/DeleteGrant.tsx',
+  'src/renderer/src/features/tasks/impl/SandboxDenialNotice.tsx',
   'src/renderer/src/features/tasks/impl/Deliverables.tsx',
   'src/renderer/src/features/tasks/impl/EscalateCard.tsx',
   'src/renderer/src/features/tasks/impl/MemoryProposalCard.tsx',

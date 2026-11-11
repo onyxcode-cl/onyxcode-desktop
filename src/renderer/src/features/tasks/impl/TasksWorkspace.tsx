@@ -81,6 +81,8 @@ import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
 import { TasksBackgroundJobs } from './TasksBackgroundJobs'
 import { DeleteGrantHintCard } from './DeleteGrant'
+import { SandboxDenialNotice } from './SandboxDenialNotice'
+import { isMacPlatform } from '../../../lib/platform'
 import { WinConsentHintCard } from './ConsentHint'
 import { EscalateCard } from './EscalateCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
@@ -485,6 +487,12 @@ export function TasksWorkspace(): React.JSX.Element {
     () =>
       onTasks('tasks:server', (info) => {
         const st = useTasks.getState()
+        if (!info.fullAccess && info.denials) {
+          useTasks.setState((s) => ({
+            sandboxDenials: { ...s.sandboxDenials, [info.folder]: info.denials! },
+            denialMonitorUnavailable: { ...s.denialMonitorUnavailable, [info.folder]: info.denialMonitorUnavailable === true }
+          }))
+        }
         const sameServer = (info.fullAccess ?? false) === (st.conn?.fullAccess ?? false)
         if (info.folder === st.folder && sameServer && info.state === 'error' && st.phase === 'ready') {
           disconnect()
@@ -852,7 +860,8 @@ export function TasksWorkspace(): React.JSX.Element {
                   {activeId && <RestoreNotices taskId={activeId} />}
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {activeId && <BlockedAppNotices taskId={activeId} />}
-                  {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
+                  {!fullAccess && isMacPlatform() && <SandboxDenialNotice />}
+                  {!fullAccess && !isMacPlatform() && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
                   {!fullAccess && <WinConsentHintCard key={`consent-${activeId}`} entries={entries} />}
                   {!fullAccess && status === 'done' && activeId && (
                     <EscalateCard key={`escalate-${activeId}`} taskId={activeId} entries={entries} />

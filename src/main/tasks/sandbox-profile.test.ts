@@ -39,6 +39,20 @@ const base: SandboxProfileOptions = {
 
 // Perfil Seatbelt (modo Tareas): solo macOS; el snapshot usa rutas POSIX.
 describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () => {
+  it('etiqueta cada deny sin cambiar una sola regla ni filtro', () => {
+    const denialTag = 'lzx-denial-' + 'a'.repeat(32)
+    for (const options of [
+      base,
+      { ...base, allowDelete: true, isolateChats: true, extraFolders: [{ path: '/fixture/work/ro', mode: 'ro' as const }] }
+    ]) {
+      const tagged = buildSandboxProfile({ ...options, denialTag })
+      expect(tagged.replaceAll(` (with message "${denialTag}")`, '')).toBe(buildSandboxProfile(options))
+      expect(tagged.match(/with message/g)?.length).toBe(tagged.match(/^\(deny /gm)?.length)
+    }
+    expect(buildSandboxProfile({ ...base, denialTag })).toMatchSnapshot()
+    expect(() => buildSandboxProfile({ ...base, denialTag: '" (allow default)' })).toThrow()
+  })
+
   it('carpeta de trabajo rw, sin red y con scratchDirs POR DEFECTO', () => {
     const out = buildSandboxProfile(base)
     expect(out).toMatchSnapshot()

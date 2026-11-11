@@ -1026,6 +1026,18 @@
       ],
       "nota": "El aviso solo niega o abre la ventana Navegador de Lazunox con la tarjeta del dueño correcto. macOS cancela si falla osascript, sin Electron sin padre. Plataformas simuladas y DOM en Mac; sin prueba real de ventanas ni en Windows.",
       "comprobacion": null
+    },
+    {
+      "id": "N13",
+      "funcion": "Avisos de negaciones del aislamiento Seatbelt",
+      "estado": "DIFERENTE A PROPÓSITO",
+      "evidencia": [
+        "src/main/tasks/sandbox-denials.ts:1",
+        "src/main/tasks/sandbox-denials.real.test.ts:1",
+        "src/renderer/src/features/tasks/impl/SandboxDenialNotice.tsx:1"
+      ],
+      "nota": "NO APLICA en Windows: este lector solo se conecta al backend Seatbelt de macOS. La prueba real de recepción en Mac está NO VERIFICADA dentro del encierro de Codex. No se ofrece este ajuste en Windows; no se cambia WSL.",
+      "comprobacion": null
     }
   ]
 }

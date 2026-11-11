@@ -387,6 +387,8 @@ export interface SandboxProfileOptions {
    * aunque el modelo lo intente. true ⇒ el usuario concedió "Permitir borrar" para esta tarea.
    */
   allowDelete?: boolean
+  /** Etiqueta opaca del lanzamiento; solo añade mensajes, sin cambiar permisos. */
+  denialTag?: string
   /**
    * Modo unificado: `~/Lazunox/Chats` (carpetas de TODOS los chats) sin lectura ni escritura, y re-permitida solo la propia
    * carpeta (y las adicionales) cuando cuelga de ahí. Este módulo es puro (scripts/verify-bundled.mjs lo carga con Node
@@ -603,5 +605,13 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     `(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any ${gitRoots.map((p) => `(subpath ${sbString(p)})`).join(' ')})))`,
     ''
   )
+  if (opts.denialTag !== undefined) {
+    if (!/^lzx-denial-[a-f0-9]{32}$/.test(opts.denialTag)) throw new Error('Invalid sandbox denial tag')
+    // Cada deny está al principio de su línea. El modificador precede a los filtros, también en reglas multilínea.
+    return lines.join('\n').replace(/^(\(deny [^()\n]+)(?=[()\n])/gm, (prefix: string) => {
+      const head = prefix.trimEnd()
+      return `${head} (with message "${opts.denialTag}")${prefix.slice(head.length)}`
+    })
+  }
   return lines.join('\n')
 }

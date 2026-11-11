@@ -5,6 +5,7 @@
  * Windows más adelante, o sin aislamiento). Los proxies de egress y de credenciales, el centinela, el
  * token del servidor, la espera de salud y `stop` siguen en `sandbox.ts` y son comunes a todos.
  */
+import type { SandboxDenial } from '@shared/ipc-tasks'
 import type { ChildProcess } from 'node:child_process'
 import type { FolderAccessMode, TasksSandboxState } from '@shared/ipc-tasks'
 import type { PathMount } from '@shared/wsl-paths'
@@ -17,6 +18,7 @@ export interface SandboxIsolation {
 }
 
 export interface SandboxNetworkOptions {
+  denialTag?: string
   /** Puertos localhost adicionales a permitir en salida (egress proxy, credential proxy…). */
   allowedOutboundPorts: number[]
   /** Puerto propio del servidor (bind + inbound). */
@@ -27,7 +29,17 @@ export interface SandboxNetworkOptions {
   extraFolders?: Array<{ path: string; mode: FolderAccessMode }>
 }
 
+export interface SandboxDenialControl {
+  setEnabled(enabled: boolean): void
+  killSync(): void
+}
+
 export interface SandboxLaunchSpec {
+  /** Se entrega antes de esperar salud: permite apagar el lector incluso durante el arranque. */
+  onDenialControl?: (control: SandboxDenialControl) => void
+  onDenialUnavailable?: () => void
+  onDenials?: (events: SandboxDenial[]) => void
+  denialNotices?: boolean
   folder: string
   /** Binario de OpenCode (el del anfitrión; un backend remoto usa el suyo). */
   bin: string
@@ -53,6 +65,7 @@ export interface SandboxLaunchSpec {
 }
 
 export interface LaunchedSandbox {
+  setDenialNotices?(enabled: boolean): void
   child: ChildProcess
   /** Ruta del sandbox → ruta del anfitrión (null si no es traducible o queda fuera). Identidad en Seatbelt. */
   toHostPath(p: string): string | null

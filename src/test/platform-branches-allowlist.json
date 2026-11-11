@@ -342,6 +342,9 @@
     "src/main/tasks/safe-write.ts": {
       "win32": 1
     },
+    "src/main/tasks/sandbox-denials.ts": {
+      "usrBin": 1
+    },
     "src/main/tasks/sandbox-profile.ts": {
       "usrBin": 8
     },

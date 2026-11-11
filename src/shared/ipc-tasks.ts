@@ -63,10 +63,21 @@ export interface TasksFolder {
   chat?: boolean
 }
 
+/** Solo categorías y fecha: nunca rutas, comandos, pid ni texto del registro. Ámbito: lanzamiento de la carpeta. */
+export type SandboxDenialKind = 'delete' | 'write' | 'read' | 'network' | 'git-hooks' | 'other'
+export interface SandboxDenial {
+  kind: SandboxDenialKind
+  at: number
+  /** Solo si el permiso existente de la carpeta puede resolver esta denegación. */
+  canAllowDelete: boolean
+}
+
 export type TasksServerState = 'starting' | 'ready' | 'stopped' | 'error'
 
 /** Estado del `opencode serve` dedicado (y sandboxeado) de una carpeta. */
 export interface TasksServerInfo {
+  denials?: SandboxDenial[]
+  denialMonitorUnavailable?: boolean
   folder: string
   state: TasksServerState
   sandboxed: boolean
@@ -832,6 +843,8 @@ export interface TasksPrefs {
   stallWarnMinutes: number
   /** Máximo de servidores Tareas vivos a la vez. */
   maxServers: number
+  /** Avisos de Seatbelt (macOS); se pueden apagar sin relanzar la tarea. */
+  sandboxDenialNotices: boolean
   notify: TasksNotifyPrefs
 }
 
@@ -840,6 +853,7 @@ export const DEFAULT_TASKS_PREFS: TasksPrefs = {
   idleStopMinutes: 15,
   stallWarnMinutes: 5,
   maxServers: 4,
+  sandboxDenialNotices: true,
   notify: { enabled: true, done: true, approval: true, question: true, error: true }
 }
 
@@ -1434,6 +1448,7 @@ export interface TasksInvokeContract {
       idleStopMinutes?: number
       stallWarnMinutes?: number
       maxServers?: number
+      sandboxDenialNotices?: boolean
       notify?: Partial<TasksNotifyPrefs>
     }
     res: TasksPrefs

@@ -28,13 +28,13 @@ import { engineContractEnv } from '@shared/engine-contract-env'
 import { getFreePort, waitForHealth } from '../util/net'
 import { killTree, trackPid, untrackPid } from '../opencode/pids'
 import { getOpencodeEnv } from './opencode-config'
-import type { FolderAccessMode } from '@shared/ipc-tasks'
+import type { SandboxDenial, FolderAccessMode } from '@shared/ipc-tasks'
 import { IDENTITY_MAP, type PathMapWire } from '@shared/tasks-path-map'
 import { selectBackend, TasksSandboxNotReady, WinBackendUnavailable, type WinBackendProvider } from './backends'
 import { detectElevated } from './win-elevation'
 import { noneBackend } from './backends/none'
 import { SANDBOX_EXEC, seatbeltAvailable, seatbeltProfileText } from './backends/seatbelt'
-import type { LaunchedSandbox, SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './backends/types'
+import type { LaunchedSandbox, SandboxBackend, SandboxDenialControl, SandboxIsolation, SandboxNetworkOptions } from './backends/types'
 import { CredentialProxy, EgressProxy, randomToken, type EgressBlockedEvent, type EgressLogEntry } from './proxy'
 import { PROVIDER_TARGETS, buildProviderOverride, placeholderAuthContent, type ProviderAuthEntry } from './provider-egress'
 
@@ -42,7 +42,7 @@ export { buildSandboxProfile, defaultDeniedReadPaths, defaultWritablePaths, sand
 
 // El perfil Seatbelt y su escritura viven ahora en `backends/seatbelt.ts` (F8-B81, extracción sin cambios).
 export { SANDBOX_EXEC, seatbeltProfileText }
-export type { SandboxIsolation, SandboxNetworkOptions }
+export type { SandboxDenialControl, SandboxIsolation, SandboxNetworkOptions }
 const HOST = '127.0.0.1'
 const HEALTH_TIMEOUT_MS = 30_000
 const KILL_GRACE_MS = 3_000
@@ -68,6 +68,7 @@ export function readProviderAuth(file: string = appAuthFile(app.getPath('userDat
 }
 
 export interface TasksServerHandle {
+  setDenialNotices?(enabled: boolean): void
   folder: string
   baseUrl: string
   /** Valor completo del header Authorization (Basic …). */
@@ -93,6 +94,10 @@ export interface TasksServerHandle {
 }
 
 export interface StartTasksServerOptions {
+  onDenialControl?: (control: SandboxDenialControl) => void
+  onDenialUnavailable?: () => void
+  onDenials?: (events: SandboxDenial[]) => void
+  denialNotices?: boolean
   corsOrigins?: string[]
   /** Desactivar el sandbox (Control total en macOS; en Windows solo junto con `winFullAccess`). */
   noSandbox?: boolean
@@ -243,6 +248,10 @@ export async function startTasksServer(folder: string, options: StartTasksServer
 
   const launched: LaunchedSandbox = await backend.launch({
     folder,
+    onDenialControl: options.onDenialControl,
+    onDenials: options.onDenials,
+    onDenialUnavailable: options.onDenialUnavailable,
+    denialNotices: options.denialNotices,
     bin,
     serveArgs,
     serverPort: port,
@@ -276,19 +285,32 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   child.stderr?.on('data', log)
   child.on('error', (err) => log(`[spawn error] ${err.message}\n`))
   const exited = new Promise<number | null>((resolve) => {
-    child.once('exit', (code) => {
+    child.once('exit', async (code) => {
       untrackPid(child.pid)
       killTree(child.pid, 'SIGKILL') // resto del grupo
-      void launched.dispose()
-      void egress?.stop()
-      void Promise.all(credentialProxies.map((c) => c.stop()))
-      options.onExit?.(code)
-      resolve(code)
+      try {
+        await launched.dispose()
+      } catch {
+        log('[tasks] backend cleanup failed\n')
+      } finally {
+        void egress?.stop()
+        void Promise.all(credentialProxies.map((c) => c.stop()))
+        try {
+          options.onExit?.(code)
+        } catch {
+          log('[tasks] exit callback failed\n')
+        } finally {
+          resolve(code)
+        }
+      }
     })
   })
 
   const stop = async (): Promise<void> => {
-    if (child.exitCode !== null || child.signalCode !== null) return
+    if (child.exitCode !== null || child.signalCode !== null) {
+      await exited
+      return
+    }
     const timer = setTimeout(() => killTree(child.pid, 'SIGKILL'), KILL_GRACE_MS)
     killTree(child.pid, 'SIGTERM')
     await exited
@@ -322,6 +344,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     pid: child.pid,
     version,
     logs: () => tail.join(''),
+    setDenialNotices: launched.setDenialNotices,
     exited,
     stop,
     egressPort: egress?.port,

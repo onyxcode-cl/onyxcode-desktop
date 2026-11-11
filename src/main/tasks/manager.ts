@@ -67,7 +67,7 @@ import { hostExecMcp } from '../host-exec'
 import { HOST_ROUTE_NAME } from '../host-exec/names'
 import { projectProfiles } from '../project-profile'
 import { killTree } from '../opencode/pids'
-import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
+import { sandboxKey, startTasksServer, type TasksServerHandle, type SandboxDenialControl } from './sandbox'
 import { ensureTaskPrivateDir } from './private-dir'
 import { projectCodeEnv, quarantineEngineUserConfig, sandboxProjectText } from './project-code'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
@@ -177,6 +177,7 @@ function serverKey(folder: string, fullAccess: boolean): string {
 interface Entry {
   info: TasksServerInfo
   handle?: TasksServerHandle
+  denialControl?: SandboxDenialControl
   starting?: Promise<TasksServerHandle>
   /** Instante (ms) en que el servidor quedó listo. */
   startedAt?: number
@@ -1560,6 +1561,21 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     }
   }
 
+  private denialNotices = true
+
+  /** Apaga el lector y borra sus avisos también para servidores ya vivos. */
+  setDenialNotices(enabled: boolean): void {
+    this.denialNotices = enabled
+    for (const e of this.servers.values()) {
+      if (e.denialControl) e.denialControl.setEnabled(enabled)
+      else e.handle?.setDenialNotices?.(enabled)
+    }
+    if (!enabled) {
+      for (const e of this.servers.values())
+        this.setInfo(e.info.folder, e.info.fullAccess ?? false, { denials: [], denialMonitorUnavailable: false })
+    }
+  }
+
   private spawn(folder: string, fullAccess: boolean): Promise<TasksServerHandle> {
     const key = serverKey(folder, fullAccess)
     // Carpetas extra y borrado se fijan AHORA (el perfil Seatbelt no se puede cambiar en caliente);
@@ -1567,7 +1583,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     const extras = fullAccess ? [] : this.extraFolders(folder)
     const allowDelete = fullAccess ? undefined : this.hasDeleteGrant(folder)
     const signature = fullAccess ? '' : this.signatureOf(extras, allowDelete === true)
-    this.setInfo(folder, fullAccess, { state: 'starting', error: undefined })
+    this.setInfo(folder, fullAccess, { state: 'starting', error: undefined, denials: [], denialMonitorUnavailable: false })
     const starting0 = this.servers.get(key)
     if (starting0) starting0.signature = signature
     const planGateUrl =
@@ -1688,6 +1704,24 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
               if (!entry.allowed && entry.reason) console.warn('[tasks] red bloqueada:', entry.reason, entry.host, entry.port)
             },
         allowDelete,
+        denialNotices: this.denialNotices,
+        onDenialControl: fullAccess
+          ? undefined
+          : (control) => {
+              const e = this.servers.get(key)
+              if (e) e.denialControl = control
+              control.setEnabled(this.denialNotices)
+            },
+        onDenialUnavailable: fullAccess
+          ? undefined
+          : () => {
+              if (this.denialNotices) this.setInfo(folder, fullAccess, { denialMonitorUnavailable: true })
+            },
+        onDenials: fullAccess
+          ? undefined
+          : (denials) => {
+              if (this.denialNotices) this.setInfo(folder, fullAccess, { denials })
+            },
         extraFolders: fullAccess ? undefined : extras,
         onEgressBlocked: fullAccess ? undefined : (ev) => this.emit('networkBlocked', { folder, ...ev }),
         onExit: (code) => {
@@ -1695,6 +1729,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           const e = this.servers.get(key)
           if (!e) return
           e.handle = undefined
+          e.denialControl = undefined
           if (e.info.state === 'ready') {
             this.setInfo(folder, fullAccess, { state: 'error', error: t('merr.task.serverEnded', { code: String(code) }) })
           }
@@ -1711,6 +1746,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         const e = this.servers.get(key)
         if (e) {
           e.handle = handle
+          handle.setDenialNotices?.(this.denialNotices)
           e.starting = undefined
           e.startedAt = Date.now()
         }
@@ -1725,7 +1761,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       },
       (err: unknown) => {
         const e = this.servers.get(key)
-        if (e) e.starting = undefined
+        if (e) {
+          e.starting = undefined
+          e.denialControl = undefined
+        }
         const error = err instanceof Error ? err.message : String(err)
         this.setInfo(folder, fullAccess, { state: 'error', error })
         throw err
@@ -1758,6 +1797,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   /** Mata todo de forma síncrona (process.on('exit')). */
   killAllSync(): void {
     for (const e of this.servers.values()) {
+      e.denialControl?.killSync()
       // Grupo entero (MCP, bash…): los servidores se lanzan detached.
       if (e.handle?.pid) killTree(e.handle.pid, 'SIGKILL')
     }

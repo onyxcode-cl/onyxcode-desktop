@@ -2896,3 +2896,39 @@ Quedan sin modificar las dos concesiones por aviso de `remote-handlers.ts`: la c
 La lista explícita de subcomandos reales de `safe-git.ts` admite también `symbolic-ref`, `merge-base`, `cat-file` y `check-ignore`. Las consultas de referencias y remotos y las transferencias pasan por las mismas protecciones: filtros locales neutralizados (incluidos los archivos de configuración incluidos), sin monitor de archivos, comando SSH ni petición de contraseña definidos por el repositorio. Los alias siguen rechazados. `push`, igual que `fetch`, `pull` y `clone`, recibe además `--no-recurse-submodules`, por encima de los ajustes locales de recursión.
 
 Los ganchos del repositorio están apagados por defecto también en la subida (`core.hooksPath` nulo). Al activar `gitHooksEnabled`, el proceso principal lee ese ajuste en cada subida y permite que `pre-push` la bloquee; el cliente no puede habilitarlo en la petición. Nunca se añade `--no-verify`. Las comprobaciones de secretos, rama, punta y remoto siguen ejecutándose antes de subir. Pruebas: `src/main/git/safe-git.test.ts`, `src/main/pr/branch-push.test.ts` y `src/main/pr/handlers.test.ts`, con remotos locales temporales. No verificado contra remotos de red ni en Windows.
+
+### Avisos de negaciones de Seatbelt (tarea 09)
+
+En macOS cada lanzamiento del servidor aislado lleva una etiqueta aleatoria de 128 bits en las reglas `deny`, mediante
+`with message`. Solo añade mensajes: no altera operaciones, filtros, orden ni concesiones. El perfil sigue siendo un
+argumento de `sandbox-exec`, nunca un archivo escribible por la tarea.
+
+El proceso principal abre `log stream` sin shell, con predicado `eventMessage ENDSWITH` para esa etiqueta. El lector acepta
+solo registros estructurados de kernel/sandboxd, exige la etiqueta como última línea y clasifica seis clases de negación.
+Mantiene como máximo 50 entradas **por lanzamiento de carpeta**, solo en memoria. Cada entrada contiene categoría, fecha
+y si el permiso existente de borrado puede resolverla; no conserva texto del registro, comandos, PID, destinos de red ni
+rutas, tampoco relativas. Los registros incompletos o mayores de 32 768 caracteres se descartan. Los avisos son informativos: no
+conceden permisos ni constituyen una auditoría fiable frente a una tarea hostil.
+
+El ajuste «Avisar cuando el aislamiento impida una acción» está encendido por defecto en Ajustes › Tareas › Notificaciones.
+Apagarlo detiene el lector y borra los avisos sin reiniciar el motor. Al cerrar el servidor, o fallar su lanzamiento, se
+termina el lector; la limpieza espera `close` y escala de TERM a KILL tras un segundo. El cierre síncrono
+de emergencia también mata el lector propio con KILL. El control del lector se registra antes de esperar salud,
+para que apagar el ajuste durante el arranque también lo detenga. Un lector inaccesible se informa en
+la interfaz; no se confunde con ausencia de bloqueos. Windows y Control total no abren este lector.
+
+La nota explica que su ámbito es la carpeta: el registro no identifica sesiones ni herramientas, y varias tareas pueden
+compartir servidor. Solo ofrece el permiso real «Permitir borrar, mover y renombrar» para `file-write-unlink` dentro de
+la carpeta principal, fuera de las carpetas adicionales y de `.lazunox`, si aún está apagado. Reutiliza `tasks:deleteGrant:set`
+y su reinicio de servidor. No ofrece abrir lecturas protegidas, ganchos de git ni red directa.
+
+**Pendiente de prueba fuera del encierro de Codex:** aplicación del perfil etiquetado y formato/recepción real del registro.
+Aquí `sandbox-exec` falla con `sandbox_apply: Operation not permitted` y `log` dice `Cannot run while sandboxed`.
+El lector se abre antes del servidor, pero `log stream` no da un acuse de suscripción: puede perder eventos iniciales o
+entregarlos tarde. Las pruebas simuladas no demuestran recepción real. No se adjuntan avisos al resultado del modelo:
+`tool.execute.after` permite editar texto, pero falta correlacionar negación, PID del comando, `callID` y sesión; un evento
+reciente de la carpeta no demuestra que ese comando haya sido bloqueado. El motor necesita aportar esa correlación antes
+de que podamos añadir explicaciones al resultado sin atribuirlas a otra tarea concurrente.
+
+Origen de la idea (clase A, código propio): monitor y cola de `anthropics/sandbox-runtime` y clasificador de
+`openai/codex`, indicados en la ficha de la tarea. No se han copiado código, listas literales ni prompts.

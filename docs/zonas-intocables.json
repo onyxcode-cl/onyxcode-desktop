@@ -27,8 +27,8 @@
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "af8f39d6172c0f187af542162ab790382f232d0ffc869d5d4cd567f2c1afa3f3",
     "src/main/tasks/proxy.ts": "f568b7cfd6c003d834f142efbfe0a3c0984126681d085b406c56db0b4c918f39",
-    "src/main/tasks/sandbox-profile.ts": "3547c1d53831a1815a27707801e8d299e61f2a3d881be48f3a6c44c05d3e35ba",
-    "src/main/tasks/sandbox.ts": "4e255b91634e409156039a3fd617a369cca50f68b13ad00bf253163af96801e1",
+    "src/main/tasks/sandbox-profile.ts": "ed04821ddff1b9c9897bc114e88b005303a5029aace4025b0a954ddd896665c2",
+    "src/main/tasks/sandbox.ts": "0dfba6f0b1c115928db1f704088307f868a3f2f6e4a62e8ec321268dc28a53c0",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
     "src/main/tasks/win-context.ts": "baadaa16b2127ec3157591474ff35ee173cd38e4fef91265774f556fa567c0f3",
     "src/preload/assist.ts": "b51cbf39a22698cc16d9a4b2a2dc830b9806a652b71c5b498bc65261fa1147fc",
@@ -253,6 +253,25 @@
       "cambiados": [
         "src/main/tasks/proxy-policy.ts",
         "src/main/tasks/proxy.ts",
+        "src/main/tasks/sandbox.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-11",
+      "motivo": "Etiquetar negaciones Seatbelt sin cambiar permisos y recoger el lector al cerrar cada servidor; revisión independiente realizada",
+      "cambiados": [
+        "src/main/tasks/sandbox-profile.ts",
+        "src/main/tasks/sandbox.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-11",
+      "motivo": "Añadir etiquetas informativas sin alterar permisos Seatbelt y cerrar el lector propio incluso al salir; revisión independiente de seguridad",
+      "cambiados": [
         "src/main/tasks/sandbox.ts"
       ],
       "nuevos": [],

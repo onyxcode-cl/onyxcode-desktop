@@ -38,6 +38,7 @@ export function normalizeTasksPrefs(input: unknown, base: TasksPrefs = DEFAULT_T
     autoArchiveDays: clampInt(o.autoArchiveDays, 0, AUTO_ARCHIVE_MAX_DAYS, base.autoArchiveDays),
     idleStopMinutes: clampInt(o.idleStopMinutes, 0, IDLE_STOP_MAX_MINUTES, base.idleStopMinutes),
     stallWarnMinutes: clampInt(o.stallWarnMinutes, 0, STALL_WARN_MAX_MINUTES, base.stallWarnMinutes),
+    sandboxDenialNotices: bool(o.sandboxDenialNotices, base.sandboxDenialNotices),
     maxServers: clampInt(o.maxServers, MAX_SERVERS_MIN, MAX_SERVERS_MAX, base.maxServers),
     notify
   }
@@ -90,6 +91,7 @@ export class TasksPrefsStore {
     idleStopMinutes?: number
     stallWarnMinutes?: number
     maxServers?: number
+    sandboxDenialNotices?: boolean
     notify?: Partial<TasksNotifyPrefs>
   }): TasksPrefs {
     const cur = this.load()
@@ -98,6 +100,7 @@ export class TasksPrefsStore {
         autoArchiveDays: patch.autoArchiveDays ?? cur.autoArchiveDays,
         idleStopMinutes: patch.idleStopMinutes ?? cur.idleStopMinutes,
         stallWarnMinutes: patch.stallWarnMinutes ?? cur.stallWarnMinutes,
+        sandboxDenialNotices: patch.sandboxDenialNotices ?? cur.sandboxDenialNotices,
         maxServers: patch.maxServers ?? cur.maxServers,
         notify: { ...cur.notify, ...(patch.notify ?? {}) }
       },

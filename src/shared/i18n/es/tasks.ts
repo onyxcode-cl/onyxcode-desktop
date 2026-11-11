@@ -257,7 +257,8 @@ export const tasks = {
     'Elige una carpeta y describe el resultado que esperas. El agente revisa, te propone un plan y, cuando lo apruebes, trabaja y te entrega los archivos.',
   'tasks.home.lead.full': 'El agente puede usar el ratón, el teclado y la pantalla. Detenlo con ⌘⇧Esc.',
   'tasks.home.lead.full.win': 'El agente puede usar el ratón, el teclado y la pantalla. Detenlo con Ctrl+Alt+Mayús+Esc.',
-  'tasks.home.lead.sandbox': 'Trabajará dentro de «{folder}». Te pedirá permiso antes de borrar, mover o renombrar.',
+  'tasks.home.lead.sandbox':
+    'Trabajará dentro de «{folder}». Borrar, mover y renombrar está bloqueado salvo que actives «Permitir borrar, mover y renombrar» en el panel de proyecto.',
   'tasks.home.startingFull': 'Iniciando control total…',
   'tasks.home.startingSandbox': 'Preparando el espacio de trabajo…',
   'tasks.home.ph.full': 'Describe qué debe hacer en tu Mac…',
@@ -803,5 +804,16 @@ export const tasks = {
   'tasks.connector.allowTask': 'Permitir mientras esta carpeta siga abierta',
   'tasks.connector.taskHint':
     '«Permitir mientras esta carpeta siga abierta» vale para esta herramienta con cualquier dato, en todas las conversaciones de esta carpeta, hasta que se detenga su tarea en Lazunox. No se guarda.',
-  'tasks.connector.expiresIn': 'Si no respondes en {seconds} s, no se usa.'
+  'tasks.connector.expiresIn': 'Si no respondes en {seconds} s, no se usa.',
+  'tasks.denial.unavailable': 'No se pueden mostrar los avisos de aislamiento en este equipo. Las restricciones siguen activas.',
+  'tasks.denial.setting': 'Avisar cuando el aislamiento impida una acción',
+  'tasks.denial.settingHint': 'En macOS. Se aplica de inmediato; apagarlo también detiene la lectura del registro.',
+  'tasks.denial.scope': 'Avisos de esta carpeta. Puede haber varias tareas trabajando en ella.',
+  'tasks.denial.delete': 'El aislamiento impidió borrar, mover o renombrar archivos.',
+  'tasks.denial.write': 'El aislamiento impidió escribir en una ubicación protegida.',
+  'tasks.denial.read': 'El aislamiento impidió leer información protegida.',
+  'tasks.denial.network': 'El aislamiento impidió una conexión de red directa.',
+  'tasks.denial.git-hooks': 'El aislamiento impidió cambiar ganchos de git.',
+  'tasks.denial.other': 'El aislamiento impidió una acción protegida.',
+  'tasks.denial.allowHint': 'Este permiso reinicia las tareas de la carpeta. Después tendrás que pedir que continúen.'
 } as const

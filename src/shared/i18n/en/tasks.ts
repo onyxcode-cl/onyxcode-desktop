@@ -260,7 +260,8 @@ export const tasks = {
     'Choose a folder and describe the result you want. The agent reviews, proposes a plan and, once you approve it, works and hands you the files.',
   'tasks.home.lead.full': 'The agent can use the mouse, keyboard and screen. Stop it with ⌘⇧Esc.',
   'tasks.home.lead.full.win': 'The agent can use the mouse, keyboard and screen. Stop it with Ctrl+Alt+Shift+Esc.',
-  'tasks.home.lead.sandbox': 'It will work inside “{folder}”. It will ask for your permission before deleting, moving or renaming.',
+  'tasks.home.lead.sandbox':
+    'It will work inside “{folder}”. Deleting, moving and renaming are blocked unless you turn on “Allow delete, move and rename” in the project panel.',
   'tasks.home.startingFull': 'Starting full control…',
   'tasks.home.startingSandbox': 'Getting the workspace ready…',
   'tasks.home.ph.full': 'Describe what it should do on your Mac…',
@@ -803,5 +804,16 @@ export const tasks = {
   'tasks.connector.allowTask': 'Allow while this folder stays open',
   'tasks.connector.taskHint':
     '“Allow while this folder stays open” covers this tool with any data, in every conversation in this folder, until its task is stopped in Lazunox. It isn’t saved.',
-  'tasks.connector.expiresIn': 'If you don’t answer within {seconds} s, it won’t be used.'
+  'tasks.connector.expiresIn': 'If you don’t answer within {seconds} s, it won’t be used.',
+  'tasks.denial.unavailable': 'Isolation notices are unavailable on this computer. Restrictions remain active.',
+  'tasks.denial.setting': 'Show a notice when isolation blocks an action',
+  'tasks.denial.settingHint': 'On macOS. Takes effect immediately; turning it off also stops reading the system log.',
+  'tasks.denial.scope': 'Notices for this folder. Several tasks may be working in it.',
+  'tasks.denial.delete': 'Isolation prevented deleting, moving or renaming files.',
+  'tasks.denial.write': 'Isolation prevented writing to a protected location.',
+  'tasks.denial.read': 'Isolation prevented reading protected information.',
+  'tasks.denial.network': 'Isolation prevented a direct network connection.',
+  'tasks.denial.git-hooks': 'Isolation prevented changing git hooks.',
+  'tasks.denial.other': 'Isolation prevented a protected action.',
+  'tasks.denial.allowHint': 'This permission restarts the tasks in this folder. You will then need to ask them to continue.'
 } as const satisfies Messages<typeof es>
