@@ -10,17 +10,17 @@
  * - Destinos: Tareas → `<carpeta>/.lazunox/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
  */
 import { execFile } from 'node:child_process'
-import { lstatSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
-import { copyFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { linkSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, unlinkSync } from 'node:fs'
+import { rename, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path'
 import { app, dialog, Notification, type DownloadItem, type WebContents } from 'electron'
 import { INTERNAL_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import { ensureRealDir, isWriteDenied } from '../tasks/no-follow'
-import { candidateNames, safeCopyIntoDir } from '../tasks/safe-write'
+import { candidateNames, SafeTempFile, safeCopyIntoDir } from '../tasks/safe-write'
 import { hostOf, siteOf } from './sites'
 import { requestApproval } from './approvals'
 import { tabByWebContents } from './surface'
@@ -39,11 +39,14 @@ let deps: DownloadsDeps | null = null
 
 export function initDownloads(d: DownloadsDeps): void {
   deps = d
-  cleanStagingLeftovers()
+  cleanStagingLeftovers() // una sola vez por proceso
 }
 
 /** Una vez por arranque: borra las carpetas de paso (`d-*`) que dejó una sesión anterior (cierre brusco). Sin seguir enlaces; no falla. */
-export function cleanStagingLeftovers(): void {
+let leftoversCleaned = false
+export function cleanStagingLeftovers(force = false): void {
+  if (leftoversCleaned && !force) return
+  leftoversCleaned = true
   try {
     const base = join(app.getPath('userData'), 'descargas-pendientes')
     for (const entry of readdirSync(base)) {
@@ -64,10 +67,38 @@ function destinationDir(owner: BrowserOwner): string {
   return join(homedir(), 'Downloads', INTERNAL_NAME)
 }
 
-/** Nombre de archivo simple, sin separadores de ruta ni bytes nulos (defensa adicional a Electron). */
-function sanitizeFileName(name: string): string {
-  const base = name.replace(/[/\\\0]/g, '_').trim()
-  return base || 'descarga'
+const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
+const MAX_NAME_BYTES = 200
+
+/** Recorta `text` a `max` bytes UTF-8 sin partir un carácter. */
+function clipBytes(text: string, max: number): string {
+  let out = ''
+  let used = 0
+  for (const ch of text) {
+    const n = Buffer.byteLength(ch)
+    if (used + n > max) break
+    out += ch
+    used += n
+  }
+  return out
+}
+
+/**
+ * Nombre de archivo simple (defensa adicional a Electron): sin separadores, bytes nulos ni caracteres de control, sin los caracteres que
+ * Windows no admite (`<>:"|?*`), sin puntos ni espacios al final, `.`/`..` → `descarga`, sin nombres reservados de Windows (CON, NUL,
+ * COM1…) y de ~200 bytes como máximo conservando la extensión.
+ */
+export function sanitizeFileName(name: string): string {
+  let base = name.replace(/[/\\\0<>:"|?*\u0001-\u001f\u007f]/g, '_').trim()
+  base = base.replace(/[. ]+$/, '')
+  if (!base) return 'descarga'
+  if (WIN_RESERVED.test(base.split('.')[0].trim())) base = `_${base}`
+  if (Buffer.byteLength(base) > MAX_NAME_BYTES) {
+    const ext = clipBytes(extname(base), 40)
+    base = clipBytes(base.slice(0, base.length - extname(base).length), MAX_NAME_BYTES - Buffer.byteLength(ext)) + ext
+    base = base.replace(/[. ]+$/, '') || 'descarga'
+  }
+  return base
 }
 
 /** ¿Hay algo con ese nombre? Con `lstat`: un enlace roto también cuenta (con `existsSync` se escribía a través de él). */
@@ -178,21 +209,156 @@ export async function moveDownloadIntoTaskFolder(staged: string, folder: string,
   }
 }
 
+/** ¿El disco donde está `p` no distingue mayúsculas? Se comprueba de verdad (la misma carpeta con las letras cambiadas), sin depender del sistema. */
+function isCaseInsensitive(p: string): boolean {
+  try {
+    const swapped = p.replace(/[a-zA-Z]/g, (c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase()))
+    if (swapped === p) return false
+    const a = lstatSync(p)
+    const b = lstatSync(swapped)
+    return a.ino === b.ino && a.dev === b.dev
+  } catch {
+    return false
+  }
+}
+
+/** Carpeta real de `dir`, o la de su madre existente más cercana más el tramo que falta. null si no se puede resolver. */
+function resolveDirLoose(dir: string): string | null {
+  const missing: string[] = []
+  let cur = dir
+  for (let i = 0; i < 64; i++) {
+    try {
+      return join(realpathSync(cur), ...missing.reverse())
+    } catch {
+      const up = dirname(cur)
+      if (up === cur) return null
+      missing.push(basename(cur))
+      cur = up
+    }
+  }
+  return null
+}
+
 /**
- * Mueve el archivo de la carpeta de paso a su destino (Code o ruta elegida por la persona): `rename`; si es otro disco (`EXDEV`), copia y
- * borra. Persona: lo elegido en el diálogo se reemplaza (el sistema ya pidió confirmación). Agente: no pisa nada; si apareció algo con ese
- * nombre mientras tanto, se calcula un nombre libre. Devuelve la ruta final.
+ * ¿`dest` cae dentro de la carpeta de la tarea? Compara formas reales (`/var` y `/private/var`, barra final, mayúsculas en macOS y
+ * Windows). Devuelve la carpeta real de la tarea y la real del destino, o null si cae fuera. Si no se puede resolver algo, se trata como
+ * DENTRO (camino seguro): devuelve `unresolved`.
+ */
+export function locateInTaskFolder(folder: string, destDir: string): { base: string; dir: string } | 'unresolved' | null {
+  let base: string
+  try {
+    base = realpathSync(folder)
+  } catch {
+    return 'unresolved'
+  }
+  const dir = resolveDirLoose(destDir)
+  if (!dir) return 'unresolved'
+  const ci = isCaseInsensitive(base)
+  const rel = relative(ci ? base.toLowerCase() : base, ci ? dir.toLowerCase() : dir)
+  if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) return null
+  // Con la misma forma de mayúsculas que la carpeta de la tarea, para que la escritura segura compare igual.
+  return { base, dir: rel === '' ? base : join(base, dir.slice(base.length + 1)) }
+}
+
+/**
+ * Destino DENTRO de la carpeta de la tarea elegido por la persona: escritura segura (sin seguir enlaces) y reemplaza ese nombre exacto
+ * (la persona ya confirmó el reemplazo en el diálogo). Un enlace con ese nombre no se sigue ni se reemplaza: se cancela con registro.
+ */
+async function moveIntoTaskFolderReplacing(staged: string, base: string, dir: string, name: string): Promise<string | null> {
+  const tmp = SafeTempFile.create(base, dir, { create: true })
+  try {
+    await tmp.copyFrom(staged)
+    return tmp.commit(name, { replace: true, refuseLinkTarget: true })
+  } finally {
+    tmp.discard()
+  }
+}
+
+/**
+ * Mueve el archivo de la carpeta de paso a su destino FUERA de una tarea (Code o ruta elegida por la persona).
+ * Agente (`avoidOverwrite`): nunca pisa nada: `link` + `unlink` del origen (EEXIST → siguiente nombre libre). Persona: `rename` (la persona
+ * ya confirmó el reemplazo). Si es otro disco (EXDEV) o no hay enlaces duros: se copia a un temporal de nombre al azar junto al destino
+ * (`O_EXCL|O_NOFOLLOW`, `SafeTempFile`) y se termina con `link` (agente) o `rename` (persona); el temporal se borra si algo falla.
  */
 export async function moveDownloadToPath(staged: string, dest: string, avoidOverwrite: boolean): Promise<string> {
-  const target = avoidOverwrite && taken(dest) ? uniquePath(dirname(dest), basename(dest)) : dest
-  try {
-    await rename(staged, target)
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code !== 'EXDEV') throw err
-    await copyFile(staged, target)
-    await unlink(staged)
+  const destDir = realpathSync(dirname(dest))
+  const name = basename(dest)
+  const viaTemp = async (): Promise<string> => {
+    const tmp = SafeTempFile.create(destDir, destDir, { create: false })
+    try {
+      await tmp.copyFrom(staged)
+      if (!avoidOverwrite) {
+        const out = tmp.commit(name, { replace: true })
+        if (out) return out
+      } else {
+        for (const n of candidateNames(name)) {
+          const out = tmp.commit(n)
+          if (out) return out
+        }
+      }
+      throw Object.assign(new Error('sin nombre libre'), { code: 'EEXIST' })
+    } finally {
+      tmp.discard()
+    }
   }
-  return target
+  if (!avoidOverwrite) {
+    try {
+      await rename(staged, join(destDir, name))
+      return join(destDir, name)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException)?.code !== 'EXDEV') throw err
+      return viaTemp()
+    }
+  }
+  for (const n of candidateNames(name)) {
+    const target = join(destDir, n)
+    try {
+      moveOps.link(staged, target)
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code
+      if (code === 'EEXIST') continue
+      if (code === 'EXDEV' || code === 'EPERM' || code === 'ENOTSUP' || code === 'EOPNOTSUPP' || code === 'ENOSYS') return viaTemp()
+      throw err
+    }
+    try {
+      moveOps.unlink(staged)
+    } catch {
+      /* queda el de paso: se borra con su carpeta */
+    }
+    return target
+  }
+  throw Object.assign(new Error('sin nombre libre'), { code: 'EEXIST' })
+}
+
+/** Solo pruebas: las llamadas que se simulan (carrera entre medias, otro disco). */
+export const moveOps = {
+  link: linkSync as (a: string, b: string) => void,
+  unlink: unlinkSync as (p: string) => void
+}
+
+/** Deja el archivo de paso en su destino final según el caso. Devuelve la ruta final o null. */
+async function placeDownload(owner: BrowserOwner, dir: string, staged: string, savePath: string, agent: boolean): Promise<string | null> {
+  if (owner.kind === 'tasks') {
+    const where = locateInTaskFolder(owner.folder, dirname(savePath))
+    if (where) {
+      // Dentro de la carpeta de la tarea (o no se pudo resolver): siempre por la ruta segura, sin seguir enlaces.
+      if (agent && dirname(savePath) === dir) return moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath))
+      if (where === 'unresolved') {
+        console.warn('[embedded-browser] no se pudo comprobar el destino de la descarga dentro de la tarea: cancelada')
+        return null
+      }
+      try {
+        return agent
+          ? await safeCopyIntoDir(where.base, where.dir, staged, candidateNames(basename(savePath)))
+          : await moveIntoTaskFolderReplacing(staged, where.base, where.dir, basename(savePath))
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException)?.code ?? 'sin código'
+        console.warn(`[embedded-browser] no se pudo dejar la descarga en la carpeta de la tarea (error ${code}):`, err)
+        return null
+      }
+    }
+  }
+  return moveDownloadToPath(staged, savePath, agent)
 }
 
 export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc: WebContents): void {
@@ -251,22 +417,22 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
       console.warn('[embedded-browser] no se pudo borrar la carpeta de paso:', err)
     }
   }
-  let closed = false
+  let ended = false // `done` ya ocurrió
   let decide: (savePath: string | null) => void = () => {}
   const decision = new Promise<string | null>((resolve) => {
     decide = resolve
   })
 
-  // `done` se registra ya, para no perder uno temprano (p. ej. la página cancela la descarga mientras se espera la decisión).
+  // `done` se registra ya, para no perder uno temprano (p. ej. la página cancela la descarga, o termina, mientras se espera la decisión).
   item.once('done', (_e, state) => {
     void (async () => {
-      closed = true
+      ended = true
       if (state !== 'completed') {
-        cleanStaging()
         decide(null)
+        cleanStaging()
         return
       }
-      const savePath = await decision
+      const savePath = await decision // terminada antes de decidir: se espera la decisión
       if (!savePath) {
         cleanStaging()
         return
@@ -274,11 +440,7 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
       const staged = join(staging, fileName)
       let finalPath: string | null = null
       try {
-        if (owner.kind === 'tasks' && dirname(savePath) === dir) {
-          finalPath = await moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath))
-        } else {
-          finalPath = await moveDownloadToPath(staged, savePath, attribution.agent)
-        }
+        finalPath = await placeDownload(owner, dir, staged, savePath, attribution.agent)
       } catch (err) {
         const code = (err as NodeJS.ErrnoException)?.code ?? 'sin código'
         console.warn(`[embedded-browser] no se pudo mover la descarga a su destino (error ${code}):`, err)
@@ -292,19 +454,13 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
   })
 
   const finish = (savePath: string | null): void => {
-    if (closed) {
-      // La descarga ya terminó (o se canceló) mientras se decidía: `done` se encarga de limpiar.
-      decide(null)
-      return
-    }
-    if (!savePath) {
-      decide(null)
-      item.cancel()
-      cleanStaging()
-      return
-    }
     decide(savePath)
-    item.resume()
+    if (!savePath) {
+      // La carpeta de paso la borra `done` (en Windows el archivo puede seguir tomado justo tras cancelar).
+      if (!ended) item.cancel()
+      return
+    }
+    if (!ended) item.resume()
   }
 
   if (attribution.agent) {
