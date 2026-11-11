@@ -50,12 +50,61 @@ const post = (url: string, token: string, body: string, signal?: AbortSignal): P
 describe('findToolCall', () => {
   it('encuentra la llamada, deja pasar lo que no es tools/call y rechaza lo que no se entiende', () => {
     expect(findToolCall(Buffer.from(call('x', { a: 1 })))).toMatchObject({ kind: 'call', call: { tool: 'x', args: { a: 1 } }, id: 7 })
-    expect(findToolCall(Buffer.from('{"jsonrpc":"2.0","id":1,"method":"tools/list"}'))).toEqual({ kind: 'none' })
-    expect(findToolCall(Buffer.from(''))).toEqual({ kind: 'none' })
+    expect(findToolCall(Buffer.from('{"jsonrpc":"2.0","id":1,"method":"tools/list"}'))).toMatchObject({ kind: 'none' })
+    expect(findToolCall(Buffer.from(''))).toMatchObject({ kind: 'none' })
     expect(findToolCall(Buffer.from('{no'))).toMatchObject({ kind: 'bad' })
     expect(findToolCall(Buffer.from(`[${call('a', {})},${call('b', {})}]`))).toMatchObject({ kind: 'bad', why: 'batch' })
     expect(findToolCall(Buffer.from('[1]'))).toMatchObject({ kind: 'bad' })
     expect(findToolCall(Buffer.from('{"method":"tools/call","params":{}}'))).toMatchObject({ kind: 'bad', why: 'no-name' })
+  })
+})
+
+describe('H1: main y el servidor del conector no pueden leer el JSON de forma distinta', () => {
+  it.each([
+    ['`Method` en mayúscula', '{"jsonrpc":"2.0","id":1,"Method":"tools/call","params":{"name":"delete_repo"}}'],
+    ['`Name` además de `name`', '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_issues","Name":"delete_repo"}}'],
+    [
+      '`Arguments` además de `arguments`',
+      '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","arguments":{},"Arguments":{"a":1}}}'
+    ],
+    ['`argumentſ` (ſ = s)', '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","arguments":{},"argumentſ":{"a":1}}}'],
+    ['`method` repetido', '{"jsonrpc":"2.0","id":1,"method":"tools/call","method":"tools/list","params":{"name":"x"}}'],
+    ['`method` repetido (al revés)', '{"jsonrpc":"2.0","id":1,"method":"tools/list","method":"tools/call","params":{"name":"x"}}'],
+    ['clave desconocida en el mensaje', '{"jsonrpc":"2.0","id":1,"method":"tools/list","extra":1}'],
+    ['clave desconocida en params de tools/call', '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","tool":"y"}}'],
+    [
+      'claves equivalentes dentro de los argumentos',
+      '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","arguments":{"to":"a","To":"b"}}}'
+    ],
+    [
+      'JSON demasiado anidado',
+      `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","arguments":${'['.repeat(80)}${']'.repeat(80)}}}`
+    ]
+  ])('%s ⇒ no se reenvía', (_n, body) => {
+    expect(findToolCall(Buffer.from(body)).kind).toBe('bad')
+  })
+
+  it('lo que se reenvía es la reescritura de lo revisado, no los bytes originales', () => {
+    const body = '{ "jsonrpc" : "2.0", "id" : 1, "method" : "tools/call", "params" : { "name" : "x", "arguments" : { "a" : "\\u0041" } } }'
+    const f = findToolCall(Buffer.from(body))
+    expect(f.kind).toBe('call')
+    expect(f.kind !== 'bad' && f.canonical.toString()).toBe(
+      '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","arguments":{"a":"A"}}}'
+    )
+  })
+
+  it('en el proxy: el destino recibe la reescritura (con Content-Length correcto), y un cuerpo comprimido se rechaza', async () => {
+    const { url, token } = await setup(async () => ({ ok: true }))
+    const r = await post(url, token, '{ "jsonrpc":"2.0", "id":3, "method":"tools/list" }')
+    expect(r.status).toBe(200)
+    expect(seen).toEqual(['POST {"jsonrpc":"2.0","id":3,"method":"tools/list"}'])
+    const gz = await fetch(url, {
+      method: 'POST',
+      body: '{}',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', 'content-encoding': 'gzip' }
+    })
+    expect(gz.status).toBe(415)
+    expect(seen).toHaveLength(1)
   })
 })
 

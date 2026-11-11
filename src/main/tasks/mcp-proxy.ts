@@ -40,6 +40,7 @@ import {
 import { request as httpsRequest } from 'node:https'
 import { getFreePort } from '../util/net'
 import { safeUpstreamRest } from './proxy'
+import { parseStrictJson, StrictJsonError } from './strict-json'
 
 const HOST = '127.0.0.1'
 
@@ -100,31 +101,66 @@ export interface ToolCall {
 export type ToolCallVerdict = { ok: true } | { ok: false; message: string }
 export type ToolCallGate = (call: ToolCall, signal: AbortSignal) => Promise<ToolCallVerdict>
 
-type ParsedBody = { kind: 'none' } | { kind: 'call'; call: ToolCall; id: unknown } | { kind: 'bad'; why: string }
+type ParsedBody =
+  { kind: 'none'; canonical: Buffer } | { kind: 'call'; call: ToolCall; id: unknown; canonical: Buffer } | { kind: 'bad'; why: string }
 
-/** Busca el `tools/call` de un cuerpo JSON-RPC (mensaje o lote). Más de uno en un lote, o un cuerpo ilegible: `bad`. */
+/** Claves de un mensaje JSON-RPC: solo estas, en su forma exacta. */
+const MESSAGE_KEYS = new Set(['jsonrpc', 'id', 'method', 'params', 'result', 'error'])
+/** Claves de `params` por método conocido (forma exacta). Un método fuera de la tabla no se revisa aquí. */
+const PARAM_KEYS: Record<string, ReadonlySet<string>> = {
+  'tools/call': new Set(['name', 'arguments', '_meta', 'task']),
+  initialize: new Set(['protocolVersion', 'capabilities', 'clientInfo', '_meta']),
+  ping: new Set(['_meta']),
+  'tools/list': new Set(['cursor', '_meta']),
+  'resources/list': new Set(['cursor', '_meta']),
+  'resources/templates/list': new Set(['cursor', '_meta']),
+  'prompts/list': new Set(['cursor', '_meta']),
+  'resources/read': new Set(['uri', '_meta']),
+  'prompts/get': new Set(['name', 'arguments', '_meta']),
+  'notifications/initialized': new Set(['_meta']),
+  'notifications/cancelled': new Set(['requestId', 'reason', '_meta']),
+  'notifications/progress': new Set(['progressToken', 'progress', 'total', 'message', '_meta']),
+  'notifications/roots/list_changed': new Set(['_meta'])
+}
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+
+/**
+ * Busca el `tools/call` de un cuerpo JSON-RPC (mensaje o lote) y devuelve lo que se reenviará (`canonical` = `JSON.stringify` de lo
+ * revisado). `bad` (no se reenvía): JSON inválido, claves repetidas o equivalentes en cualquier objeto (`strict-json.ts`), claves que no
+ * son las del mensaje JSON-RPC o las de los `params` de un método conocido, o más de una llamada en un lote.
+ */
 export function findToolCall(body: Buffer): ParsedBody {
-  if (body.length === 0) return { kind: 'none' }
+  if (body.length === 0) return { kind: 'none', canonical: body }
   let parsed: unknown
   try {
-    parsed = JSON.parse(body.toString('utf8'))
-  } catch {
-    return { kind: 'bad', why: 'not-json' }
+    parsed = parseStrictJson(body.toString('utf8'))
+  } catch (err) {
+    return { kind: 'bad', why: err instanceof StrictJsonError ? err.message : 'not-json' }
   }
   const list = Array.isArray(parsed) ? parsed : [parsed]
-  const calls = list.filter(
-    (m): m is { id?: unknown; method: string; params?: unknown } =>
-      !!m && typeof m === 'object' && (m as { method?: unknown }).method === 'tools/call'
-  )
-  if (calls.length === 0) {
-    // Cualquier otro mensaje con un `method` que no sea texto, o algo que no es un objeto, no se entiende: no se reenvía.
-    return list.every((m) => !!m && typeof m === 'object' && !Array.isArray(m)) ? { kind: 'none' } : { kind: 'bad', why: 'shape' }
+  if (list.length === 0) return { kind: 'bad', why: 'empty-batch' }
+  for (const m of list) {
+    if (!isPlainObject(m)) return { kind: 'bad', why: 'shape' }
+    for (const k of Object.keys(m)) if (!MESSAGE_KEYS.has(k)) return { kind: 'bad', why: `key:${k}` }
+    if ('jsonrpc' in m && m.jsonrpc !== '2.0') return { kind: 'bad', why: 'jsonrpc' }
+    if ('method' in m && typeof m.method !== 'string') return { kind: 'bad', why: 'method' }
+    if ('params' in m && m.params !== undefined && !isPlainObject(m.params) && !Array.isArray(m.params))
+      return { kind: 'bad', why: 'params' }
+    const allowed = typeof m.method === 'string' ? PARAM_KEYS[m.method] : undefined
+    if (allowed && isPlainObject(m.params)) {
+      for (const k of Object.keys(m.params)) if (!allowed.has(k)) return { kind: 'bad', why: `param:${k}` }
+    }
+    if (allowed && Array.isArray(m.params)) return { kind: 'bad', why: 'params' }
   }
+  const canonical = Buffer.from(JSON.stringify(parsed), 'utf8')
+  const calls = list.filter((m) => (m as { method?: unknown }).method === 'tools/call') as Array<Record<string, unknown>>
+  if (calls.length === 0) return { kind: 'none', canonical }
   if (calls.length > 1) return { kind: 'bad', why: 'batch' }
   const m = calls[0]!
-  const params = m.params && typeof m.params === 'object' ? (m.params as { name?: unknown; arguments?: unknown }) : {}
+  const params = isPlainObject(m.params) ? m.params : {}
   if (typeof params.name !== 'string' || !params.name) return { kind: 'bad', why: 'no-name' }
-  return { kind: 'call', call: { tool: params.name, args: params.arguments ?? {} }, id: m.id ?? null }
+  return { kind: 'call', call: { tool: params.name, args: params.arguments ?? {} }, id: m.id ?? null, canonical }
 }
 
 /** Lo que recibe el servidor del sandbox: nunca contiene el secreto real. */
@@ -438,6 +474,12 @@ export class McpProxy {
 
     const gate = route.toolCallGate
     if (gate && method === 'POST') {
+      // Un cuerpo comprimido no se puede revisar: no se reenvía (y `content-encoding` del cliente nunca pasa al destino).
+      const enc = req.headers['content-encoding']
+      if (enc !== undefined && String(enc).trim().toLowerCase() !== 'identity') {
+        release()
+        return this.reply(res, 415, 'encoded body not allowed')
+      }
       // Se lee entero (con el mismo tope), se revisa y se reenvía ESE mismo cuerpo, o se responde sin tocar el destino.
       const chunks: Buffer[] = []
       let size = 0
@@ -468,12 +510,13 @@ export class McpProxy {
           log(route.name, 'cuerpo no revisable, no se reenvía', found.why)
           return this.reply(res, 400, 'request not allowed')
         }
-        if (found.kind === 'none') return this.forward(req, res, route, target, search, method, headers, release, body)
+        // Se reenvía SIEMPRE lo revisado, reescrito (`canonical`), nunca los bytes originales.
+        if (found.kind === 'none') return this.forward(req, res, route, target, search, method, headers, release, found.canonical)
         void gate(found.call, aborter.signal)
           .catch((): ToolCallVerdict => ({ ok: false, message: 'No se pudo pedir la aprobación.' }))
           .then((v) => {
             if (res.writableEnded || res.destroyed || aborter.signal.aborted) return
-            if (v.ok) return this.forward(req, res, route, target, search, method, headers, release, body)
+            if (v.ok) return this.forward(req, res, route, target, search, method, headers, release, found.canonical)
             res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
             res.end(
               JSON.stringify({ jsonrpc: '2.0', id: found.id, result: { content: [{ type: 'text', text: v.message }], isError: true } })
