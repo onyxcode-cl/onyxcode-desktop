@@ -29,7 +29,7 @@ beforeEach(() => {
     if (channel === 'tasks:folders:list') return []
     return undefined
   })
-  useTasks.setState({ folder: null } as never)
+  useTasks.setState({ folder: null, phase: 'idle', error: null } as never)
   useUnified.setState({ on: true, loaded: true, wantAuto: false, chatFolder: null })
 })
 
@@ -59,6 +59,20 @@ describe('modo unificado: enviar sin carpeta', () => {
     useTasks.setState({ folder: '/Users/x/Proyecto' } as never)
     await expect(ensureFolderForSend()).resolves.toBe(true)
     expect(h.cw).not.toHaveBeenCalledWith('tasks:chatFolder:create')
+  })
+
+  it('si la carpeta no pudo arrancar (aviso claro ya en pantalla) no se sigue con el envío: no hay segundo cartel', async () => {
+    useTasks.setState({ folder: '/Users/x/Proyecto', phase: 'error', error: 'Por seguridad no se inició la tarea…' } as never)
+    await expect(ensureFolderForSend()).resolves.toBe(false)
+    useTasks.setState({ phase: 'ready', error: null } as never)
+    await expect(ensureFolderForSend()).resolves.toBe(true)
+  })
+
+  it('modo unificado: si la carpeta nueva del chat no arranca, tampoco se sigue con el envío', async () => {
+    h.connectFolder.mockImplementationOnce(async (folder: string) => {
+      useTasks.setState({ folder, phase: 'error', error: 'La carpeta no permite escribir.' } as never)
+    })
+    await expect(ensureFolderForSend()).resolves.toBe(false)
   })
 
   it('sin la bandera, sin carpeta se abre el selector de siempre y no se crea nada', async () => {
