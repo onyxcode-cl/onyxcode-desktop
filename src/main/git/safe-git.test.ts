@@ -141,6 +141,8 @@ it('incluidos, stash, mezcla, alias y nombres Unicode', async () => {
   expect(merge.error).not.toBeNull() // el driver seguro informa conflicto, no ejecuta el del repositorio
   expect(existsSync(sentinel)).toBe(false)
   await expect(safe(['atacar'])).rejects.toThrow('no permitido')
+  writeFileSync(join(dir, '.gitmodules'), `[submodule "trampa"]\n path = trampa\n url = ./no-existe\n update = !${program}\n`)
   await expect(safe(['submodule', 'update', '--recursive'])).rejects.toThrow('submódulos')
+  await expect(safe(['fetch', '--recurse-submodules'])).rejects.toThrow('submódulos')
   expect(existsSync(sentinel)).toBe(false)
 })
