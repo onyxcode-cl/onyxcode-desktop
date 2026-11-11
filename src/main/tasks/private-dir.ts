@@ -52,6 +52,24 @@ export function ensureTaskPrivateDir(
  * niega borrarlas o renombrarlas se aplique a una carpeta y no a un hueco que la tarea podría ocupar con un enlace. Es la carpeta de la
  * persona: si alguna ya es un enlace o un archivo, no se toca nada y no se arranca (error claro, como en el resto de la carpeta).
  */
+/**
+ * Traduce un fallo al preparar una carpeta de la app dentro de la carpeta de la tarea a una frase clara para la persona (en todas las
+ * plataformas: en Windows un archivo llamado `.lazunox` daba el `ENOTDIR` crudo). El detalle técnico queda solo en el registro.
+ * Un error que no se reconoce se devuelve tal cual.
+ */
+export function friendlyAppDirError(e: unknown, rel: string, log: (msg: string) => void = (m) => console.warn('[tasks]', m)): Error {
+  const code = (e as NodeJS.ErrnoException | null)?.code
+  let key: string | null = null
+  if (e instanceof LinkRefusedError || code === 'ENOTDIR' || code === 'EEXIST') key = 'merr.task.appDirUnsafe'
+  else if (isWriteDenied(e)) key = 'merr.task.folderReadOnly'
+  else if (code === 'EBUSY') key = 'merr.task.fileBusy'
+  else if (code === 'ENOSPC' || code === 'EDQUOT') key = 'merr.task.diskFull'
+  else if (code === 'ENAMETOOLONG') key = 'merr.task.pathTooLong'
+  if (!key) return e instanceof Error ? e : new Error(String(e))
+  log(`no se pudo preparar «${rel}» en la carpeta de la tarea: ${(e as Error)?.message ?? e}`)
+  return new Error(t(key as 'merr.task.appDirUnsafe', { path: rel }))
+}
+
 export function ensureTaskAppDirs(folder: string): void {
   // Corrección tras la revisión 2: en una carpeta SIN permiso de escritura (compartida de solo lectura, imagen montada…) no se puede
   // crear `.lazunox`, y en 1.8.17 la tarea arrancaba igual. Si el sistema lo niega (EACCES/EPERM/EROFS) no se crea esa carpeta ni las
@@ -64,12 +82,11 @@ export function ensureTaskAppDirs(folder: string): void {
     try {
       ensureRealDir(folder, join(folder, d), { create: true })
     } catch (e) {
-      if (e instanceof LinkRefusedError) throw new Error(t('merr.task.appDirUnsafe', { path: d }))
-      if (isWriteDenied(e)) {
+      if (isWriteDenied(e) && !(e instanceof LinkRefusedError)) {
         skipped.push(d)
         continue
       }
-      throw e
+      throw friendlyAppDirError(e, d)
     }
   }
 }

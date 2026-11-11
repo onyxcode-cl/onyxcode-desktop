@@ -379,6 +379,9 @@
       "darwin": 1,
       "win32": 2
     },
+    "src/main/update/front.ts": {
+      "win32": 1
+    },
     "src/main/update/installer.ts": {
       "usrBin": 9
     },

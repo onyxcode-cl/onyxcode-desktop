@@ -434,6 +434,10 @@ export const mainErrors = {
     'No se pudo guardar en la carpeta de la tarea: «{path}» no permite escribir (carpeta de solo lectura o sin permiso). Dale permiso de escritura a la carpeta y vuelve a intentarlo.',
   'merr.task.fileBusy':
     'No se pudo guardar «{path}»: otro programa (antivirus, OneDrive u otro) lo tiene abierto o no hay permiso. Ciérralo o espera unos segundos y vuelve a intentarlo.',
+  'merr.task.diskFull':
+    'No se pudo preparar la carpeta de la tarea: el disco está lleno. Libera espacio y vuelve a intentarlo.',
+  'merr.task.pathTooLong':
+    'No se pudo preparar la carpeta de la tarea: la ruta es demasiado larga. Usa una carpeta con una ruta más corta y vuelve a intentarlo.',
   'merr.task.linkInFolder':
     'No se pudo guardar en la carpeta de la tarea: «{path}» es (o pasa por) un acceso directo (enlace) a otro lugar. Bórralo y vuelve a intentarlo.',
   'merr.task.winBackendUnavailable':

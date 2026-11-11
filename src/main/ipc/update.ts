@@ -7,6 +7,7 @@ import { resolveInstallConfig, resolveUpdateConfig } from '../update/config'
 import { UpdateChecker } from '../update/checker'
 import { canWrite, nodeInstallerFs, nodeRun, UpdateInstaller, type InstallerDeps } from '../update/installer'
 import { nodeRunWin, WinUpdateInstaller } from '../update/installer-win'
+import { markJustUpdated } from '../update/front'
 import { clearSwapResult, readSwapResult, updateDir } from '../update/markers'
 import { currentAppRealPath, startSwap } from '../update/swap'
 import { currentInstallDirWin, startSwapWin } from '../update/swap-win'
@@ -147,6 +148,7 @@ export function registerUpdateHandlers(ipcMain: IpcMain): UpdateChecker {
   const dir = updateDir(userData)
   const last = readSwapResult(dir)
   if (last) {
+    markJustUpdated(last, app.getVersion())
     if (!last.ok) installer.preset(last.rolledBack ? 'rolled-back' : 'install', last.version)
     clearSwapResult(dir)
   }
