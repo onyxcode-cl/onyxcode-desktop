@@ -131,37 +131,6 @@ export function sanitizeSavedPermissions(dir: string): number {
   return removed
 }
 
-/**
- * Reglas válidas (`isPersistableRule`) de los archivos de una carpeta de guardado del motor cuyo `directory` es `folder`. Sin seguir
- * enlaces ni carpetas que sean enlaces; lo que no se entiende se ignora.
- */
-export function readEngineAlwaysRules(dir: string, folder: string): Array<{ permission: string; pattern: string }> {
-  const out: Array<{ permission: string; pattern: string }> = []
-  let names: string[] = []
-  try {
-    if (!isRealDir(dir)) return out
-    names = readdirSync(dir).filter((n) => n.endsWith('.json'))
-  } catch {
-    return out
-  }
-  for (const name of names) {
-    try {
-      const read = readFileNoFollow(join(dir, name), MAX_RULES_FILE)
-      if (!read) continue
-      const json = JSON.parse(read.content.toString('utf8')) as { directory?: unknown; rules?: unknown }
-      if (!json || json.directory !== folder || !Array.isArray(json.rules)) continue
-      for (const r of json.rules.slice(0, 500)) {
-        if (!isPersistableRule(r)) continue
-        const { permission, pattern } = r as { permission: string; pattern: string }
-        if (!out.some((x) => x.permission === permission && x.pattern === pattern)) out.push({ permission, pattern })
-      }
-    } catch {
-      /* archivo roto: se ignora */
-    }
-  }
-  return out
-}
-
 /** Vacía una carpeta de guardado (sin seguir enlaces). Si la carpeta misma es un enlace, no se toca. */
 export function emptySavedPermissionDir(dir: string): number {
   return isRealDir(dir) ? emptyDir(dir) : 0

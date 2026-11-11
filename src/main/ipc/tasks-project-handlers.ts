@@ -21,7 +21,10 @@ export function registerTasksProjectHandlers(ctx: TasksIpcContext): TasksSubmodu
   handle('tasks:mcp:set', ({ name, tasks: inTasks, askEachTool }) => tasksMcpPrefs.set(name, { tasks: inTasks, askEachTool }))
 
   handle('tasks:rules:list', ({ folder }) => tasksRules.list(folder ? tasks.assertInsideApproved(folder) : undefined))
-  handle('tasks:rules:add', ({ folder, permission, patterns }) => tasksRules.add(tasks.assertInsideApproved(folder), permission, patterns))
+  // El modo lo decide main por el servidor vivo de esa carpeta (no quien llama): lo dado en una Tarea aislada no vale en Control total.
+  handle('tasks:rules:add', ({ folder, permission, patterns }) =>
+    tasksRules.add(tasks.assertInsideApproved(folder), permission, patterns, { isolatedOnly: tasks.alwaysRuleIsolatedOnly(folder) })
+  )
   handle('tasks:rules:remove', ({ id }) => tasksRules.remove(id))
 
   return {}

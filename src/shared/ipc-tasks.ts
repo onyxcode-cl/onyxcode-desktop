@@ -930,6 +930,11 @@ export interface TasksPermissionRule {
   permission: string
   pattern: string
   createdAt: number
+  /**
+   * Guardada desde una Tarea AISLADA: solo vale dentro de la jaula. NO se aplica cuando esa carpeta se abre en Control total (ahí `bash`
+   * corre fuera de la jaula). Ausente = guardada en Control total (o antes de la 1.8.19): vale en los dos modos, como siempre.
+   */
+  isolatedOnly?: boolean
 }
 
 /** Servidor MCP del usuario y cómo se expone en Tareas. */

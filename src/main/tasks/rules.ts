@@ -16,13 +16,13 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import type { TasksPermissionRule } from '@shared/ipc-tasks'
 import { loadManagedPolicy } from './policy'
-import { emptySavedPermissionDir, readEngineAlwaysRules } from '../opencode/permission-store'
+import { emptySavedPermissionDir } from '../opencode/permission-store'
 
 interface Persisted {
   rules: TasksPermissionRule[]
   /**
-   * Carpetas cuyos «siempre» guardados por el MOTOR (en su carpeta privada, al alcance de la tarea) ya se pasaron UNA vez aquí. Desde la
-   * 1.8.19 el motor aislado no guarda ni carga nada (ver `importEngineAlwaysRulesOnce`); esto evita volver a importar lo que una tarea
+   * Carpetas cuyos «siempre» guardados por el MOTOR (en su carpeta privada, al alcance de la tarea) ya se descartaron UNA vez. Desde la
+   * 1.8.19 el motor aislado no guarda ni carga nada (ver `discardEngineAlwaysRulesOnce`); esto evita volver a tocar lo que una tarea
    * escriba después en esa carpeta.
    */
   engineImported?: string[]
@@ -111,7 +111,11 @@ export class TasksRulesStore {
   }
 
   /** Recuerda `permission` + cada patrón para la carpeta. Lanza si alguno no es admisible. */
-  add(folder: string, permission: string, patterns: string[]): TasksPermissionRule[] {
+  /**
+   * `isolatedOnly`: la persona la dio desde una Tarea AISLADA; no se aplicará en Control total (`rulesPermissionConfig`). Si la misma regla
+   * ya existía solo para el modo aislado y ahora se da en Control total, pasa a valer en los dos.
+   */
+  add(folder: string, permission: string, patterns: string[], opts: { isolatedOnly?: boolean } = {}): TasksPermissionRule[] {
     if (loadManagedPolicy()?.disableAlwaysAllow) {
       throw new Error(t('merr.rules.orgNoAlways'))
     }
@@ -126,9 +130,23 @@ export class TasksRulesStore {
     const now = Date.now()
     let changed = false
     for (const pattern of patterns) {
-      if (data.rules.some((r) => r.folder === folder && r.permission === permission && r.pattern === pattern)) continue
+      const existing = data.rules.find((r) => r.folder === folder && r.permission === permission && r.pattern === pattern)
+      if (existing) {
+        if (existing.isolatedOnly && !opts.isolatedOnly) {
+          delete existing.isolatedOnly
+          changed = true
+        }
+        continue
+      }
       if (data.rules.length >= MAX_RULES) throw new Error(t('merr.rules.tooMany'))
-      data.rules.push({ id: randomUUID(), folder, permission, pattern, createdAt: now })
+      data.rules.push({
+        id: randomUUID(),
+        folder,
+        permission,
+        pattern,
+        createdAt: now,
+        ...(opts.isolatedOnly ? { isolatedOnly: true } : {})
+      })
       changed = true
     }
     if (changed) this.persist()
@@ -144,26 +162,14 @@ export class TasksRulesStore {
     return this.list()
   }
 
-  /** Olvida todas las reglas de una carpeta (al quitarla de Tareas). */
   /**
-   * Una sola vez por carpeta: pasa a este archivo (fuera del alcance de la tarea) los «siempre» que el motor aislado guardó en su carpeta
-   * privada antes de la 1.8.19, saneados con las dos reglas (`isPersistableRule` de la app y `ruleRejectionReason`). Solo los de esa misma
-   * carpeta; sin seguir enlaces. Después se vacía esa carpeta del motor (ya no se lee). `enabled` = «Recordar mis siempre» encendido: si
-   * está apagado, no se importa nada (el motor tampoco los cargaba) pero la carpeta queda marcada. Devuelve cuántas reglas importó.
+   * Una sola vez por carpeta (1.8.19, H3): los «siempre» que el motor aislado guardó en su carpeta privada antes de esta versión NO se
+   * importan (la tarea los pudo escribir, y aquí valdrían también en Control total). Se vacía esa carpeta sin seguir enlaces y la carpeta
+   * queda marcada. La persona vuelve a pulsar «Siempre» una vez. Devuelve cuántas entradas quitó.
    */
-  importEngineAlwaysRulesOnce(folder: string, engineDir: string, enabled: boolean): number {
+  discardEngineAlwaysRulesOnce(folder: string, engineDir: string): number {
     const data = this.load()
     if ((data.engineImported ?? []).includes(folder)) return 0
-    let imported = 0
-    if (enabled && !loadManagedPolicy()?.disableAlwaysAllow) {
-      for (const r of readEngineAlwaysRules(engineDir, folder)) {
-        if (ruleRejectionReason(r.permission, r.pattern) !== null) continue
-        if (data.rules.some((x) => x.folder === folder && x.permission === r.permission && x.pattern === r.pattern)) continue
-        if (data.rules.length >= MAX_RULES) break
-        data.rules.push({ id: randomUUID(), folder, permission: r.permission, pattern: r.pattern, createdAt: Date.now() })
-        imported++
-      }
-    }
     data.engineImported = [...(data.engineImported ?? []), folder]
     try {
       this.persist()
@@ -171,11 +177,12 @@ export class TasksRulesStore {
       console.error('[tasks] no se pudo guardar la migración de permisos «siempre»:', err instanceof Error ? err.message : 'error')
       return 0
     }
-    emptySavedPermissionDir(engineDir)
-    if (imported) console.log(`[tasks] se pasaron ${imported} permisos «siempre» del motor a la app`)
-    return imported
+    const removed = emptySavedPermissionDir(engineDir)
+    if (removed) console.log(`[tasks] se descartaron ${removed} archivos de permisos «siempre» que guardó el motor aislado`)
+    return removed
   }
 
+  /** Olvida todas las reglas de una carpeta (al quitarla de Tareas). */
   removeFolder(folder: string): void {
     const data = this.load()
     const before = data.rules.length
@@ -188,13 +195,18 @@ export const tasksRules = new TasksRulesStore()
 
 /**
  * Reglas → bloque `permission` de OpenCode: `{ [permission]: { [pattern]: 'allow' } }`.
- * Con `policy.disableAlwaysAllow` devuelve `{}` (las reglas guardadas dejan de aplicarse).
+ * Con `policy.disableAlwaysAllow` devuelve `{}` (las reglas guardadas dejan de aplicarse). Con `fullAccess`, sin las `isolatedOnly`.
  */
-export function rulesPermissionConfig(rules: TasksPermissionRule[]): Record<string, Record<string, 'allow'>> {
+export function rulesPermissionConfig(
+  rules: TasksPermissionRule[],
+  opts: { fullAccess?: boolean } = {}
+): Record<string, Record<string, 'allow'>> {
   const out: Record<string, Record<string, 'allow'>> = {}
   if (loadManagedPolicy()?.disableAlwaysAllow) return out
   for (const r of rules) {
     if (ruleRejectionReason(r.permission, r.pattern)) continue
+    // Dada en una Tarea aislada: en Control total no vale (ahí el mismo `bash` correría fuera de la jaula).
+    if (opts.fullAccess && r.isolatedOnly) continue
     ;(out[r.permission] ??= {})[r.pattern] = 'allow'
   }
   return out
