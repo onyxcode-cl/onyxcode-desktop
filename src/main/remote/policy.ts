@@ -409,6 +409,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:network:state': 'R',
   'tasks:network:setToggle': 'D',
   'tasks:network:setHost': 'D',
+  'tasks:network:setException': 'X',
   'tasks:network:allowOnce': scoped('D', 'folder'),
   'tasks:deleteGrant:get': scoped('R', 'folder'),
   'tasks:deleteGrant:set': scoped('D', 'folder'),

@@ -980,6 +980,18 @@
       ],
       "nota": "Probado en macOS con un repositorio temporal; falta comprobar Git para Windows, la ruta del dispositivo nulo, el ajuste de ganchos y Git LFS en Windows.",
       "comprobacion": null
+    },
+    {
+      "id": "N09",
+      "funcion": "Red de Tareas: excepciones de red interna y puertos por sitio",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/proxy.ts:1",
+        "src/main/tasks/proxy.resolved-guard.test.ts:1",
+        "src/main/tasks/proxy-policy.ts:1"
+      ],
+      "nota": "Probado con DNS simulado en macOS. No se ha comprobado la enumeración de interfaces ni la salida de Tareas por WSL en Windows.",
+      "comprobacion": null
     }
   ]
 }

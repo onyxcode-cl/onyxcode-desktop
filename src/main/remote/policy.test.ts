@@ -90,6 +90,10 @@ const ELICITATION_ROUTES = ['GET /mcp/elicitation', 'POST /mcp/elicitation/{requ
 const EXTRA_ENGINE_ROUTES: string[] = []
 
 describe('cobertura 100 %', () => {
+  it('el celular no cambia opciones de red interna', () => {
+    expect(cls(ipc('tasks:network:setException', { host: 'interno.test', internal: true, ports: [8443] }))).toBe('deny:forbidden')
+  })
+
   it('hay canales que clasificar y todos tienen entrada explícita', () => {
     expect(ALL_INVOKE.length).toBeGreaterThan(200)
     expect(ALL_INVOKE.filter((c) => !Object.hasOwn(CELULAR_POLICY, c))).toEqual([])

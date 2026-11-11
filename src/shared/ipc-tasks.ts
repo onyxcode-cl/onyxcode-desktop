@@ -512,6 +512,12 @@ export type ViewerEventType = 'escape' | 'crashed' | 'loaded' | 'error'
 /** Interruptores de la lista blanca por defecto (npm, PyPI y búsqueda web del agente). */
 export type NetworkToggleKey = 'npmEnabled' | 'pypiEnabled' | 'webSearchEnabled'
 
+export interface NetworkHostException {
+  host: string
+  internal: boolean
+  ports: number[]
+}
+
 /** Estado de la lista blanca de red de los servidores Tareas sandboxeados. */
 export interface NetworkPolicyState {
   /** Host del proveedor de modelos: siempre permitido, no editable. */
@@ -524,6 +530,7 @@ export interface NetworkPolicyState {
   webSearchHosts: string[]
   /** Hosts añadidos por el usuario ("Permitir siempre" o desde Ajustes). */
   custom: string[]
+  exceptions?: NetworkHostException[]
   /** Hosts marcados "Mantener bloqueado" (informativo). */
   blocked: string[]
 }
@@ -1227,6 +1234,7 @@ export interface TasksInvokeContract {
   /** "Permitir siempre" / "Mantener bloqueado" / quitar decisión para un host (persistido). */
   'tasks:network:setHost': { req: { host: string; decision: 'allow' | 'block' | 'unset' }; res: NetworkPolicyState }
   /** "Permitir esta vez" tras una tarjeta de bloqueo: solo para los servidores ya arrancados de esa carpeta. */
+  'tasks:network:setException': { req: NetworkHostException; res: NetworkPolicyState }
   'tasks:network:allowOnce': { req: { folder: string; host: string }; res: void }
 
   /** "Permitir borrar" concedido para esta tarea (Seatbelt: `file-write-unlink` en la carpeta). */
@@ -1606,6 +1614,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:network:state',
   'tasks:network:setToggle',
   'tasks:network:setHost',
+  'tasks:network:setException',
   'tasks:network:allowOnce',
   'tasks:deleteGrant:get',
   'tasks:deleteGrant:set',

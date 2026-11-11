@@ -25,10 +25,10 @@
     "src/main/tasks/folder-policy.ts": "e88ab3a59150aaa6fdc72762136c9195a578e60f9c1c3d3572cf03230c63262f",
     "src/main/tasks/opencode-config.ts": "34b6ca47d4924360b902db64d99dc2ec0535c3ff793eed2d545092c502864373",
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
-    "src/main/tasks/proxy-policy.ts": "21f36a387c0a460419338425ddf248ea238a5ec608cd05e97c22f3b478e8af3f",
-    "src/main/tasks/proxy.ts": "50c6898856c97a23a4b577f509bff653ad10f406cf51102f00bda246458955a5",
+    "src/main/tasks/proxy-policy.ts": "af8f39d6172c0f187af542162ab790382f232d0ffc869d5d4cd567f2c1afa3f3",
+    "src/main/tasks/proxy.ts": "f568b7cfd6c003d834f142efbfe0a3c0984126681d085b406c56db0b4c918f39",
     "src/main/tasks/sandbox-profile.ts": "3547c1d53831a1815a27707801e8d299e61f2a3d881be48f3a6c44c05d3e35ba",
-    "src/main/tasks/sandbox.ts": "1a70e1f703a5b1dc03d30e77d57615c158696e1e7f4b03880b08b92e0c764c1a",
+    "src/main/tasks/sandbox.ts": "4e255b91634e409156039a3fd617a369cca50f68b13ad00bf253163af96801e1",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
     "src/main/tasks/win-context.ts": "baadaa16b2127ec3157591474ff35ee173cd38e4fef91265774f556fa567c0f3",
     "src/preload/assist.ts": "b51cbf39a22698cc16d9a4b2a2dc830b9806a652b71c5b498bc65261fa1147fc",
@@ -243,6 +243,17 @@
       "motivo": "1.8.19 Tareas macOS: docker/podman/nerdctl/kubectl y sus sockets negados desde dentro",
       "cambiados": [
         "src/main/tasks/sandbox-profile.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-11",
+      "motivo": "unión de la guardia de red (1.8.20)",
+      "cambiados": [
+        "src/main/tasks/proxy-policy.ts",
+        "src/main/tasks/proxy.ts",
+        "src/main/tasks/sandbox.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

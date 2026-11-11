@@ -1,3 +1,4 @@
+import { t } from '@shared/i18n'
 /**
  * Control de red saliente de un servidor Tareas sandboxeado: dos servidores HTTP locales,
  * ambos en `127.0.0.1` con un puerto aleatorio libre por sesión.
@@ -27,6 +28,8 @@ import { createServer as createHttpServer, request as httpRequest, type Incoming
 import { request as httpsRequest } from 'node:https'
 import { lookup } from 'node:dns/promises'
 import { connect as netConnect, createServer as createNetServer, isIP, type Socket } from 'node:net'
+import { networkInterfaces } from 'node:os'
+import { isLocalHostname } from '../embedded-browser/ip-class'
 import { getFreePort } from '../util/net'
 
 export interface EgressBlockedEvent {
@@ -39,6 +42,7 @@ export interface EgressBlockedEvent {
 
 export interface EgressLogEntry extends EgressBlockedEvent {
   allowed: boolean
+  reason?: 'host' | 'port' | 'address' | 'dns'
 }
 
 function timingSafeStringEqual(a: string, b: string): boolean {
@@ -60,44 +64,139 @@ export function hostAllowed(host: string, allowlist: readonly string[]): boolean
 }
 
 /**
- * ¿Es una dirección a la que el sandbox NUNCA debe llegar por el proxy aunque el nombre esté permitido? Loopback (el puerto del propio motor,
- * el del proxy MCP y cualquier servicio local), «esta máquina» (0.0.0.0/::), enlace local (169.254/16 y fe80::/10: incluye los servicios de
- * metadatos) y multicast/reservadas. Las redes PRIVADAS (10/8, 172.16/12, 192.168/16, CGNAT) NO se bloquean a propósito: son un uso legítimo
- * (intranet de empresa, NAS) y la persona las permite por nombre. Cualquier cosa que no sea una IP válida se trata como prohibida.
+ * Puertos de destino que el proxy de salida acepta. Todo lo que hoy sale por él es HTTPS (API de modelos, búsqueda web, npm, PyPI, git por
+ * https) o HTTP plano: 443 y 80. Cualquier otro puerto (bases de datos, SSH, paneles de administración) se niega aunque el nombre esté permitido.
  */
-export function isForbiddenEgressAddress(ip: string): boolean {
-  let a = ip.toLowerCase().replace(/^\[|\]$/g, '')
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(a)
-  if (mapped) a = mapped[1]
-  const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(a) // IPv4 mapeada en forma hexadecimal (::ffff:7f00:1)
+export const EGRESS_ALLOWED_PORTS: ReadonlySet<number> = new Set([80, 443])
+
+/**
+ * Direcciones de metadatos de nube que NO caen en las clases generales de `isLocalHostname` (las de 169.254/16, 100.64/10, 192.0.0/24 y
+ * fd00::/8 ya están cubiertas). Idea tomada de `anthropics/sandbox-runtime` (`resolved-address-guard.ts`, Apache-2.0); código propio.
+ */
+const EXTRA_DENIED = new Set(['168.63.129.16', '100.100.100.200', 'fd00:ec2::254', 'fd20:ce::254']) // Azure WireServer
+
+/** Quita corchetes y zona (`%en0`) y desmapea `::ffff:a.b.c.d` / `::ffff:7f00:1` a IPv4 para comparar direcciones entre sí. */
+function canonicalIp(ip: string): string {
+  let a = ip
+    .toLowerCase()
+    .trim()
+    .replace(/^\[|\]$/g, '')
+  const zone = a.indexOf('%')
+  if (zone >= 0) a = a.slice(0, zone)
+  const mapped = /^(?:::|(?:0{1,4}:){5})ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(a)
+  if (mapped) return mapped[1]
+  const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(a)
   if (hex) {
     const hi = parseInt(hex[1], 16)
     const lo = parseInt(hex[2], 16)
-    a = `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`
+    return `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`
   }
-  const v = isIP(a)
-  if (v === 4) {
-    const [p, q] = a.split('.').map(Number)
-    return p === 127 || p === 0 || (p === 169 && q === 254) || p >= 224
+  if (isIP(a) === 6) {
+    try {
+      return new URL(`http://[${a}]/`).hostname.slice(1, -1)
+    } catch {
+      return a
+    }
   }
-  if (v === 6) return a === '::1' || a === '::' || /^fe[89ab]/.test(a) || a.startsWith('ff')
-  return true
+  return a
 }
 
-/** Resuelve el nombre y devuelve la IP a la que conectar, o `null` si no resuelve o ALGUNA de sus direcciones es prohibida (anti-rebinding). */
+/** Direcciones asignadas ahora mismo a las interfaces de este equipo (se leen en cada consulta: cambian al cambiar de red). */
+export function localInterfaceAddresses(): string[] {
+  try {
+    return Object.values(networkInterfaces())
+      .flat()
+      .filter((i): i is NonNullable<typeof i> => !!i)
+      .map((i) => i.address)
+  } catch {
+    return ['*'] // sin poder conocer las IP propias, se niega el destino
+  }
+}
+
+/**
+ * ¿Es una dirección a la que el sandbox NUNCA debe llegar por el proxy aunque el nombre esté permitido? Se niega por defecto todo lo que no
+ * sea Internet pública: loopback (el puerto del propio motor, el del proxy MCP, el del proxy de claves y cualquier servicio local), «esta
+ * máquina» (0.0.0.0/8 y ::), redes privadas (10/8, 172.16/12, 192.168/16: el router, el NAS, bases de datos de la red), CGNAT (100.64/10),
+ * enlace local (169.254/16 y fe80::/10: metadatos de nube), ULA (fc00::/7), multicast/reservadas, IPv4 escondidas en IPv6 (mapeadas,
+ * «compatibles», NAT64, 6to4) — clasificación compartida con el navegador integrado (`isLocalHostname`) — más las IP PROPIAS del equipo
+ * (p. ej. su IPv6 global, por la que se alcanza un servicio que escucha en `::`). Cualquier cosa que no sea una IP válida se prohíbe.
+ */
+/** Solo estas redes privadas se pueden permitir explícitamente, nunca metadatos ni direcciones propias. */
+function allowedPrivateRange(a: string): boolean {
+  if (isIP(a) === 4) {
+    const [first, second] = a.split('.').map(Number)
+    return (
+      first === 10 ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168) ||
+      (first === 100 && second >= 64 && second <= 127)
+    )
+  }
+  if (isIP(a) === 6) return (parseInt(a.split(':')[0], 16) & 0xfe00) === 0xfc00
+  return false
+}
+
+export function isForbiddenEgressAddress(
+  ip: string,
+  ownAddresses: readonly string[] = localInterfaceAddresses(),
+  allowPrivate = false
+): boolean {
+  const a = canonicalIp(ip)
+  if (!isIP(a) || ownAddresses.includes('*') || EXTRA_DENIED.has(a)) return true
+  if (ownAddresses.some((own) => canonicalIp(own) === a)) return true
+  if (allowPrivate && allowedPrivateRange(a)) return false
+  return isLocalHostname(a)
+}
+
+/** Resolución de nombres con todas las direcciones (forma de `dns.lookup(..., { all: true })`). Inyectable en pruebas. */
+export type LookupAll = (host: string) => Promise<Array<{ address: string; family: number }>>
+
+const defaultLookup: LookupAll = (host) => lookup(host, { all: true, verbatim: true })
+
+/**
+ * Resuelve el nombre UNA sola vez y devuelve la IP a la que conectar, o `null` si no resuelve o ALGUNA de las direcciones devueltas es
+ * prohibida (una respuesta mixta pública+interna se rechaza entera). Quien llama conecta a esa IP, nunca al nombre: no hay segunda
+ * resolución que un «DNS rebinding» pueda cambiar.
+ */
+type Resolution = { ip: string; reason?: never } | { ip: null; reason: 'address' | 'dns' }
+async function resolveDetailed(host: string, forbidden: (ip: string) => boolean, lookupAll: LookupAll): Promise<Resolution> {
+  const bare = host.replace(/^\[|\]$/g, '')
+  if (isIP(bare)) return forbidden(bare) ? { ip: null, reason: 'address' } : { ip: canonicalIp(bare) }
+  try {
+    const found = await lookupAll(bare)
+    if (!Array.isArray(found) || found.length === 0) return { ip: null, reason: 'dns' }
+    if (found.some((r) => forbidden(r.address))) return { ip: null, reason: 'address' }
+    return { ip: canonicalIp(found[0].address) }
+  } catch {
+    return { ip: null, reason: 'dns' }
+  }
+}
 export async function resolveEgressTarget(
   host: string,
-  forbidden: (ip: string) => boolean = isForbiddenEgressAddress
+  forbidden: (ip: string) => boolean = (ip) => isForbiddenEgressAddress(ip),
+  lookupAll: LookupAll = defaultLookup
 ): Promise<string | null> {
-  const bare = host.replace(/^\[|\]$/g, '')
-  if (isIP(bare)) return forbidden(bare) ? null : bare
-  try {
-    const found = await lookup(bare, { all: true, verbatim: true })
-    if (found.length === 0 || found.some((r) => forbidden(r.address))) return null
-    return found[0].address
-  } catch {
-    return null
-  }
+  return (await resolveDetailed(host, forbidden, lookupAll)).ip
+}
+
+/**
+ * ¿Se acepta este destino ANTES de resolver? El nombre debe estar en la lista; una IP literal solo si esa IP EXACTA es una entrada de la
+ * lista (no por sufijo: `hostAllowed` aceptaría `203.0.113.5` con una entrada heredada `0.113.5`). El puerto, 80 o 443.
+ */
+export function egressTargetAllowed(host: string, port: number, allowlist: readonly string[]): 'ok' | 'host' | 'port' {
+  const bare = host
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '')
+  if (isIP(bare)) {
+    if (!allowlist.some((e) => e.toLowerCase().replace(/^\[|\]$/g, '') === bare)) return 'host'
+  } else if (!hostAllowed(bare, allowlist)) return 'host'
+  return EGRESS_ALLOWED_PORTS.has(port) ? 'ok' : 'port'
+}
+
+export interface HostNetworkOptions {
+  internal: boolean
+  ports: number[]
 }
 
 export interface EgressProxyOptions {
@@ -105,10 +204,15 @@ export interface EgressProxyOptions {
   token: string
   /** Lista blanca de hosts (mutable: se puede ampliar en caliente vía "Permitir siempre/una vez"). */
   allowlist: () => readonly string[]
+  hostOptions?: (host: string) => HostNetworkOptions | undefined
   onBlocked?: (ev: EgressBlockedEvent) => void
   onLog?: (entry: EgressLogEntry) => void
-  /** Solo pruebas: resolución de nombres. Por defecto `resolveEgressTarget` (DNS real + rechazo de direcciones locales). */
+  /** Solo pruebas: resolución + validación completa. Por defecto `resolveEgressTarget` (DNS real + rechazo de direcciones internas). */
   resolve?: (host: string) => Promise<string | null>
+  /** Solo pruebas: el DNS simulado que usa `resolveEgressTarget` (la validación de direcciones sigue siendo la real). */
+  lookup?: LookupAll
+  /** Solo pruebas: abre la conexión TCP a la IP ya validada (por defecto `net.connect(port, ip)`). */
+  dial?: (port: number, ip: string, onConnect: () => void) => Socket
 }
 
 export class EgressProxy {
@@ -201,25 +305,59 @@ export class EgressProxy {
     return { host: hostport.slice(0, idx), port: Number.isFinite(port) ? port : defaultPort }
   }
 
-  private handleConnect(socket: Socket, target: string): void {
-    const { host, port } = this.splitHostPort(target, 443)
-    const allowed = hostAllowed(host, this.opts.allowlist())
-    const entry: EgressLogEntry = { host, port, at: Date.now(), kind: 'connect', allowed }
+  /** Resolución única + validación de TODAS las direcciones; devuelve la IP a la que conectar o `null`. */
+  private async resolveTarget(host: string): Promise<Resolution> {
+    if (this.opts.resolve) {
+      const ip = await this.opts.resolve(host)
+      return ip ? { ip } : { ip: null, reason: 'dns' }
+    }
+    const internal = this.opts.hostOptions?.(host)?.internal === true
+    return resolveDetailed(host, (ip) => isForbiddenEgressAddress(ip, undefined, internal), this.opts.lookup ?? defaultLookup)
+  }
+
+  private dial(port: number, ip: string, onConnect: () => void): Socket {
+    return this.opts.dial ? this.opts.dial(port, ip, onConnect) : netConnect(port, ip, onConnect)
+  }
+
+  /** Lista + IP literal + puerto. `false` si se negó (ya respondido al cliente). */
+  private admit(socket: Socket, entry: EgressLogEntry): boolean {
+    const baseVerdict = egressTargetAllowed(entry.host, entry.port, this.opts.allowlist())
+    const extra = this.opts.hostOptions?.(entry.host)?.ports ?? []
+    const verdict = baseVerdict === 'port' && extra.includes(entry.port) ? 'ok' : baseVerdict
+    if (verdict === 'ok') {
+      return true
+    }
+    entry.allowed = false
+    entry.reason = verdict
     this.opts.onLog?.(entry)
-    if (!allowed) {
+    if (verdict === 'host') {
       this.opts.onBlocked?.(entry)
       socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lazunox sandbox egress policy\r\n')
-      return
+    } else {
+      // Puerto fuera de 80/443: no se ofrece «Permitir» (permitir el nombre no lo arreglaría); solo queda en el registro.
+      socket.end(
+        `HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${t('misc.net.deniedPort')}`
+      )
     }
+    return false
+  }
+
+  private handleConnect(socket: Socket, target: string): void {
+    const { host, port } = this.splitHostPort(target, 443)
+    const entry: EgressLogEntry = { host, port, at: Date.now(), kind: 'connect', allowed: true }
+    if (!this.admit(socket, entry)) return
     // Se conecta a la IP YA comprobada (no al nombre): un nombre permitido que resuelva a una dirección local no abre el puerto del motor.
-    void (this.opts.resolve ?? resolveEgressTarget)(host).then((ip) => {
+    void this.resolveTarget(host).then(({ ip, reason }) => {
       if (socket.destroyed) return
       if (!ip) {
-        this.opts.onLog?.({ ...entry, allowed: false })
-        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost resolves to a local or unresolvable address\r\n')
+        this.opts.onLog?.({ ...entry, allowed: false, reason })
+        socket.end(
+          `HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${t(reason === 'address' ? 'misc.net.deniedAddress' : 'misc.net.deniedDns')}`
+        )
         return
       }
-      const upstream = netConnect(port, ip, () => {
+      this.opts.onLog?.(entry)
+      const upstream = this.dial(port, ip, () => {
         socket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
         upstream.pipe(socket)
         socket.pipe(upstream)
@@ -239,29 +377,36 @@ export class EgressProxy {
       socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n')
       return
     }
-    const host = url.hostname
-    const port = url.port ? Number(url.port) : 80
-    const allowed = hostAllowed(host, this.opts.allowlist())
-    const entry: EgressLogEntry = { host, port, at: Date.now(), kind: 'http', allowed }
-    this.opts.onLog?.(entry)
-    if (!allowed) {
-      this.opts.onBlocked?.(entry)
-      socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost not allowed by Lazunox sandbox egress policy\r\n')
+    if (url.protocol !== 'http:') {
+      socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n')
       return
     }
-    void (this.opts.resolve ?? resolveEgressTarget)(host).then((ip) => {
+    const host = url.hostname
+    const port = url.port ? Number(url.port) : 80
+    // La cabecera `Host` debe nombrar el MISMO destino que la URL: si no, se pediría otro sitio al servidor de la IP validada.
+    const hostHeader = /^host:\s*(.*)$/im.exec(headerText.split('\r\n').slice(1).join('\n'))?.[1]?.trim().toLowerCase()
+    if (hostHeader !== undefined && hostHeader !== url.host.toLowerCase() && hostHeader !== `${url.hostname.toLowerCase()}:${port}`) {
+      socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\nHost header does not match the request target\r\n')
+      return
+    }
+    const entry: EgressLogEntry = { host, port, at: Date.now(), kind: 'http', allowed: true }
+    if (!this.admit(socket, entry)) return
+    void this.resolveTarget(host).then(({ ip, reason }) => {
       if (socket.destroyed) return
       if (!ip) {
-        this.opts.onLog?.({ ...entry, allowed: false })
-        socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\nHost resolves to a local or unresolvable address\r\n')
+        this.opts.onLog?.({ ...entry, allowed: false, reason })
+        socket.end(
+          `HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${t(reason === 'address' ? 'misc.net.deniedAddress' : 'misc.net.deniedDns')}`
+        )
         return
       }
+      this.opts.onLog?.(entry)
       this.forwardPlain(socket, method, url, headerText, leftover, port, ip)
     })
   }
 
   private forwardPlain(socket: Socket, method: string, url: URL, headerText: string, leftover: Buffer, port: number, ip: string): void {
-    const upstream = netConnect(port, ip, () => {
+    const upstream = this.dial(port, ip, () => {
       // Reescribe la línea de petición a forma "origin" (RFC 7230 §5.3.1) y reenvía cabeceras
       // salvo Proxy-Authorization/Proxy-Connection.
       const lines = headerText.split('\r\n')
@@ -276,6 +421,8 @@ export class EgressProxy {
     })
     upstream.on('error', () => socket.destroy())
     socket.on('error', () => upstream.destroy())
+    socket.on('close', () => upstream.destroy())
+    upstream.on('close', () => socket.destroy())
   }
 }
 

@@ -10,9 +10,11 @@
  * "Permitir esta vez" NO se persiste: solo vale para los servidores ya arrancados (en memoria).
  */
 import { app } from 'electron'
+import { t } from '@shared/i18n'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { NetworkPolicyState, NetworkToggleKey } from '@shared/ipc-tasks'
+import type { NetworkPolicyState, NetworkToggleKey, NetworkHostException } from '@shared/ipc-tasks'
+import { parseInternalHost } from './host-rules'
 
 /** Host de la API de modelos usada por Tareas (OpenCode Go / OpenCode Zen). Ver opencode-config.ts. */
 export const PROVIDER_HOST = 'opencode.ai'
@@ -37,9 +39,10 @@ interface Persisted {
   webSearchEnabled: boolean
   custom: string[]
   blocked: string[]
+  exceptions: NetworkHostException[]
 }
 
-const DEFAULTS: Persisted = { npmEnabled: false, pypiEnabled: false, webSearchEnabled: true, custom: [], blocked: [] }
+const DEFAULTS: Persisted = { npmEnabled: false, pypiEnabled: false, webSearchEnabled: true, custom: [], blocked: [], exceptions: [] }
 
 function file(): string {
   return join(app.getPath('userData'), 'tasks-network.json')
@@ -52,7 +55,7 @@ export class NetworkPolicy {
 
   private load(): Persisted {
     if (this.data) return this.data
-    let data = { ...DEFAULTS }
+    let data: Persisted = { ...DEFAULTS, custom: [], blocked: [], exceptions: [] }
     try {
       const f = file()
       if (existsSync(f)) {
@@ -62,7 +65,20 @@ export class NetworkPolicy {
           pypiEnabled: raw.pypiEnabled === true,
           webSearchEnabled: raw.webSearchEnabled !== false,
           custom: Array.isArray(raw.custom) ? raw.custom.filter((h) => typeof h === 'string') : [],
-          blocked: Array.isArray(raw.blocked) ? raw.blocked.filter((h) => typeof h === 'string') : []
+          blocked: Array.isArray(raw.blocked) ? raw.blocked.filter((h) => typeof h === 'string') : [],
+          exceptions: Array.isArray(raw.exceptions)
+            ? raw.exceptions
+                .filter(
+                  (e) =>
+                    e &&
+                    typeof e.host === 'string' &&
+                    typeof e.internal === 'boolean' &&
+                    Array.isArray(e.ports) &&
+                    e.ports.length <= 10 &&
+                    e.ports.every((p) => Number.isInteger(p) && p >= 1 && p <= 65535)
+                )
+                .map((e) => ({ host: e.host.toLowerCase(), internal: e.internal, ports: [...new Set(e.ports)] }))
+            : []
         }
       }
     } catch (err) {
@@ -88,6 +104,7 @@ export class NetworkPolicy {
       webSearchEnabled: d.webSearchEnabled,
       webSearchHosts: [...WEB_SEARCH_HOSTS],
       custom: [...d.custom],
+      exceptions: d.exceptions.map((e) => ({ ...e, ports: [...e.ports] })),
       blocked: [...d.blocked]
     }
   }
@@ -105,15 +122,51 @@ export class NetworkPolicy {
     const h = host.toLowerCase()
     d.custom = d.custom.filter((x) => x !== h)
     d.blocked = d.blocked.filter((x) => x !== h)
+    if (decision !== 'allow') d.exceptions = d.exceptions.filter((e) => e.host !== h)
     if (decision === 'allow') d.custom.push(h)
     else if (decision === 'block') d.blocked.push(h)
     this.save()
     return this.state()
   }
 
+  /** Solo Ajustes: la concesión está ligada al nombre exacto, no a subdominios. */
+  setException(entry: NetworkHostException): NetworkPolicyState {
+    const d = this.load()
+    const host = parseInternalHost(entry.host)
+    if (
+      !host ||
+      typeof entry.internal !== 'boolean' ||
+      !Array.isArray(entry.ports) ||
+      entry.ports.length > 10 ||
+      entry.ports.some((p) => !Number.isInteger(p) || p < 1 || p > 65535)
+    )
+      throw new Error(t('misc.net.invalidOptions'))
+    if (!d.custom.includes(host)) {
+      if (!entry.internal) throw new Error(t('misc.net.notListed'))
+      d.custom.push(host)
+      d.blocked = d.blocked.filter((h) => h !== host)
+    }
+    d.exceptions = d.exceptions.filter((e) => e.host !== host)
+    if (entry.internal || entry.ports.length) d.exceptions.push({ host, internal: entry.internal, ports: [...new Set(entry.ports)] })
+    this.save()
+    return this.state()
+  }
+
+  optionsFor(host: string): NetworkHostException | undefined {
+    const h = host
+      .toLowerCase()
+      .replace(/^\[|\]$/g, '')
+      .replace(/\.$/, '')
+    const d = this.load()
+    if (!d.custom.includes(h) || d.blocked.includes(h)) return undefined
+    const entry = d.exceptions.find((e) => e.host === h)
+    return entry ? { ...entry, ports: [...entry.ports] } : undefined
+  }
+
   removeCustom(host: string): NetworkPolicyState {
     const d = this.load()
     d.custom = d.custom.filter((x) => x !== host.toLowerCase())
+    d.exceptions = d.exceptions.filter((e) => e.host !== host.toLowerCase())
     this.save()
     return this.state()
   }

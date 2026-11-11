@@ -109,6 +109,7 @@ export interface StartTasksServerOptions {
   onExit?: (code: number | null) => void
   /** Lista blanca de red EFECTIVA en este instante (se re-evalúa en cada intento de conexión). */
   networkAllowlist?: () => readonly string[]
+  networkHostOptions?: (host: string) => { internal: boolean; ports: number[] } | undefined
   onEgressBlocked?: (ev: EgressBlockedEvent) => void
   onEgressLog?: (entry: EgressLogEntry) => void
   /** "Permitir borrar, mover y renombrar" concedido para esta tarea (Seatbelt: `file-write-unlink`). */
@@ -176,6 +177,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     ? new EgressProxy({
         token: egressToken,
         allowlist: options.networkAllowlist ?? (() => []),
+        hostOptions: options.networkHostOptions,
         onBlocked: options.onEgressBlocked,
         onLog: options.onEgressLog
       })

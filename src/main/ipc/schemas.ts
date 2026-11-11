@@ -90,7 +90,7 @@ import {
 } from '@shared/pr-validate'
 import { REMOTE_INVOKE_CHANNELS, type RemoteInvokeChannel, type RemoteInvokeContract } from '@shared/ipc-remote'
 import { parseSetTravelKeepRequest, parseTravelInstallRequest } from '@shared/remote/travel'
-import { parseEgressHost, isPlainHostToken } from '../tasks/host-rules'
+import { parseEgressHost, isPlainHostToken, parseInternalHost } from '../tasks/host-rules'
 import { isAllowedShell } from './pty-shell'
 import {
   absPath,
@@ -239,6 +239,12 @@ const egressHost: Validator<string> = (v, path = '') => {
     throw new ValidationError(
       `Parámetro "${path}": host no permitido (se necesita un dominio completo, sin comodines amplios ni IP privadas)`
     )
+  return h
+}
+const exceptionHost: Validator<string> = (v, path = '') => {
+  const s = str({ max: 255, min: 1 })(v, path)
+  const h = parseInternalHost(s)
+  if (!h) throw new ValidationError(`Parámetro "${path}": sitio inválido`)
   return h
 }
 const networkSetHost: Validator<{ host: string; decision: 'allow' | 'block' | 'unset' }> = (v, path = '') => {
@@ -987,6 +993,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:network:state': none,
   'tasks:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
   'tasks:network:setHost': networkSetHost,
+  'tasks:network:setException': obj({ host: exceptionHost, internal: bool, ports: arr(num({ int: true, min: 1, max: 65535 }), 10) }),
   'tasks:network:allowOnce': obj({ folder: absPath, host: egressHost }),
   'tasks:deleteGrant:get': folderReq,
   'tasks:deleteGrant:set': obj({ folder: absPath, allowed: bool }),
