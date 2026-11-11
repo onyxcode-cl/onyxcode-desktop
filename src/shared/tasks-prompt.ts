@@ -48,6 +48,8 @@ export interface TasksPromptInput {
 
 /** Pares «nombre citado en el prompt (es) → clave del diccionario» de los botones que el agente nombra. */
 const QUOTED_BUTTONS = [
+  ['Ficha del proyecto', 'project.dialog.title'],
+  ['Carpetas', 'project.dialog.folders'],
   ['Permitir borrar, mover y renombrar', 'tasksSettings.glossary.deleteGrant'],
   ['Usar memoria', 'tasks.proj.useMemory'],
   ['Guardar como PDF', 'tasks.deliv.savePdf'],
@@ -71,6 +73,7 @@ export function interfaceLanguageSection(lang: Lang | undefined): string {
     'Your instructions quote some buttons by their Spanish names; the user sees them in English, so use these names ' +
     'when you tell them what to press:\n' +
     `${list}\n` +
+    'For the delete permission, use this exact path: Overdrive › header ⋯ menu › Project profile › Folders › Allow delete, move and rename.\n' +
     'Format dates and numbers the English way (1,234.5; September 27, 2026) instead of es-CL. ' +
     'Where your instructions mention the line "**Necesita Control total del Mac**: <motivo>", write ' +
     '"**Needs Full Mac control**: <reason>" and keep the neutral marker line exactly as specified.'

@@ -11,6 +11,9 @@ describe('contexto del idioma de la interfaz', () => {
     const s = buildTasksSystemPrompt({ lang: 'en' }) ?? ''
     expect(s).toContain('Interface language: English')
     expect(s).toContain('«Permitir borrar, mover y renombrar» → "Allow delete, move and rename"')
+    expect(s).toContain('Overdrive › header ⋯ menu › Project profile › Folders › Allow delete, move and rename')
+    expect(s).toContain('«Ficha del proyecto» → "Project profile"')
+    expect(s).toContain('«Carpetas» → "Folders"')
     expect(s).toContain('«Usar memoria» → "Use memory"')
     expect(s).toContain('«Guardar como PDF» → "Save as PDF"')
   })

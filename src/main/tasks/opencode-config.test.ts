@@ -53,6 +53,9 @@ describe('prepareOpencodeConfigDir: refresco por versión', () => {
     expect(existsSync(join(dir, 'agents', `${LEGACY_AGENT_ID}.md`))).toBe(false)
     expect(agentsOf(dir)).toEqual(['chat.md', 'computer.md', 'lazunox-chat-helper.md', 'lazunox-helper.md', 'tasks.md'])
     expect(readFileSync(join(dir, 'agents', 'chat.md'), 'utf8')).not.toBe('viejo')
+    expect(readFileSync(join(dir, 'agents', 'tasks.md'), 'utf8')).toContain(
+      'activa Permitir borrar, mover y renombrar en Overdrive › menú ⋯ de la cabecera › Ficha del proyecto › Carpetas'
+    )
     expect(readFileSync(join(dir, '.lazunox-version'), 'utf8')).toBe('0.3.0')
   })
 })

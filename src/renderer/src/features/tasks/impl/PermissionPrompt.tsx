@@ -10,6 +10,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { FileEdit, FolderInput, Globe, PlugZap, Repeat, ShieldAlert, Terminal, Trash2, type LucideIcon } from 'lucide-react'
 import { t } from '@shared/i18n'
+import { needsDeleteGrant } from '@shared/tasks-delete-command'
+import { DeletePermissionCard } from './DeletePermissionCard'
 import { isProtectedPermission } from '@shared/protected-path'
 import { Button } from '../../../components/Button'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
@@ -346,11 +348,23 @@ export function alwaysHint(p: PermissionRequest): string {
   return list.length > 0 ? t('tasksComputer.perm.alwaysHint', { list: list.join(', ') }) : t('tasksComputer.perm.alwaysHintNone')
 }
 
+/** El permiso del motor no puede suplir el permiso de la carpeta. Mientras carga, tampoco se ofrece «una vez». */
+export function useDeleteGrantCommand(request: PermissionRequest): string | null {
+  const conn = useTasks((s) => s.conn)
+  const allowed = useTasks((s) => s.deleteGrant)
+  const input = useToolInput(request)
+  if (!conn || conn.fullAccess || allowed === true || request.permission !== 'bash') return null
+  const command = meta(request, 'command') || str(input?.command) || request.patterns.join('\n')
+  return needsDeleteGrant(command) ? command : null
+}
+
 /** Tarjeta detallada dentro de la conversación (otra carpeta ⇒ `FolderRequestCard`). */
 export function PermissionCard({ request }: { request: PermissionRequest }): React.JSX.Element | null {
   // Lote C: mientras el Modo auto está considerando esta petición (vía rápida), no se muestra
   // ninguna tarjeta; si no la aprueba, `autoPending` se limpia y vuelve a aparecer con normalidad.
   const autoPending = useTasks((s) => !!s.autoPending[request.id])
+  const deleteCommand = useDeleteGrantCommand(request)
+  if (deleteCommand) return <DeletePermissionCard request={request} command={deleteCommand} />
   if (autoPending) return null
   if (request.permission === 'external_directory') return <FolderRequestCard request={request} />
   // Celular/PWA: marcado de siempre, sin cambios. Escritorio: rediseño ND (anatomía y teclado seguros).
@@ -550,6 +564,8 @@ export function ApprovalBar({ requests }: { requests: PermissionRequest[] }): Re
 }
 
 function ApprovalBarInner({ request, more }: { request: PermissionRequest; more: number }): React.JSX.Element {
+  const deleteCommand = useDeleteGrantCommand(request)
+  if (deleteCommand) return <DeletePermissionCard request={request} command={deleteCommand} bar />
   // Celular/PWA: barra de siempre. Escritorio: barra compacta del rediseño ND (armada, sin atajos).
   if (isRemoteSurface()) return <RemoteApprovalBar request={request} more={more} />
   return <ApprovalBarDesk request={request} more={more} />

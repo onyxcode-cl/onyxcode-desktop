@@ -23,6 +23,15 @@ export const tasksComputer = {
   'tasksComputer.delete.hintTitle': 'El agente intentó borrar, mover o renombrar un archivo y no pudo',
   'tasksComputer.delete.hintBody':
     'Por seguridad, esta carpeta no permite borrar, mover ni renombrar archivos todavía. Si lo activas, el servidor de la tarea se reiniciará y tendrás que reabrir esta tarea y pedirle al agente que continúe. Si prefieres no hacerlo, pídele una copia ordenada sin tocar los originales.',
+  'tasksComputer.delete.permissionTitle': 'Esta carpeta necesita permiso para borrar, mover o renombrar',
+  'tasksComputer.delete.permissionBody':
+    'Permitir una vez no cambia el aislamiento. Al activar este permiso, el agente podrá borrar, mover y renombrar en toda esta carpeta hasta que lo desactives. Se reiniciará el servidor de la carpeta (se interrumpen sus tareas en curso), se reabrirá esta tarea y se le pedirá al agente que reintente. Las carpetas adicionales y los archivos protegidos conservan sus restricciones.',
+  'tasksComputer.delete.enableRetry': 'Activar permiso y reintentar',
+  'tasksComputer.delete.retry':
+    'Ya está activo el permiso de borrar, mover y renombrar en la carpeta principal. Retoma la tarea y reintenta la operación pendiente; sigue pidiendo confirmación antes de borrar otros archivos.',
+  'tasksComputer.delete.restartError':
+    'El permiso quedó guardado, pero no se pudo reabrir la tarea. Abre la carpeta y la tarea de nuevo y pídele al agente que continúe.',
+  'tasksComputer.delete.changed': 'La carpeta o la tarea cambió. Vuelve a la tarea que pidió el permiso para continuar.',
   'tasksComputer.delete.notNow': 'Ahora no',
   'tasksComputer.consentHint.intro':
     'Para usar apps de tu PC hay que activar Control del PC una vez. Léelo y actívalo aquí; después vuelve a pedirle lo que querías.',

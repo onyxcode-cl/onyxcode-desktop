@@ -19,13 +19,7 @@
   },
   "schemaVersion": 1,
   "base": "release/1.8.11",
-  "escala": [
-    "IGUAL",
-    "DIFERENTE A PROPÓSITO",
-    "FALTA TRABAJO",
-    "ROTO",
-    "NO VERIFICADO"
-  ],
+  "escala": ["IGUAL", "DIFERENTE A PROPÓSITO", "FALTA TRABAJO", "ROTO", "NO VERIFICADO"],
   "produccion": {
     "win32": {
       "tasksWin": true,
@@ -79,9 +73,7 @@
       "sandbox": {
         "backend": "wsl",
         "sinAdministrador": {
-          "estadosProhibidos": [
-            "unsupported"
-          ]
+          "estadosProhibidos": ["unsupported"]
         },
         "conAdministrador": {
           "state": "unsupported",
@@ -96,10 +88,7 @@
       "id": "P01",
       "funcion": "Chat: crear Word, Excel y PowerPoint con ArtCraft, con vista previa",
       "estado": "IGUAL",
-      "evidencia": [
-        "resources/craft/pin.json:29",
-        "src/main/office/craft/craft-install.ts:287"
-      ],
+      "evidencia": ["resources/craft/pin.json:29", "src/main/office/craft/craft-install.ts:287"],
       "nota": "ArtCraft tiene activo win32-x64 en el pin y se instala solo (N01).",
       "comprobacion": null
     },
@@ -107,9 +96,7 @@
       "id": "P02",
       "funcion": "Chat: crear PDF con el motor propio",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/office/craft/craft-install.ts:346"
-      ],
+      "evidencia": ["src/main/office/craft/craft-install.ts:346"],
       "nota": "Medido por el orquestador en el PC.",
       "comprobacion": null
     },
@@ -117,9 +104,7 @@
       "id": "P03",
       "funcion": "Code: documentos_crear / documentos_renderizar y su confinamiento",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/documents/mcp-server.ts:363"
-      ],
+      "evidencia": ["src/main/documents/mcp-server.ts:363"],
       "nota": "Medido por el orquestador en el PC.",
       "comprobacion": null
     },
@@ -127,10 +112,7 @@
       "id": "P04",
       "funcion": "Visor de documentos (panel aislado)",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/platform-caps.ts:131",
-        "src/renderer/src/features/chat/useChatDocPanel.ts:157"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:131", "src/renderer/src/features/chat/useChatDocPanel.ts:157"],
       "nota": "docViewer va atado a tasksWin: si una organización apaga Overdrive (disableWslTasks), el visor del Chat también desaparece.",
       "comprobacion": {
         "tipo": "cap",
@@ -142,9 +124,7 @@
       "id": "P05",
       "funcion": "Chat con un modelo real (respuesta en streaming)",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/shared/platform-caps.ts:127"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:127"],
       "nota": "Nadie lo ha probado en el PC (C3).",
       "comprobacion": null
     },
@@ -152,9 +132,7 @@
       "id": "P06",
       "funcion": "Tarjeta de permiso en pantalla (Code/Chat)",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/renderer/src/features/tasks/impl/PermissionCardDesk.tsx:59"
-      ],
+      "evidencia": ["src/renderer/src/features/tasks/impl/PermissionCardDesk.tsx:59"],
       "nota": "Nadie lo ha probado en el PC (C5).",
       "comprobacion": null
     },
@@ -180,11 +158,7 @@
       "id": "P08",
       "funcion": "Skills de oficina con Python (inspeccionar, editar, revisar, comparar)",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/tasks/python-runtime.ts:64",
-        "src/main/tasks/python-runtime.ts:82",
-        "electron-builder.js:297"
-      ],
+      "evidencia": ["src/main/tasks/python-runtime.ts:64", "src/main/tasks/python-runtime.ts:82", "electron-builder.js:297"],
       "nota": "El Python incluido viaja en resources\\python-bin\\win-x64 y se expone por LAZUNOX_PYTHON.",
       "comprobacion": {
         "tipo": "flag",
@@ -196,9 +170,7 @@
       "id": "P09",
       "funcion": "El agente de Control del PC en Windows sabe usar las skills de oficina",
       "estado": "IGUAL",
-      "evidencia": [
-        "resources/opencode/agents-win/computer.win.md:407"
-      ],
+      "evidencia": ["resources/opencode/agents-win/computer.win.md:407"],
       "nota": "W12.",
       "comprobacion": null
     },
@@ -206,9 +178,7 @@
       "id": "P10",
       "funcion": "Textos que dicen «Mac» en Windows (escritorio)",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/i18n/index.ts:88"
-      ],
+      "evidencia": ["src/shared/i18n/index.ts:88"],
       "nota": "W1: variantes .win; la prueba comprueba que cada .win tenga su base.",
       "comprobacion": null
     },
@@ -216,9 +186,7 @@
       "id": "P11",
       "funcion": "Mensaje al escalar a Control total",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/renderer/src/features/tasks/impl/EscalateCard.tsx:191"
-      ],
+      "evidencia": ["src/renderer/src/features/tasks/impl/EscalateCard.tsx:191"],
       "nota": "W1.",
       "comprobacion": null
     },
@@ -226,9 +194,7 @@
       "id": "P12",
       "funcion": "Atajos ⌘ frente a Ctrl en los textos",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/test/win-shortcut-text.test.ts:1"
-      ],
+      "evidencia": ["src/test/win-shortcut-text.test.ts:1"],
       "nota": "Guardia existente.",
       "comprobacion": null
     },
@@ -277,10 +243,7 @@
       "id": "P15",
       "funcion": "Overdrive: PyMuPDF dentro de la imagen de WSL",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "scripts/wsl-rootfs/pip-requirements.txt:1",
-        "resources/opencode/skills/pdf/scripts/translate_pdf.py:24"
-      ],
+      "evidencia": ["scripts/wsl-rootfs/pip-requirements.txt:1", "resources/opencode/skills/pdf/scripts/translate_pdf.py:24"],
       "nota": "La imagen no lleva pymupdf.",
       "comprobacion": null
     },
@@ -288,9 +251,7 @@
       "id": "P16",
       "funcion": "Overdrive: «Uso» en Ajustes",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/tasks/usage-summary.ts:144"
-      ],
+      "evidencia": ["src/main/tasks/usage-summary.ts:144"],
       "nota": "supported:false en Windows.",
       "comprobacion": null
     },
@@ -298,10 +259,7 @@
       "id": "P17",
       "funcion": "Overdrive: vista previa de texto de documentos entregados",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/tasks/files.ts:232",
-        "src/main/tasks/files.ts:149"
-      ],
+      "evidencia": ["src/main/tasks/files.ts:232", "src/main/tasks/files.ts:149"],
       "nota": "W13 resolvió .docx con jszip; .rtf, .odt y .doc siguen sin vista previa en Windows.",
       "comprobacion": null
     },
@@ -309,10 +267,7 @@
       "id": "P18",
       "funcion": "Overdrive: Vista rápida",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/shared/platform-caps.ts:125",
-        "src/main/ipc/tasks-files-handlers.ts:168"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:125", "src/main/ipc/tasks-files-handlers.ts:168"],
       "nota": "Quick Look es solo de macOS; en Windows queda «Abrir».",
       "comprobacion": {
         "tipo": "cap",
@@ -324,9 +279,7 @@
       "id": "P19",
       "funcion": "Overdrive: comprimir entregables",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/ipc/tasks-files-handlers.ts:51"
-      ],
+      "evidencia": ["src/main/ipc/tasks-files-handlers.ts:51"],
       "nota": "Windows usa tar.exe del sistema.",
       "comprobacion": null
     },
@@ -334,9 +287,7 @@
       "id": "P20",
       "funcion": "Overdrive: puntos de restauración con archivos en la nube",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/tasks/restore-points.ts:12"
-      ],
+      "evidencia": ["src/main/tasks/restore-points.ts:12"],
       "nota": "Detecta iCloud, no OneDrive.",
       "comprobacion": null
     },
@@ -344,9 +295,7 @@
       "id": "P21",
       "funcion": "Botones de acción en las notificaciones del plan de Control del PC",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/ipc/tasks-computer-wiring.ts:258"
-      ],
+      "evidencia": ["src/main/ipc/tasks-computer-wiring.ts:258"],
       "nota": "Solo darwin lleva botón.",
       "comprobacion": null
     },
@@ -371,9 +320,7 @@
       "id": "P23",
       "funcion": "Control del PC: buscar elementos y marcos de ventana propios",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/computer/mcp-server.ts:2016"
-      ],
+      "evidencia": ["src/main/computer/mcp-server.ts:2016"],
       "nota": "Solo está hecho para macOS.",
       "comprobacion": null
     },
@@ -381,9 +328,7 @@
       "id": "P24",
       "funcion": "Control del PC: grabar skills y usar la voz",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "resources/opencode/agents-win/computer.win.md:62"
-      ],
+      "evidencia": ["resources/opencode/agents-win/computer.win.md:62"],
       "nota": "No se portó.",
       "comprobacion": null
     },
@@ -391,9 +336,7 @@
       "id": "P25",
       "funcion": "Control del PC: detener el ayudante",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/computer/service-platform.ts:89"
-      ],
+      "evidencia": ["src/main/computer/service-platform.ts:89"],
       "nota": "taskkill por nombre (/IM), no por PID.",
       "comprobacion": null
     },
@@ -401,10 +344,7 @@
       "id": "P26",
       "funcion": "MCP locales en «Control total» de Windows",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/tasks/mcp-tasks.ts:166",
-        "src/main/tasks/mcp-tasks.ts:221"
-      ],
+      "evidencia": ["src/main/tasks/mcp-tasks.ts:166", "src/main/tasks/mcp-tasks.ts:221"],
       "nota": "W4: en Windows nativo no se antepone /usr/bin/env.",
       "comprobacion": null
     },
@@ -412,9 +352,7 @@
       "id": "P27",
       "funcion": "Atajo para parar el control",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/computer/stop-shortcut.ts:11"
-      ],
+      "evidencia": ["src/main/computer/stop-shortcut.ts:11"],
       "nota": "Convención del sistema.",
       "comprobacion": null
     },
@@ -422,9 +360,7 @@
       "id": "P28",
       "funcion": "Permisos de la primera vez",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/preflight/real.ts:102"
-      ],
+      "evidencia": ["src/main/preflight/real.ts:102"],
       "nota": "Windows usa tarjeta de consentimiento propia en vez de TCC.",
       "comprobacion": null
     },
@@ -432,11 +368,7 @@
       "id": "P29",
       "funcion": "Control remoto desde el celular (red local)",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/remote/remote-win-flag.ts:16",
-        "src/shared/platform-caps.ts:126",
-        "src/main/remote/remote-win-flag.ts:32"
-      ],
+      "evidencia": ["src/main/remote/remote-win-flag.ts:16", "src/shared/platform-caps.ts:126", "src/main/remote/remote-win-flag.ts:32"],
       "nota": "Encendido de fábrica en Windows (remoteWin). Sin probar con un celular real (C6).",
       "comprobacion": {
         "tipo": "cap",
@@ -448,10 +380,7 @@
       "id": "P30",
       "funcion": "Remoto «fuera de casa» (túnel)",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "resources/cloudflared/pin.json:5",
-        "src/main/remote/tunnel/binary.ts:15"
-      ],
+      "evidencia": ["resources/cloudflared/pin.json:5", "src/main/remote/tunnel/binary.ts:15"],
       "nota": "El pin de cloudflared no trae Windows.",
       "comprobacion": null
     },
@@ -459,9 +388,7 @@
       "id": "P31",
       "funcion": "La app del celular dice «PC» cuando el equipo es Windows",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/i18n/es/remote.ts:277"
-      ],
+      "evidencia": ["src/shared/i18n/es/remote.ts:277"],
       "nota": "W2 (hostPlatform).",
       "comprobacion": null
     },
@@ -469,9 +396,7 @@
       "id": "P32",
       "funcion": "Texto «Llavero» cuando no hay almacén seguro",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/i18n/es/remote.ts:277"
-      ],
+      "evidencia": ["src/shared/i18n/es/remote.ts:277"],
       "nota": "W2: variante .win.",
       "comprobacion": null
     },
@@ -479,11 +404,7 @@
       "id": "P33",
       "funcion": "Cerrar la ventana principal con el remoto activo",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/index.ts:212",
-        "src/main/index.ts:504",
-        "src/main/remote/lifecycle.ts:21"
-      ],
+      "evidencia": ["src/main/index.ts:212", "src/main/index.ts:504", "src/main/remote/lifecycle.ts:21"],
       "nota": "W3: la app sigue viva con remoto activo y bandeja.",
       "comprobacion": null
     },
@@ -491,9 +412,7 @@
       "id": "P34",
       "funcion": "Mantener despierto mientras el remoto está activo",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/remote/loader.ts:147"
-      ],
+      "evidencia": ["src/main/remote/loader.ts:147"],
       "nota": "Solo Windows (decisión tomada).",
       "comprobacion": null
     },
@@ -501,9 +420,7 @@
       "id": "P35",
       "funcion": "Mantener despierto mientras trabajan las Tareas",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/tasks/keep-awake.ts:58"
-      ],
+      "evidencia": ["src/main/tasks/keep-awake.ts:58"],
       "nota": "Mismo código.",
       "comprobacion": null
     },
@@ -511,9 +428,7 @@
       "id": "P36",
       "funcion": "Capacidad keepAwakeText",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/platform-caps.ts:99"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:99"],
       "nota": "W8: eliminada; la prueba exige el conjunto exacto de capacidades.",
       "comprobacion": null
     },
@@ -521,10 +436,7 @@
       "id": "P37",
       "funcion": "Dictado por voz en el compositor",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "electron-builder.js:125",
-        "src/main/ipc/extras-handlers.ts:118"
-      ],
+      "evidencia": ["electron-builder.js:125", "src/main/ipc/extras-handlers.ts:118"],
       "nota": "Sin probar en el PC (C8).",
       "comprobacion": null
     },
@@ -532,9 +444,7 @@
       "id": "P38",
       "funcion": "Binario lazunox-dictate (Swift)",
       "estado": "IGUAL",
-      "evidencia": [
-        "scripts/dictation/build.sh:1"
-      ],
+      "evidencia": ["scripts/dictation/build.sh:1"],
       "nota": "No se empaqueta en ninguna plataforma.",
       "comprobacion": null
     },
@@ -542,10 +452,7 @@
       "id": "P39",
       "funcion": "Entrada rápida (atajo global)",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/shared/ipc-extras.ts:36",
-        "src/main/extras/quick-entry.ts:23"
-      ],
+      "evidencia": ["src/shared/ipc-extras.ts:36", "src/main/extras/quick-entry.ts:23"],
       "nota": "Convención del sistema.",
       "comprobacion": null
     },
@@ -553,9 +460,7 @@
       "id": "P40",
       "funcion": "Bandeja y menús",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/extras/tray-style.ts:14"
-      ],
+      "evidencia": ["src/main/extras/tray-style.ts:14"],
       "nota": "Convención del sistema.",
       "comprobacion": null
     },
@@ -563,10 +468,7 @@
       "id": "P41",
       "funcion": "Número en el icono (sesiones esperando)",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/ipc/notify.ts:7",
-        "src/main/ipc/notify.ts:26"
-      ],
+      "evidencia": ["src/main/ipc/notify.ts:7", "src/main/ipc/notify.ts:26"],
       "nota": "Windows solo parpadea (flashFrame).",
       "comprobacion": null
     },
@@ -574,10 +476,7 @@
       "id": "P42",
       "funcion": "Ventana translúcida",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/window-glass.ts:17",
-        "src/main/window-glass.ts:26"
-      ],
+      "evidencia": ["src/main/window-glass.ts:17", "src/main/window-glass.ts:26"],
       "nota": "Mica en Windows 11 (build 22000 o mayor). Depende del sistema: no se compara en ejecución.",
       "comprobacion": null
     },
@@ -585,11 +484,7 @@
       "id": "P43",
       "funcion": "Actualizador",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/shared/platform-caps.ts:124",
-        "src/main/update/config.ts:102",
-        "resources/updater/swap.ps1:1"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:124", "src/main/update/config.ts:102", "resources/updater/swap.ps1:1"],
       "nota": "Windows cambia la carpeta por usuario, solo x64.",
       "comprobacion": {
         "tipo": "cap",
@@ -601,10 +496,7 @@
       "id": "P44",
       "funcion": "Actualizador en una compilación para la Microsoft Store",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/index.ts:75",
-        "src/main/update/config.ts:97"
-      ],
+      "evidencia": ["src/main/index.ts:75", "src/main/update/config.ts:97"],
       "nota": "Hoy no hay objetivo Store.",
       "comprobacion": null
     },
@@ -612,10 +504,7 @@
       "id": "P45",
       "funcion": "Instalador",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "electron-builder.js:219",
-        "electron-builder.js:265"
-      ],
+      "evidencia": ["electron-builder.js:219", "electron-builder.js:265"],
       "nota": "dmg arm64 frente a NSIS por usuario x64.",
       "comprobacion": null
     },
@@ -623,10 +512,7 @@
       "id": "P46",
       "funcion": "Instalador para Windows arm64 o Mac Intel",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "electron-builder.js:219",
-        "resources/runtimes/pin.json:24"
-      ],
+      "evidencia": ["electron-builder.js:219", "resources/runtimes/pin.json:24"],
       "nota": "No se priorizó.",
       "comprobacion": null
     },
@@ -634,10 +520,7 @@
       "id": "P47",
       "funcion": "Firma",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "electron-builder.js:265",
-        "scripts/workflows.test.mjs:95"
-      ],
+      "evidencia": ["electron-builder.js:265", "scripts/workflows.test.mjs:95"],
       "nota": "Windows sin firma (SmartScreen).",
       "comprobacion": null
     },
@@ -645,10 +528,7 @@
       "id": "P48",
       "funcion": "Guardado de secretos",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/remote/loader.ts:6",
-        "src/main/remote/loader.ts:150"
-      ],
+      "evidencia": ["src/main/remote/loader.ts:6", "src/main/remote/loader.ts:150"],
       "nota": "safeStorage/DPAPI en Windows.",
       "comprobacion": null
     },
@@ -656,9 +536,7 @@
       "id": "P49",
       "funcion": "Identidad del motor frente a TCC",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/process/disclaim.ts:8"
-      ],
+      "evidencia": ["src/main/process/disclaim.ts:8"],
       "nota": "Función de macOS.",
       "comprobacion": null
     },
@@ -666,10 +544,7 @@
       "id": "P50",
       "funcion": "Marca «descargado de Internet» en lo que baja el navegador integrado",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/embedded-browser/downloads.ts:81",
-        "src/main/embedded-browser/downloads.ts:104"
-      ],
+      "evidencia": ["src/main/embedded-browser/downloads.ts:81", "src/main/embedded-browser/downloads.ts:104"],
       "nota": "W7: Zone.Identifier en Windows.",
       "comprobacion": null
     },
@@ -677,10 +552,7 @@
       "id": "P51",
       "funcion": "Verificación de firma de ArtCraft",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "src/main/office/craft/craft-install.ts:386",
-        "resources/craft/pin.json:14"
-      ],
+      "evidencia": ["src/main/office/craft/craft-install.ts:386", "resources/craft/pin.json:14"],
       "nota": "Windows solo verifica SHA.",
       "comprobacion": null
     },
@@ -688,10 +560,7 @@
       "id": "P52",
       "funcion": "Terminal integrada",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/pty/shell.ts:5",
-        "src/shared/platform-caps.ts:127"
-      ],
+      "evidencia": ["src/main/pty/shell.ts:5", "src/shared/platform-caps.ts:127"],
       "nota": "pwsh o Windows PowerShell.",
       "comprobacion": {
         "tipo": "cap",
@@ -703,9 +572,7 @@
       "id": "P53",
       "funcion": "Comandos del anfitrión (host-exec)",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/main/host-exec/runner.ts:60"
-      ],
+      "evidencia": ["src/main/host-exec/runner.ts:60"],
       "nota": "powershell.exe en Windows.",
       "comprobacion": null
     },
@@ -726,9 +593,7 @@
       "id": "P55",
       "funcion": "Git y worktrees en Code",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/git/service.ts:71"
-      ],
+      "evidencia": ["src/main/git/service.ts:71"],
       "nota": "Sin medir (C9).",
       "comprobacion": null
     },
@@ -736,9 +601,7 @@
       "id": "P56",
       "funcion": "Crear PR con gh",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/pr/exec.ts:176"
-      ],
+      "evidencia": ["src/main/pr/exec.ts:176"],
       "nota": "Sin medir (C10).",
       "comprobacion": null
     },
@@ -746,10 +609,7 @@
       "id": "P57",
       "funcion": "Diagnóstico: revisa git",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/main/doctor/doctor.ts:108",
-        "src/main/doctor/doctor.ts:110"
-      ],
+      "evidencia": ["src/main/doctor/doctor.ts:108", "src/main/doctor/doctor.ts:110"],
       "nota": "W6.",
       "comprobacion": null
     },
@@ -757,11 +617,7 @@
       "id": "P58",
       "funcion": "Conectores locales del catálogo (Google Workspace, Microsoft 365)",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "resources/catalogo/catalogo.json:450",
-        "resources/catalogo/catalogo.json:571",
-        "src/main/runtimes/service.ts:28"
-      ],
+      "evidencia": ["resources/catalogo/catalogo.json:450", "resources/catalogo/catalogo.json:571", "src/main/runtimes/service.ts:28"],
       "nota": "platforms:[\"darwin\"]; por eso runtimesOffered(\"win32\") es false.",
       "comprobacion": {
         "tipo": "catalogo",
@@ -775,10 +631,7 @@
       "id": "P59",
       "funcion": "Abrir en el editor, mostrar en la carpeta, diálogos",
       "estado": "DIFERENTE A PROPÓSITO",
-      "evidencia": [
-        "src/shared/platform-caps.ts:127",
-        "src/main/util/native-dialog.ts:52"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:127", "src/main/util/native-dialog.ts:52"],
       "nota": "Diálogos de Electron y exe en Program Files.",
       "comprobacion": {
         "tipo": "cap",
@@ -790,9 +643,7 @@
       "id": "P60",
       "funcion": "Rutinas (modo Code)",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/scheduler/file-trigger.ts:72"
-      ],
+      "evidencia": ["src/main/scheduler/file-trigger.ts:72"],
       "nota": "Sin medir (C11).",
       "comprobacion": null
     },
@@ -800,9 +651,7 @@
       "id": "P61",
       "funcion": "«Lo que has creado» (galería)",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/files/gallery.ts:17"
-      ],
+      "evidencia": ["src/main/files/gallery.ts:17"],
       "nota": "Sin medir (C12).",
       "comprobacion": null
     },
@@ -810,9 +659,7 @@
       "id": "P62",
       "funcion": "Navegador integrado (vista nativa)",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/shared/platform-caps.ts:128"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:128"],
       "nota": "Sin medir (C13).",
       "comprobacion": {
         "tipo": "cap",
@@ -824,9 +671,7 @@
       "id": "P63",
       "funcion": "Pegar archivos desde el portapapeles",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/clipboard/paste-files.ts:5"
-      ],
+      "evidencia": ["src/main/clipboard/paste-files.ts:5"],
       "nota": "Sin medir (C14).",
       "comprobacion": null
     },
@@ -834,10 +679,7 @@
       "id": "P64",
       "funcion": "Pruebas unitarias de rutas y reemplazo en Windows",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/documents/preview.test.ts:1",
-        "src/main/documents/input-path.test.ts:1"
-      ],
+      "evidencia": ["src/main/documents/preview.test.ts:1", "src/main/documents/input-path.test.ts:1"],
       "nota": "W5a y W5b corregidas; falta confirmar en el PC.",
       "comprobacion": null
     },
@@ -845,11 +687,7 @@
       "id": "P65",
       "funcion": "Cómo se fabricó el paquete del PC",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "package.json:28",
-        "scripts/check-win-bundle.mjs:7",
-        "scripts/check-win-bundle.mjs:11"
-      ],
+      "evidencia": ["package.json:28", "scripts/check-win-bundle.mjs:7", "scripts/check-win-bundle.mjs:11"],
       "nota": "Pendiente de C2.",
       "comprobacion": null
     },
@@ -857,9 +695,7 @@
       "id": "P66",
       "funcion": "Ronda de release de Windows",
       "estado": "FALTA TRABAJO",
-      "evidencia": [
-        "scripts/release.sh:192"
-      ],
+      "evidencia": ["scripts/release.sh:192"],
       "nota": "Falta W14 (parity-check).",
       "comprobacion": null
     },
@@ -867,9 +703,7 @@
       "id": "P67",
       "funcion": "Comentarios y documentos desactualizados sobre Windows",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/platform-caps.ts:1"
-      ],
+      "evidencia": ["src/shared/platform-caps.ts:1"],
       "nota": "W8 y W3.",
       "comprobacion": null
     },
@@ -877,11 +711,7 @@
       "id": "N01",
       "funcion": "ArtCraft se instala solo en segundo plano (Mac y Windows)",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/preflight.ts:171",
-        "resources/craft/pin.json:29",
-        "resources/craft/pin.json:9"
-      ],
+      "evidencia": ["src/shared/preflight.ts:171", "resources/craft/pin.json:29", "resources/craft/pin.json:9"],
       "nota": "AUTO_INSTALL_IDS incluye craft; el pin trae darwin-arm64 y win32-x64. Posterior al inventario.",
       "comprobacion": null
     },
@@ -910,11 +740,7 @@
       "id": "N03",
       "funcion": "Política de administrador del motor (motor-policy.json)",
       "estado": "IGUAL",
-      "evidencia": [
-        "src/shared/engine-lastmile-env.ts:45",
-        "src/shared/engine-lastmile-env.ts:48",
-        "docs/POLITICA-ORGANIZACION.md:76"
-      ],
+      "evidencia": ["src/shared/engine-lastmile-env.ts:45", "src/shared/engine-lastmile-env.ts:48", "docs/POLITICA-ORGANIZACION.md:76"],
       "nota": "Mac: /Library/Application Support/Lazunox/motor-policy.json. Windows: %ProgramData%\\Lazunox\\motor-policy.json. Solo si existe; sin archivo = sin política. W-A4 (1.8.12). Sin probar en un PC Windows real: ver SEGURIDAD.md.",
       "comprobacion": null
     },
@@ -974,10 +800,7 @@
       "id": "N08",
       "funcion": "Git de la app sin ganchos ni filtros locales por defecto",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/git/safe-git.ts:1",
-        "src/main/git/safe-git.test.ts:1"
-      ],
+      "evidencia": ["src/main/git/safe-git.ts:1", "src/main/git/safe-git.test.ts:1"],
       "nota": "Probado en macOS con un repositorio temporal; falta comprobar Git para Windows, la ruta del dispositivo nulo, el ajuste de ganchos y Git LFS en Windows.",
       "comprobacion": null
     },
@@ -985,11 +808,7 @@
       "id": "N09",
       "funcion": "Red de Tareas: excepciones de red interna y puertos por sitio",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/tasks/proxy.ts:1",
-        "src/main/tasks/proxy.resolved-guard.test.ts:1",
-        "src/main/tasks/proxy-policy.ts:1"
-      ],
+      "evidencia": ["src/main/tasks/proxy.ts:1", "src/main/tasks/proxy.resolved-guard.test.ts:1", "src/main/tasks/proxy-policy.ts:1"],
       "nota": "Probado con DNS simulado en macOS. No se ha comprobado la enumeración de interfaces ni la salida de Tareas por WSL en Windows.",
       "comprobacion": null
     },
@@ -997,10 +816,7 @@
       "id": "N10",
       "funcion": "Ayudantes del proyecto con los permisos efectivos de Tareas",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/tasks/helper-permissions.test.ts:1",
-        "src/main/tasks/inline-config.ts:1"
-      ],
+      "evidencia": ["src/main/tasks/helper-permissions.test.ts:1", "src/main/tasks/inline-config.ts:1"],
       "nota": "Reglas base, conectores, reglas guardadas y carpetas adicionales iguales al agente de Tareas; disallowed_tools solo resta. Pruebas unitarias en Mac; sin ejecución en Windows ni motor real.",
       "comprobacion": null
     },
@@ -1008,10 +824,7 @@
       "id": "N11",
       "funcion": "Vista previa con aperturas identificadas y respaldo a los cinco segundos",
       "estado": "NO VERIFICADO",
-      "evidencia": [
-        "src/main/ipc/tasks-viewer-handlers.race.test.ts:1",
-        "src/main/office/craft/web-view.race.test.ts:1"
-      ],
+      "evidencia": ["src/main/ipc/tasks-viewer-handlers.race.test.ts:1", "src/main/office/craft/web-view.race.test.ts:1"],
       "nota": "Probado en Mac con Electron simulado: cierres antiguos, cambio de tema y plazo agotado. Sin app abierta; wasm, ventana minimizada y Windows pendientes.",
       "comprobacion": null
     },
@@ -1037,6 +850,18 @@
         "src/renderer/src/features/tasks/impl/SandboxDenialNotice.tsx:1"
       ],
       "nota": "NO APLICA en Windows: este lector solo se conecta al backend Seatbelt de macOS. La prueba real de recepción en Mac está NO VERIFICADA dentro del encierro de Codex. No se ofrece este ajuste en Windows; no se cambia WSL.",
+      "comprobacion": null
+    },
+    {
+      "id": "N14",
+      "funcion": "Permiso de borrar en Ficha del proyecto y tarjeta que reinicia y reintenta",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/renderer/src/features/tasks/impl/TasksProjectCard.delete.test.tsx:1",
+        "src/renderer/src/features/tasks/impl/DeletePermissionCard.test.tsx:1",
+        "src/renderer/src/features/tasks/impl/delete-grant-retry.test.ts:1"
+      ],
+      "nota": "DOM y servidor simulados en Mac, incluida la ruta del SDK de WSL. Sin app abierta ni prueba real en Windows; no cambia Landlock ni Seatbelt.",
       "comprobacion": null
     }
   ]

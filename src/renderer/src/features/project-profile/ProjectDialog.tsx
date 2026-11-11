@@ -2,7 +2,7 @@
  * Diálogo «Ficha del proyecto»: nombre, carpetas (la principal y las vinculadas, con «Añadir»), nivel de acceso de la IA y Bóveda de variables
  * (nombres; los valores no vuelven). Las carpetas extra solo existen en Overdrive: quien lo monta pasa `folders`; sin él (Code) se muestra solo la principal.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Folder, FolderPlus, Info, KeyRound, Lock, Plus, X } from 'lucide-react'
 import type { AccessLevel } from '@shared/project-profile'
 import { DialogScrim } from '../../components/Dialog'
@@ -37,13 +37,24 @@ export interface ProjectDialogProps {
   onPickFull?: (full: boolean) => void
   /** Hay una tarea en curso: el acceso no se cambia ahora. */
   busy?: boolean
+  /** Permiso propio de la carpeta de Tareas; Code no lo ofrece. */
+  folderPermission?: ReactNode
   folders?: ProjectFolders
   /** Se llama tras guardar un cambio de nivel (Overdrive relanza el servidor ocioso para que valga ya). */
   onAccessSaved?: () => void
   onClose: () => void
 }
 
-export function ProjectDialog({ folder, full, onPickFull, busy, folders, onAccessSaved, onClose }: ProjectDialogProps): React.JSX.Element {
+export function ProjectDialog({
+  folder,
+  full,
+  onPickFull,
+  busy,
+  folders,
+  folderPermission,
+  onAccessSaved,
+  onClose
+}: ProjectDialogProps): React.JSX.Element {
   const t = useT()
   const profile = useProjectProfile((s) => s.byFolder[folder])
   const { load, setAccess, setName, vaultSet, vaultDelete } = useProjectProfile.getState()
@@ -200,6 +211,7 @@ export function ProjectDialog({ folder, full, onPickFull, busy, folders, onAcces
                 </li>
               ))}
             </ul>
+            {folderPermission && <div className="mt-3">{folderPermission}</div>}
             {pending && (
               <div className="mb-1 rounded-xl border border-accent/50 bg-accent-soft/40 p-3">
                 <div className="truncate font-medium" title={pending.path}>

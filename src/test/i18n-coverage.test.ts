@@ -177,6 +177,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/tasks/impl/Onboarding.tsx',
   'src/renderer/src/features/tasks/impl/PanelSection.tsx',
   'src/renderer/src/features/tasks/impl/PermissionPrompt.tsx',
+  'src/renderer/src/features/tasks/impl/DeletePermissionCard.tsx',
   'src/renderer/src/features/tasks/impl/ProgressPanel.tsx',
   'src/renderer/src/features/tasks/impl/ProjectPanel.tsx',
   'src/renderer/src/features/tasks/impl/QuestionPrompt.tsx',

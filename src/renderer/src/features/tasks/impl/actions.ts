@@ -85,6 +85,7 @@ export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
   useTasks.setState({ deleteGrantBusy: true })
   try {
     const now = await cw('tasks:deleteGrant:set', { folder, allowed })
+    if (useTasks.getState().folder !== folder || useTasks.getState().conn !== conn) throw new Error(t('tasksComputer.delete.changed'))
     useTasks.setState({ deleteGrant: now })
     if (conn && !conn.fullAccess) await connectFolder(folder, false)
   } finally {
@@ -1101,7 +1102,7 @@ function runningRootIds(exceptId?: string): string[] {
 }
 
 /** Cambiar las carpetas del sandbox reinicia su servidor: pide confirmación si hay otras tareas en curso. */
-async function confirmInterruptRunning(exceptId?: string): Promise<boolean> {
+export async function confirmInterruptRunning(exceptId?: string): Promise<boolean> {
   const n = runningRootIds(exceptId).length
   if (n === 0) return true
   return confirmDialog({

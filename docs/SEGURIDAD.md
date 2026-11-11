@@ -2932,3 +2932,27 @@ de que podamos añadir explicaciones al resultado sin atribuirlas a otra tarea c
 
 Origen de la idea (clase A, código propio): monitor y cola de `anthropics/sandbox-runtime` y clasificador de
 `openai/codex`, indicados en la ficha de la tarea. No se han copiado código, listas literales ni prompts.
+
+
+### Permiso de borrar desde la Ficha y la tarjeta (tarea 14)
+
+En Overdrive (modo Tareas), menú ⋯ de la cabecera › Ficha del proyecto › Carpetas, se muestra el interruptor
+«Permitir borrar, mover y renombrar». El panel anterior «Proyecto e instrucciones» también lo conserva.
+Se usa el mismo permiso persistente por carpeta (`tasks:deleteGrant:get/set`): main valida la carpeta aprobada,
+guarda `deleteGrants` en `tasks-folders.json` y reinicia solo su servidor aislado. No cambia el permiso del motor
+ni las restricciones de las carpetas adicionales o de los archivos protegidos.
+
+La tarjeta y su barra fija (escritorio y celular) reconocen órdenes de borrar, mover o renombrar y, sin permiso
+de carpeta, ofrecen activar y reintentar o cancelar. La activación explica que vale para toda la carpeta hasta
+revocarlo y que interrumpe sus tareas en curso; confirma si hay otras tareas trabajando, rechaza la pregunta
+antigua sin `once/always`, aborta la sesión solicitante y la raíz, aplica el permiso real, reconecta, reabre la raíz
+y pide reintentar. Si falla o cambia la carpeta, no envía la continuación. No ejecuta directamente el comando
+ni guarda reglas «siempre» del motor. Control total y permiso ya concedido conservan las aprobaciones habituales.
+
+El reconocimiento del comando es orientativo (shell, órdenes habituales de Python/Node y PowerShell), no un
+analizador universal ni un control de seguridad: puede no reconocer un script indirecto o detectar palabras en
+un texto. El aislamiento sigue decidiendo qué operación y ruta se permite. La tarjeta explica que el permiso
+solo amplía la principal y no garantiza acceso a rutas protegidas ni carpetas adicionales.
+El agente recibe dos líneas propias en `resources/opencode/agents/tasks.md` sobre «Operation not permitted»,
+no reintentar ni inventar ajustes, y la ruta real de la Ficha (traducida en el contexto del idioma inglés).
+Son instrucciones generales; no se atribuyen al modelo eventos del monitor ni se cambian sus resultados.
