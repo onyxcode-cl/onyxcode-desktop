@@ -60,6 +60,25 @@ export interface InlineConfigInput {
   modelFallback?: unknown
   /** Ids (nunca claves) de servicios con credencial utilizable en el sandbox. Solo se usa con `modelFallback` y sin Control total. */
   credentialProviderIds?: readonly string[]
+  /**
+   * H5: texto de la carpeta que se sigue dando al motor con jaula, que corre con `OPENCODE_DISABLE_PROJECT_CONFIG=1` (`project-code.ts`).
+   * Solo sandbox. Ausente = igual que siempre.
+   */
+  projectText?: { instructionFile: string; skillDirs: string[] }
+}
+
+/** H5: instrucciones y skills de la carpeta por ruta absoluta, y LSP/formateadores apagados (solo sandbox). */
+function projectTextBlock(i: InlineConfigInput, instr: string[]): Record<string, unknown> {
+  if (i.fullAccess || !i.projectText) return instr.length ? { instructions: instr } : {}
+  const map = (p: string): string => (i.toSandbox ? i.toSandbox(p) : p)
+  const prevSkills = (i.skills as { skills?: { paths?: unknown } }).skills?.paths
+  const prevPaths = Array.isArray(prevSkills) ? prevSkills.filter((p): p is string => typeof p === 'string') : []
+  return {
+    instructions: [map(i.projectText.instructionFile), ...instr],
+    skills: { paths: [...prevPaths, ...i.projectText.skillDirs.map(map)] },
+    lsp: false,
+    formatter: false
+  }
 }
 
 /** Bloque `respaldo` de Tareas, o `{}` si no hay nada que escribir. */
@@ -153,5 +172,5 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     ? { agent: { [TASKS_AGENT_ID]: { permission: i.rulesPermission }, [COMPUTER_AGENT_ID]: { permission: i.rulesPermission } } }
     : {}
   const instr = !i.fullAccess && i.instructions?.length ? i.instructions.map((p) => (i.toSandbox ? i.toSandbox(p) : p)) : []
-  return deepMerge(base, mcpBlock, rulesBlock, i.skills, instr.length ? { instructions: instr } : {}, fallbackBlock(i))
+  return deepMerge(base, mcpBlock, rulesBlock, i.skills, projectTextBlock(i, instr), fallbackBlock(i))
 }
