@@ -969,6 +969,17 @@
       ],
       "nota": "Bloqueados por ejecutable, AUMID y nombre: cmd, powershell, pwsh, Windows Terminal (wt, WindowsTerminal), wscript, cscript, mshta, regedit, mmc, control, SystemSettings, taskmgr y explorer (también su «Ejecutar»). Cubierto por pruebas unitarias; no probado en una app armada en Windows (ruta real del ejecutable, AUMID de Configuración y del Terminal).",
       "comprobacion": null
+    },
+    {
+      "id": "N08",
+      "funcion": "Ayudantes del proyecto con los permisos efectivos de Tareas",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/helper-permissions.test.ts:1",
+        "src/main/tasks/inline-config.ts:1"
+      ],
+      "nota": "Reglas base, conectores, reglas guardadas y carpetas adicionales iguales al agente de Tareas; disallowed_tools solo resta. Pruebas unitarias en Mac; sin ejecución en Windows ni motor real.",
+      "comprobacion": null
     }
   ]
 }
