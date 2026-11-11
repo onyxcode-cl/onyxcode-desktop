@@ -402,6 +402,8 @@ export const mainErrors = {
   'merr.task.noPrivateDir': 'The internal folder where tasks keep their work is missing. Restart the app.',
   'merr.task.privateDirUnsafe':
     'For your safety the task didn’t start: the internal folder where it keeps its work was replaced by a shortcut (link) to another place. Let us know so we can check it.',
+  'merr.task.linkInFolder':
+    'Couldn’t save in the task folder: “{path}” is (or goes through) a shortcut (link) to another place. Delete it and try again.',
   'merr.task.winBackendUnavailable':
     'Overdrive on Windows isn’t available on this computer ({reason}). For safety it never runs without isolation.',
   'merr.task.winBackendUnavailable.elevated':

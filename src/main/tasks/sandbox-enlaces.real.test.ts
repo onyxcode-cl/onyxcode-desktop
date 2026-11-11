@@ -23,6 +23,7 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
+  utimesSync,
   writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -35,6 +36,7 @@ vi.mock('electron', () => ({ app: { getPath: () => state.userData } }))
 
 import { t } from '@shared/i18n'
 import { seatbeltBackend } from './backends/seatbelt'
+import { seedModelsCache } from './models-cache'
 import { getMemory, saveMemory } from './projects'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv } from './sandbox-profile'
 
@@ -174,6 +176,45 @@ echo fin`,
         t('merr.task.privateDirUnsafe')
       )
       expect(readdirSync(otherTarget)).toEqual([])
+    })
+  })
+
+  describe('2. sembrado del proceso principal con enlaces dentro de la carpeta privada', () => {
+    it('models.json y bin como enlaces: no se sobrescribe el archivo del usuario ni aparece rg en la carpeta elegida', () => {
+      const victim = join(fuera, 'importante.txt')
+      const victimDir = join(fuera, 'carpeta-elegida')
+      writeFileSync(victim, 'DOCUMENTO IMPORTANTE\n')
+      mkdirSync(victimDir, { recursive: true })
+      const old = new Date(Date.now() - 30 * 86_400_000)
+      utimesSync(victim, old, old)
+      const out = inside(
+        `cd "$P/cache" && rm -rf opencode && mkdir opencode && ln -s "${victim}" opencode/models.json && ln -s "${victimDir}" opencode/bin && echo LINKS-OK
+cat "${victim}" 2>&1 | head -1
+echo x > "${victimDir}/desde-dentro" 2>/dev/null && echo ESCRIBE-FUERA`
+      )
+      expect(out).toContain('LINKS-OK') // los enlaces se crean desde dentro
+      expect(out).not.toContain('DOCUMENTO IMPORTANTE') // y su destino no se lee desde dentro
+      expect(out).not.toContain('ESCRIBE-FUERA')
+      // Arranque normal: `prepare` (que siembra) y luego `launch` vuelve a sembrar; aquí se llama al sembrado tal cual.
+      seatbeltBackend.prepare!({ privateDir, userData })
+      seedModelsCache(join(privateDir, 'cache'))
+      expect(readFileSync(victim, 'utf8')).toBe('DOCUMENTO IMPORTANTE\n')
+      expect(readdirSync(victimDir)).toEqual([])
+      // El sembrado quedó bien hecho, en archivos y carpetas reales dentro de la carpeta privada.
+      const oc = join(privateDir, 'cache', 'opencode')
+      expect(lstatSync(join(oc, 'models.json')).isSymbolicLink()).toBe(false)
+      expect(readFileSync(join(oc, 'models.json'), 'utf8')).toBe('{"catalogo":true}')
+      expect(isRealDir(join(oc, 'bin'))).toBe(true)
+      expect(lstatSync(join(oc, 'bin', 'rg')).mode & 0o111).not.toBe(0)
+    })
+
+    it('rg como enlace a un archivo de fuera: no se sobrescribe ese archivo', () => {
+      const victim = join(fuera, 'otro.txt')
+      writeFileSync(victim, 'NO TOCAR\n')
+      const out = inside(`rm -f "$P/cache/opencode/bin/rg" && ln -s "${victim}" "$P/cache/opencode/bin/rg" && echo LINK-OK`)
+      expect(out).toContain('LINK-OK')
+      seedModelsCache(join(privateDir, 'cache'))
+      expect(readFileSync(victim, 'utf8')).toBe('NO TOCAR\n')
     })
   })
 

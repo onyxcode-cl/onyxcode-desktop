@@ -100,7 +100,7 @@ import { onlyExperimentalEngineEnv, toolSearchEnvForTasks } from '@shared/engine
 import { onlyEngineLimitEnv } from '@shared/engine-limits'
 import { onlyPermissionPersistEnv } from '@shared/permission-persist'
 import { userHooksEnvForTasksServer } from '@shared/user-hooks'
-import { ensurePermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
+import { ensureSandboxPermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
 import { sandboxCredentialIds } from './sandbox-credentials'
@@ -1578,7 +1578,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       const seatbeltIso = fullAccess || this.platform === 'win32' ? undefined : privateIso
       if (seatbeltIso) ensureTaskPrivateDir(seatbeltIso)
       const permDirOverride = fullAccess ? undefined : seatbeltIso ? sandboxPermissionDir(seatbeltIso.privateDir) : null
-      if (permDirOverride && this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1') ensurePermissionDir(permDirOverride)
+      // Sin seguir enlaces: vive en la carpeta privada, que la tarea controla (1.8.18).
+      if (seatbeltIso && this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1') ensureSandboxPermissionDir(seatbeltIso.privateDir)
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,

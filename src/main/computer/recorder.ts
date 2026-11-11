@@ -17,11 +17,12 @@
 import { t } from '@shared/i18n'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { join } from 'node:path'
 import { runHelper } from '../util/exec'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
+import { ensureRealDir, LinkRefusedError, writeFileNoFollow } from '../tasks/no-follow'
 import { EventEmitter } from 'node:events'
 import { APP_ID } from '@shared/brand'
 import type { RecordedStep, SkillRecording, SkillRecordingState } from '@shared/ipc-tasks'
@@ -190,12 +191,19 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     // Migra la carpeta de trabajo heredada a `.lazunox/trabajo/` antes de escribir.
     migrateFolderScratch(root, (m, e) => console.warn('[computer]', m, e ?? ''))
     const relDir = join('.lazunox', 'trabajo', 'grabaciones', id)
-    const destDir = join(root, relDir)
-    mkdirSync(destDir, { recursive: true })
+    // La carpeta de trabajo la controla la tarea (1.8.18): ningún tramo puede ser un enlace y cada captura se escribe sin seguir enlaces
+    // (`O_NOFOLLOW` + `O_EXCL`); si algo no cuadra, se lanza y no se escribe nada fuera.
+    let destDir: string
+    try {
+      destDir = ensureRealDir(root, join(root, relDir), { create: true })
+    } catch (e) {
+      if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: relDir }))
+      throw e
+    }
     for (const shot of rec.shots) {
       try {
         const from = join(srcDir, shot)
-        if (existsSync(from)) copyFileSync(from, join(destDir, shot))
+        if (existsSync(from)) writeFileNoFollow(join(destDir, shot), readFileSync(from), { exclusive: true })
       } catch (err) {
         console.error('[computer] copiando captura de la grabación:', err)
       }

@@ -410,6 +410,8 @@ export const mainErrors = {
   'merr.task.noPrivateDir': 'Falta la carpeta interna donde las tareas guardan su trabajo. Reinicia la app.',
   'merr.task.privateDirUnsafe':
     'Por seguridad no se inició la tarea: la carpeta interna donde guarda su trabajo fue cambiada por un acceso directo (enlace) a otro lugar. Avísanos para revisarlo.',
+  'merr.task.linkInFolder':
+    'No se pudo guardar en la carpeta de la tarea: «{path}» es (o pasa por) un acceso directo (enlace) a otro lugar. Bórralo y vuelve a intentarlo.',
   'merr.task.winBackendUnavailable':
     'Overdrive en Windows no está disponible en este equipo ({reason}). Por seguridad no se ejecuta sin aislamiento.',
   'merr.task.winBackendUnavailable.elevated':

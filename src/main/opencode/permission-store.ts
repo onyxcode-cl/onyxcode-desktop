@@ -7,6 +7,7 @@ import { app } from 'electron'
 import { chmodSync, lstatSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { PERMISSION_DIR_NAME } from '@shared/permission-persist'
+import { chmodDirNoFollow, ensureRealDir, isRealDir } from '../tasks/no-follow'
 
 /** Carpeta de guardado general (sidecar principal y servidores de Tareas sin aislamiento). */
 export function permissionDir(userData: string = app.getPath('userData')): string {
@@ -23,6 +24,19 @@ export function ensurePermissionDir(dir: string = permissionDir()): void {
     chmodSync(dir, 0o700)
   } catch (err) {
     console.error('[permisos] no se pudo preparar la carpeta de permisos guardados:', err)
+  }
+}
+
+/**
+ * Lo mismo para la carpeta de un servidor de Tareas aislado, que vive dentro de su carpeta privada (que la tarea controla) (1.8.18): sin
+ * seguir enlaces. Si `permisos-siempre` es un enlace (o un archivo), se borra ESE nombre y se crea una carpeta real; el modo se fija con
+ * `fchmod`. Mejor esfuerzo: nunca lanza.
+ */
+export function ensureSandboxPermissionDir(privateDir: string): void {
+  try {
+    chmodDirNoFollow(ensureRealDir(privateDir, sandboxPermissionDir(privateDir), { create: true, replace: true, mode: 0o700 }), 0o700)
+  } catch (err) {
+    console.error('[permisos] no se pudo preparar la carpeta de permisos guardados de la tarea:', err)
   }
 }
 
@@ -58,6 +72,11 @@ export function forgetSavedPermissions(userData: string = app.getPath('userData'
   } catch {
     // sin servidores aislados todavía
   }
-  for (const k of keys) removed += emptyDir(sandboxPermissionDir(join(sandboxes, k)))
+  for (const k of keys) {
+    // Carpeta privada y `permisos-siempre` controladas por la tarea: si alguna es un enlace, NO se sigue (vaciaría su destino).
+    const priv = join(sandboxes, k)
+    if (!isRealDir(priv) || !isRealDir(sandboxPermissionDir(priv))) continue
+    removed += emptyDir(sandboxPermissionDir(priv))
+  }
   return removed
 }

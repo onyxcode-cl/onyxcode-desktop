@@ -5,7 +5,17 @@
  */
 import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
-import { copyFileSync, existsSync, openSync, readSync, closeSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import {
+  constants as fsConstants,
+  copyFileSync,
+  lstatSync,
+  openSync,
+  readSync,
+  closeSync,
+  readFileSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
 import JSZip from 'jszip'
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
@@ -51,14 +61,24 @@ const IMAGE_MIME: Record<string, string> = {
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 const DEFAULT_TEXT_BYTES = 256 * 1024
 
+/** ¿Hay algo con ese nombre? Con `lstat`: un enlace roto también cuenta (con `existsSync` se copiaba a través de él, 1.8.18). */
+function taken(p: string): boolean {
+  try {
+    lstatSync(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Nombre libre en `dir` para `name` ("informe.pdf" → "informe (2).pdf"). */
 function freeName(dir: string, name: string): string {
-  if (!existsSync(join(dir, name))) return name
+  if (!taken(join(dir, name))) return name
   const ext = extname(name)
   const stem = name.slice(0, name.length - ext.length)
   for (let i = 2; i < 1000; i++) {
     const candidate = `${stem} (${i})${ext}`
-    if (!existsSync(join(dir, candidate))) return candidate
+    if (!taken(join(dir, candidate))) return candidate
   }
   return `${stem}-${Date.now()}${ext}`
 }
@@ -80,7 +100,8 @@ export function importFilesInto(folder: string, sources: string[]): TasksDeliver
       out.push({ path: src, relPath: relative(folder, src), size: st.size, mtime: st.mtimeMs })
       continue
     }
-    copyFileSync(src, dest)
+    // `COPYFILE_EXCL`: falla si aparece cualquier cosa con ese nombre (enlace incluido) entre la elección y la copia; nunca se sigue.
+    copyFileSync(src, dest, fsConstants.COPYFILE_EXCL)
     const dst = statSync(dest)
     out.push({ path: dest, relPath: relative(folder, dest), size: dst.size, mtime: dst.mtimeMs })
   }
@@ -92,7 +113,7 @@ export function importFilesInto(folder: string, sources: string[]): TasksDeliver
  */
 export function freePathWithSuffix(dir: string, stem: string, ext: string): string {
   let candidate = join(dir, `${stem}${ext}`)
-  for (let i = 1; existsSync(candidate) && i < 10_000; i++) candidate = join(dir, `${stem}-${i}${ext}`)
+  for (let i = 1; taken(candidate) && i < 10_000; i++) candidate = join(dir, `${stem}-${i}${ext}`)
   return candidate
 }
 
@@ -143,7 +164,10 @@ export function docxXmlToText(xml: string): string {
     else if (m[0].startsWith('<w:tab')) out.push('\t')
     else out.push('\n')
   }
-  return out.join('').replace(/\n{3,}/g, '\n\n').trim()
+  return out
+    .join('')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 /** Lee un .docx con jszip (sin shell): rechaza zips enormes o con bomba de descompresión y corta por tiempo. */

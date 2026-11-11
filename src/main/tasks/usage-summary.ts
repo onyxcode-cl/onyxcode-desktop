@@ -17,7 +17,7 @@
  * En Windows el servidor vive dentro de WSL (su base de datos está en el disco virtual de la distro): ahí `supported` es `false`.
  */
 import { createRequire } from 'node:module'
-import { lstatSync } from 'node:fs'
+import { lstatSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TasksUsageSession, TasksUsageSummary } from '@shared/ipc-tasks'
 
@@ -84,7 +84,11 @@ function dbFile(env: TasksUsageEnv, folder: string): string | null {
   const file = join(env.userData, 'tasks-sandbox', env.sandboxKey(folder), 'data', 'opencode', 'opencode.db')
   try {
     const st = lstatSync(file)
-    return st.isFile() && !st.isSymbolicLink() ? file : null
+    if (!st.isFile() || st.isSymbolicLink()) return null
+    // Los tramos intermedios (`<clave>`, `data`, `opencode`) los controla la tarea: la ruta real tiene que ser la esperada (1.8.18), si no,
+    // se abriría la base de datos a la que apunte un enlace.
+    const expected = join(realpathSync(env.userData), 'tasks-sandbox', env.sandboxKey(folder), 'data', 'opencode', 'opencode.db')
+    return realpathSync(file) === expected ? file : null
   } catch {
     return null
   }

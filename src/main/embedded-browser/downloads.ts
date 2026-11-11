@@ -10,14 +10,15 @@
  * - Destinos: Tareas → `<carpeta>/.lazunox/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
  */
 import { execFile } from 'node:child_process'
-import { existsSync, mkdirSync } from 'node:fs'
+import { constants as fsc, copyFileSync, lstatSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
-import { dialog, type DownloadItem, type WebContents } from 'electron'
+import { basename, dirname, join } from 'node:path'
+import { app, dialog, type DownloadItem, type WebContents } from 'electron'
 import { INTERNAL_NAME } from '@shared/brand'
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
+import { ensureRealDir } from '../tasks/no-follow'
 import { hostOf, siteOf } from './sites'
 import { requestApproval } from './approvals'
 import { tabByWebContents } from './surface'
@@ -49,15 +50,25 @@ function sanitizeFileName(name: string): string {
   return base || 'descarga'
 }
 
+/** ¿Hay algo con ese nombre? Con `lstat`: un enlace roto también cuenta (con `existsSync` se escribía a través de él). */
+function taken(p: string): boolean {
+  try {
+    lstatSync(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function uniquePath(dir: string, name: string): string {
   let candidate = join(dir, name)
-  if (!existsSync(candidate)) return candidate
+  if (!taken(candidate)) return candidate
   const dot = name.lastIndexOf('.')
   const stem = dot > 0 ? name.slice(0, dot) : name
   const ext = dot > 0 ? name.slice(dot) : ''
   for (let i = 2; i < 1000; i++) {
     candidate = join(dir, `${stem} (${i})${ext}`)
-    if (!existsSync(candidate)) return candidate
+    if (!taken(candidate)) return candidate
   }
   return join(dir, `${stem}-${Date.now()}${ext}`)
 }
@@ -111,6 +122,46 @@ function ownerOf(wc: WebContents): BrowserOwner | null {
   return tabByWebContents(wc)?.owner ?? null
 }
 
+/**
+ * Descargas a la carpeta de una TAREA (1.8.18): la tarea controla `<carpeta>/.lazunox/trabajo/descargas` desde dentro del encierro y
+ * podía dejar ahí enlaces (la carpeta entera, el nombre del archivo o el temporal `<nombre>.crdownload` que usa Chromium) hacia, por
+ * ejemplo, `~/Library/LaunchAgents`: el proceso principal escribía la descarga a través del enlace, fuera del encierro. Ahora Chromium
+ * descarga en una carpeta de `userData` (ilegible e inescribible desde dentro) y al terminar el archivo se mueve a la carpeta de la tarea
+ * con la ruta comprobada tramo a tramo (sin enlaces) y con un nombre libre (`rename`, que nunca sigue un enlace en el destino).
+ */
+export function stagingDirForTaskDownload(userData: string): string {
+  const base = join(userData, 'descargas-pendientes')
+  mkdirSync(base, { recursive: true, mode: 0o700 })
+  return mkdtempSync(join(base, 'd-'))
+}
+
+/** Mueve la descarga terminada a la carpeta de descargas de la tarea sin seguir enlaces. Devuelve la ruta final, o null si no se pudo. */
+export function moveDownloadIntoTaskFolder(staged: string, folder: string, dir: string, name: string): string | null {
+  try {
+    ensureRealDir(folder, dir, { create: true })
+    for (let i = 0; i < 20; i++) {
+      const final = uniquePath(dir, name)
+      try {
+        renameSync(staged, final)
+        return final
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code
+        if (code === 'EXDEV') {
+          // Otro volumen: copia exclusiva (`O_EXCL`: falla si hay cualquier cosa con ese nombre, enlace incluido).
+          copyFileSync(staged, final, fsc.COPYFILE_EXCL)
+          rmSync(staged, { force: true })
+          return final
+        }
+        if (code !== 'EEXIST' && code !== 'EISDIR' && code !== 'ENOTEMPTY') throw err
+      }
+    }
+    return null
+  } catch (err) {
+    console.warn('[embedded-browser] no se pudo dejar la descarga en la carpeta de la tarea (¿hay un enlace en el camino?):', err)
+    return null
+  }
+}
+
 export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc: WebContents): void {
   const owner = ownerOf(wc)
   if (!owner || !deps) {
@@ -122,8 +173,15 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
   // Migra la carpeta de trabajo heredada a `.lazunox/trabajo/` antes de escribir.
   if (owner.kind === 'tasks') migrateFolderScratch(owner.folder, (m, e) => console.warn('[embedded-browser]', m, e ?? ''))
   try {
-    mkdirSync(dir, { recursive: true })
+    if (owner.kind === 'tasks') ensureRealDir(owner.folder, dir, { create: true })
+    else mkdirSync(dir, { recursive: true })
   } catch (err) {
+    if (owner.kind === 'tasks') {
+      // Un enlace (u otra cosa) en `.lazunox/trabajo/descargas`: no se descarga ahí ni a través de él.
+      console.warn('[embedded-browser] la carpeta de descargas de la tarea no es una carpeta normal: descarga cancelada', err)
+      event.preventDefault()
+      return
+    }
     console.error('[embedded-browser] no se pudo crear la carpeta de descargas:', err)
   }
   const fileName = sanitizeFileName(item.getFilename())
@@ -135,12 +193,23 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
       item.cancel()
       return
     }
-    item.setSavePath(savePath)
+    // Tareas, destino dentro de su carpeta de descargas: Chromium escribe en una carpeta de la app y luego se mueve (ver arriba).
+    const staged =
+      owner.kind === 'tasks' && dirname(savePath) === dir
+        ? join(stagingDirForTaskDownload(app.getPath('userData')), basename(savePath))
+        : null
+    item.setSavePath(staged ?? savePath)
     item.resume()
     item.once('done', (_e, state) => {
-      if (state !== 'completed') return
-      if (attribution.agent) applyQuarantine(item.getSavePath())
-      void applyZoneIdentifier(item.getSavePath(), item.getURL())
+      let finalPath: string | null = item.getSavePath()
+      if (staged) {
+        finalPath =
+          state === 'completed' && owner.kind === 'tasks' ? moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath)) : null
+        rmSync(dirname(staged), { recursive: true, force: true })
+      }
+      if (state !== 'completed' || !finalPath) return
+      if (attribution.agent) applyQuarantine(finalPath)
+      void applyZoneIdentifier(finalPath, item.getURL())
     })
   }
 
