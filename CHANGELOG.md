@@ -24,7 +24,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Otros arreglos
 
-- **La vista previa de un documento recién creado ya no queda en blanco**: si la vista tarda más de cinco segundos, se muestra el visor clásico.
+- **En Mac, la vista previa de un documento recién creado ya no queda en blanco.** En Windows todavía puede quedar en blanco (ver más abajo).
 - **Un comando ya no pierde su salida ni entrega un resultado vacío** cuando termina muy rápido, y las órdenes directas con `$(…)` vuelven a funcionar.
 - **Al resumir una conversación larga, el motor trata como datos las instrucciones que vengan dentro de archivos o páginas**, en vez de arrastrarlas al resumen como órdenes.
 - **El modelo repasa lo pedido antes de dar un trabajo por terminado** y dice qué comprobó y qué no.
@@ -36,7 +36,9 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Lo que todavía no está cerrado
 
-- **Nada de esta versión se ha comprobado todavía en Windows con la app abierta**; se actualizará con las pruebas a mano.
+- **En Windows, la vista previa de un documento puede seguir en blanco** al pulsar «Ver»: el documento se crea bien y la miniatura del chat se ve, pero el panel no lo muestra. No encontramos la causa todavía.
+- **Cuando una tarea aislada no tiene permiso para borrar, «Permitir una vez» no alcanza**: el aislamiento lo impide igual y hay que activar el permiso de borrar, mover y renombrar de la carpeta. El aviso que lo explique bien está en preparación.
+- **Probado a mano en Mac y en Windows:** que los complementos de la carpeta no se ejecutan (con un control que confirma que la prueba detecta el problema), los ayudantes, que los comandos no pierden su salida, la guardia de direcciones y pedidos escritos como los escribiría una persona. **No se probó:** el git de la app desde Código, los avisos del sistema en Windows, el celular, Telegram ni la actualización automática a esta versión.
 - **Algunos conectores siguen protegidos solo por la pregunta del motor:** los remotos que el motor contacta directo (públicos o con inicio de sesión propio) y los conectores locales.
 - **Un conector marcado «permitir» no se revisa mensaje por mensaje.**
 - **El control de apps del Mac y el navegador integrado desde una tarea** tienen barreras propias, pero todavía no una aprobación por cada acción.
