@@ -13,6 +13,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **En Tareas con aislamiento, el motor ya no carga programas que vengan de la carpeta de la tarea**: complementos, herramientas, conectores locales y formateadores. Los ayudantes y los comandos de texto del proyecto siguen funcionando, pero ya no pueden darse permisos.
 - **Los «permitir siempre» de Tareas ahora los guarda la app**, fuera del alcance de la tarea. Antes quedaban donde un programa de la tarea podía cambiarlos. Un «siempre» dado en una tarea aislada no vale cuando abres esa carpeta en «Control total».
 - **Carpeta extra de solo lectura dentro de la carpeta de la tarea:** ya no se pueden sacar archivos de ella.
+- **En Mac, desde una tarea ya no se puede cambiar la configuración interna del motor, ni crear o cambiar los ganchos de git de un repositorio, ni usar Docker y programas parecidos.** Así un programa de la tarea no puede dejar algo preparado para que se ejecute después.
 - **Desde una tarea aislada ya no se pueden controlar** Ajustes del Sistema, el editor de scripts, las terminales, Automator, Atajos, el Finder ni los avisos del sistema (en Windows: la consola, PowerShell, Windows Terminal, el Editor del Registro, el Panel de control, Configuración, el Administrador de tareas y el Explorador).
 
 ### Cambios que puedes notar
@@ -23,6 +24,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **En una rutina programada, sin nadie mirando, un comando fuera del aislamiento o un conector «preguntar cada vez» se rechaza al momento** y queda anotado en el resultado de la rutina. La aprobación automática no los aprueba nunca.
 - **«Permitir mientras esta carpeta siga abierta»** en la tarjeta de un conector vale para esa herramienta, con cualquier dato, en todas las conversaciones de la carpeta, hasta que se detiene su tarea.
 - **Un conector «preguntar cada vez» que use el formato antiguo de conexión (SSE) deja de funcionar en Tareas aisladas**: usa su dirección nueva o quita «preguntar».
+- **Dentro de una tarea en Mac, instalar ganchos de git falla** y un repositorio nuevo no trae los ganchos de ejemplo. Crear repositorios, guardar cambios y clonar siguen funcionando.
 - **Un comando del proyecto que contenga `` !` `` ya no aparece**, aunque no esté cerrado.
 - **Un «siempre» respondido desde el celular en una tarea aislada dura hasta que se detiene la tarea.**
 - **En Tareas con aislamiento dejan de cargarse** los complementos, herramientas, conectores locales y formateadores del proyecto, las reglas por ruta y las instrucciones de carpetas superiores. Un ayudante del proyecto usa el modelo y los permisos de la tarea. En «Control total» nada cambia.
@@ -38,6 +40,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Lo que todavía no está cerrado
 
+- **La configuración de un repositorio de git todavía se puede cambiar desde una tarea** (bloquearla rompe git). Si después abres esa carpeta en Código y guardas cambios desde la app, git podría ejecutar algo que la tarea dejó preparado. Se corrige en la próxima versión.
 - **Algunos conectores siguen protegidos solo por la pregunta del motor:** los remotos que el motor contacta directo (públicos o con inicio de sesión propio) y los conectores locales.
 - **El control de apps del Mac y el navegador integrado desde una tarea** tienen barreras propias, pero todavía no una aprobación por cada acción.
 - **Un programa de una tarea puede seguir vivo después de cerrarla.**
