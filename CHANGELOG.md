@@ -4,6 +4,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.18] - 2026-11-11
+
+### Corrección de seguridad en Tareas en Mac
+
+- **Qué pasaba.** En Mac, un programa ejecutado dentro de una tarea podía dejar «accesos directos» (enlaces) en carpetas que la app usa, y lograr que la propia app escribiera, borrara o leyera fuera de la carpeta de la tarea. Había varias maneras: reemplazando la carpeta privada de la tarea para que, al abrirla de nuevo, tuviera permiso sobre otra carpeta; haciendo que la app copiara archivos encima de un archivo tuyo; o haciendo que guardar las instrucciones, la memoria, una guía aprobada, un archivo importado, una descarga o una restauración terminara en otro lugar. Como en los casos anteriores, el modelo tenía que ejecutar ese código dentro de una tarea (por ejemplo, engañado por instrucciones escondidas en un archivo o en una página). Estaba así desde antes de esta versión. No tenemos señales de que se haya usado; lo encontramos nosotros al revisar.
+- **Qué cambia.** La app ya no escribe a través de accesos directos en las carpetas de una tarea: lo comprueba antes y después de escribir. Una tarea ya no puede mover ni borrar las carpetas propias de la app dentro de su carpeta. La app dejó de copiar el catálogo de modelos y el programa de búsqueda a la carpeta privada de cada tarea; ahora se entregan en solo lectura. Y si una carpeta privada quedó como acceso directo, se reemplaza por una carpeta real al abrir la tarea.
+- **Cambios que puedes notar.** Si borras la carpeta `.lazunox/trabajo` desde una tarea, ahora se vacía su contenido pero la carpeta ya no se elimina. Si una carpeta de proyecto es de solo lectura, la tarea abre igual, pero guardar memoria, descargas o grabaciones ahí avisa que no se puede escribir.
+- **A quién afecta.** El fallo era de Mac. En Windows cambia por dentro la forma de guardar la memoria y de dejar las descargas en la carpeta; eso se actualizará con el resultado de las pruebas a mano.
+
+### Lo que todavía no está cerrado
+
+- **Un programa de una tarea puede seguir vivo después de cerrarla** y seguir escribiendo dentro de su propia carpeta, incluso dejando instrucciones o permisos para la tarea siguiente. Cerrarlo de verdad necesita una pieza nueva.
+- **No se hizo una prueba con un programa atacando en vivo contra este arreglo.** Se comprobó leyendo el código, con pruebas simuladas y con una medición de más de 900.000 escrituras concurrentes, sin que el contenido saliera de su carpeta.
+- **Quedan carreras muy estrechas** en carpetas no protegidas (ayudantes y guías del proyecto) y en borrados.
+- **No se probó en unidades de red.**
+- **El encierro de Tareas sigue funcionando con una lista de cosas prohibidas.** Su reemplazo por uno que prohíbe todo y permite solo una lista está en construcción.
+- **Los pendientes de la 1.8.17 siguen igual.**
+
 ## [1.8.17] - 2026-11-10
 
 ### Arreglos
