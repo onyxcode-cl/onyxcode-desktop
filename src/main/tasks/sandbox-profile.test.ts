@@ -106,6 +106,13 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     expect(out).not.toContain(`(deny file-write* (subpath "${ro}"))`)
   })
 
+  it('config privada del motor: solo lectura, última regla, con file-write-unlink nombrado (gana a cualquier allow concreto)', () => {
+    for (const allowDelete of [false, true]) {
+      const lines = buildSandboxProfile({ ...base, allowDelete }).trim().split('\n')
+      expect(lines.at(-1)).toBe(`(deny file-write* file-write-unlink (subpath "${base.privateDir}/config/opencode"))`)
+    }
+  })
+
   it('sin userData: no hay bloque de userData', () => {
     const out = buildSandboxProfile({ folder: base.folder, privateDir: base.privateDir, home: HOME })
     expect(out).toMatchSnapshot()

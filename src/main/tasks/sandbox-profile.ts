@@ -58,6 +58,9 @@ export interface SandboxDirs {
   tmp: string
 }
 
+/** Carpeta de la config global del motor dentro de `XDG_CONFIG_HOME` (`<privada>/config/opencode`). */
+export const ENGINE_CONFIG_DIR_NAME = 'opencode'
+
 /** Subcarpetas fijas de la carpeta privada (las crea el proceso principal; el perfil niega borrarlas o renombrarlas). */
 export const PRIVATE_SUBDIRS = ['config', 'data', 'cache', 'state', 'tmp'] as const
 
@@ -557,6 +560,17 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   lines.push(
     ';; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).',
     `(deny file-write-unlink ${[...new Set(fixed)].map((p) => `(literal ${sbString(p)})`).join(' ')})`,
+    ''
+  )
+  // Config global privada del motor (`<privada>/config/opencode`, su `XDG_CONFIG_HOME/opencode`): SOLO LECTURA desde dentro (1.8.19).
+  // El motor vuelve a leer de ahí complementos, herramientas, comandos, agentes y `opencode.json` en cada instancia nueva; la cuarentena
+  // de `project-code.ts` los aparta antes de cada arranque, pero un proceso de la tarea vivo podía dejarlos para la SIGUIENTE instancia del
+  // mismo arranque. Probado con el motor publicado: con esta carpeta de solo lectura arranca, crea sesiones y corre órdenes; lo único que
+  // escribe ahí es su `.gitignore`, y solo si falta (lo deja `quarantineEngineUserConfig`). `file-write-unlink` va nombrado aparte: en
+  // SBPL una regla de operación concreta gana a una con comodín sin importar el orden.
+  lines.push(
+    ';; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).',
+    `(deny file-write* file-write-unlink (subpath ${sbString(join(priv, 'config', ENGINE_CONFIG_DIR_NAME))}))`,
     ''
   )
   return lines.join('\n')

@@ -27,7 +27,7 @@
  */
 import { existsSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { ensureRealDir } from './no-follow'
+import { ensureRealDir, writeFileNoFollow } from './no-follow'
 import { readProjectHelpers } from './project-helpers'
 
 /** Variables que apagan la config del proyecto en el motor con jaula. Control total: ninguna. */
@@ -89,6 +89,8 @@ export function sandboxProjectText(
 /** Cuántas cuarentenas se guardan (las más nuevas). */
 export const QUARANTINE_KEEP = 3
 /** Lo que el propio motor escribe en su config global al arrancar (`config/config.ts:310-327, 484-492`). No es código que cargue. */
+/** El `.gitignore` que el motor escribe en cada carpeta de config (motor lazunox.17; sin salto final). */
+export const ENGINE_GITIGNORE = ['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'].join('\n')
 const ENGINE_OWN = new Set(['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'])
 
 /**
@@ -97,7 +99,11 @@ const ENGINE_OWN = new Set(['node_modules', 'package.json', 'package-lock.json',
  * carpeta tal cual, sin seguir enlaces. Si `config/opencode` es un enlace o un archivo, se quita ESE enlace y se crea una carpeta vacía.
  * Devuelve los nombres apartados. Lanza si no se puede garantizar (quien llama no arranca).
  */
-export function quarantineEngineUserConfig(privateDir: string, log: (msg: string) => void = (m) => console.warn('[tasks]', m), now = Date.now()): string[] {
+export function quarantineEngineUserConfig(
+  privateDir: string,
+  log: (msg: string) => void = (m) => console.warn('[tasks]', m),
+  now = Date.now()
+): string[] {
   const dir = ensureRealDir(privateDir, join(privateDir, 'config', 'opencode'), {
     create: true,
     replace: true,
@@ -108,7 +114,10 @@ export function quarantineEngineUserConfig(privateDir: string, log: (msg: string
     const st = lstatSync(join(dir, name))
     return st.isSymbolicLink() || !(st.isDirectory() || st.isFile())
   })
-  if (!moved.length) return []
+  if (!moved.length) {
+    ensureEngineGitignore(dir)
+    return []
+  }
   const root = ensureRealDir(privateDir, join(privateDir, QUARANTINE_DIR), { create: true, replace: true })
   let stamp = String(now)
   for (let i = 1; lstatOrNull(join(root, stamp)); i++) stamp = `${now}-${i}`
@@ -119,7 +128,17 @@ export function quarantineEngineUserConfig(privateDir: string, log: (msg: string
   const all = readdirSync(root).sort()
   for (const old of all.slice(0, Math.max(0, all.length - QUARANTINE_KEEP))) rmSync(join(root, old), { recursive: true, force: true })
   log(`config global privada del motor: se apartó a la cuarentena lo que dejó la tarea (${moved.join(', ')})`)
+  ensureEngineGitignore(dir)
   return moved
+}
+
+/**
+ * El motor escribe su `.gitignore` en la carpeta de config si falta y NO arranca si no puede; desde la 1.8.19 la jaula le niega escribir
+ * en esta carpeta, así que lo deja la app (mismo contenido). Después de la cuarentena (un `.gitignore` que sea un enlace ya se apartó).
+ * Sin seguir enlaces y sin sobrescribir.
+ */
+function ensureEngineGitignore(dir: string): void {
+  if (!lstatOrNull(join(dir, '.gitignore'))) writeFileNoFollow(join(dir, '.gitignore'), ENGINE_GITIGNORE, { exclusive: true })
 }
 
 function lstatOrNull(p: string): ReturnType<typeof lstatSync> | null {

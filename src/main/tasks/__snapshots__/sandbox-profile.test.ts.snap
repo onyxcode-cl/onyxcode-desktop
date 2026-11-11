@@ -198,6 +198,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;
 
@@ -405,6 +408,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;
 
@@ -617,6 +623,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones") (literal "/fixture/otra/escribible"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;
 
@@ -830,6 +839,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;
 
@@ -1041,6 +1053,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones") (literal "/fixture/work"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;
 
@@ -1249,6 +1264,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;
 
@@ -1447,5 +1465,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
 "
 `;

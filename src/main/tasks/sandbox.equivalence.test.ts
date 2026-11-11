@@ -48,6 +48,10 @@
  * Actualización DELIBERADA (1.8.19, carpetas adicionales de solo lectura): en el perfil `extras` y en el lanzamiento con carpetas
  * adicionales, SOLO la línea de cada carpeta `ro` pasa de `(deny file-write* (subpath …))` a `(deny file-write* file-write-unlink
  * (subpath …))` (2 líneas en total). Nada más cambió.
+ *
+ * Actualización DELIBERADA (1.8.19, config privada del motor de solo lectura): el fixture se recapturó (y se pasó por Prettier). Diff, línea
+ * a línea dentro de cada perfil: SOLO se añaden al final un comentario, `(deny file-write* file-write-unlink (subpath
+ * "<privada>/config/opencode"))` y una línea vacía, en los 11 perfiles (9 directos y 2 lanzamientos). Nada más cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
