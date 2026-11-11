@@ -37,6 +37,28 @@ describe('edición negada o fallida no se muestra como hecha', () => {
   })
 })
 
+describe('edición no aplicada no enseña diff como hecho', () => {
+  it('error: sin +/− y sin diff aunque haya texto nuevo', () => {
+    g.window = { api: { platform: 'darwin' } }
+    const html = renderToStaticMarkup(<EditChip part={part('edit', { status: 'error', input, error: DENY, time: { start: 0, end: 1 } })} root={null} />)
+    expect(html).not.toMatch(/\+1/)
+    expect(html).not.toMatch(/>\+1<|>-1</)
+  })
+  it('write nuevo con error: sin +N', () => {
+    g.window = { api: { platform: 'darwin' } }
+    const html = renderToStaticMarkup(
+      <EditChip part={part('write', { status: 'error', input: { filePath: '/p/n.txt', content: 'x\ny' }, error: DENY, time: { start: 0, end: 1 } })} root={null} />
+    )
+    expect(html).toContain('No se hizo')
+    expect(html).not.toMatch(/\+2/)
+  })
+  it('completada: conserva +/−', () => {
+    g.window = { api: { platform: 'darwin' } }
+    const html = renderToStaticMarkup(<EditChip part={part('edit', { status: 'completed', input, output: '', time: { start: 0, end: 1 } })} root={null} />)
+    expect(html).toMatch(/\+1/)
+  })
+})
+
 describe('resumen de pasos', () => {
   const ok = { tool: 'edit', state: { status: 'completed' } }
   const bad = { tool: 'edit', state: { status: 'error' } }
