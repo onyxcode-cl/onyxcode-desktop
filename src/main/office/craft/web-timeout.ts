@@ -4,7 +4,7 @@
  */
 
 /** Plazo total de `openWebDoc` (cargar la página + que el motor reciba el archivo). */
-export const WEB_OPEN_TIMEOUT_MS = 20_000
+export const WEB_OPEN_TIMEOUT_MS = 5_000
 
 export class WebTimeoutError extends Error {
   constructor(what: string, ms: number) {

@@ -20,7 +20,7 @@ describe('withTimeout', () => {
     await assertion
   })
 
-  it('el plazo total es de 20 s', () => {
-    expect(WEB_OPEN_TIMEOUT_MS).toBe(20_000)
+  it('el plazo total es de 5 s', () => {
+    expect(WEB_OPEN_TIMEOUT_MS).toBe(5_000)
   })
 })

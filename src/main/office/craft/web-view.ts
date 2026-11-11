@@ -52,6 +52,7 @@ const state: State = {
 }
 
 let configured: Session | null = null
+let openGeneration = 0
 function webSession(): Session {
   if (configured) return configured
   const ses = session.fromPartition('craft-web', { cache: false })
@@ -162,21 +163,32 @@ export async function openWebDoc(
   if (bytes.length > MAX_WEB_FILE_BYTES) throw new Error('Archivo demasiado grande para la vista web')
   const started = Date.now()
   const left = (): number => Math.max(1, timeoutMs - (Date.now() - started))
-  if (!state.server || state.serverDir !== webDir) {
-    await state.server?.close().catch(() => undefined)
-    state.server = await startWebServer(webDir)
-    state.serverDir = webDir
+  // Cada apertura tiene sus recursos: destruir la anterior también cancela su carga y su script.
+  const { hostWindow, rect, visible } = state
+  closeWeb()
+  Object.assign(state, { hostWindow, rect, visible })
+  const generation = openGeneration
+  const current = (): boolean => generation === openGeneration
+  const server = await startWebServer(webDir)
+  if (!current()) {
+    await server.close().catch(() => undefined)
+    return false
   }
+  state.server = server
+  state.serverDir = webDir
   const view = ensureView()
   state.active = true
   layout()
   try {
-    await withTimeout(view.webContents.loadURL(`${state.server.origin}/?_r=${Date.now()}`), left(), 'carga')
+    await withTimeout(view.webContents.loadURL(`${server.origin}/?_r=${Date.now()}`), left(), 'carga')
+    if (!current()) return false
     const script = dropScript(bytes.toString('base64'), fileName, MIME_BY_EXT[ext], Math.max(1, left() - 1000))
     const ok = (await withTimeout(view.webContents.executeJavaScript(script, false), left(), 'motor')) === true
+    if (!current()) return false
     emitter.emit('event', { type: ok ? 'loaded' : 'error' } satisfies WebViewEvent)
     return ok
   } catch (e) {
+    if (!current()) return false
     // El motor no respondió: se avisa a la ventana y se propaga para que quien llama registre el fallo y use el visor de siempre.
     emitter.emit('event', { type: 'error' } satisfies WebViewEvent)
     throw e
@@ -202,6 +214,7 @@ export function deactivateWeb(): void {
 }
 
 export function closeWeb(): void {
+  openGeneration++
   const view = state.view
   if (view) {
     if (state.attachedTo && !state.attachedTo.isDestroyed()) state.attachedTo.contentView.removeChildView(view)

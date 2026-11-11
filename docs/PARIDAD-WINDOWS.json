@@ -980,6 +980,17 @@
       ],
       "nota": "Reglas base, conectores, reglas guardadas y carpetas adicionales iguales al agente de Tareas; disallowed_tools solo resta. Pruebas unitarias en Mac; sin ejecución en Windows ni motor real.",
       "comprobacion": null
+    },
+    {
+      "id": "N09",
+      "funcion": "Vista previa con aperturas identificadas y respaldo a los cinco segundos",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/ipc/tasks-viewer-handlers.race.test.ts:1",
+        "src/main/office/craft/web-view.race.test.ts:1"
+      ],
+      "nota": "Probado en Mac con Electron simulado: cierres antiguos, cambio de tema y plazo agotado. Sin app abierta; wasm, ventana minimizada y Windows pendientes.",
+      "comprobacion": null
     }
   ]
 }

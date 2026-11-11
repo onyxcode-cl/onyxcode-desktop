@@ -33,8 +33,9 @@ export function DocumentViewerPanel({
 
   useEffect(() => {
     let cancelled = false
+    const openingId = crypto.randomUUID()
     setState({ kind: 'loading' })
-    cw('tasks:viewer:open', { path, lang: getLang(), theme })
+    cw('tasks:viewer:open', { path, lang: getLang(), theme, openingId })
       .then((res) => {
         if (cancelled) return
         if (res.ok) setState({ kind: 'ready' })
@@ -45,7 +46,7 @@ export function DocumentViewerPanel({
       })
     return () => {
       cancelled = true
-      void cw('tasks:viewer:close').catch(() => undefined)
+      void cw('tasks:viewer:close', { openingId }).catch(() => undefined)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, theme])
