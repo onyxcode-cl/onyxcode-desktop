@@ -19,7 +19,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, resolve, sep } from 'node:path'
 import { parseHostPlatform, type RemoteText } from '@shared/ipc-remote'
 import { approvalVerdict } from './command-denylist'
-import { cleanDetail, previewText } from './confirm-detail'
+import { cleanCommandDetail, cleanDetail, previewText } from './confirm-detail'
 
 export type PolicyClass = 'R' | 'M' | 'D' | 'X'
 
@@ -1556,9 +1556,8 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
       'Permitir una vez que una tarea ejecute este comando en el Mac, fuera de su espacio protegido',
       'Allow a task to run this command once on the Mac, outside its protected space'
     ),
-    detail: (isStr(p.id) ? x.ctx.hostApprovalDetail?.(p.id) : undefined)?.map((l) => headTail(l, 2000)) ?? [
-      t('La petición ya no está pendiente', 'The request is no longer pending').es
-    ]
+    // El comando con sus líneas TAL CUAL (no `headTail`, que junta las líneas), y después el motivo y la carpeta.
+    detail: hostCommandLines(isStr(p.id) ? x.ctx.hostApprovalDetail?.(p.id) : undefined)
   }),
   'browser:respond': (p) => ({
     text: t('Permitir a un sitio o acción del navegador', 'Allow a browser site or action'),
@@ -1608,6 +1607,13 @@ function permissionReplySummary(p: Record<string, unknown>, x: SummaryExtra): { 
   }
 }
 
+/** `[comando, motivo, carpeta]` de main → una línea por línea del comando, luego el motivo (del agente) y la carpeta. */
+function hostCommandLines(d: string[] | undefined): string[] {
+  if (!d || d.length < 3) return [t('La petición ya no está pendiente', 'The request is no longer pending').es]
+  const [command, reason, folder] = d as [string, string, string]
+  return [...command.split('\n'), `— ${t('Motivo (lo dice el agente)', 'Reason (from the agent)').es}: ${reason}`, `— ${folder}`]
+}
+
 function summaryFor(
   key: string,
   req: PolicyRequest,
@@ -1621,6 +1627,7 @@ function summaryFor(
   const r = s(payload, home, { ctx, params })
   const dir = req.kind === 'http' && isStr(req.query?.directory) ? [tilde(req.query.directory, home)] : []
   // Texto del celular: sin saltos ni secretos, con tope de longitud y de líneas (el dueño decide leyéndolo).
+  if (key === 'tasks:hostExec:respond') return { summary: r.text, detail: cleanCommandDetail(r.detail) }
   return { summary: r.text, detail: cleanDetail([...dir, ...r.detail]) }
 }
 

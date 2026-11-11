@@ -36,8 +36,11 @@ export interface HostApprovalsDeps {
   broadcastDone(id: string): void
   /** Aviso del sistema (no decide nada). */
   notify?(req: HostApprovalRequest): void
-  /** Diálogo nativo de respaldo. `null` = se cerró sin elegir (cuenta como «No»). */
-  fallback?(req: HostApprovalRequest): Promise<HostDecision | null>
+  /**
+   * Diálogo nativo de respaldo. `null` = se cerró sin elegir (cuenta como «No»); `open` = la persona pidió abrir la app para verlo
+   * (no decide: sigue pendiente en la tarjeta). `signal` se aborta cuando la petición se resuelve o vence: el diálogo debe cerrarse.
+   */
+  fallback?(req: HostApprovalRequest, signal: AbortSignal): Promise<HostDecision | 'open' | null>
 }
 
 let deps: HostApprovalsDeps | null = null
@@ -51,6 +54,8 @@ interface Pending {
   resolve(outcome: HostApprovalOutcome): void
   timer: ReturnType<typeof setTimeout>
   cleanup(): void
+  /** Cierra el diálogo nativo (si hay) al resolverse. */
+  closer: AbortController
 }
 
 const pending = new Map<string, Pending>()
@@ -60,6 +65,7 @@ function finish(id: string, outcome: HostApprovalOutcome): void {
   if (!p) return
   clearTimeout(p.timer)
   p.cleanup()
+  p.closer.abort()
   pending.delete(id)
   p.resolve(outcome)
   try {
@@ -91,7 +97,8 @@ export function requestHostApproval(
     const onAbort = (): void => finish(id, 'no-answer')
     opts.signal?.addEventListener('abort', onAbort, { once: true })
     const timer = setTimeout(() => finish(id, 'no-answer'), timeoutMs)
-    pending.set(id, { req, resolve, timer, cleanup: () => opts.signal?.removeEventListener('abort', onAbort) })
+    const closer = new AbortController()
+    pending.set(id, { req, resolve, timer, closer, cleanup: () => opts.signal?.removeEventListener('abort', onAbort) })
     try {
       d.broadcast(req)
     } catch (err) {
@@ -110,8 +117,10 @@ export function requestHostApproval(
     }
     if (!visible && d.fallback) {
       void d
-        .fallback(req)
-        .then((decision) => finish(id, decision === 'allow' ? 'allow' : 'deny'))
+        .fallback(req, closer.signal)
+        .then((decision) => {
+          if (decision !== 'open') finish(id, decision === 'allow' ? 'allow' : 'deny')
+        })
         .catch(() => finish(id, 'deny'))
     }
   })

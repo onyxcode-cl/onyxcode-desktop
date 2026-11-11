@@ -2,7 +2,7 @@
  * Reglas «permitir siempre» demasiado amplias: un patrón que solo tiene comodines (`*`, `?`, `**`, `?*`, `* *`) equivale a «todo». Un
  * programa de la tarea puede escribir el JSON de `permisos-siempre` en su carpeta privada; la app lo limpia antes de que el motor lo cargue.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -111,24 +111,30 @@ describe('sanitizeSavedPermissions (al cargar lo ya guardado)', () => {
     expect(JSON.parse(readFileSync(f, 'utf8')).rules).toEqual([])
   })
 
-  it('no sigue enlaces ni toca lo que no es un archivo de reglas', () => {
+  it('borra (sin seguirlos) enlaces, carpetas y JSON que no son de reglas; el destino de un enlace no cambia', () => {
     const d = tmp()
     writeFileSync(join(d, 'roto.json'), '{no es json')
-    writeFileSync(join(d, 'otro.txt'), JSON.stringify({ rules: [{ permission: 'bash', pattern: '*' }] }))
-    expect(sanitizeSavedPermissions(d)).toBe(0)
-    expect(readFileSync(join(d, 'roto.json'), 'utf8')).toBe('{no es json')
+    writeFileSync(join(d, 'sinreglas.json'), '{"directory":"/x"}')
+    writeFileSync(join(d, 'otro.txt'), 'x')
+    mkdirSync(join(d, 'sub.json'))
+    expect(sanitizeSavedPermissions(d)).toBe(3)
+    expect(readdirSync(d).sort()).toEqual(['otro.txt'])
     if (process.platform === 'win32') return
     const fuera = tmp()
     const target = join(fuera, 'fuera.json')
     const original = JSON.stringify({ directory: '/x', rules: [{ permission: 'bash', pattern: '*' }] })
     writeFileSync(target, original)
-    symlinkSync(target, join(d, 'enlace.json'))
-    expect(sanitizeSavedPermissions(d)).toBe(0)
+    // La tarea deja `<huella>.json` → un archivo suyo con reglas amplias: el motor lo seguiría; la limpieza borra el enlace.
+    symlinkSync(target, join(d, 'abc.json'))
+    symlinkSync(fuera, join(d, 'carpeta-enlace'))
+    expect(sanitizeSavedPermissions(d)).toBe(2)
+    expect(readdirSync(d).sort()).toEqual(['otro.txt'])
     expect(readFileSync(target, 'utf8')).toBe(original)
-    // Una carpeta que es un enlace tampoco se recorre.
+    // Una carpeta que es un enlace tampoco se recorre (la prepara `ensureSandboxPermissionDir`).
     const linkDir = join(tmp(), 'permisos')
     symlinkSync(fuera, linkDir)
     expect(sanitizeSavedPermissions(linkDir)).toBe(0)
     expect(readFileSync(target, 'utf8')).toBe(original)
   })
+
 })

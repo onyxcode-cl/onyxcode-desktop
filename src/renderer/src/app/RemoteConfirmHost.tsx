@@ -127,7 +127,7 @@ export function RemoteConfirmHost(): React.JSX.Element | null {
           {req.detail.length > 0 && (
             <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-lg border border-border bg-bg px-3 py-2 font-mono text-xs text-muted">
               {req.detail.map((d, i) => (
-                <li key={i} className="break-all">
+                <li key={i} className="whitespace-pre-wrap break-all">
                   {d}
                 </li>
               ))}

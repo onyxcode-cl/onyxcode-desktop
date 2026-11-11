@@ -184,6 +184,10 @@ export const mainErrors = {
   'merr.hostExec.folder': 'Carpeta de la tarea: {folder}',
   'merr.hostExec.background': 'Quedará corriendo en segundo plano.',
   'merr.hostExec.allowOnce': 'Permitir esta vez',
+  'merr.hostExec.dialogLong': 'Una tarea pide ejecutar un comando largo en tu computador, fuera de su espacio protegido.',
+  'merr.hostExec.dialogLongDetail':
+    'Tiene {lines} líneas y {chars} caracteres: no cabe aquí. Abre Lazunox para verlo completo antes de decidir.\n\nCarpeta de la tarea: {folder}',
+  'merr.hostExec.openApp': 'Abrir Lazunox para verlo',
   'merr.hostExec.notif': 'Una tarea pide ejecutar un comando en tu computador. Revísalo en Lazunox.',
   'merr.dialog.attachTitle': 'Adjuntar archivos a la tarea',
   'merr.dialog.attachButton': 'Adjuntar',

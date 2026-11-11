@@ -180,6 +180,10 @@ export const mainErrors = {
   'merr.hostExec.folder': 'Task folder: {folder}',
   'merr.hostExec.background': 'It will keep running in the background.',
   'merr.hostExec.allowOnce': 'Allow this time',
+  'merr.hostExec.dialogLong': 'A task wants to run a long command on your computer, outside its protected space.',
+  'merr.hostExec.dialogLongDetail':
+    'It has {lines} lines and {chars} characters: it doesn’t fit here. Open Lazunox to see all of it before deciding.\n\nTask folder: {folder}',
+  'merr.hostExec.openApp': 'Open Lazunox to see it',
   'merr.hostExec.notif': 'A task wants to run a command on your computer. Review it in Lazunox.',
   'merr.dialog.attachTitle': 'Attach files to the task',
   'merr.dialog.attachButton': 'Attach',

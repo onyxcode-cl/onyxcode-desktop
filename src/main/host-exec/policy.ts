@@ -28,9 +28,25 @@ export const MAX_COMMAND_LINES = 20
 
 const reject = (code: HostCommandRejection, message: string): HostCommandVerdict => ({ ok: false, code, message })
 
-// Caracteres de control (salvo tabulador, salto de línea y retorno) y los invisibles que esconden texto en la tarjeta.
-const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/
-const HIDDEN = /[​-‏‪-‮⁠-⁤﻿]/
+// Lo que la persona no puede ver tal cual se ejecuta (ver `unsafeTextChars`):
+// - controles salvo tabulador y salto de línea (incluye `\r`, que la tarjeta dibuja como salto y la shell no, y los C1);
+// - formato (Cf: bidireccionales U+202A-202E y U+2066-2069, U+200B-200F, U+00AD, U+061C, U+180E, U+2060-2064, U+FEFF, etiquetas
+//   U+E0000-E007F…), uso privado (Co), sin asignar (Cn) y separadores de línea/párrafo (U+2028/2029);
+// - cualquier espacio que no sea el normal (U+00A0, U+202F, U+3000…);
+// - rellenos que se ven en blanco aunque son «letras» (U+115F, U+1160, U+3164, U+FFA0, U+2800) y selectores de variante.
+const CONTROL = /(?![\t\n])\p{Cc}/u
+const HIDDEN =
+  /[\p{Cf}\p{Co}\p{Cn}\p{Zl}\p{Zp}]|(?![ \t\n])\s|[\u034F\u115F\u1160\u17B4\u17B5\u2800\u3164\uFFA0\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u
+
+/**
+ * ¿El texto tiene caracteres que esconden o reordenan lo que se ve? `control` = de control; `hidden` = invisibles, bidireccionales o espacios
+ * raros; null = limpio. Se aplica al comando Y al motivo (los dos se muestran a la persona en la tarjeta).
+ */
+export function unsafeTextChars(text: string): 'control' | 'hidden' | null {
+  if (CONTROL.test(text)) return 'control'
+  if (HIDDEN.test(text)) return 'hidden'
+  return null
+}
 
 /** Inicio de un comando dentro de una línea: al principio, o tras `;`, `&`, `|`, `(`, `{`, comillas de sustitución o espacio. */
 const BEFORE = String.raw`(?:^|[;&|(){}\x60\s])`
@@ -107,8 +123,17 @@ export function checkHostCommand(raw: unknown): HostCommandVerdict {
     return reject('too-long', `El comando es demasiado largo (máximo ${MAX_COMMAND_CHARS} caracteres): divídelo en pasos.`)
   if (command.split('\n').length > MAX_COMMAND_LINES)
     return reject('too-long', `El comando tiene demasiadas líneas (máximo ${MAX_COMMAND_LINES}): ejecuta un paso a la vez.`)
-  if (CONTROL.test(command)) return reject('control-chars', 'El comando tiene caracteres de control: escríbelo en texto normal.')
-  if (HIDDEN.test(command)) return reject('hidden-chars', 'El comando tiene caracteres invisibles: escríbelo en texto normal.')
+  const unsafe = unsafeTextChars(command)
+  if (unsafe === 'control')
+    return reject(
+      'control-chars',
+      'El comando tiene caracteres de control (solo se admiten tabulador y salto de línea): escríbelo en texto normal.'
+    )
+  if (unsafe === 'hidden')
+    return reject(
+      'hidden-chars',
+      'El comando tiene caracteres invisibles, de dirección del texto o espacios especiales: escríbelo en texto normal, con espacios corrientes.'
+    )
   if (PRIVILEGE.test(command)) return reject('privilege', 'No se ejecutan comandos con privilegios de administrador (sudo, runas…).')
   if (RM_RECURSIVE.test(command) || WIN_RECURSIVE_DELETE.test(command) || DISK_DESTRUCTIVE.test(command) || FIND_DELETE.test(command)) {
     return reject(

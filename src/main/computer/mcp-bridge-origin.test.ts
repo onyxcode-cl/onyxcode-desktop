@@ -1118,6 +1118,25 @@ describe.skipIf(!posixOnly)('origen aislado: el clic va en píxeles de la últim
       }
     })
 
+    it.each([
+      ['el diálogo nativo de una aprobación (osascript, sin id)', { name: 'osascript', bundleId: undefined, pid: 7 }],
+      ['System Events', { name: 'System Events', bundleId: 'com.apple.systemevents', pid: 8 }],
+      ['Script Editor', { name: 'Script Editor', bundleId: 'com.apple.ScriptEditor2', pid: 9 }],
+      ['Ajustes del Sistema', { name: 'Ajustes del Sistema', bundleId: 'com.apple.systempreferences', pid: 10 }]
+    ])('(C6) %s al frente ⇒ exempt-app, sin clic ni tecla', async (_n, app) => {
+      const { mcp, done } = await bootMac({ at: app as never, front: app as never })
+      try {
+        const k = await mcp.call('key', { keys: 'return', lazunox_session: SES }, HDRS)
+        expect(k.isError).toBe(true)
+        expect(textOf(k)).toContain('exempt-app')
+        const c = await mcp.call('left_click', { x: 10, y: 10, lazunox_session: SES }, HDRS)
+        expect(c.isError).toBe(true)
+        expect(hasInput(mcp)).toBe(false)
+      } finally {
+        await done()
+      }
+    })
+
     it('tras traer la app al frente con open_application (full) y capturar, el clic vuelve a pasar', async () => {
       // El clic rechazado consume el primer frontmost (Lazunox); desde ahí, ya es Notes (la lista repite el último).
       const { mcp, done } = await bootMac({ at: NOTES_APP, front: [LAZ, NOTES_APP] })

@@ -11,7 +11,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import type { RemoteConfirmRequest, RemoteText } from '@shared/ipc-remote'
-import { cleanDetail, cleanLine } from './confirm-detail'
+import { cleanCommandDetail, cleanDetail, cleanLine } from './confirm-detail'
 
 export const CONFIRM_LIMITS = {
   maxPending: 2,
@@ -137,7 +137,8 @@ export class ConfirmQueue {
           channel: input.channel,
           // Doble red: aunque quien llama no lo haya hecho, el detalle sale sin saltos, secretos ni longitudes absurdas.
           summary: { es: cleanLine(input.summary.es, 300), en: cleanLine(input.summary.en, 300) },
-          detail: cleanDetail(input.detail ?? [])
+          // El comando de `equipo` (armado en main con el comando real) va con sus líneas tal cual.
+          detail: input.channel === 'tasks:hostExec:respond' ? cleanCommandDetail(input.detail ?? []) : cleanDetail(input.detail ?? [])
         },
         waiters: [resolve],
         timer: undefined,

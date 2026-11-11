@@ -22,6 +22,10 @@ export interface ButtonsDialog {
   defaultIndex?: number
   /** Qué índice cuenta cuando se cierra sin elegir (Esc, tiempo agotado). */
   cancelIndex?: number
+  /** Segundos hasta cerrarse solo (macOS; por defecto 600). */
+  giveUpSeconds?: number
+  /** Al abortarse, el diálogo se cierra (macOS: se mata `osascript`) y cuenta como `cancelIndex`. */
+  signal?: AbortSignal
 }
 
 /** Tiempo tras el cual el diálogo se cierra solo y cuenta como «cancelar» (alineado con el tope de 10 min de las aprobaciones). */
@@ -45,11 +49,11 @@ export const APPLESCRIPT = [
   'end run'
 ].flatMap((l) => ['-e', l])
 
-export type RunOsascript = (args: string[]) => Promise<string>
+export type RunOsascript = (args: string[], signal?: AbortSignal) => Promise<string>
 
-const realRun: RunOsascript = (args) =>
+const realRun: RunOsascript = (args, signal) =>
   new Promise((resolve, reject) => {
-    execFile('/usr/bin/osascript', args, { timeout: (GIVE_UP_SECONDS + 30) * 1000, maxBuffer: 64 * 1024 }, (err, stdout) =>
+    execFile('/usr/bin/osascript', args, { timeout: (GIVE_UP_SECONDS + 30) * 1000, maxBuffer: 64 * 1024, signal }, (err, stdout) =>
       err ? reject(err) : resolve(String(stdout).trim())
     )
   })
@@ -63,22 +67,21 @@ export async function askButtons(
   const cancelIndex = d.cancelIndex ?? 0
   const platform = opts.platform ?? process.platform
   const unique = new Set(d.buttons).size === d.buttons.length && d.buttons.length >= 2 && d.buttons.length <= 3
+  if (d.signal?.aborted) return cancelIndex
   if (platform === 'darwin' && unique) {
+    const seconds = Math.max(1, Math.min(GIVE_UP_SECONDS, Math.floor(d.giveUpSeconds ?? GIVE_UP_SECONDS)))
     try {
       const text = d.detail ? `${d.message}\n\n${d.detail}` : d.message
-      const out = await (opts.run ?? realRun)([
-        ...APPLESCRIPT,
-        '--',
-        DISPLAY_NAME,
-        text,
-        d.buttons[defaultIndex],
-        String(GIVE_UP_SECONDS),
-        ...d.buttons
-      ])
+      const out = await (opts.run ?? realRun)(
+        [...APPLESCRIPT, '--', DISPLAY_NAME, text, d.buttons[defaultIndex], String(seconds), ...d.buttons],
+        d.signal
+      )
       if (out === '__cancel__') return cancelIndex
       const i = d.buttons.indexOf(out)
       return i >= 0 ? i : cancelIndex
     } catch (err) {
+      // Cerrado a propósito (la petición ya se resolvió o venció): no se abre el de Electron.
+      if (d.signal?.aborted) return cancelIndex
       console.error('[native-dialog] osascript falló; se usa el diálogo de Electron:', err instanceof Error ? err.message : err)
     }
   }

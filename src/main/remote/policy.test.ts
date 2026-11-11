@@ -268,12 +268,20 @@ describe('D: confirmación en el Mac', () => {
     for (const k of Object.keys(CELULAR_SUMMARIES)) expect(covered.has(k) || httpKeys.has(k), k).toBe(true)
   })
   it('equipo: «Permitir esta vez» desde el celular se confirma en el Mac con el comando completo (de main, no del celular)', () => {
-    const cmd = 'open "/Users/me/p/informe final.pdf"'
+    // (C5) Con sus líneas tal cual: sin juntar líneas ni espacios; el tabulador marcado.
+    const cmd = 'cd  "/Users/me/p"\n\topen "informe final.pdf"'
     const d = decide(ipc('tasks:hostExec:respond', { id: 'ab12', decision: 'allow' }), {
       ...ctx,
       hostApprovalDetail: (id) => (id === 'ab12' ? [cmd, 'Abrir el informe', '/Users/me/p'] : undefined)
     })
-    expect('confirm' in d && d.detail).toEqual([cmd, 'Abrir el informe', '/Users/me/p'])
+    expect('confirm' in d && d.detail).toEqual([
+      'cd  "/Users/me/p"',
+      '→\topen "informe final.pdf"',
+      '— Motivo (lo dice el agente): Abrir el informe',
+      '— /Users/me/p'
+    ])
+    const gone = decide(ipc('tasks:hostExec:respond', { id: 'zz', decision: 'allow' }), { ...ctx, hostApprovalDetail: () => undefined })
+    expect('confirm' in gone && gone.detail[0]).toMatch(/ya no está pendiente/)
     expect(eventPolicy('tasks:hostExec:approval')).toBe('sanitize')
     expect(eventPolicy('tasks:hostExec:approvalDone')).toBe('allow')
     expect(cls(ipc('tasks:hostExec:pending'))).toMatch(/^deny/)

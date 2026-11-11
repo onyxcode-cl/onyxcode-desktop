@@ -20,7 +20,15 @@ import {
   type HostApprovalRequest,
   type HostDecision
 } from './approvals'
-import { DENIED_TEXT, HostExecMcpServer, NO_ANSWER_TEXT, type AuditEntry } from './mcp-server'
+import {
+  COOLDOWN_AFTER_NO_MS,
+  DENIED_TEXT,
+  HostExecMcpServer,
+  NO_ANSWER_TEXT,
+  PAUSE_MS,
+  PAUSE_TEXT_HEAD,
+  type AuditEntry
+} from './mcp-server'
 import { MAX_TIMEOUT_MS, type BackgroundResult, type RunResult } from './runner'
 
 const OK: RunResult = { exitCode: 0, signal: null, stdout: 'hecho\n', stderr: '', truncated: false, timedOut: false, ms: 5 }
@@ -36,6 +44,7 @@ let done: string[]
 let visible: boolean
 let fallback: ((req: HostApprovalRequest) => Promise<HostDecision | null>) | undefined
 let approvalTimeoutMs: number
+let clock: number
 
 beforeEach(() => {
   folder = mkdtempSync(join(tmpdir(), 'lzx-equipo-aprob-'))
@@ -47,6 +56,7 @@ beforeEach(() => {
   visible = true
   fallback = undefined
   approvalTimeoutMs = 10_000
+  clock = 1_000_000
   initHostApprovals({
     hasVisibleHost: () => visible,
     broadcast: (r) => cards.push(r),
@@ -55,6 +65,7 @@ beforeEach(() => {
   })
   server = new HostExecMcpServer({
     audit: (e) => audits.push(e),
+    now: () => clock,
     redact: (_f, text) => text.split(SECRET).join('«API_KEY»'),
     approve: (req, signal) => requestHostApproval(req, { signal, timeoutMs: approvalTimeoutMs }),
     run: async (command, o) => {
@@ -252,9 +263,82 @@ describe('equipo: la aprobación la decide main', () => {
     fallback = async () => null
     const { token, port } = await server.clientFor({ folder })
     expect(textOf(await call(port, token, good))).toBe(DENIED_TEXT)
+    clock += COOLDOWN_AFTER_NO_MS + 1
     fallback = async () => 'allow'
     expect((await call(port, token, good)).body.result.isError).toBeUndefined()
     expect(ran).toHaveLength(1)
+  })
+
+  it('(C3) tras un «No», 30 s sin tarjetas; tras 3 «No» seguidos, pausa de 10 min; todo por CARPETA (un token nuevo no lo borra)', async () => {
+    let c = await server.clientFor({ folder })
+    const deny = async (): Promise<Resp> => {
+      const p = call(c.port, c.token, good)
+      await waitFor(() => cards.length > shownBefore)
+      respondHostApproval(cards.at(-1)!.id, 'deny')
+      return p
+    }
+    let shownBefore = 0
+    await deny()
+    // Enfriamiento: rechazo inmediato, sin tarjeta.
+    shownBefore = cards.length
+    const cool = await call(c.port, c.token, good)
+    expect(textOf(cool)).toMatch(/Espera \d+ s/)
+    expect(cards).toHaveLength(shownBefore)
+    // Reiniciar el motor (token nuevo de la misma carpeta) no lo salta.
+    c = await server.clientFor({ folder })
+    expect(textOf(await call(c.port, c.token, good))).toMatch(/Espera/)
+    clock += COOLDOWN_AFTER_NO_MS + 1
+    shownBefore = cards.length
+    await deny()
+    clock += COOLDOWN_AFTER_NO_MS + 1
+    shownBefore = cards.length
+    const third = await deny()
+    expect(textOf(third)).toContain(PAUSE_TEXT_HEAD)
+    clock += COOLDOWN_AFTER_NO_MS + 1
+    shownBefore = cards.length
+    const paused = await call(c.port, c.token, good)
+    expect(textOf(paused)).toContain(PAUSE_TEXT_HEAD)
+    expect(textOf(paused)).toContain('Deja de pedirlos')
+    expect(cards).toHaveLength(shownBefore)
+    expect(ran).toEqual([])
+    clock += PAUSE_MS
+    const after = call(c.port, c.token, good)
+    await waitFor(() => cards.length > shownBefore)
+    respondHostApproval(cards.at(-1)!.id, 'allow')
+    expect((await after).body.result.isError).toBeUndefined()
+    expect(ran).toHaveLength(1)
+  })
+
+  it('(C3) un «Permitir» corta la racha de «No»', async () => {
+    const c = await server.clientFor({ folder })
+    const answer = async (d: HostDecision): Promise<void> => {
+      const n = cards.length
+      const p = call(c.port, c.token, good)
+      await waitFor(() => cards.length > n)
+      respondHostApproval(cards.at(-1)!.id, d)
+      await p
+      clock += COOLDOWN_AFTER_NO_MS + 1
+    }
+    await answer('deny')
+    await answer('deny')
+    await answer('allow')
+    await answer('deny')
+    await answer('deny')
+    const n = cards.length
+    const p = call(c.port, c.token, good)
+    await waitFor(() => cards.length > n)
+    respondHostApproval(cards.at(-1)!.id, 'deny')
+    expect(textOf(await p)).toContain(PAUSE_TEXT_HEAD)
+  })
+
+  it('(B1) un motivo con caracteres invisibles o de dirección no abre tarjeta', async () => {
+    const c = await server.clientFor({ folder })
+    for (const motivo of ['Abrir el informe \u2066pedido\u2069', 'Abrir el informe\rpedido', 'Abrir\u00A0el informe']) {
+      const r = await call(c.port, c.token, { comando: good.comando, motivo })
+      expect(r.body.result.isError).toBe(true)
+      expect(textOf(r)).toContain('motivo')
+    }
+    expect(cards).toEqual([])
   })
 
   it('`detener` no pregunta y solo detiene lo lanzado por esa misma carpeta', async () => {

@@ -23,7 +23,7 @@ vi.mock('../features/tasks/impl/bridge', () => ({
   })
 }))
 
-import { HOST_ALLOW_DELAY_MS, HostExecApprovalHost, hostApprovalView } from './HostExecApprovalHost'
+import { HOST_ALLOW_DELAY_MS, HostExecApprovalHost, commandPieces, commandStats, hostApprovalView } from './HostExecApprovalHost'
 
 const REQ: HostExecApprovalRequest = {
   id: 'abcd1234abcd1234',
@@ -57,6 +57,23 @@ describe('hostApprovalView', () => {
     expect(hostApprovalView(REQ, 0, HOST_ALLOW_DELAY_MS).canAllow).toBe(true)
     expect(hostApprovalView(REQ, 0, REQ.expiresAt).expired).toBe(true)
     expect(hostApprovalView(REQ, 0, REQ.expiresAt - 2500).secondsLeft).toBe(3)
+  })
+  it('(C1) sin verse todavía no se arma; (C4) si desborda, solo tras llegar al final', () => {
+    expect(hostApprovalView(REQ, null, 10_000_000).canAllow).toBe(false)
+    const late = HOST_ALLOW_DELAY_MS + 1
+    expect(hostApprovalView(REQ, 0, late, { overflows: true, reachedEnd: false })).toMatchObject({ canAllow: false, needsScroll: true })
+    expect(hostApprovalView(REQ, 0, late, { overflows: true, reachedEnd: true }).canAllow).toBe(true)
+  })
+  it('(C4) trozos: saltos, tabuladores y lo que no es ASCII; cuenta de líneas y caracteres', () => {
+    expect(commandPieces('ls\tа\nb')).toEqual([
+      { kind: 'text', text: 'ls' },
+      { kind: 'tab', text: '\t' },
+      { kind: 'nonascii', text: 'а' },
+      { kind: 'newline', text: '\n' },
+      { kind: 'text', text: 'b' }
+    ])
+    expect(commandStats('ls\tа\nb')).toEqual({ lines: 2, chars: 6, nonAscii: true })
+    expect(commandStats('ls -la').nonAscii).toBe(false)
   })
 })
 
@@ -97,5 +114,70 @@ describe('HostExecApprovalHost', () => {
     expect(document.querySelector('[data-host-exec-approval]')).not.toBeNull()
     await act(async () => listeners.get('tasks:hostExec:approvalDone')?.({ id: 'eeee' }))
     expect(document.querySelector('[data-host-exec-approval]')).toBeNull()
+  })
+
+  it('(C1) la segunda tarjeta de la cola NO aparece ya armada: el margen cuenta desde que se ve', async () => {
+    vi.useFakeTimers()
+    await act(async () => root.render(createElement(HostExecApprovalHost)))
+    await act(async () => listeners.get('tasks:hostExec:approval')?.(REQ))
+    await act(async () => listeners.get('tasks:hostExec:approval')?.({ ...REQ, id: 'ffff' }))
+    await act(async () => {
+      vi.advanceTimersByTime(HOST_ALLOW_DELAY_MS * 3)
+    })
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    expect(document.querySelector('[data-host-exec-approval]')?.getAttribute('data-host-exec-approval')).toBe('ffff')
+    const allow = (): HTMLButtonElement => [...document.querySelectorAll('[data-host-exec-approval] button')][1] as HTMLButtonElement
+    expect(allow().disabled).toBe(true)
+    await act(async () => {
+      vi.advanceTimersByTime(HOST_ALLOW_DELAY_MS + 300)
+    })
+    expect(allow().disabled).toBe(false)
+  })
+
+  it('(C4) marca saltos, tabuladores y letras no ASCII; el motivo va rotulado como texto del agente sin verificar', async () => {
+    const command = 'cd /tmp\techo һola\nls'
+    await act(async () => root.render(createElement(HostExecApprovalHost)))
+    await act(async () => listeners.get('tasks:hostExec:approval')?.({ ...REQ, command }))
+    expect(document.querySelector('[data-host-exec-stats]')?.textContent).toContain('2')
+    expect(document.querySelectorAll('[data-mark="newline"]')).toHaveLength(1)
+    expect(document.querySelectorAll('[data-mark="tab"]')).toHaveLength(1)
+    expect(document.querySelector('[data-mark="nonascii"]')?.textContent).toBe('һ')
+    const reason = document.querySelector('[data-host-exec-reason]')
+    expect(reason?.textContent).toMatch(/sin verificar/)
+    // Va después del comando.
+    const pre = document.querySelector('[data-host-exec-command]')!
+    expect(pre.compareDocumentPosition(reason!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('(C4) si el comando desborda, «Permitir» solo se activa tras bajar hasta el final', async () => {
+    vi.useFakeTimers()
+    const proto = HTMLElement.prototype
+    const sh = Object.getOwnPropertyDescriptor(proto, 'scrollHeight')
+    const ch = Object.getOwnPropertyDescriptor(proto, 'clientHeight')
+    Object.defineProperty(proto, 'scrollHeight', { configurable: true, get: () => 900 })
+    Object.defineProperty(proto, 'clientHeight', { configurable: true, get: () => 200 })
+    try {
+      await act(async () => root.render(createElement(HostExecApprovalHost)))
+      await act(async () => listeners.get('tasks:hostExec:approval')?.({ ...REQ, command: Array(15).fill('echo uno').join('\n') }))
+      await act(async () => {
+        vi.advanceTimersByTime(HOST_ALLOW_DELAY_MS * 2)
+      })
+      const allow = (): HTMLButtonElement => [...document.querySelectorAll('[data-host-exec-approval] button')][1] as HTMLButtonElement
+      expect(allow().disabled).toBe(true)
+      expect(document.querySelector('[data-host-exec-scroll-hint]')).not.toBeNull()
+      const pre = document.querySelector('[data-host-exec-command]') as HTMLPreElement
+      await act(async () => {
+        pre.scrollTop = 700
+        pre.dispatchEvent(new Event('scroll'))
+      })
+      expect(allow().disabled).toBe(false)
+    } finally {
+      if (sh) Object.defineProperty(proto, 'scrollHeight', sh)
+      else delete (proto as unknown as Record<string, unknown>).scrollHeight
+      if (ch) Object.defineProperty(proto, 'clientHeight', ch)
+      else delete (proto as unknown as Record<string, unknown>).clientHeight
+    }
   })
 })

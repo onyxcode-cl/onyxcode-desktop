@@ -66,27 +66,57 @@ export function isPersistableRule(rule: unknown): boolean {
 /** Tope de lo que se lee de un archivo de reglas (el motor guarda como mucho 500 reglas cortas). */
 const MAX_RULES_FILE = 1024 * 1024
 
+type RulesFile = { directory?: unknown; rules?: unknown }
+function parseRulesFile(content: Buffer | undefined): RulesFile | null {
+  if (!content) return null
+  try {
+    const v: unknown = JSON.parse(content.toString('utf8'))
+    return v && typeof v === 'object' ? (v as RulesFile) : null
+  } catch {
+    return null
+  }
+}
+
 /**
- * Quita de los archivos de una carpeta de guardado las reglas que no son `isPersistableRule` (sin seguir enlaces; un archivo que no es
- * JSON de reglas no se toca: el motor ya lo ignora). Se llama antes de arrancar cada motor, así lo plantado no llega a cargarse. Devuelve
- * cuántas reglas quitó. Mejor esfuerzo: nunca lanza.
+ * Limpia una carpeta de guardado antes de que el motor la lea (el motor lee con `readFileSync`, que SÍ sigue enlaces):
+ * - borra (sin seguirla) toda entrada que no sea un archivo regular: enlaces, carpetas, tuberías…;
+ * - borra los `.json` que no se pueden leer o no son un archivo de reglas;
+ * - en los demás quita las reglas que no son `isPersistableRule`.
+ * Devuelve cuántas entradas o reglas quitó. Mejor esfuerzo: nunca lanza.
  */
 export function sanitizeSavedPermissions(dir: string): number {
   let removed = 0
   let names: string[] = []
   try {
     if (!isRealDir(dir)) return 0
-    names = readdirSync(dir).filter((n) => n.endsWith('.json'))
+    names = readdirSync(dir)
   } catch {
     return 0
+  }
+  const drop = (p: string): void => {
+    try {
+      const st = lstatSync(p)
+      rmSync(p, { recursive: st.isDirectory() && !st.isSymbolicLink(), force: true })
+      removed++
+    } catch (err) {
+      console.error('[permisos] no se pudo borrar una entrada de permisos guardados:', err instanceof Error ? err.message : 'error')
+    }
   }
   for (const name of names) {
     const file = join(dir, name)
     try {
+      const st = lstatSync(file)
+      if (!st.isFile() || st.nlink > 1) {
+        drop(file)
+        continue
+      }
+      if (!name.endsWith('.json')) continue
       const read = readFileNoFollow(file, MAX_RULES_FILE)
-      if (!read) continue
-      const json = JSON.parse(read.content.toString('utf8')) as { directory?: unknown; rules?: unknown }
-      if (!json || typeof json !== 'object' || !Array.isArray(json.rules)) continue
+      const json = parseRulesFile(read?.content)
+      if (!json || typeof json !== 'object' || !Array.isArray(json.rules)) {
+        drop(file)
+        continue
+      }
       const kept = json.rules.filter(isPersistableRule)
       if (kept.length === json.rules.length) continue
       const tmp = `${file}.${process.pid}.limpio.tmp`
@@ -97,8 +127,44 @@ export function sanitizeSavedPermissions(dir: string): number {
       console.error('[permisos] no se pudo revisar un archivo de permisos guardados:', err instanceof Error ? err.message : 'error')
     }
   }
-  if (removed) console.warn(`[permisos] se quitaron ${removed} reglas «siempre» demasiado amplias de los permisos guardados`)
+  if (removed) console.warn(`[permisos] se quitaron ${removed} reglas o entradas no válidas de los permisos guardados`)
   return removed
+}
+
+/**
+ * Reglas válidas (`isPersistableRule`) de los archivos de una carpeta de guardado del motor cuyo `directory` es `folder`. Sin seguir
+ * enlaces ni carpetas que sean enlaces; lo que no se entiende se ignora.
+ */
+export function readEngineAlwaysRules(dir: string, folder: string): Array<{ permission: string; pattern: string }> {
+  const out: Array<{ permission: string; pattern: string }> = []
+  let names: string[] = []
+  try {
+    if (!isRealDir(dir)) return out
+    names = readdirSync(dir).filter((n) => n.endsWith('.json'))
+  } catch {
+    return out
+  }
+  for (const name of names) {
+    try {
+      const read = readFileNoFollow(join(dir, name), MAX_RULES_FILE)
+      if (!read) continue
+      const json = JSON.parse(read.content.toString('utf8')) as { directory?: unknown; rules?: unknown }
+      if (!json || json.directory !== folder || !Array.isArray(json.rules)) continue
+      for (const r of json.rules.slice(0, 500)) {
+        if (!isPersistableRule(r)) continue
+        const { permission, pattern } = r as { permission: string; pattern: string }
+        if (!out.some((x) => x.permission === permission && x.pattern === pattern)) out.push({ permission, pattern })
+      }
+    } catch {
+      /* archivo roto: se ignora */
+    }
+  }
+  return out
+}
+
+/** Vacía una carpeta de guardado (sin seguir enlaces). Si la carpeta misma es un enlace, no se toca. */
+export function emptySavedPermissionDir(dir: string): number {
+  return isRealDir(dir) ? emptyDir(dir) : 0
 }
 
 /** Carpeta de guardado general (sidecar principal y servidores de Tareas sin aislamiento). */
