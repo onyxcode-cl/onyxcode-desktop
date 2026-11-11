@@ -52,6 +52,10 @@
  * Actualización DELIBERADA (1.8.19, config privada del motor de solo lectura): el fixture se recapturó (y se pasó por Prettier). Diff, línea
  * a línea dentro de cada perfil: SOLO se añaden al final un comentario, `(deny file-write* file-write-unlink (subpath
  * "<privada>/config/opencode"))` y una línea vacía, en los 11 perfiles (9 directos y 2 lanzamientos). Nada más cambió.
+ *
+ * Actualización DELIBERADA (1.8.19, ganchos de git): el fixture se recapturó (y se pasó por Prettier). Diff: en los 11 perfiles se añaden
+ * al final un comentario, `(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\.git/hooks(/|$)") (require-any
+ * (subpath <carpeta>) …)))` y una línea vacía; y en el `env` de los dos lanzamientos, `GIT_TEMPLATE_DIR: ''`. Nada más cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

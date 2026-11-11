@@ -201,6 +201,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -411,6 +414,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -626,6 +632,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto") (subpath "/fixture/otra/escribible"))))
 "
 `;
 
@@ -842,6 +851,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -1056,6 +1068,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto") (subpath "/fixture/work"))))
 "
 `;
 
@@ -1267,6 +1282,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -1468,5 +1486,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
 
 ;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
 (deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;

@@ -114,6 +114,9 @@ export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
     GIT_AUTHOR_EMAIL: SANDBOX_GIT_EMAIL,
     GIT_COMMITTER_NAME: SANDBOX_GIT_NAME,
     GIT_COMMITTER_EMAIL: SANDBOX_GIT_EMAIL,
+    // Sin plantilla (1.8.19): `git init`/`git clone` no copian los ganchos de ejemplo a `.git/hooks`, que el perfil no deja escribir (ver
+    // `buildSandboxProfile`). Vacía = sin plantilla y sin aviso (con una ruta inexistente git avisa «templates not found»).
+    GIT_TEMPLATE_DIR: '',
     npm_config_cache: join(dirs.cache, 'npm'),
     BUN_INSTALL_CACHE_DIR: join(dirs.cache, 'bun'),
     PIP_CACHE_DIR: join(dirs.cache, 'pip'),
@@ -571,6 +574,20 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   lines.push(
     ';; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).',
     `(deny file-write* file-write-unlink (subpath ${sbString(join(priv, 'config', ENGINE_CONFIG_DIR_NAME))}))`,
+    ''
+  )
+  // Ganchos de git (1.8.19; idea de sandbox-runtime de Anthropic y de Codex, que los protegen siempre; regla propia): dentro de la carpeta de
+  // la tarea y de las adicionales `rw`, nada se crea, cambia ni se vuelve ejecutable en `**/.git/hooks` (ni la carpeta misma, ni un enlace
+  // con ese nombre). Esos ganchos los ejecuta FUERA de la jaula quien use git en esa carpeta (la persona, o la app en el modo Código). Con
+  // `GIT_TEMPLATE_DIR` vacío (`sandboxEnv`) `git init`, `add`, `commit`, `config` y `clone` siguen funcionando (probado). Operaciones
+  // concretas (no `file-write*`): en SBPL una concreta gana a un comodín sin importar el orden, y así borrar o mover FUERA un gancho sigue la
+  // regla de borrado de siempre. Límite (SE ANOTA): `.git/config` no se puede negar sin romper `git init`, y con `core.hooksPath` (o
+  // renombrando `.git` donde se permite borrar) una tarea apunta los ganchos a otra carpeta: el arreglo completo es que quien usa git FUERA
+  // lo haga con `-c core.hooksPath=/dev/null`.
+  const gitRoots = [...new Set([folder, ...extraRw])]
+  lines.push(
+    ';; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.',
+    `(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any ${gitRoots.map((p) => `(subpath ${sbString(p)})`).join(' ')})))`,
     ''
   )
   return lines.join('\n')
