@@ -328,10 +328,10 @@ describe.skipIf(!posixOnly)('F3: capturas en origen aislado', () => {
       .filter((c) => c.cmd === 'screenshot-sck')
       .flatMap((c) => (c.args[1] ?? '').split(','))
 
-  it('screenshot de pantalla completa en origen aislado: rechazo, sin ninguna captura (Finder y Lazunox no llegan a verse), tenga o no Finder concedido', async () => {
-    for (const withFinder of [false, true]) {
+  // 1.8.19 (C5 de la revisión final): Finder ya no se puede conceder desde una Tarea aislada (ver «Finder bloqueado» abajo).
+  it('screenshot de pantalla completa en origen aislado: rechazo, sin ninguna captura (Finder y Lazunox no llegan a verse)', async () => {
+    {
       await grant(SES, 'view', NOTES.bundleId, 'Notes')
-      if (withFinder) await grant(SES, 'view', 'com.apple.finder', 'Finder')
       giveControl(SES)
       const m = await mcpFor({ running: RUNNING })
       const r = await m.call('screenshot', { elements: false, lazunox_session: SES }, hdr())
@@ -585,44 +585,18 @@ describe.skipIf(!posixOnly)(
       svc.removeAllListeners('requestAccess')
     }
 
-    it('Finder con «Ver y clic»/«Control total» por tarjeta: el doble clic y las teclas reales se rechazan (hay que pedir request_full_control)', async () => {
+    it('Finder bloqueado desde una Tarea aislada (1.8.19, C5): no se concede por tarjeta y ni el clic ni las teclas llegan, aun con toma de control', async () => {
       const m = await mcpFor({ app: FINDER, front: FINDER })
-      await askMany(m, SES, [{ app: FINDER, tier: 'full' }])
-      await snap(m, SES, 'Finder')
-      const dbl = await m.call('double_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
-      expect(dbl.isError).toBe(true)
-      expect(textOf(dbl)).toContain('request_full_control')
+      // Sin tarjeta que responder: la petición vuelve sola (antes quedaba esperando una tarjeta de Finder).
+      const r = await m.call('request_access', { apps: ['Finder'], levels: ['full'], reason: 'probar', lazunox_session: SES }, hdr())
+      expect(textOf(r)).not.toMatch(/concedid/i)
+      expect(svc.isForeground(SES, true) && svc.isScopedOnly(SES)).toBe(false)
+      giveControl(SES)
+      const click = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
+      expect(click.isError).toBe(true)
       const key = await m.call('key', { keys: 'return', lazunox_session: SES }, hdr())
       expect(key.isError).toBe(true)
       expect(m.calls().some((c) => c.cmd === 'click' || c.cmd === 'key')).toBe(false)
-    })
-
-    it('aunque otra app de la MISMA tarjeta dé el control (Spotify «full»), el Finder concedido sigue sin ratón ni teclado reales', async () => {
-      // Cada nombre de la tarjeta se resuelve a SU app (resolve-app en orden: Spotify, Finder).
-      const m = await mcpFor({
-        front: FINDER,
-        script: { 'resolve-app': [{ out: { ...SPOT, found: true } }, { out: { ...FINDER, found: true } }] }
-      })
-      // Spotify por la tarjeta REAL (resolve-app #1); el Finder concedido aparte (los nombres de una tarjeta se resuelven a la vez en el helper falso).
-      await askMany(m, SES, [{ app: SPOT, tier: 'full' }])
-      await grant(SES, 'click', FINDER.bundleId, 'Finder')
-      // La prueba solo vale si la sesión de verdad tiene el control acotado por la tarjeta de Spotify.
-      expect(svc.isForeground(SES, true)).toBe(true)
-      expect(svc.isScopedOnly(SES)).toBe(true)
-      await snap(m, SES, 'Finder')
-      const click = await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())
-      expect(click.isError).toBe(true)
-      // El rechazo es el del Finder (pide la toma de control explícita), no «sin concesión».
-      expect(textOf(click)).toContain('request_full_control')
-      expect(m.calls().some((c) => c.cmd === 'click')).toBe(false)
-    })
-
-    it('con una toma de control EXPLÍCITA (request_full_control aprobado) el Finder concedido sí se maneja, como antes', async () => {
-      const m = await mcpFor({ app: FINDER, front: FINDER })
-      await askMany(m, SES, [{ app: FINDER, tier: 'click' }])
-      giveControl(SES)
-      await snap(m, SES, 'Finder')
-      expect((await m.call('left_click', { x: 5, y: 5, lazunox_session: SES }, hdr())).isError).not.toBe(true)
     })
 
     it('open_application de una app con solo «Solo ver» NO la activa aunque la sesión tenga el control por otra app', async () => {

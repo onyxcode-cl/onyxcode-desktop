@@ -957,6 +957,18 @@
       ],
       "nota": "Cubierto por pruebas unitarias en Mac. En Windows no se ha probado en una app armada: la ventana al frente (truco de «siempre encima»), el aviso claro con un archivo llamado .lazunox (antes ENOTDIR crudo) y el reintento ante ENOTEMPTY al rechazar una descarga grande están implementados, sin verificar en Windows.",
       "comprobacion": null
+    },
+    {
+      "id": "N07",
+      "funcion": "Puente de apps desde una Tarea aislada: terminales, intérpretes de guiones, herramientas del sistema y el Explorador nunca se controlan (1.8.19)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/computer/mcp-platform-win32.ts:1",
+        "src/main/computer/policy/isolated-scripting.ts:1",
+        "src/main/computer/policy/isolated-scripting.test.ts:1"
+      ],
+      "nota": "Bloqueados por ejecutable, AUMID y nombre: cmd, powershell, pwsh, Windows Terminal (wt, WindowsTerminal), wscript, cscript, mshta, regedit, mmc, control, SystemSettings, taskmgr y explorer (también su «Ejecutar»). Cubierto por pruebas unitarias; no probado en una app armada en Windows (ruta real del ejecutable, AUMID de Configuración y del Terminal).",
+      "comprobacion": null
     }
   ]
 }
