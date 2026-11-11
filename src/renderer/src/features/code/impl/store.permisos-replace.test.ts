@@ -109,6 +109,22 @@ describe('permissionMode: "replace" (motor lazunox.16)', () => {
     expect(rules.get(sid!)!.filter((r) => r.permission === MARK.permission)).toHaveLength(1)
   })
 
+  it('«Hacer» con «Solo explorar»: el modo de permisos pasa a «Preguntar siempre» (el chip dice lo que rige) y se manda al motor', async () => {
+    const { rules } = installEngine(true)
+    const sid = await st().newSessionAt(D)
+    useCode.setState({ activeSessionID: sid! })
+    await st().setPermissionMode('plan')
+    expect(st().permissionMode).toBe('plan')
+    st().setAgent('build')
+    expect(st().permissionMode).toBe('manual')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(rules.get(sid!)).toEqual([MARK, ...rulesetFor('manual')])
+    // Planear no cambia el modo elegido distinto de «Solo explorar».
+    await st().setPermissionMode('auto')
+    st().setAgent('plan')
+    expect(st().permissionMode).toBe('auto')
+  })
+
   it('H3 (1.8.14): «Solo explorar» elegido en el borrador (sin conversación activa) crea la sesión con las reglas de «Solo explorar»', async () => {
     const { create, rules } = installEngine(true)
     useCode.setState({ activeSessionID: null, agent: 'build', permissionMode: 'manual' })

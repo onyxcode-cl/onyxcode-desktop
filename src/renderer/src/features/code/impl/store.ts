@@ -1765,6 +1765,9 @@ export const useCode = create<CodeState>((set, get) => {
     setAgent: (agent) => {
       lsSet(LS_AGENT, agent)
       set({ agent })
+      // «Hacer» con el modo «Solo explorar» rige como «Preguntar siempre» (`effectiveModeFor`): el chip de permisos pasa a decirlo,
+      // para que lo que se ve sea lo que de verdad aplica el motor (y no «Solo explorar» mientras se pide permiso para editar).
+      if (agent === 'build' && get().permissionMode === 'plan') void get().setPermissionMode('manual')
     },
 
     setModel: (model, remember = true) => {
