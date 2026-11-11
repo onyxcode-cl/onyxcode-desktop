@@ -317,6 +317,34 @@ cd ../grabaciones && mkdir -p r1 && touch r1/p.png && rm -r r1 && echo G-OK`,
       expect(readFileSync(join(privateDir, 'data', 'marca'), 'utf8')).toBe('sigo aqui')
     })
 
+    it('git en la carpeta de la tarea: con «Permitir borrar» init, add, commit y mv; sin él, status y log (como en 1.8.17)', () => {
+      const f4 = join(dir, 'tarea-git')
+      mkdirSync(f4, { recursive: true })
+      ensureTaskAppDirs(f4)
+      const run = (script: string, allowDelete: boolean): string => {
+        const r = spawnSync(
+          '/usr/bin/sandbox-exec',
+          ['-p', buildSandboxProfile({ folder: f4, privateDir, userData, home, allowDelete }), '/bin/sh', '-c', script],
+          {
+            cwd: f4,
+            env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', HOME: home, LANG: 'en_US.UTF-8', ...sandboxEnv(sandboxDirs(privateDir)) },
+            encoding: 'utf8',
+            timeout: 60000
+          }
+        )
+        return `${r.stdout}${r.stderr}`
+      }
+      const a = run(
+        `git init -q && echo hola > a.txt && git add a.txt && git commit -qm uno && git mv a.txt b.txt && git commit -qm dos && echo GIT-OK`,
+        true
+      )
+      expect(a).toContain('GIT-OK')
+      // Sin «Permitir borrar» git no puede renombrar sus `.lock` (igual que en 1.8.17: lo niega la regla `subpath` de siempre); leer sí.
+      const b = run(`git --no-optional-locks status --porcelain && git log --oneline | wc -l`, false)
+      expect(b.trim().split('\n').pop()!.trim()).toBe('2')
+      for (const d of TASK_APP_DIRS) expect(isRealDir(join(f4, d))).toBe(true)
+    })
+
     it('la memoria normal se guarda y se lee', () => {
       const f3 = join(dir, 'tarea3')
       mkdirSync(f3, { recursive: true })
