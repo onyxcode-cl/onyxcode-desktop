@@ -800,7 +800,8 @@ export const tasks = {
   'tasks.connector.server': 'Conector',
   'tasks.connector.tool': 'Herramienta',
   'tasks.connector.args': 'Datos que enviará',
-  'tasks.connector.allowTask': 'Permitir en esta tarea',
-  'tasks.connector.taskHint': '«Permitir en esta tarea» vale solo para esta herramienta y hasta que se cierre la tarea.',
+  'tasks.connector.allowTask': 'Permitir mientras esta carpeta siga abierta',
+  'tasks.connector.taskHint':
+    '«Permitir mientras esta carpeta siga abierta» vale para esta herramienta con cualquier dato, en todas las conversaciones de esta carpeta, hasta que se detenga su tarea en Lazunox. No se guarda.',
   'tasks.connector.expiresIn': 'Si no respondes en {seconds} s, no se usa.'
 } as const

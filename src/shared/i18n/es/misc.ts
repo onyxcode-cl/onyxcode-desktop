@@ -93,7 +93,7 @@ export const misc = {
   'misc.computer.perAppDesc':
     'El agente solo puede actuar sobre las apps que le hayas concedido, con el nivel que elijas. Las nuevas apps se piden con una tarjeta cuando el agente las necesita.',
   'misc.auto.desc':
-    'Aprueba en automático solo lo de bajo riesgo: comandos de terminal de solo lectura, herramientas de conectores de solo consulta, y «Solo ver» de un puñado de apps conocidas. Todo lo demás sigue preguntando siempre.',
+    'Aprueba en automático solo lo de bajo riesgo: comandos de terminal de solo lectura, herramientas de conectores de solo consulta, y «Solo ver» de un puñado de apps conocidas. Todo lo demás sigue preguntando siempre. Lo que sale del espacio protegido de una tarea (comandos en tu computador y conectores marcados «preguntar cada herramienta») lo decides siempre tú: la aprobación automática no lo aprueba, y en una rutina sin nadie mirando se rechaza.',
   'misc.auto.orgOff': 'Tu organización desactivó la aprobación automática: aunque la actives aquí, seguirá preguntando siempre.',
   'misc.auto.master': 'Aprobación automática (solo lo de bajo riesgo)',
   'misc.auto.masterDesc': 'Interruptor maestro: apagado por defecto. Con él apagado, todo vuelve a preguntar como siempre.',

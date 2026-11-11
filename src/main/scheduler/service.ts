@@ -22,6 +22,7 @@
  *   pone en la bandeja para que la persona decida. Nunca se acumulan.
  * - Bandeja «Resultados por revisar» (`inbox`): cada ejecución terminada deja un elemento para aprobar o descartar.
  */
+import { markUnattended } from '../tasks/unattended'
 import { noteWork } from '../code/work-registry'
 import { getLang, t } from '@shared/i18n'
 import { app, Notification, powerMonitor } from 'electron'
@@ -957,6 +958,13 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       children: new Set(),
       polling: false
     }
+    // Nadie mirando: lo que necesita a la persona en main (`equipo`, conectores «preguntar») se niega al momento y se anota aquí.
+    const offUnattended = isTasks
+      ? markUnattended(dirForSession, ({ permission, detail }) => {
+          logEntry((record.rejected ??= []), permission, detail ? [detail] : [])
+          this.touch(record)
+        })
+      : null
     // Responde (o rechaza) permisos/preguntas de esta sesión: nadie está mirando.
     const poll = setInterval(() => void this.handlePending(run), PERMISSION_POLL_MS)
     const onAbort = (): void => {
@@ -1052,6 +1060,7 @@ export class SchedulerService extends EventEmitter<SchedulerEvents> {
       clearTimeout(timeout)
       signal.removeEventListener('abort', onAbort)
       offBlocked?.()
+      offUnattended?.()
       for (const h of hostsToRelease) this.releaseHost(dirForSession, h)
       record.waiting = false
     }

@@ -7,11 +7,13 @@ import { isHostCommandsDisabled, loadManagedPolicy } from '../tasks/policy'
 import { projectProfiles } from '../project-profile'
 import { requestHostApproval } from './approvals'
 import { HostExecMcpServer } from './mcp-server'
+import { unattendedFor } from '../tasks/unattended'
 
 export { HOST_ROUTE_NAME } from './names'
 export const hostExecMcp = new HostExecMcpServer({
   enabled: () => !isHostCommandsDisabled(loadManagedPolicy()),
   envFor: (folder) => projectProfiles().envFor(folder),
   redact: (folder, text) => projectProfiles().redact(folder, text),
-  approve: (req, signal) => requestHostApproval(req, { signal })
+  approve: (req, signal) => requestHostApproval(req, { signal }),
+  unattended: (folder) => unattendedFor(folder)
 })

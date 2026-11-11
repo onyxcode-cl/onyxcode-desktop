@@ -7,7 +7,7 @@ import { app } from 'electron'
 import { chmodSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { PERMISSION_DIR_NAME } from '@shared/permission-persist'
-import { chmodDirNoFollow, ensureRealDir, isRealDir, readFileNoFollow, writeFileNoFollow } from '../tasks/no-follow'
+import { isRealDir, readFileNoFollow, writeFileNoFollow } from '../tasks/no-follow'
 
 /**
  * Herramientas propias del motor (copia de `PROPIAS` en `permission/siempre-disco.ts` del motor). Para ellas un «siempre» cuyo patrón es
@@ -131,37 +131,6 @@ export function sanitizeSavedPermissions(dir: string): number {
   return removed
 }
 
-/**
- * Reglas válidas (`isPersistableRule`) de los archivos de una carpeta de guardado del motor cuyo `directory` es `folder`. Sin seguir
- * enlaces ni carpetas que sean enlaces; lo que no se entiende se ignora.
- */
-export function readEngineAlwaysRules(dir: string, folder: string): Array<{ permission: string; pattern: string }> {
-  const out: Array<{ permission: string; pattern: string }> = []
-  let names: string[] = []
-  try {
-    if (!isRealDir(dir)) return out
-    names = readdirSync(dir).filter((n) => n.endsWith('.json'))
-  } catch {
-    return out
-  }
-  for (const name of names) {
-    try {
-      const read = readFileNoFollow(join(dir, name), MAX_RULES_FILE)
-      if (!read) continue
-      const json = JSON.parse(read.content.toString('utf8')) as { directory?: unknown; rules?: unknown }
-      if (!json || json.directory !== folder || !Array.isArray(json.rules)) continue
-      for (const r of json.rules.slice(0, 500)) {
-        if (!isPersistableRule(r)) continue
-        const { permission, pattern } = r as { permission: string; pattern: string }
-        if (!out.some((x) => x.permission === permission && x.pattern === pattern)) out.push({ permission, pattern })
-      }
-    } catch {
-      /* archivo roto: se ignora */
-    }
-  }
-  return out
-}
-
 /** Vacía una carpeta de guardado (sin seguir enlaces). Si la carpeta misma es un enlace, no se toca. */
 export function emptySavedPermissionDir(dir: string): number {
   return isRealDir(dir) ? emptyDir(dir) : 0
@@ -184,21 +153,6 @@ export function ensurePermissionDir(dir: string = permissionDir()): void {
     console.error('[permisos] no se pudo preparar la carpeta de permisos guardados:', err)
   }
   sanitizeSavedPermissions(dir)
-}
-
-/**
- * Lo mismo para la carpeta de un servidor de Tareas aislado, que vive dentro de su carpeta privada (que la tarea controla) (1.8.18): sin
- * seguir enlaces. Si `permisos-siempre` es un enlace (o un archivo), se borra ESE nombre y se crea una carpeta real; el modo se fija con
- * `fchmod`. Mejor esfuerzo: nunca lanza.
- */
-export function ensureSandboxPermissionDir(privateDir: string): void {
-  try {
-    chmodDirNoFollow(ensureRealDir(privateDir, sandboxPermissionDir(privateDir), { create: true, replace: true, mode: 0o700 }), 0o700)
-  } catch (err) {
-    console.error('[permisos] no se pudo preparar la carpeta de permisos guardados de la tarea:', err)
-  }
-  // La tarea pudo escribir aquí (por ejemplo `{bash, "?*"}`): se limpia antes de que su motor arranque y lo cargue.
-  sanitizeSavedPermissions(sandboxPermissionDir(privateDir))
 }
 
 /** Vacía una carpeta de guardado (no la borra). Devuelve cuántos elementos quitó. Los enlaces se borran sin seguirlos. */

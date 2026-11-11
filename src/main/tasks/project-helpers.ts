@@ -23,7 +23,14 @@ import { RESERVED_HELPER_NAMES, splitFrontmatter, HELPER_LIMITS } from '@shared/
 import { plainText } from '@shared/mcp-elicitation'
 import { isRealDir, readFileNoFollow } from './no-follow'
 
-export const PROJECT_HELPER_LIMITS = { helpers: 20, commands: 50, fileBytes: 32 * 1024, depth: 3, description: 500, maxTurns: 1000 } as const
+export const PROJECT_HELPER_LIMITS = {
+  helpers: 20,
+  commands: 50,
+  fileBytes: 32 * 1024,
+  depth: 3,
+  description: 500,
+  maxTurns: 1000
+} as const
 
 /** Nombres que un ayudante del proyecto no puede ocupar (motor + app). Sin distinguir mayúsculas. */
 export const RESERVED_AGENT_NAMES: readonly string[] = [...RESERVED_HELPER_NAMES, 'compaction', 'title', 'summary']
@@ -31,8 +38,11 @@ export const RESERVED_AGENT_NAMES: readonly string[] = [...RESERVED_HELPER_NAMES
 const SEGMENT_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 const COLOR_RE = /^(#[0-9a-fA-F]{6}|primary|secondary|accent|success|warning|error|info)$/
 const TOOL_RE = /^[A-Za-z0-9_][A-Za-z0-9_.:*-]{0,79}$/
-/** Igual que el motor (`session/prompt.ts:2015`): `` !`cmd` `` se ejecuta al usar el comando. */
-const SHELL_RE = /!`[^`]*`/
+/**
+ * El motor (`session/prompt.ts:2015`) ejecuta `` !`cmd` `` al usar el comando, y sustituye los argumentos ANTES de buscarlo: una plantilla
+ * con `` !` `` sin cerrar más unos argumentos con `` ` `` también ejecuta. Por eso basta con que aparezca `` !` ``.
+ */
+const SHELL_RE = /!`/
 /** Igual que el motor (`config/markdown.ts:5`): `@ruta` se convierte en un archivo adjunto. */
 const FILE_RE = /(?<![\w`])@(\.?[^\s`,.]*(?:\.[^\s`,.]+)*)/
 
@@ -109,7 +119,13 @@ function list(lines: string[]): string[] | null {
     if (!m) return null
     items = m[1]!.split(',').map((x) => x.trim().replace(/^["']|["']$/g, ''))
   } else if (rest === '') {
-    items = lines.slice(1).map((l) => /^\s*-\s+(.+)$/.exec(l)?.[1]?.trim().replace(/^["']|["']$/g, '') ?? '')
+    items = lines.slice(1).map(
+      (l) =>
+        /^\s*-\s+(.+)$/
+          .exec(l)?.[1]
+          ?.trim()
+          .replace(/^["']|["']$/g, '') ?? ''
+    )
   } else {
     const s = scalar(lines)
     if (s === null) return null
@@ -192,7 +208,8 @@ export function readProjectHelpers(folder: string, reservedExtra: ReadonlySet<st
       for (const f of listMd(join(folder, '.claude', 'agents'), PROJECT_HELPER_LIMITS.depth)) sources.push({ ...f, claude: true })
     }
     if (opencodeDot) {
-      for (const sub of ['agent', 'agents']) for (const f of listMd(join(dot, sub), PROJECT_HELPER_LIMITS.depth)) sources.push({ ...f, claude: false })
+      for (const sub of ['agent', 'agents'])
+        for (const f of listMd(join(dot, sub), PROJECT_HELPER_LIMITS.depth)) sources.push({ ...f, claude: false })
     }
     for (const s of sources) {
       const parsed = parse(s.file)

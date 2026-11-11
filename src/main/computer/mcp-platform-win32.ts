@@ -43,16 +43,38 @@ import { WIN_EXEMPT_EXES } from './policy/win-apps'
 
 /**
  * Origen aislado en Windows: apps sobre las que NUNCA se actúa. Parte de `WIN_EXEMPT_EXES` (Lazunox, Electron, dwm, shell, buscador, teclado
- * táctil) más el buscador clásico y la pantalla de bloqueo. `explorer.exe` NO está (como Finder en Mac): solo se acciona si la sesión lo concedió.
+ * táctil) más el buscador clásico y la pantalla de bloqueo, y (1.8.19) terminales, intérpretes de guiones, herramientas del sistema y el
+ * Explorador (como Finder en Mac).
  */
-const WIN_ISOLATED_EXTRA_EXEMPT: readonly string[] = ['searchapp.exe', 'lockapp.exe']
+const WIN_ISOLATED_EXTRA_EXEMPT: readonly string[] = [
+  'searchapp.exe',
+  'lockapp.exe',
+  // Revisión final 1.8.19 (C5): terminales, intérpretes de guiones y herramientas del sistema ejecutan órdenes fuera de la jaula o
+  // cambian ajustes; el Explorador (y su «Ejecutar») abre cualquier programa. Nunca desde una Tarea aislada.
+  'cmd.exe',
+  'powershell.exe',
+  'pwsh.exe',
+  'windowsterminal.exe',
+  'wt.exe',
+  'wscript.exe',
+  'cscript.exe',
+  'mshta.exe',
+  'regedit.exe',
+  'mmc.exe',
+  'control.exe',
+  'systemsettings.exe',
+  'taskmgr.exe',
+  'explorer.exe'
+]
 /** Paquetes de la Store que son el shell (el AUMID empieza por estos prefijos, en minúsculas). */
 const WIN_ISOLATED_EXEMPT_AUMID_PREFIXES: readonly string[] = [
   'microsoft.windows.shellexperiencehost',
   'microsoft.windows.startmenuexperiencehost',
   'microsoft.windows.search',
   'microsoft.lockapp',
-  'microsoft.windows.cortana'
+  'microsoft.windows.cortana',
+  'microsoft.windowsterminal',
+  'windows.immersivecontrolpanel'
 ]
 
 /** ¿Clave de app (`exe:…|pub:…` o `aumid:…`) exenta en origen aislado? Una clave ilegible cuenta como exenta (falla cerrado). */

@@ -103,6 +103,23 @@ describe('createConnectorGate', () => {
     expect(await g({ tool: 'send', args: {} }, sig())).toEqual({ ok: true })
   })
 
+  it('(C1) rutina sin nadie mirando: se niega al momento sin preguntar y se anota', async () => {
+    const asked: string[] = []
+    const notes: string[] = []
+    const g = createConnectorGate({
+      folder: '/Users/ana/p',
+      server: 'gmail',
+      audit: () => undefined,
+      approve: async (i) => (asked.push(i.args), 'allow'),
+      unattended: () => (w) => notes.push(w.permission)
+    })
+    const v = await g({ tool: 'send', args: {} }, sig())
+    expect(v).toMatchObject({ ok: false })
+    expect((v as { message: string }).message).toContain('necesita que la persona esté presente')
+    expect(asked).toEqual([])
+    expect(notes).toEqual(['gmail_send'])
+  })
+
   it('una llamada mientras otra espera: «ocupado» (no se apilan tarjetas)', async () => {
     let release: ((o: ConnectorOutcome) => void) | undefined
     let n = 0

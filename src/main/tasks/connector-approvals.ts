@@ -7,14 +7,17 @@
  *
  * Igual que `equipo` (`host-exec/approvals.ts`): tarjeta propia de main con los argumentos completos; «No» por defecto; vence denegando;
  * una tarjeta a la vez por tarea y conector («ocupado»); 30 s sin tarjetas tras un «No» o sin respuesta; pausa de 10 min tras 3 «No»
- * seguidos; desde el celular solo se puede negar (o confirmar en el computador). Además, «Permitir en esta tarea» para ESA herramienta
- * exacta: memoria de main que se borra al cerrar la tarea (la puerta es de la ruta, que muere con el servidor). Nunca «siempre».
+ * seguidos; desde el celular solo se puede negar (o confirmar en el computador). Además, «Permitir mientras esta carpeta siga abierta»
+ * (antes «en esta tarea»): por SERVIDOR de la carpeta, no por conversación, porque la llamada MCP no dice de qué conversación viene (un id
+ * lo pondría quien llama). Vale para ESA herramienta, con cualquier dato, en memoria de main, hasta que se detiene el servidor de la
+ * carpeta (la puerta es de la ruta, que muere con él). Nunca «siempre».
  * No importa `electron`: la tarjeta y el diálogo nativo los pone `ipc/tasks-connector-handlers.ts`.
  */
 import { randomBytes } from 'node:crypto'
 import type { ConnectorApprovalRequest, ConnectorDecision } from '@shared/ipc-tasks'
 import { revealHiddenChars } from '../host-exec/policy'
-import type { ToolCallGate, ToolCallVerdict } from './mcp-proxy'
+import type { McpRouteSpec, ToolCallGate, ToolCallVerdict } from './mcp-proxy'
+import { UNATTENDED_TEXT, unattendedFor, type UnattendedNote } from './unattended'
 
 export const CONNECTOR_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000
 export const CONNECTOR_COOLDOWN_MS = 30_000
@@ -172,6 +175,8 @@ export function createConnectorGate(opts: {
   approve?: (input: Omit<ConnectorApprovalRequest, 'id' | 'createdAt' | 'expiresAt'>, signal: AbortSignal) => Promise<ConnectorOutcome>
   now?: () => number
   audit?: (e: { at: number; folder: string; server: string; tool: string; result: string }) => void
+  /** Rutina sin nadie mirando en la carpeta (por defecto, `unattended.ts`): se niega al momento y se anota. */
+  unattended?: (folder: string) => UnattendedNote | null
 }): ToolCallGate {
   const now = opts.now ?? Date.now
   const approve = opts.approve ?? ((input, signal) => requestConnectorApproval(input, { signal }))
@@ -194,6 +199,12 @@ export function createConnectorGate(opts: {
     if (allowedInTask.has(call.tool)) {
       audit(call.tool, 'permitido-en-esta-tarea')
       return { ok: true }
+    }
+    const unattended = (opts.unattended ?? unattendedFor)(opts.folder)
+    if (unattended) {
+      unattended({ permission: `${opts.server}_${call.tool}`, detail: '' })
+      audit(call.tool, 'desatendida')
+      return { ok: false, message: UNATTENDED_TEXT }
     }
     const st = stateOf(key)
     const t0 = now()
@@ -248,4 +259,12 @@ export function createConnectorGate(opts: {
     }
     return { ok: false, message: outcome === 'deny' ? CONNECTOR_TEXTS.denied : CONNECTOR_TEXTS.noAnswer }
   }
+}
+
+/**
+ * Ruta del proxy para un conector con «preguntar cada herramienta» (H2): SOLO su ruta exacta (ni la API REST del mismo servicio ni otras
+ * rutas con las cabeceras de la persona) y la puerta de main.
+ */
+export function gatedConnectorRoute(spec: McpRouteSpec, folder: string): McpRouteSpec {
+  return { ...spec, exactPath: true, toolCallGate: createConnectorGate({ folder, server: spec.name }) }
 }

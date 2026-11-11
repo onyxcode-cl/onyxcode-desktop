@@ -95,7 +95,7 @@ export const misc = {
   'misc.computer.perAppDesc':
     'The agent can only act on apps you have granted it, at the level you choose. New apps are requested with a card when the agent needs them.',
   'misc.auto.desc':
-    'Automatically approves only low-risk actions: read-only terminal commands, read-only tools from connectors, and “View only” for a handful of known apps. Everything else always asks.',
+    'Automatically approves only low-risk actions: read-only terminal commands, read-only tools from connectors, and “View only” for a handful of known apps. Everything else always asks. What leaves a task’s protected space (commands on your computer and connectors set to “ask for each tool”) is always your call: automatic approval doesn’t approve it, and in a routine with nobody watching it’s declined.',
   'misc.auto.orgOff': 'Your organization turned off automatic approval: even if you turn it on here, it will keep asking every time.',
   'misc.auto.master': 'Automatic approval (low-risk actions only)',
   'misc.auto.masterDesc': 'Master switch: off by default. With it off, everything asks as usual.',

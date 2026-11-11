@@ -9,17 +9,22 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Corrección de seguridad en Tareas
 
 - **Comandos fuera del aislamiento sin tu aprobación.** Un programa ejecutado dentro de una tarea podía hacer que se ejecutara un comando en tu computador, fuera del aislamiento, sin que lo aprobaras: la pregunta la hacía y la respondía el motor, que corre dentro del aislamiento. Estaba así desde la 1.8.10. Lo encontramos nosotros al revisar y no tenemos señales de que se haya usado. Como en los casos anteriores, el modelo tenía que ejecutar ese código (por ejemplo, engañado por instrucciones escondidas en un archivo o en una página). Ahora cada comando fuera del aislamiento lo pregunta la propia app, mostrando el comando completo. No hay «permitir siempre» para estos comandos, y si no respondes, no se ejecuta.
-- **Lo mismo para tus conectores marcados «preguntar cada vez»** (los que pasan por la app): ahora la pregunta la hace la app y no el motor.
+- **Lo mismo para tus conectores marcados «preguntar cada vez»** (los que pasan por la app): ahora la pregunta la hace la app y no el motor, también para leer un recurso o una plantilla del conector. La app revisa lo que se envía tal como lo leerá el conector, y solo deja usar la dirección del conector, no otras del mismo servicio.
 - **En Tareas con aislamiento, el motor ya no carga programas que vengan de la carpeta de la tarea**: complementos, herramientas, conectores locales y formateadores. Los ayudantes y los comandos de texto del proyecto siguen funcionando, pero ya no pueden darse permisos.
-- **Los «permitir siempre» de Tareas ahora los guarda la app**, fuera del alcance de la tarea. Antes quedaban donde un programa de la tarea podía cambiarlos.
+- **Los «permitir siempre» de Tareas ahora los guarda la app**, fuera del alcance de la tarea. Antes quedaban donde un programa de la tarea podía cambiarlos. Un «siempre» dado en una tarea aislada no vale cuando abres esa carpeta en «Control total».
 - **Carpeta extra de solo lectura dentro de la carpeta de la tarea:** ya no se pueden sacar archivos de ella.
-- **Desde una tarea ya no se pueden controlar Ajustes del Sistema ni el editor de scripts.**
+- **Desde una tarea aislada ya no se pueden controlar** Ajustes del Sistema, el editor de scripts, las terminales, Automator, Atajos, el Finder ni los avisos del sistema (en Windows: la consola, PowerShell, Windows Terminal, el Editor del Registro, el Panel de control, Configuración, el Administrador de tareas y el Explorador).
 
 ### Cambios que puedes notar
 
 - **Tarjeta nueva para comandos fuera del aislamiento**, con el comando completo y el botón «Permitir esta vez».
 - **Desde el celular puedes negar un comando, pero para permitirlo hay que confirmarlo en el computador.**
-- **Un «siempre» respondido desde el celular en una tarea aislada dura hasta que reinicias la app.**
+- **Los «permitir siempre» de Tareas anteriores a esta versión se borran**: la primera vez que haga falta, tendrás que volver a darlos una vez. (Una tarea los podía haber cambiado, así que no se conservan.)
+- **En una rutina programada, sin nadie mirando, un comando fuera del aislamiento o un conector «preguntar cada vez» se rechaza al momento** y queda anotado en el resultado de la rutina. La aprobación automática no los aprueba nunca.
+- **«Permitir mientras esta carpeta siga abierta»** en la tarjeta de un conector vale para esa herramienta, con cualquier dato, en todas las conversaciones de la carpeta, hasta que se detiene su tarea.
+- **Un conector «preguntar cada vez» que use el formato antiguo de conexión (SSE) deja de funcionar en Tareas aisladas**: usa su dirección nueva o quita «preguntar».
+- **Un comando del proyecto que contenga `` !` `` ya no aparece**, aunque no esté cerrado.
+- **Un «siempre» respondido desde el celular en una tarea aislada dura hasta que se detiene la tarea.**
 - **En Tareas con aislamiento dejan de cargarse** los complementos, herramientas, conectores locales y formateadores del proyecto, las reglas por ruta y las instrucciones de carpetas superiores. Un ayudante del proyecto usa el modelo y los permisos de la tarea. En «Control total» nada cambia.
 
 ### Otros arreglos

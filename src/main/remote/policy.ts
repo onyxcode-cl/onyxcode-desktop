@@ -1570,8 +1570,8 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     text:
       p.decision === 'task'
         ? t(
-            'Permitir en esta tarea una herramienta de un conector tuyo (con tu cuenta en ese servicio)',
-            'Allow a tool of one of your connectors for this task (with your account on that service)'
+            'Permitir una herramienta de un conector tuyo, con cualquier dato, mientras esa carpeta siga abierta (con tu cuenta en ese servicio)',
+            'Allow a tool of one of your connectors, with any data, while that folder stays open (with your account on that service)'
           )
         : t(
             'Permitir una vez una herramienta de un conector tuyo (con tu cuenta en ese servicio)',

@@ -429,7 +429,7 @@ describe.skipIf(!posixOnly)('origen aislado en Windows: teclas, exentas y captur
       expect(isWinIsolatedExempt(k(`C:\\Windows\\SystemApps\\${e}`))).toBe(true)
     }
     expect(isWinIsolatedExempt(LAZUNOX)).toBe(true)
-    expect(isWinIsolatedExempt(k('C:\\Windows\\explorer.exe'))).toBe(false)
+    expect(isWinIsolatedExempt(k('C:\\Windows\\explorer.exe'))).toBe(true) // 1.8.19 (C5): el Explorador también, como Finder
     expect(isWinIsolatedExempt(NOTEPAD)).toBe(false)
     expect(isWinIsolatedExempt('basura')).toBe(true)
     expect(isWinIsolatedExempt('aumid:microsoft.windows.startmenuexperiencehost_cw5n1h2txyewy!app')).toBe(true)

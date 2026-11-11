@@ -88,7 +88,7 @@ import { ChatIndexStore } from './chat-index'
 import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
-import { createConnectorGate } from './connector-approvals'
+import { gatedConnectorRoute } from './connector-approvals'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
 import { applyComputerAgent } from './computer-agent'
 import type { EgressBlockedEvent } from './proxy'
@@ -535,6 +535,16 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * El nivel de acceso de la Ficha del proyecto cambió: las herramientas se reparten al arrancar el servidor, así que un servidor ocioso se
    * relanza para que el cambio valga ya. Uno ocupado no se toca (`later`: vale al próximo arranque); sin servidor no hay nada que hacer.
    */
+  /**
+   * ¿Un «siempre» que la persona da ahora para esta carpeta debe valer solo en el modo aislado? Sí, salvo que la carpeta esté abierta SOLO
+   * en Control total (servidor vivo o arrancando en Control total y ninguno aislado). En la duda, solo aislado (lo seguro).
+   */
+  alwaysRuleIsolatedOnly(folder: string): boolean {
+    const f = this.nf(folder)
+    const live = (e: Entry | undefined): boolean => !!e && (!!e.handle || !!e.starting)
+    return !(live(this.servers.get(serverKey(f, true))) && !live(this.servers.get(serverKey(f, false))))
+  }
+
   async applyProjectAccess(folder: string): Promise<'restarted' | 'later' | 'none'> {
     const f = this.nf(folder)
     const cur = this.servers.get(serverKey(f, false))
@@ -1485,10 +1495,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     // Conectores de la persona con «preguntar cada herramienta»: la puerta de main en su ruta (`connector-approvals.ts`), por tarea.
     const c = tasksMcpContribution({
       sandboxed: !fullAccess,
-      registerRoute: mcpProxy
-        ? (spec, o) =>
-            mcpProxy.addRoute(o?.askEachTool ? { ...spec, toolCallGate: createConnectorGate({ folder, server: spec.name }) } : spec)
-        : undefined
+      registerRoute: mcpProxy ? (spec, o) => mcpProxy.addRoute(o?.askEachTool ? gatedConnectorRoute(spec, folder) : spec) : undefined
     })
     if (c.blocked.length) {
       console.warn(`[tasks] MCP no disponibles en el sandbox (secretos en el entorno): ${c.blocked.join(', ')}`)
@@ -1497,13 +1504,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     this.serverHosts.set(key, loadManagedPolicy()?.disableCustomHosts ? [] : c.hosts)
     // Permisos "siempre permitir" recordados para esta carpeta (`rules.ts`).
     // «Siempre» de una tarea aislada: los guarda y los pasa main (`tasks-rules.json`, fuera del alcance de la tarea), nunca el motor
-    // (su carpeta privada la puede escribir la tarea). Los que el motor guardó antes se pasan una sola vez, saneados.
+    // (su carpeta privada la puede escribir la tarea). Los que el motor guardó antes NO se importan: se descartan una vez (H3).
     // (Seatbelt: con WSL `this.win` existe y la carpeta privada vive en la distro, donde el motor nunca guardó nada.)
     if (!fullAccess && !this.win) {
-      tasksRules.importEngineAlwaysRulesOnce(
+      tasksRules.discardEngineAlwaysRulesOnce(
         folder,
-        sandboxPermissionDir(join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder))),
-        this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1'
+        sandboxPermissionDir(join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)))
       )
     }
     const config = buildInlineConfig({
@@ -1520,7 +1526,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // Con el puente de apps, el agente aislado recibe la instrucción de cómo pedirlas (sin puente: nada, prompt idéntico).
       instructions: bridgeMcp ? [writeUnifiedAppsPrompt(getOpencodeConfigDir())].filter((p): p is string => !!p) : undefined,
       mcpContribution: c,
-      rulesPermission: rulesPermissionConfig(tasksRules.list(folder)),
+      rulesPermission: rulesPermissionConfig(tasksRules.list(folder), { fullAccess }),
       skills: skillsInlineConfig(),
       modelFallback: this.opts.modelFallback?.(),
       credentialProviderIds: fullAccess ? undefined : this.credentialIds(),

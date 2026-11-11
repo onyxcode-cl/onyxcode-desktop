@@ -13,7 +13,6 @@ import {
   readFileSync,
   realpathSync,
   rmSync,
-  statSync,
   symlinkSync,
   writeFileSync
 } from 'node:fs'
@@ -27,7 +26,7 @@ vi.mock('electron', () => ({ app: { getPath: () => state.userData }, dialog: {} 
 import { t } from '@shared/i18n'
 import { posixOnly } from '../../test/platform'
 import { moveDownloadIntoTaskFolder } from '../embedded-browser/downloads'
-import { ensureSandboxPermissionDir, forgetSavedPermissions, sandboxPermissionDir } from '../opencode/permission-store'
+import { forgetSavedPermissions, sandboxPermissionDir } from '../opencode/permission-store'
 import { importFilesInto } from './files'
 import { removeSkill, writeApprovedSkill } from './learned-skills'
 import { deleteMemory, getMemory, saveAgentsMd, saveMemory } from './projects'
@@ -79,15 +78,6 @@ describe.skipIf(!posixOnly)('permisos guardados de la tarea (permission-store)',
     mkdirSync(p, { recursive: true })
     return p
   }
-  it('ensureSandboxPermissionDir: un enlace en `permisos-siempre` se cambia por una carpeta 0700; el destino no cambia de modo', () => {
-    const p = priv()
-    mkdirSync(join(outside, 'd'), { mode: 0o755 })
-    symlinkSync(join(outside, 'd'), sandboxPermissionDir(p))
-    ensureSandboxPermissionDir(p)
-    expect(lstatSync(sandboxPermissionDir(p)).isSymbolicLink()).toBe(false)
-    expect(statSync(sandboxPermissionDir(p)).mode & 0o777).toBe(0o700)
-    expect(statSync(join(outside, 'd')).mode & 0o777).toBe(0o755)
-  })
   it('forgetSavedPermissions no vacía el destino de un enlace (ni de la carpeta privada ni de `permisos-siempre`)', () => {
     const p = priv()
     writeFileSync(join(outside, 'mio.txt'), 'x')
@@ -98,7 +88,7 @@ describe.skipIf(!posixOnly)('permisos guardados de la tarea (permission-store)',
   })
   it('forgetSavedPermissions sigue vaciando la carpeta real', () => {
     const p = priv()
-    ensureSandboxPermissionDir(p)
+    mkdirSync(sandboxPermissionDir(p), { recursive: true })
     writeFileSync(join(sandboxPermissionDir(p), 'r.json'), '{}')
     expect(forgetSavedPermissions(state.userData)).toBe(1)
     expect(readdirSync(sandboxPermissionDir(p))).toEqual([])
