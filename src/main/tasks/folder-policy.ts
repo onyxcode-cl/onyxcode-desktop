@@ -10,7 +10,7 @@
  * más en un volumen sensible a mayúsculas, nunca de menos.
  */
 import { t } from '@shared/i18n'
-import { resolve, sep } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { DISPLAY_NAME } from '@shared/brand'
 import { isInside } from '../util/paths'
 import { defaultDeniedReadPaths } from './sandbox-profile'
@@ -57,6 +57,11 @@ export const SYSTEM_FOLDERS = [
   '/cores',
   '/Network'
 ]
+
+/** Carpetas de configuración de los agentes de la persona que nunca son carpeta de tarea ni carpeta extra (H5). */
+export function engineConfigFolders(home: string): string[] {
+  return [join(home, '.opencode'), join(home, '.claude'), join(home, '.config', 'opencode')]
+}
 
 /**
  * Lee la salida de `/sbin/mount`: `<dispositivo> on <punto de montaje> (<tipo>, <opciones>…)`.
@@ -159,6 +164,15 @@ export function forbiddenFolderReason(
   for (const denied of defaultDeniedReadPaths(ctx.home)) {
     if (isInside(f, key(denied))) {
       return t('merr.folder.secrets', { path: tilde(resolve(denied), ctx.home) })
+    }
+  }
+
+  // H5: configuración de los agentes de la persona. Lo que una tarea deje ahí lo cargan como código el motor de Code (sin aislamiento) y el
+  // de las tareas en el siguiente arranque. Se rechaza la carpeta, sus subcarpetas y cualquier carpeta que la contenga.
+  for (const cfg of engineConfigFolders(ctx.home)) {
+    const c = key(cfg)
+    if (isInside(f, c) || isInside(c, f)) {
+      return t('merr.folder.engineConfig', { path: tilde(resolve(cfg), ctx.home) })
     }
   }
 

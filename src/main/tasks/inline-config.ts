@@ -64,7 +64,14 @@ export interface InlineConfigInput {
    * H5: texto de la carpeta que se sigue dando al motor con jaula, que corre con `OPENCODE_DISABLE_PROJECT_CONFIG=1` (`project-code.ts`).
    * Solo sandbox. Ausente = igual que siempre.
    */
-  projectText?: { instructionFile: string; skillDirs: string[] }
+  projectText?: {
+    instructionFile: string
+    skillDirs: string[]
+    /** Ayudantes del proyecto ya saneados por main (`project-helpers.ts`): solo texto, sin permisos ni herramientas ni modelo. */
+    agents?: Record<string, unknown>
+    /** Comandos del proyecto ya saneados por main: solo plantillas de texto. */
+    commands?: Record<string, unknown>
+  }
 }
 
 /** H5: instrucciones y skills de la carpeta por ruta absoluta, y LSP/formateadores apagados (solo sandbox). */
@@ -77,7 +84,9 @@ function projectTextBlock(i: InlineConfigInput, instr: string[]): Record<string,
     instructions: [map(i.projectText.instructionFile), ...instr],
     skills: { paths: [...prevPaths, ...i.projectText.skillDirs.map(map)] },
     lsp: false,
-    formatter: false
+    formatter: false,
+    ...(i.projectText.agents && Object.keys(i.projectText.agents).length ? { agent: i.projectText.agents } : {}),
+    ...(i.projectText.commands && Object.keys(i.projectText.commands).length ? { command: i.projectText.commands } : {})
   }
 }
 

@@ -16,6 +16,8 @@
  *     (`AGENTS.md`, o `CLAUDE.md`/`CONTEXT.md` si no hay `AGENTS.md`, como hace el motor) y las skills de `.opencode/skills` (las que aprende
  *     la app, `learned-skills.ts`). Una skill es texto: sus scripts los corre el modelo con la herramienta shell, dentro de la jaula y sin
  *     los secretos.
+ *     Los ayudantes (`.opencode/agents`, `.claude/agents`) y los comandos de texto (`.opencode/command`) los lee main SANEADOS
+ *     (`project-helpers.ts`): sin permisos, herramientas, modelo ni ejecución.
  *  3. `lsp: false` y `formatter: false` en la config inline (ya estaban apagados por omisión; así ninguna otra fuente los enciende).
  *  4. Antes de cada arranque con jaula, lo que haya en la config global privada del motor se aparta a una cuarentena (la app nunca escribe
  *     ahí; si hay algo, lo dejó la tarea).
@@ -26,6 +28,7 @@
 import { existsSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureRealDir } from './no-follow'
+import { readProjectHelpers } from './project-helpers'
 
 /** Variables que apagan la config del proyecto en el motor con jaula. Control total: ninguna. */
 export function projectCodeEnv(fullAccess: boolean): Record<string, string> {
@@ -56,6 +59,33 @@ export function projectText(folder: string, exists: (p: string) => boolean = exi
 
 /** Carpeta de cuarentena dentro de la carpeta privada (el motor no lee nada de ahí). */
 export const QUARANTINE_DIR = 'cuarentena-config'
+/** Nombres (minúsculas, sin `.md`) de los agentes de la app en `opencode-config/agents`: un ayudante del proyecto no los puede ocupar. */
+export function appAgentNames(appConfigDir: string): Set<string> {
+  try {
+    return new Set(
+      readdirSync(join(appConfigDir, 'agents'))
+        .filter((n) => n.toLowerCase().endsWith('.md'))
+        .map((n) => n.slice(0, -3).toLowerCase())
+    )
+  } catch {
+    return new Set()
+  }
+}
+
+/**
+ * Todo lo de texto de la carpeta para el motor con jaula: instrucciones, skills, ayudantes y comandos saneados (`project-helpers.ts`).
+ * Registra (sin contenido) lo que se omitió.
+ */
+export function sandboxProjectText(
+  folder: string,
+  appConfigDir: string,
+  log: (msg: string) => void = (m) => console.warn('[tasks]', m)
+): ProjectText & { agents: Record<string, unknown>; commands: Record<string, unknown> } {
+  const helpers = readProjectHelpers(folder, appAgentNames(appConfigDir))
+  for (const s of helpers.skipped) log(`${s.kind === 'agent' ? 'ayudante' : 'comando'} del proyecto omitido «${s.name}»: ${s.reason}`)
+  return { ...projectText(folder), agents: helpers.agents, commands: helpers.commands }
+}
+
 /** Cuántas cuarentenas se guardan (las más nuevas). */
 export const QUARANTINE_KEEP = 3
 /** Lo que el propio motor escribe en su config global al arrancar (`config/config.ts:310-327, 484-492`). No es código que cargue. */

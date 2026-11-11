@@ -69,7 +69,7 @@ import { projectProfiles } from '../project-profile'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
 import { ensureTaskPrivateDir } from './private-dir'
-import { projectCodeEnv, projectText, quarantineEngineUserConfig } from './project-code'
+import { projectCodeEnv, quarantineEngineUserConfig, sandboxProjectText } from './project-code'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
@@ -1505,7 +1505,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       modelFallback: this.opts.modelFallback?.(),
       credentialProviderIds: fullAccess ? undefined : this.credentialIds(),
       // H5: el motor con jaula ignora la config de la carpeta (`projectCodeEnv`); lo que es texto (instrucciones, skills) se le da aquí.
-      projectText: fullAccess ? undefined : projectText(folder),
+      projectText: fullAccess ? undefined : sandboxProjectText(folder, getOpencodeConfigDir()),
       // Windows: las carpetas vinculadas se conceden con su ruta DENTRO de la distro (`/win/d/…`), no con la de Windows.
       toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })

@@ -209,6 +209,8 @@ export const mainErrors = {
   'merr.folder.system': '“{system}” is a system folder and can’t be used. Choose a folder inside your home folder.',
   'merr.folder.secrets':
     'That folder holds credentials or private data ({path}) and tasks can’t give the agent access to it. Choose another folder.',
+  'merr.folder.engineConfig':
+    'That folder holds your agents’ settings ({path}). Anything a task leaves there could later run without isolation. Choose another folder.',
   // Tasks folders on Windows (UNTOUCHABLE zone: strict policy, fails closed)
   'merr.folder.winBadPath':
     'That path is invalid or ambiguous on Windows (it has “..”, “:”, reserved names such as CON or NUL, short 8.3 names, or ends in a dot or space). Type the full path with its drive, for example C:\\Projects\\my-folder.',
