@@ -27,7 +27,7 @@
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "21f36a387c0a460419338425ddf248ea238a5ec608cd05e97c22f3b478e8af3f",
     "src/main/tasks/proxy.ts": "50c6898856c97a23a4b577f509bff653ad10f406cf51102f00bda246458955a5",
-    "src/main/tasks/sandbox-profile.ts": "d852b587af01d2f761e3d6221f2475727e5c4c14a2ca902992bae0cd5fb520d8",
+    "src/main/tasks/sandbox-profile.ts": "ab42038dec43e043640a97b7167b6a05878bebf2d47d555400620b22cef221a8",
     "src/main/tasks/sandbox.ts": "1a70e1f703a5b1dc03d30e77d57615c158696e1e7f4b03880b08b92e0c764c1a",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
     "src/main/tasks/win-context.ts": "baadaa16b2127ec3157591474ff35ee173cd38e4fef91265774f556fa567c0f3",
@@ -187,6 +187,15 @@
     {
       "fecha": "2026-11-11",
       "motivo": "1.8.18 corrección del arreglo: sandbox-profile.ts repite localmente el nombre de la carpeta de permisos (antes lo importaba) para que verify:bundled cargue el módulo directo con Node; mismo valor, sin cambio de comportamiento",
+      "cambiados": [
+        "src/main/tasks/sandbox-profile.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-11",
+      "motivo": "1.8.19 Tareas macOS: la regla de las carpetas adicionales de solo lectura niega también file-write-unlink (una regla concreta gana a un comodín en SBPL)",
       "cambiados": [
         "src/main/tasks/sandbox-profile.ts"
       ],

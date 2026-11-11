@@ -528,10 +528,13 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     )
   }
   // Carpetas de solo lectura: al final, por si una `ro` está dentro de una carpeta escribible.
+  // `file-write-unlink` va nombrado aparte (1.8.19): en SBPL una regla de operación concreta gana a una con comodín SIN IMPORTAR el
+  // orden, así que el `allow file-write-unlink` de la principal («Permitir borrar» con una `rw` que la contiene) o de `.lazunox/trabajo`
+  // ganaba a este `deny file-write*` y dejaba mover fuera (y borrar) archivos de una `ro` que cuelga de ellas, o renombrarla entera.
   if (extraRo.length) {
     lines.push(
       ';; Carpetas adicionales de solo lectura: ninguna escritura (gana sobre las escribibles que las contengan).',
-      ...extraRo.map((p) => `(deny file-write* (subpath ${sbString(p)}))`),
+      ...extraRo.map((p) => `(deny file-write* file-write-unlink (subpath ${sbString(p)}))`),
       ''
     )
   }

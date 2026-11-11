@@ -67,7 +67,7 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     })
     expect(out).toMatchSnapshot()
     expect(out).toContain('(deny file-write-unlink (subpath "/fixture/otra/escribible"))')
-    expect(out).toContain('(deny file-write* (subpath "/fixture/otra/lectura"))')
+    expect(out).toContain('(deny file-write* file-write-unlink (subpath "/fixture/otra/lectura"))')
   })
 
   it('red: solo los proxies locales y el puerto del servidor', () => {
@@ -86,6 +86,24 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
   it('rw que contiene a la principal con allowDelete', () => {
     const out = buildSandboxProfile({ ...base, allowDelete: true, extraFolders: [{ path: '/fixture/work', mode: 'rw' }] })
     expect(out).toMatchSnapshot()
+  })
+
+  it('una ro dentro de la principal niega también file-write-unlink (concreta: gana al allow de la principal y del scratch)', () => {
+    const ro = '/fixture/work/proyecto/referencia'
+    const out = buildSandboxProfile({
+      ...base,
+      allowDelete: true,
+      extraFolders: [
+        { path: '/fixture/work', mode: 'rw' },
+        { path: ro, mode: 'ro' }
+      ]
+    })
+    const lines = out.split('\n')
+    const allowMain = lines.indexOf('(allow file-write-unlink (subpath "/fixture/work/proyecto"))')
+    const denyRo = lines.indexOf(`(deny file-write* file-write-unlink (subpath "${ro}"))`)
+    expect(allowMain).toBeGreaterThan(-1)
+    expect(denyRo).toBeGreaterThan(allowMain)
+    expect(out).not.toContain(`(deny file-write* (subpath "${ro}"))`)
   })
 
   it('sin userData: no hay bloque de userData', () => {
