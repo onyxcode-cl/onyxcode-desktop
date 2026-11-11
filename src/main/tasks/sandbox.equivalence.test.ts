@@ -56,6 +56,10 @@
  * Actualización DELIBERADA (1.8.19, ganchos de git): el fixture se recapturó (y se pasó por Prettier). Diff: en los 11 perfiles se añaden
  * al final un comentario, `(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\.git/hooks(/|$)") (require-any
  * (subpath <carpeta>) …)))` y una línea vacía; y en el `env` de los dos lanzamientos, `GIT_TEMPLATE_DIR: ''`. Nada más cambió.
+ *
+ * Actualización DELIBERADA (1.8.19, contenedores): el fixture se recapturó (y se pasó por Prettier). Diff: en los 11 perfiles, tras
+ * `(deny appleevent-send)`, dos líneas de comentario, `(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))` y `(deny
+ * network-outbound (remote unix-socket (path-regex #"/(docker|podman)\.sock$")))`. Nada más cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

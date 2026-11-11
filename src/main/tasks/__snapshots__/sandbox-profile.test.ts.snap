@@ -175,6 +175,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -382,6 +386,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -596,6 +604,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -813,6 +825,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -1033,6 +1049,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -1249,6 +1269,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -1454,6 +1478,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.

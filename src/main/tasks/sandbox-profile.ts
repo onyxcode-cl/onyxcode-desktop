@@ -330,6 +330,15 @@ export const DENIED_EXEC = [
  * sesión. Con `smd` negado el registro falla (Python: status 3; Swift: «Socket is not connected»). Negar `backgroundtaskmanagement`
  * en su lugar NO lo cierra. Lo normal de una tarea tampoco lo usa (1.8.16, revisión 1).
  */
+/**
+ * Contenedores (1.8.19; idea de Gemini CLI, que los niega en su perfil; regla propia). Con el socket de Docker/Podman/colima/OrbStack un
+ * proceso de la tarea lanza un contenedor con la carpeta personal montada, fuera de la jaula. Por nombre del programa (una copia con otro
+ * nombre corre, pero sin el socket no hace nada) y por el nombre del socket (`/var/run/docker.sock`, `~/.docker/run/docker.sock`,
+ * `~/.colima/<perfil>/docker.sock`, `~/.orbstack/run/docker.sock`, `podman.sock`).
+ */
+export const CONTAINER_EXEC_REGEX = '/(docker|podman|nerdctl|kubectl)$'
+export const CONTAINER_SOCKET_REGEX = '/(docker|podman)\\.sock$'
+
 export const DENIED_MACH = [
   'com.apple.coreservices.launchservicesd',
   'com.apple.lsd.open',
@@ -457,6 +466,10 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     ...DENIED_EXEC.map((p) => `  (literal ${sbString(p)})`),
     ')',
     '(deny appleevent-send)',
+    ';; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;',
+    ';; la regla los nombra por si un día se abre alguno.',
+    `(deny process-exec (regex #"${CONTAINER_EXEC_REGEX}"))`,
+    `(deny network-outbound (remote unix-socket (path-regex #"${CONTAINER_SOCKET_REGEX}")))`,
     ';; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el',
     ';; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; `(target others)`',
     ';; no se aplica). OJO: KERN_PROCARGS2 (`ps eww`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.',

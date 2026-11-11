@@ -125,6 +125,16 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     expect(sandboxEnv(sandboxDirs(base.privateDir)).GIT_TEMPLATE_DIR).toBe('')
   })
 
+  it('contenedores: docker/podman/nerdctl/kubectl por nombre y sus sockets', () => {
+    const out = buildSandboxProfile(base)
+    expect(out).toContain('(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))')
+    expect(out).toContain('(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))')
+    const re = /\/(docker|podman|nerdctl|kubectl)$/
+    for (const ok of ['/usr/local/bin/docker', '/opt/homebrew/bin/podman', '/Users/x/.orbstack/bin/kubectl'])
+      expect(re.test(ok), ok).toBe(true)
+    for (const no of ['/usr/bin/dockerd-helper', '/x/docker-compose', '/x/mydocker']) expect(re.test(no), no).toBe(false)
+  })
+
   it('sin userData: no hay bloque de userData', () => {
     const out = buildSandboxProfile({ folder: base.folder, privateDir: base.privateDir, home: HOME })
     expect(out).toMatchSnapshot()
