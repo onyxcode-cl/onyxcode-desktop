@@ -7,8 +7,11 @@
  *     renombrar la carpeta privada, sus subcarpetas fijas y la carpeta de la tarea, y `seatbeltBackend.prepare` quita un enlace que
  *     ya estuviera (dejado por una versión anterior) y crea una carpeta real.
  *  2. Enlaces en `cache/opencode` (`models.json` → un archivo del usuario, `bin` → otra carpeta): el sembrado del proceso principal
- *     sobrescribía el archivo o dejaba un `rg` ejecutable en la carpeta elegida.
+ *     sobrescribía el archivo o dejaba un `rg` ejecutable en la carpeta elegida. Desde la corrección tras la revisión 1 el proceso
+ *     principal ya no escribe en la caché privada (el catálogo va a la config de la app, de solo lectura para la tarea).
  *  3. `.lazunox/memoria.md` (o `.lazunox`) como enlace: el proceso principal leía el destino (al prompt, al modelo) y lo sobrescribía.
+ *  4. (Corrección tras la revisión 1) `.lazunox`, `.lazunox/trabajo`, `descargas` y `grabaciones` no se pueden renombrar ni borrar
+ *     desde dentro (`mv`, `rmdir`, `rm -r` dan error), pero su contenido sí, como antes.
  * Y lo normal sigue: «Permitir borrar» dentro de la carpeta, la segunda tarea reutiliza la carpeta privada, el sembrado normal.
  * Todo en una carpeta temporal; el «afuera» es `userData/fuera` (el perfil niega leerlo y escribirlo desde dentro). Solo macOS.
  */
@@ -36,9 +39,10 @@ vi.mock('electron', () => ({ app: { getPath: () => state.userData } }))
 
 import { t } from '@shared/i18n'
 import { seatbeltBackend } from './backends/seatbelt'
-import { seedModelsCache } from './models-cache'
+import { seedConfigModels } from './models-cache'
+import { ensureTaskAppDirs } from './private-dir'
 import { getMemory, saveMemory } from './projects'
-import { buildSandboxProfile, sandboxDirs, sandboxEnv } from './sandbox-profile'
+import { buildSandboxProfile, sandboxDirs, sandboxEnv, TASK_APP_DIRS } from './sandbox-profile'
 
 const HAS_SBX = macOnly && existsSync('/usr/bin/sandbox-exec')
 const KEY = '0123456789abcdef'
@@ -67,7 +71,7 @@ describe.skipIf(!HAS_SBX)('Seatbelt real: enlaces en la carpeta privada y en la 
     mkdirSync(fuera, { recursive: true })
     mkdirSync(join(userData, 'opencode-config'), { recursive: true })
     mkdirSync(join(folder, '.lazunox', 'trabajo'), { recursive: true })
-    // Caché del servidor principal (lo que `seedModelsCache` copia): catálogo y `bin/rg`.
+    // Caché del servidor principal (lo que `seedConfigModels` copia a la config): catálogo y `bin/rg`.
     const xdg = join(dir, 'xdg-cache')
     mainCache = join(xdg, 'opencode')
     mkdirSync(join(mainCache, 'bin'), { recursive: true })
@@ -179,8 +183,8 @@ echo fin`,
     })
   })
 
-  describe('2. sembrado del proceso principal con enlaces dentro de la carpeta privada', () => {
-    it('models.json y bin como enlaces: no se sobrescribe el archivo del usuario ni aparece rg en la carpeta elegida', () => {
+  describe('2. sembrado: el proceso principal ya no escribe en la carpeta privada (corrección tras la revisión 1)', () => {
+    it('con `models.json` y `bin` como enlaces dejados desde dentro, el arranque no escribe nada ni en ellos ni en su destino', () => {
       const victim = join(fuera, 'importante.txt')
       const victimDir = join(fuera, 'carpeta-elegida')
       writeFileSync(victim, 'DOCUMENTO IMPORTANTE\n')
@@ -195,26 +199,24 @@ echo x > "${victimDir}/desde-dentro" 2>/dev/null && echo ESCRIBE-FUERA`
       expect(out).toContain('LINKS-OK') // los enlaces se crean desde dentro
       expect(out).not.toContain('DOCUMENTO IMPORTANTE') // y su destino no se lee desde dentro
       expect(out).not.toContain('ESCRIBE-FUERA')
-      // Arranque normal: `prepare` (que siembra) y luego `launch` vuelve a sembrar; aquí se llama al sembrado tal cual.
+      // Arranque normal: `prepare` y, en `launch`, el catálogo va a la config de la app (`seedConfigModels`), no a la caché privada.
       seatbeltBackend.prepare!({ privateDir, userData })
-      seedModelsCache(join(privateDir, 'cache'))
+      const catalog = seedConfigModels(join(userData, 'opencode-config'))
+      expect(catalog).toBe(join(userData, 'opencode-config', 'catalogo', 'models.json'))
+      expect(readFileSync(catalog!, 'utf8')).toBe('{"catalogo":true}')
       expect(readFileSync(victim, 'utf8')).toBe('DOCUMENTO IMPORTANTE\n')
       expect(readdirSync(victimDir)).toEqual([])
-      // El sembrado quedó bien hecho, en archivos y carpetas reales dentro de la carpeta privada.
-      const oc = join(privateDir, 'cache', 'opencode')
-      expect(lstatSync(join(oc, 'models.json')).isSymbolicLink()).toBe(false)
-      expect(readFileSync(join(oc, 'models.json'), 'utf8')).toBe('{"catalogo":true}')
-      expect(isRealDir(join(oc, 'bin'))).toBe(true)
-      expect(lstatSync(join(oc, 'bin', 'rg')).mode & 0o111).not.toBe(0)
+      // Lo que dejó la tarea en su caché queda como lo dejó (es suyo): el proceso principal no lo toca.
+      expect(lstatSync(join(privateDir, 'cache', 'opencode', 'models.json')).isSymbolicLink()).toBe(true)
+      expect(inside(`rm -rf "$P/cache/opencode" && echo LIMPIO`)).toContain('LIMPIO')
     })
 
-    it('rg como enlace a un archivo de fuera: no se sobrescribe ese archivo', () => {
-      const victim = join(fuera, 'otro.txt')
-      writeFileSync(victim, 'NO TOCAR\n')
-      const out = inside(`rm -f "$P/cache/opencode/bin/rg" && ln -s "${victim}" "$P/cache/opencode/bin/rg" && echo LINK-OK`)
-      expect(out).toContain('LINK-OK')
-      seedModelsCache(join(privateDir, 'cache'))
-      expect(readFileSync(victim, 'utf8')).toBe('NO TOCAR\n')
+    it('desde dentro el catálogo de la config se puede leer pero no escribir', () => {
+      const catalog = seedConfigModels(join(userData, 'opencode-config'))!
+      const out = inside(`cat "${catalog}"; echo pisado > "${catalog}" && echo ESCRIBE-CATALOGO; echo fin`)
+      expect(out).toContain('{"catalogo":true}')
+      expect(out).toContain('fin')
+      expect(out).not.toContain('ESCRIBE-CATALOGO')
     })
   })
 
@@ -256,6 +258,43 @@ echo x > "${victimDir}/desde-dentro" 2>/dev/null && echo ESCRIBE-FUERA`
     })
   })
 
+  describe('4. carpetas de la app en la carpeta de la tarea (corrección tras la revisión 1)', () => {
+    const appDirs = (): string[] => TASK_APP_DIRS.map((d) => join(folder, d))
+
+    it.each([false, true])('`mv`, `rmdir` y `rm -r` sobre cada una dan error (Permitir borrar = %s)', (allowDelete) => {
+      ensureTaskAppDirs(folder)
+      writeFileSync(join(folder, '.lazunox', 'trabajo', 'descargas', 'd.txt'), 'x')
+      // De la más profunda a la menos: así cada orden encuentra su carpeta en su sitio.
+      const script = [...appDirs()]
+        .reverse()
+        .map(
+          (d, i) => `mv "${d}" "${d}.x" && echo "MV-OK-${i}"; rmdir "${d}" 2>/dev/null && echo "RMDIR-OK-${i}"; rm -r "${d}" 2>/dev/null && echo "RMR-OK-${i}"`
+        )
+        .join('\n')
+      const out = inside(`${script}\necho fin`, allowDelete)
+      expect(out).toContain('fin')
+      expect(out).not.toMatch(/MV-OK|RMDIR-OK|RMR-OK/)
+      for (const d of appDirs()) {
+        expect(isRealDir(d)).toBe(true)
+        expect(existsSync(`${d}.x`)).toBe(false)
+      }
+    })
+
+    it.each([false, true])('dentro de `.lazunox/trabajo` se sigue pudiendo crear, renombrar y borrar (Permitir borrar = %s)', (allowDelete) => {
+      ensureTaskAppDirs(folder)
+      const out = inside(
+        `cd .lazunox/trabajo && mkdir -p sub/a && echo x > sub/a/f.txt && mv sub/a sub/b && mv sub/b/f.txt sub/b/g.txt && rm sub/b/g.txt && rm -r sub && echo T-OK
+cd descargas && echo d > d1.txt && mv d1.txt d2.txt && rm d2.txt && mkdir s && rmdir s && echo D-OK
+cd ../grabaciones && mkdir -p r1 && touch r1/p.png && rm -r r1 && echo G-OK`,
+        allowDelete
+      )
+      expect(out).toContain('T-OK')
+      expect(out).toContain('D-OK')
+      expect(out).toContain('G-OK')
+      for (const d of appDirs()) expect(isRealDir(d)).toBe(true)
+    })
+  })
+
   describe('lo normal sigue', () => {
     it('«Permitir borrar» sigue funcionando dentro de la carpeta (y sin él, no)', () => {
       writeFileSync(join(folder, 'borrame.txt'), 'x')
@@ -276,7 +315,6 @@ echo x > "${victimDir}/desde-dentro" 2>/dev/null && echo ESCRIBE-FUERA`
       writeFileSync(join(privateDir, 'data', 'marca'), 'sigo aqui')
       seatbeltBackend.prepare!({ privateDir, userData })
       expect(readFileSync(join(privateDir, 'data', 'marca'), 'utf8')).toBe('sigo aqui')
-      expect(readFileSync(join(privateDir, 'cache', 'opencode', 'models.json'), 'utf8')).toBe('{"catalogo":true}')
     })
 
     it('la memoria normal se guarda y se lee', () => {

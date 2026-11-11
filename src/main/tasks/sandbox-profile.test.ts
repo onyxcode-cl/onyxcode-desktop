@@ -52,7 +52,9 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
   it('scratchDirs explícito sustituye al valor por defecto', () => {
     const out = buildSandboxProfile({ ...base, scratchDirs: ['/fixture/work/proyecto/scratch-a', '/fixture/work/proyecto/scratch-b'] })
     expect(out).toMatchSnapshot()
-    expect(out).not.toContain('/.lazunox/trabajo"')
+    // El permiso de borrar del scratch por defecto no aparece (la carpeta sí aparece desde 1.8.18, pero solo como literal protegido).
+    expect(out).not.toContain('(allow file-write-unlink (subpath "/fixture/work/proyecto/.lazunox/trabajo"))')
+    expect(out).toContain('(literal "/fixture/work/proyecto/.lazunox/trabajo")')
   })
 
   it('carpetas adicionales: rw (sin borrado) y solo lectura', () => {

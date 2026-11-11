@@ -37,6 +37,13 @@
  * SOLO dos líneas nuevas al FINAL de cada uno de los 11 perfiles: el comentario y `(deny file-write-unlink (literal <privada>) (literal
  * <privada>/config|data|cache|state|tmp) (literal <carpeta>) (literal <cada rw adicional>…))` (más el salto de línea final). Comando,
  * argumentos, entorno, red, proxies y limpieza no cambiaron.
+ *
+ * Actualización DELIBERADA (1.8.18, corrección tras la revisión 1): el fixture se recapturó (y se pasó por Prettier). Diff, línea a línea
+ * dentro de cada perfil: SOLO la línea final `(deny file-write-unlink …)` de los 11 perfiles, con literales nuevos (`<privada>/
+ * permisos-siempre`, `<carpeta>/.lazunox`, `<carpeta>/.lazunox/trabajo`, `…/trabajo/descargas`, `…/trabajo/grabaciones`; ver
+ * `TASK_APP_DIRS`), y en el `env` de los dos lanzamientos con aislamiento `OPENCODE_DISABLE_MODELS_FETCH=1` (el catálogo va a la config
+ * con `OPENCODE_MODELS_PATH`, que aquí no aparece porque el doble no tiene catálogo principal). Comando, argumentos, red, proxies y
+ * limpieza no cambiaron.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

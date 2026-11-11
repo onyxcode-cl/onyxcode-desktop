@@ -16,7 +16,7 @@ vi.mock('./spawn', () => ({
     return { pid: 1 }
   }
 }))
-vi.mock('../models-cache', () => ({ seedModelsCache: () => false }))
+vi.mock('../models-cache', () => ({ seedConfigModels: () => null }))
 
 import { noneBackend } from './none'
 import { seatbeltBackend } from './seatbelt'

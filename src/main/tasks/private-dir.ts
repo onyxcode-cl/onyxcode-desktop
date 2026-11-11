@@ -15,7 +15,7 @@ import { t } from '@shared/i18n'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureRealDir, LinkRefusedError } from './no-follow'
-import { PRIVATE_SUBDIRS, sandboxDirs, type SandboxDirs } from './sandbox-profile'
+import { PRIVATE_SUBDIRS, sandboxDirs, TASK_APP_DIRS, type SandboxDirs } from './sandbox-profile'
 
 export interface PrivateDirIsolation {
   privateDir: string
@@ -44,4 +44,21 @@ export function ensureTaskPrivateDir(
     throw e
   }
   return sandboxDirs(iso.privateDir)
+}
+
+/**
+ * Corrección tras la revisión 1 (1.8.18): crea como carpetas REALES las carpetas de la app dentro de la carpeta de la tarea
+ * (`.lazunox`, `.lazunox/trabajo`, `descargas`, `grabaciones`; ver `TASK_APP_DIRS`) ANTES de lanzar, para que la regla del perfil que
+ * niega borrarlas o renombrarlas se aplique a una carpeta y no a un hueco que la tarea podría ocupar con un enlace. Es la carpeta de la
+ * persona: si alguna ya es un enlace o un archivo, no se toca nada y no se arranca (error claro, como en el resto de la carpeta).
+ */
+export function ensureTaskAppDirs(folder: string): void {
+  for (const d of TASK_APP_DIRS) {
+    try {
+      ensureRealDir(folder, join(folder, d), { create: true })
+    } catch (e) {
+      if (e instanceof LinkRefusedError) throw new Error(t('merr.task.appDirUnsafe', { path: d }))
+      throw e
+    }
+  }
 }

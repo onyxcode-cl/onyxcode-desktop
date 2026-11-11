@@ -402,6 +402,8 @@ export const mainErrors = {
   'merr.routine.noText': '(No reply text)',
   'merr.task.onlyFull': 'Only available with Full control.',
   'merr.task.noPrivateDir': 'The internal folder where tasks keep their work is missing. Restart the app.',
+  'merr.task.appDirUnsafe':
+    'For your safety the task didn’t start: “{path}”, inside the task folder, is a shortcut (link) or a file, and only a folder can be there. Delete or move it and try again.',
   'merr.task.privateDirUnsafe':
     'For your safety the task didn’t start: the internal folder where it keeps its work was replaced by a shortcut (link) to another place. Let us know so we can check it.',
   'merr.task.linkInFolder':

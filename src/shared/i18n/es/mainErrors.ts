@@ -410,6 +410,8 @@ export const mainErrors = {
   'merr.routine.noText': '(Sin texto de respuesta)',
   'merr.task.onlyFull': 'Solo disponible con Control total.',
   'merr.task.noPrivateDir': 'Falta la carpeta interna donde las tareas guardan su trabajo. Reinicia la app.',
+  'merr.task.appDirUnsafe':
+    'Por seguridad no se inició la tarea: «{path}», dentro de la carpeta de la tarea, es un acceso directo (enlace) o un archivo, y ahí solo puede haber una carpeta. Bórralo o muévelo y vuelve a intentarlo.',
   'merr.task.privateDirUnsafe':
     'Por seguridad no se inició la tarea: la carpeta interna donde guarda su trabajo fue cambiada por un acceso directo (enlace) a otro lugar. Avísanos para revisarlo.',
   'merr.task.linkInFolder':
