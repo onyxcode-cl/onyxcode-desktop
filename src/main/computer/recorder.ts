@@ -22,7 +22,7 @@ import { createInterface } from 'node:readline'
 import { join } from 'node:path'
 import { runHelper } from '../util/exec'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
-import { ensureRealDir, LinkRefusedError } from '../tasks/no-follow'
+import { ensureRealDir, isWriteDenied, LinkRefusedError } from '../tasks/no-follow'
 import { safeCopyIntoDir } from '../tasks/safe-write'
 import { EventEmitter } from 'node:events'
 import { APP_ID } from '@shared/brand'
@@ -200,6 +200,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
       ensureRealDir(root, destDir, { create: true })
     } catch (e) {
       if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: relDir }))
+      if (isWriteDenied(e)) throw new Error(t('merr.task.folderReadOnly', { path: relDir }))
       throw e
     }
     for (const shot of rec.shots) {

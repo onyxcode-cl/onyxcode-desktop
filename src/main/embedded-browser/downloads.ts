@@ -14,11 +14,12 @@ import { lstatSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
-import { app, dialog, type DownloadItem, type WebContents } from 'electron'
+import { app, dialog, Notification, type DownloadItem, type WebContents } from 'electron'
 import { INTERNAL_NAME } from '@shared/brand'
+import { t } from '@shared/i18n'
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
-import { ensureRealDir } from '../tasks/no-follow'
+import { ensureRealDir, isWriteDenied } from '../tasks/no-follow'
 import { candidateNames, safeCopyIntoDir } from '../tasks/safe-write'
 import { hostOf, siteOf } from './sites'
 import { requestApproval } from './approvals'
@@ -167,6 +168,18 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
     if (owner.kind === 'tasks') ensureRealDir(owner.folder, dir, { create: true })
     else mkdirSync(dir, { recursive: true })
   } catch (err) {
+    if (owner.kind === 'tasks' && isWriteDenied(err)) {
+      // Carpeta de la tarea sin permiso de escritura (la tarea arranca igual): no se descarga ahí; mensaje claro a la persona.
+      const msg = t('merr.task.folderReadOnly', { path: join('.lazunox', 'trabajo', 'descargas') })
+      console.warn('[embedded-browser] descarga cancelada:', msg, err)
+      try {
+        if (Notification.isSupported()) new Notification({ title: app.getName(), body: msg }).show()
+      } catch {
+        /* sin notificaciones: queda en el registro */
+      }
+      event.preventDefault()
+      return
+    }
     if (owner.kind === 'tasks') {
       // Un enlace (u otra cosa) en `.lazunox/trabajo/descargas`: no se descarga ahí ni a través de él.
       console.warn('[embedded-browser] la carpeta de descargas de la tarea no es una carpeta normal: descarga cancelada', err)

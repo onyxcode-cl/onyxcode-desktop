@@ -9,7 +9,7 @@ import { app } from 'electron'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 import { isInside } from '../util/paths'
-import { ensureRealDir, LinkRefusedError, readFileNoFollow } from './no-follow'
+import { ensureRealDir, isWriteDenied, LinkRefusedError, readFileNoFollow } from './no-follow'
 import { safeWriteFile } from './safe-write'
 import type { TasksAgentsMd, TasksMemory, TasksProject } from '@shared/ipc-tasks'
 import { TASKS_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
@@ -170,6 +170,8 @@ export function saveMemory(folder: string, content: string): TasksMemory {
     safeWriteFile(folder, memoryPath(folder), trimmed, { replace: true, refuseLinkTarget: true })
   } catch (e) {
     if (e instanceof LinkRefusedError) throw new Error(t('merr.projects.memoryLink'))
+    // Carpeta sin permiso de escritura (la tarea arranca igual; guardar la memoria sí necesita escribir).
+    if (isWriteDenied(e)) throw new Error(t('merr.task.folderReadOnly', { path: '.lazunox' }))
     throw e
   }
   return readMemoryFile(folder)

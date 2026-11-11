@@ -51,6 +51,15 @@ export class LinkRefusedError extends Error {
 
 const errno = (e: unknown): string | undefined => (e as NodeJS.ErrnoException | null)?.code
 
+/**
+ * El sistema negó escribir o crear aquí por permisos o por ser de solo lectura (EACCES, EPERM, EROFS). Carpetas de solo lectura,
+ * unidades de red o imágenes montadas: no es un enlace ni un fallo de la app.
+ */
+export function isWriteDenied(e: unknown): boolean {
+  const c = errno(e)
+  return c === 'EACCES' || c === 'EPERM' || c === 'EROFS'
+}
+
 function lstatOrNull(p: string): ReturnType<typeof lstatSync> | null {
   try {
     return lstatSync(p)

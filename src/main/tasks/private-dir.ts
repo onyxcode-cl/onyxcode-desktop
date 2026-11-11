@@ -13,8 +13,8 @@
  */
 import { t } from '@shared/i18n'
 import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { ensureRealDir, LinkRefusedError } from './no-follow'
+import { join, sep } from 'node:path'
+import { ensureRealDir, isWriteDenied, LinkRefusedError } from './no-follow'
 import { PRIVATE_SUBDIRS, sandboxDirs, TASK_APP_DIRS, type SandboxDirs } from './sandbox-profile'
 
 export interface PrivateDirIsolation {
@@ -53,11 +53,22 @@ export function ensureTaskPrivateDir(
  * persona: si alguna ya es un enlace o un archivo, no se toca nada y no se arranca (error claro, como en el resto de la carpeta).
  */
 export function ensureTaskAppDirs(folder: string): void {
+  // Corrección tras la revisión 2: en una carpeta SIN permiso de escritura (compartida de solo lectura, imagen montada…) no se puede
+  // crear `.lazunox`, y en 1.8.17 la tarea arrancaba igual. Si el sistema lo niega (EACCES/EPERM/EROFS) no se crea esa carpeta ni las
+  // que cuelgan de ella y se sigue: es seguro, la tarea corre con el mismo usuario y con más restricciones, así que tampoco puede crear
+  // nada ahí. Lo que necesite escribir (memoria, descargas, grabaciones) falla después con un mensaje claro. Un enlace, un archivo u
+  // otro error siguen impidiendo el arranque.
+  const skipped: string[] = []
   for (const d of TASK_APP_DIRS) {
+    if (skipped.some((s) => d === s || d.startsWith(s + sep))) continue
     try {
       ensureRealDir(folder, join(folder, d), { create: true })
     } catch (e) {
       if (e instanceof LinkRefusedError) throw new Error(t('merr.task.appDirUnsafe', { path: d }))
+      if (isWriteDenied(e)) {
+        skipped.push(d)
+        continue
+      }
       throw e
     }
   }

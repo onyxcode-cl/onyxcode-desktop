@@ -414,6 +414,10 @@ export const mainErrors = {
     'Por seguridad no se inició la tarea: «{path}», dentro de la carpeta de la tarea, es un acceso directo (enlace) o un archivo, y ahí solo puede haber una carpeta. Bórralo o muévelo y vuelve a intentarlo.',
   'merr.task.privateDirUnsafe':
     'Por seguridad no se inició la tarea: la carpeta interna donde guarda su trabajo fue cambiada por un acceso directo (enlace) a otro lugar. Avísanos para revisarlo.',
+  'merr.task.folderReadOnly':
+    'No se pudo guardar en la carpeta de la tarea: «{path}» no permite escribir (carpeta de solo lectura o sin permiso). Dale permiso de escritura a la carpeta y vuelve a intentarlo.',
+  'merr.task.fileBusy':
+    'No se pudo guardar «{path}»: otro programa (antivirus, OneDrive u otro) lo tiene abierto o no hay permiso. Ciérralo o espera unos segundos y vuelve a intentarlo.',
   'merr.task.linkInFolder':
     'No se pudo guardar en la carpeta de la tarea: «{path}» es (o pasa por) un acceso directo (enlace) a otro lugar. Bórralo y vuelve a intentarlo.',
   'merr.task.winBackendUnavailable':

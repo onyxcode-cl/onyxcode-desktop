@@ -5,18 +5,19 @@
  * - las carpetas de la app en la carpeta de la tarea (`TASK_APP_DIRS`) se crean como carpetas reales antes de lanzar; si una es un
  *   enlace, no se arranca y no se toca nada.
  */
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { t } from '@shared/i18n'
 
-const state = vi.hoisted(() => ({ env: null as Record<string, string> | null, spawns: 0 }))
+const state = vi.hoisted(() => ({ env: null as Record<string, string> | null, spawns: 0, args: [] as string[] }))
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getAppPath: () => '/no-existe', getPath: () => '/tmp/ud' } }))
 vi.mock('./spawn', () => ({
-  spawnOnHost: (_c: string, _a: string[], _f: string, env: Record<string, string>) => {
+  spawnOnHost: (_c: string, a: string[], _f: string, env: Record<string, string>) => {
     state.env = env
+    state.args = a
     state.spawns++
     return { pid: 1 }
   }
@@ -112,4 +113,22 @@ describe.skipIf(!isMac)('Seatbelt: catálogo y carpetas de la app al lanzar', ()
     expect(state.spawns).toBe(0)
     expect(existsSync(join(outside, 'grabaciones'))).toBe(false)
   })
+
+  it.skipIf(typeof process.getuid === 'function' && process.getuid() === 0)(
+    'carpeta SIN permiso de escritura (chmod 555): el lanzamiento no falla y el perfil se arma (revisión 2)',
+    async () => {
+      const s = spec()
+      chmodSync(s.folder, 0o555)
+      try {
+        seatbeltBackend.prepare!(s.isolation)
+        await expect(seatbeltBackend.launch(s as never)).resolves.toBeTruthy()
+        expect(state.spawns).toBe(1)
+        const profile = state.args[1]
+        expect(profile).toContain(`(literal "${join(s.folder, '.lazunox')}")`)
+        expect(existsSync(join(s.folder, '.lazunox'))).toBe(false)
+      } finally {
+        chmodSync(s.folder, 0o755)
+      }
+    }
+  )
 })

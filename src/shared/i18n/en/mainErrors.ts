@@ -406,6 +406,10 @@ export const mainErrors = {
     'For your safety the task didn’t start: “{path}”, inside the task folder, is a shortcut (link) or a file, and only a folder can be there. Delete or move it and try again.',
   'merr.task.privateDirUnsafe':
     'For your safety the task didn’t start: the internal folder where it keeps its work was replaced by a shortcut (link) to another place. Let us know so we can check it.',
+  'merr.task.folderReadOnly':
+    'Couldn’t save in the task folder: “{path}” doesn’t allow writing (read-only folder or no permission). Give the folder write permission and try again.',
+  'merr.task.fileBusy':
+    'Couldn’t save “{path}”: another program (antivirus, OneDrive or other) has it open, or there’s no permission. Close it or wait a few seconds and try again.',
   'merr.task.linkInFolder':
     'Couldn’t save in the task folder: “{path}” is (or goes through) a shortcut (link) to another place. Delete it and try again.',
   'merr.task.winBackendUnavailable':

@@ -2,7 +2,7 @@
  * `SkillRecorder.prepare` (1.8.18, corrección tras la revisión 1): las capturas se copian a `.lazunox/trabajo/grabaciones/<id>` con la
  * escritura segura (`tasks/safe-write.ts`). Lo normal funciona y un enlace en el camino no recibe nada. Enlaces: solo macOS/Linux.
  */
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -57,5 +57,20 @@ describe.skipIf(!posixOnly)('SkillRecorder.prepare', () => {
       t('merr.task.linkInFolder', { path: join('.lazunox', 'trabajo', 'grabaciones', 'r2') })
     )
     expect(readdirSync(outside)).toEqual([])
+  })
+
+  it('en una carpeta sin permiso de escritura: error claro por i18n (no el EACCES crudo) y se conserva la grabación', async () => {
+    if (typeof process.getuid === 'function' && process.getuid() === 0) return
+    recording('r3')
+    chmodSync(folder, 0o555)
+    try {
+      const rec = new SkillRecorder(() => null, base)
+      await expect(rec.prepare('r3', folder, false)).rejects.toThrow(
+        t('merr.task.folderReadOnly', { path: join('.lazunox', 'trabajo', 'grabaciones', 'r3') })
+      )
+      expect(existsSync(join(base, 'r3'))).toBe(true)
+    } finally {
+      chmodSync(folder, 0o755)
+    }
   })
 })
