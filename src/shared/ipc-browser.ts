@@ -49,6 +49,8 @@ export interface BrowserOwnerState {
   notice?: { id: number; text: string }
   /** Vista elegida (global, persistida). */
   viewMode: BrowserViewMode
+  /** Tarjetas pendientes: recuperadas aunque el panel estuviera desmontado al pedir permiso. */
+  approvals?: BrowserApprovalRequest[]
 }
 
 export interface BrowserApprovalRequest {

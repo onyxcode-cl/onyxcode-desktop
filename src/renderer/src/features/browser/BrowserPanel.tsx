@@ -209,8 +209,15 @@ export function BrowserPanel({
 
   useEffect(() => {
     let cancelled = false
+    const completed = new Set<string>()
     void br('browser:state', { owner })
-      .then((s) => !cancelled && setState(s))
+      .then((s) => {
+        if (cancelled) return
+        setState(s)
+        for (const req of s.approvals ?? []) {
+          if (!completed.has(req.id)) useBrowserUi.getState().pushApproval(req)
+        }
+      })
       .catch(() => undefined)
     const offState = onBrowser('browser:state', (s) => {
       if (sameOwner(s.owner, owner)) setState(s)
@@ -219,6 +226,7 @@ export function BrowserPanel({
       if (sameOwner(req.owner, owner)) useBrowserUi.getState().pushApproval(req)
     })
     const offApprovalDone = onBrowser('browser:approvalDone', ({ id }) => {
+      completed.add(id)
       useBrowserUi.getState().removeApprovalById(id)
     })
     return () => {

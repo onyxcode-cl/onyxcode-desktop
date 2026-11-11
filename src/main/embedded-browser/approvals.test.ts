@@ -14,10 +14,12 @@ vi.mock('electron', () => ({
   }
 }))
 vi.mock('@shared/i18n', () => ({ t: (k: string) => k }))
-// El diálogo de permisos va por `askButtons` (osascript en macOS): aquí se sustituye; elige «Permitir en esta tarea» (índice 1).
+// Se simula el aviso del sistema: el índice 1 solo abre la tarjeta.
 vi.mock('../util/native-dialog', () => ({ askButtons: vi.fn(async () => 1) }))
 
-import { initApprovals, pendingLabels, requestApproval, respondApproval } from './approvals'
+import { initApprovals, pendingFor, pendingLabels, requestApproval, respondApproval } from './approvals'
+
+import { askButtons } from '../util/native-dialog'
 
 const owner = { kind: 'tasks', folder: '/Users/x' } as const
 const base = { owner, sessionId: 's1', kind: 'site', url: 'https://www.google.com/', host: 'www.google.com', site: 'google.com' } as const
@@ -25,7 +27,13 @@ const base = { owner, sessionId: 's1', kind: 'site', url: 'https://www.google.co
 let shown: string[] = []
 beforeEach(() => {
   shown = []
-  initApprovals({ hasVisibleHost: () => true, broadcastApproval: (r) => shown.push(r.id), broadcastApprovalDone: () => undefined })
+  vi.mocked(askButtons).mockReset().mockResolvedValue(1)
+  initApprovals({
+    showHost: vi.fn(),
+    hasVisibleHost: () => true,
+    broadcastApproval: (r) => shown.push(r.id),
+    broadcastApprovalDone: () => undefined
+  })
 })
 
 describe('requestApproval: peticiones repetidas', () => {
@@ -73,5 +81,56 @@ describe('pendingLabels', () => {
     respondApproval(shown[0], 'deny')
     await a
     expect(pendingLabels()).toEqual([])
+  })
+})
+
+describe('aviso con la ventana oculta', () => {
+  it.each(['site', 'local-origin', 'sensitive', 'download'] as const)(
+    '%s: abrir no concede nada; la tarjeta sigue pendiente',
+    async (kind) => {
+      const showHost = vi.fn()
+      initApprovals({ hasVisibleHost: () => false, showHost, broadcastApproval: (r) => shown.push(r.id), broadcastApprovalDone: vi.fn() })
+      const settled = vi.fn()
+      const answer = requestApproval({ ...base, kind }).then((d) => {
+        settled(d)
+        return d
+      })
+      await vi.waitFor(() => expect(showHost).toHaveBeenCalledWith(owner))
+      expect(askButtons).toHaveBeenCalledWith(
+        expect.objectContaining({ buttons: ['merr.dialog.no', 'merr.hostExec.openApp'], defaultIndex: 0, cancelIndex: 0 })
+      )
+      expect(settled).not.toHaveBeenCalled()
+      expect(pendingFor(owner)).toHaveLength(1)
+      expect(shown).toEqual([shown[0], shown[0]])
+      respondApproval(shown[0], 'allow')
+      expect(await answer).toBe('allow')
+      expect(pendingFor(owner)).toEqual([])
+      expect(vi.mocked(askButtons).mock.calls[0]![0].signal!.aborted).toBe(true)
+    }
+  )
+  it('No deniega y no abre ninguna ventana', async () => {
+    const showHost = vi.fn()
+    vi.mocked(askButtons).mockResolvedValue(0)
+    initApprovals({ hasVisibleHost: () => false, showHost, broadcastApproval: (r) => shown.push(r.id), broadcastApprovalDone: vi.fn() })
+    expect(await requestApproval(base)).toBe('deny')
+    expect(showHost).not.toHaveBeenCalled()
+    expect(pendingFor(owner)).toEqual([])
+  })
+  it('si se responde en la app antes de cerrar el aviso, su respuesta tardía no abre ni concede', async () => {
+    let done!: (i: number) => void
+    vi.mocked(askButtons).mockImplementation(
+      () =>
+        new Promise((r) => {
+          done = r
+        })
+    )
+    const showHost = vi.fn()
+    initApprovals({ hasVisibleHost: () => false, showHost, broadcastApproval: (r) => shown.push(r.id), broadcastApprovalDone: vi.fn() })
+    const answer = requestApproval(base)
+    respondApproval(shown[0], 'deny')
+    done(1)
+    expect(await answer).toBe('deny')
+    await Promise.resolve()
+    expect(showHost).not.toHaveBeenCalled()
   })
 })

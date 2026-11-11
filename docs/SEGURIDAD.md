@@ -2884,3 +2884,9 @@ Code (sidecar principal, compartido con el Chat) recibe `documentos_crear` y `do
 ## Corrección 07.1: ayudantes de una tarea aislada
 
 Los ayudantes aceptados de la carpeta reciben una copia de las reglas efectivas del agente de Tareas: reglas base, conectores, reglas guardadas, carpetas adicionales y herramientas del equipo. El campo `permission` del archivo no se admite. `disallowed_tools` añade denegaciones (las herramientas de escritura también deniegan `edit`). La herramienta `task` solo admite esos nombres aceptados y el ayudante propio de lectura. Pruebas: `src/main/tasks/helper-permissions.test.ts`. No verificado con un motor real ni en Windows.
+
+## Corrección 07.3: avisos del navegador y cancelación segura
+
+En macOS `askButtons` devuelve cancelar si falla `osascript`, si lo matan o si los botones no son válidos; nunca abre un diálogo de Electron sin padre como respaldo. Los avisos de permisos del navegador integrado solo ofrecen negar o abrir la tarjeta. Abrir la ventana Navegador de Lazunox no concede nada: la petición queda pendiente y su dueño se selecciona expresamente; el panel recupera las tarjetas desde el estado del proceso principal aunque estuviera desmontado. Resolver o vencer una petición aborta el aviso que sigue abierto.
+
+Quedan sin modificar las dos concesiones por aviso de `remote-handlers.ts`: la confirmación de una petición del celular y habilitar la aprobación de comandos desde ese celular. Recomendación: cancelar o abrir la ventana propia y confirmar allí con el detalle íntegro; conservar la comprobación del Mac para habilitar comandos. Los avisos de comandos fuera del aislamiento y de conectores ya solo niegan o abren la app. Pruebas simuladas: `native-dialog.test.ts`, `approvals.test.ts` y `BrowserPanel.approvals.test.tsx`; no se lanzó la app.

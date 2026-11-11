@@ -991,6 +991,18 @@
       ],
       "nota": "Probado en Mac con Electron simulado: cierres antiguos, cambio de tema y plazo agotado. Sin app abierta; wasm, ventana minimizada y Windows pendientes.",
       "comprobacion": null
+    },
+    {
+      "id": "N10",
+      "funcion": "Aviso del navegador sin concesiones y recuperación de tarjetas pendientes",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/embedded-browser/approvals.test.ts:1",
+        "src/renderer/src/features/browser/BrowserPanel.approvals.test.tsx:1",
+        "src/main/util/native-dialog.test.ts:1"
+      ],
+      "nota": "El aviso solo niega o abre la ventana Navegador de Lazunox con la tarjeta del dueño correcto. macOS cancela si falla osascript, sin Electron sin padre. Plataformas simuladas y DOM en Mac; sin prueba real de ventanas ni en Windows.",
+      "comprobacion": null
     }
   ]
 }

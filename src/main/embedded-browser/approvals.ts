@@ -2,7 +2,7 @@
  * Cola de aprobaciones por sitio del navegador integrado (Lote D, B.8 y D1 paso 7).
  *
  * - Una promesa por petición, resuelta por `browser:respond` (tarjeta del renderer, dentro de la
- *   ventana) o por el diálogo nativo de respaldo cuando no hay anfitrión visible (panel cerrado,
+ *   ventana) o se deniega desde el aviso nativo cuando no hay anfitrión visible (panel cerrado,
  *   ventana minimizada y sin ventana «Navegador» aparte). Gana la primera respuesta.
  * - Tope de 10 minutos: pasado ese tiempo, se deniega sola (rutinas desatendidas, riesgo E.12).
  * - `initApprovals` inyecta las dependencias de `service.ts` (visibilidad del anfitrión y el envío
@@ -21,6 +21,7 @@ const TIMEOUT_MS = 10 * 60 * 1000
 export interface ApprovalsDeps {
   /** Panel visible en la ventana principal, o ventana «Navegador» aparte visible, para ese owner. */
   hasVisibleHost(owner: BrowserOwner): boolean
+  showHost(owner: BrowserOwner): void
   broadcastApproval(req: BrowserApprovalRequest): void
   broadcastApprovalDone(id: string): void
 }
@@ -35,6 +36,7 @@ interface Pending {
   req: BrowserApprovalRequest
   resolve(decision: BrowserDecision): void
   timer: ReturnType<typeof setTimeout>
+  controller: AbortController
 }
 
 const pending = new Map<string, Pending>()
@@ -43,6 +45,7 @@ function finish(id: string, decision: BrowserDecision): void {
   const p = pending.get(id)
   if (!p) return
   clearTimeout(p.timer)
+  p.controller.abort()
   pending.delete(id)
   p.resolve(decision)
   deps?.broadcastApprovalDone(id)
@@ -85,11 +88,12 @@ function createApproval(input: Omit<BrowserApprovalRequest, 'id' | 'createdAt'>)
   const req: BrowserApprovalRequest = { ...input, id, createdAt: Date.now() }
   return new Promise<BrowserDecision>((resolve) => {
     const timer = setTimeout(() => finish(id, 'deny'), TIMEOUT_MS)
-    pending.set(id, { req, resolve, timer })
+    const controller = new AbortController()
+    pending.set(id, { req, resolve, timer, controller })
     deps?.broadcastApproval(req)
     if (!deps?.hasVisibleHost(req.owner)) {
-      void showNativeFallback(req).then((decision) => {
-        if (pending.has(id)) finish(id, decision)
+      void showNativeFallback(req, controller.signal).then((decision) => {
+        if (decision !== null && pending.has(id)) finish(id, decision)
       })
     }
   })
@@ -114,48 +118,52 @@ function labelFor(req: BrowserApprovalRequest): string {
   return req.kind === 'local-origin' ? t('merr.notif.localServer', { host: req.host }) : req.site
 }
 
-async function showNativeFallback(req: BrowserApprovalRequest): Promise<BrowserDecision> {
+function revealPending(req: BrowserApprovalRequest): void {
+  if (!pending.has(req.id)) return
+  try {
+    deps?.showHost(req.owner)
+    deps?.broadcastApproval(req)
+  } catch (err) {
+    console.error('[embedded-browser] abrir la tarjeta de aprobación:', err)
+  }
+}
+
+async function showNativeFallback(req: BrowserApprovalRequest, signal: AbortSignal): Promise<BrowserDecision | null> {
+  const message =
+    req.kind === 'sensitive'
+      ? (req.summary ?? t('merr.notif.agentSensitive', { site: req.site }))
+      : req.kind === 'download'
+        ? t('merr.notif.agentDownload', { file: req.fileName ?? req.url })
+        : t('merr.notif.agentOpen', { target: labelFor(req) })
   try {
     if (Notification.isSupported()) {
-      new Notification({
+      const notification = new Notification({
         title: DISPLAY_NAME,
-        body:
-          req.kind === 'sensitive'
-            ? (req.summary ?? t('merr.notif.agentSensitive', { site: req.site }))
-            : req.kind === 'download'
-              ? t('merr.notif.agentDownload', { file: req.fileName ?? req.url })
-              : t('merr.notif.agentOpen', { target: labelFor(req) })
-      }).show()
+        body: message
+      })
+      notification.on('click', () => revealPending(req))
+      notification.show()
     }
   } catch (err) {
     console.error('[embedded-browser] notificación de aprobación:', err)
   }
 
-  // El botón "seguro" (denegar) va SIEMPRE en el índice 0: verificado en vivo durante la revisión
-  // de este lote que, en macOS, `dialog.showMessageBox` no ata la tecla Return al botón de
-  // `defaultId` cuando no es 0 (Return activó el botón de índice 0 — "Permitir…" — pese a
-  // `defaultId`/`cancelId` apuntar al índice del "No"/"Cancelar"). Con el botón de índice 0 sí
-  // pensado como el seguro, una pulsación de Return sin leer (dialogo inesperado, foco robado)
-  // deniega en vez de conceder. `cancelId` también se deja en 0 por si Esc tiene el mismo problema.
-  // OJO: se usa `askButtons` y NO `dialog.showMessageBox`: éste, sin ventana padre, congela el bucle de eventos de la app mientras está abierto
-  // (ver `util/native-dialog.ts`) y con el control del Mac activo la ventana principal está minimizada, así que no hay padre.
-  if (req.kind === 'sensitive' || req.kind === 'download') {
+  // El aviso solo puede negar o abrir la tarjeta. Nunca concede permisos.
+  try {
     const i = await askButtons({
-      message: req.summary ?? t('merr.dialog.allowDownload', { file: req.fileName ?? req.url }),
-      detail: req.url,
-      buttons: [t('merr.dialog.cancel'), t('merr.dialog.allow')],
+      message,
+      detail: req.summary ? `${req.summary}\n\n${req.url}` : req.url,
+      buttons: [t('merr.dialog.no'), t('merr.hostExec.openApp')],
       defaultIndex: 0,
-      cancelIndex: 0
+      cancelIndex: 0,
+      signal
     })
-    return i === 1 ? 'allow' : 'deny'
+    if (signal.aborted) return null
+    if (i !== 1) return 'deny'
+    revealPending(req)
+    return null
+  } catch (err) {
+    console.error('[embedded-browser] aviso de aprobación:', err)
+    return 'deny'
   }
-
-  const i = await askButtons({
-    message: t('merr.dialog.allowOpen', { target: labelFor(req) }),
-    detail: req.url,
-    buttons: [t('merr.dialog.no'), t('merr.dialog.allowInTask'), t('merr.dialog.allowAlways')],
-    defaultIndex: 0,
-    cancelIndex: 0
-  })
-  return i === 1 ? 'task' : i === 2 ? 'always' : 'deny'
 }

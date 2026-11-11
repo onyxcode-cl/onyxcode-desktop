@@ -50,7 +50,7 @@ import {
   setPopoutClosedListener,
   showPopoutInactive
 } from './popout'
-import { initApprovals, requestApproval, respondApproval } from './approvals'
+import { initApprovals, pendingFor, requestApproval, respondApproval } from './approvals'
 import { initDownloads } from './downloads'
 import * as store from './store'
 import {
@@ -228,6 +228,7 @@ function stateFor(owner: BrowserOwner) {
     hostedIn: rt.hostKind,
     disabledReason: agentEnabled(owner.kind) ? undefined : disabledReasonFor(owner.kind),
     notice: rt.notice,
+    approvals: pendingFor(owner),
     viewMode: store.getPrefs().viewMode
   }
 }
@@ -905,7 +906,21 @@ function init(deps: { getMainWindow(): BrowserWindow | null; getMainConnection()
   initApprovals({
     hasVisibleHost: (owner) => {
       const rt = ownerRuntime(owner)
-      return rt.visible && rt.hostKind !== 'none'
+      const win = rt.hostWindow
+      return rt.visible && rt.hostKind !== 'none' && !!win && !win.isDestroyed() && win.isVisible() && !win.isMinimized()
+    },
+    showHost: (owner) => {
+      // Una ventana propia garantiza que la tarjeta sea visible aunque la principal muestre otra carpeta o modo.
+      const host = ensurePopoutWindow()
+      const reveal = (): void => {
+        if (!host.isDestroyed()) emitTo(host, 'browser:reveal', { owner, tabId: ownerRuntime(owner).activeTabId ?? '', reason: 'approval' })
+      }
+      if (host.webContents.isLoadingMainFrame()) host.webContents.once('did-finish-load', reveal)
+      else reveal()
+      pushOwnerToPopout(host, owner)
+      if (host.isMinimized()) host.restore()
+      host.show()
+      host.focus()
     },
     broadcastApproval: (req) => sendEvent('browser:approval', req),
     broadcastApprovalDone: (id) => sendEvent('browser:approvalDone', { id })

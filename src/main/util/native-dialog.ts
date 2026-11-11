@@ -5,7 +5,7 @@
  * de Node (temporizadores, servidor HTTP del canal lateral, IPC) queda DETENIDO. Medido en vivo: con un permiso de sitio esperando y la
  * ventana principal minimizada (Control total), el aviso de «espera» de 12 s nunca saltó, el control de parada dejó de responder y el agente
  * entró en un bucle de reintentos. Aquí en macOS el diálogo lo muestra `osascript` en un PROCESO APARTE, así que la app sigue viva; en el
- * resto de plataformas (o si `osascript` falla) se usa el diálogo de Electron de siempre.
+ * resto de plataformas se usa el diálogo de Electron de siempre. Si `osascript` falla, se cancela.
  *
  * Los textos viajan como ARGUMENTOS (`argv`), nunca dentro del script: una URL con comillas no puede inyectar AppleScript.
  */
@@ -68,7 +68,11 @@ export async function askButtons(
   const platform = opts.platform ?? process.platform
   const unique = new Set(d.buttons).size === d.buttons.length && d.buttons.length >= 2 && d.buttons.length <= 3
   if (d.signal?.aborted) return cancelIndex
-  if (platform === 'darwin' && unique) {
+  if (platform === 'darwin') {
+    if (!unique || !d.buttons[defaultIndex] || !d.buttons[cancelIndex]) {
+      console.error('[native-dialog] botones inválidos en macOS; se cancela')
+      return cancelIndex
+    }
     const seconds = Math.max(1, Math.min(GIVE_UP_SECONDS, Math.floor(d.giveUpSeconds ?? GIVE_UP_SECONDS)))
     try {
       const text = d.detail ? `${d.message}\n\n${d.detail}` : d.message
@@ -82,7 +86,8 @@ export async function askButtons(
     } catch (err) {
       // Cerrado a propósito (la petición ya se resolvió o venció): no se abre el de Electron.
       if (d.signal?.aborted) return cancelIndex
-      console.error('[native-dialog] osascript falló; se usa el diálogo de Electron:', err instanceof Error ? err.message : err)
+      console.error('[native-dialog] osascript falló; se cancela:', err instanceof Error ? err.message : err)
+      return cancelIndex
     }
   }
   const res = await (opts.electronDialog ?? dialog).showMessageBox({
