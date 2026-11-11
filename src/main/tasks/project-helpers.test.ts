@@ -75,10 +75,20 @@ describe('H5: ayudantes del proyecto saneados', () => {
   })
 
   it('ignora nombres reservados (motor y app, sin distinguir mayúsculas) y los de la app que se le pasen', () => {
-    for (const n of ['tasks', 'computer', 'build', 'Plan', 'general', 'lazunox-helper', 'compaction', 'mio']) put(join(agents(), `${n}.md`), 'Texto.')
+    for (const n of ['tasks', 'computer', 'build', 'Plan', 'general', 'lazunox-helper', 'compaction', 'mio'])
+      put(join(agents(), `${n}.md`), 'Texto.')
     const r = readProjectHelpers(folder, new Set(['mio']))
     expect(r.agents).toEqual({})
-    expect(r.skipped.map((s) => s.name).sort()).toEqual(['Plan', 'build', 'compaction', 'computer', 'general', 'lazunox-helper', 'mio', 'tasks'])
+    expect(r.skipped.map((s) => s.name).sort()).toEqual([
+      'Plan',
+      'build',
+      'compaction',
+      'computer',
+      'general',
+      'lazunox-helper',
+      'mio',
+      'tasks'
+    ])
   })
 
   it('un nombre de carpeta que acaba en reservado tampoco pasa (`sub/tasks`)', () => {
@@ -122,7 +132,10 @@ describe('H5: ayudantes del proyecto saneados', () => {
 
 describe('H5: comandos del proyecto, solo plantillas de texto', () => {
   it('pasa los de texto; omite los que ejecutan o adjuntan archivos', () => {
-    put(join(commands(), 'resumen.md'), '---\ndescription: Resume\nmodel: otro/caro\nagent: build\nsubtask: true\n---\nResume $ARGUMENTS en tres puntos.')
+    put(
+      join(commands(), 'resumen.md'),
+      '---\ndescription: Resume\nmodel: otro/caro\nagent: build\nsubtask: true\n---\nResume $ARGUMENTS en tres puntos.'
+    )
     put(join(commands(), 'fuga.md'), 'Mira esto: !`env > x.txt`')
     put(join(commands(), 'leer.md'), 'Lee @~/.ssh/config y @../otro.txt')
     put(join(commands(), 'correo.md'), 'Escribe a ana@ejemplo.cl')
@@ -131,7 +144,12 @@ describe('H5: comandos del proyecto, solo plantillas de texto', () => {
       resumen: { template: 'Resume $ARGUMENTS en tres puntos.', description: 'Resume', subtask: true },
       correo: { template: 'Escribe a ana@ejemplo.cl' }
     })
-    expect(r.skipped.filter((s) => s.kind === 'command').map((s) => s.name).sort()).toEqual(['fuga', 'leer'])
+    expect(
+      r.skipped
+        .filter((s) => s.kind === 'command')
+        .map((s) => s.name)
+        .sort()
+    ).toEqual(['fuga', 'leer'])
   })
 
   it('`agent` solo si apunta a un ayudante aceptado', () => {
@@ -146,6 +164,9 @@ describe('H5: comandos del proyecto, solo plantillas de texto', () => {
   it('commandRisk', () => {
     expect(commandRisk('texto normal')).toBeNull()
     expect(commandRisk('usa !`ls`')).not.toBeNull()
+    // Sin cerrar: el motor sustituye los argumentos antes de buscar `` !`…` `` (`$ARGUMENTS` puede traer el `` ` `` que falta).
+    expect(commandRisk('usa !`$ARGUMENTS')).not.toBeNull()
+    expect(commandRisk('termina en !`')).not.toBeNull()
     expect(commandRisk('mira @src/a.ts')).not.toBeNull()
     expect(commandRisk('¡hola! `código`')).toBeNull()
   })
