@@ -195,6 +195,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
 ;; Red: denegada salvo el/los proxy(es) locales de Tareas y el puerto del servidor.
 (deny network*)
 (allow network-bind (local ip "localhost:*"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto"))
 "
 `;
 
@@ -399,6 +402,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 
 ;; Scratch (.lazunox/trabajo): borrar y renombrar permitido.
 (allow file-write-unlink (subpath "/fixture/work/proyecto/.lazunox/trabajo"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto"))
 "
 `;
 
@@ -608,6 +614,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 
 ;; Carpetas adicionales de solo lectura: ninguna escritura (gana sobre las escribibles que las contengan).
 (deny file-write* (subpath "/fixture/otra/lectura"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto") (literal "/fixture/otra/escribible"))
 "
 `;
 
@@ -818,6 +827,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 
 ;; Scratch (.lazunox/trabajo): borrar y renombrar permitido.
 (allow file-write-unlink (subpath "/fixture/work/proyecto/.lazunox/trabajo"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto"))
 "
 `;
 
@@ -1026,6 +1038,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 
 ;; Scratch (.lazunox/trabajo): borrar y renombrar permitido.
 (allow file-write-unlink (subpath "/fixture/work/proyecto/.lazunox/trabajo"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto") (literal "/fixture/work"))
 "
 `;
 
@@ -1231,6 +1246,9 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 ;; Scratch (.lazunox/trabajo): borrar y renombrar permitido.
 (allow file-write-unlink (subpath "/fixture/work/proyecto/scratch-a"))
 (allow file-write-unlink (subpath "/fixture/work/proyecto/scratch-b"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto"))
 "
 `;
 
@@ -1426,5 +1444,8 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
 
 ;; Scratch (.lazunox/trabajo): borrar y renombrar permitido.
 (allow file-write-unlink (subpath "/fixture/work/proyecto/.lazunox/trabajo"))
+
+;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
+(deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/work/proyecto"))
 "
 `;

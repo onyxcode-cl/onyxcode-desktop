@@ -30,7 +30,8 @@ const spec = (folder: string) =>
     bin: '/x/opencode',
     serveArgs: ['serve'],
     serverPort: 4999,
-    isolation: { privateDir: join(folder, '..', 'priv'), userData: join(folder, '..', 'ud') },
+    // Carpeta privada donde la pone la app (`userData/tasks-sandbox/<clave>`): `launch` comprueba que cuelga de ahí (1.8.18).
+    isolation: { privateDir: join(folder, '..', 'ud', 'tasks-sandbox', '0123456789abcdef'), userData: join(folder, '..', 'ud') },
     configDir: join(folder, '..', 'ud', 'opencode-config'),
     allowDelete: false,
     outboundPorts: [],

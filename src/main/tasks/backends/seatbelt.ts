@@ -5,12 +5,13 @@
  * 1.8.16: el perfil se pasa como texto (`-p`), ya no en un archivo temporal (`-f`): ver `seatbeltProfileText`.
  */
 import { t } from '@shared/i18n'
-import { existsSync, lstatSync, mkdirSync, readdirSync, rmdirSync, rmSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, rmdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { seedModelsCache } from '../models-cache'
 import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
-import { buildSandboxProfile, sandboxDirs, sandboxEnv } from '../sandbox-profile'
+import { buildSandboxProfile, sandboxEnv } from '../sandbox-profile'
+import { ensureTaskPrivateDir } from '../private-dir'
 import { bundledRipgrepPathEnv } from '../ripgrep-runtime'
 import { spawnOnHost } from './spawn'
 import type { SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './types'
@@ -80,13 +81,15 @@ export const seatbeltBackend: SandboxBackend = {
     return seatbeltAvailable() ? { state: 'ready' } : { state: 'unsupported', detail: 'sandbox-exec' }
   },
   prepare(isolation) {
-    const dirs = sandboxDirs(isolation.privateDir)
-    for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
+    // 1.8.18: la carpeta privada y sus subcarpetas tienen que ser carpetas REALES (no enlaces que la tarea dejó) ANTES de sembrar nada y
+    // de armar el perfil; si no se puede garantizar, se lanza (no se arranca). Ver `private-dir.ts`.
+    const dirs = ensureTaskPrivateDir(isolation)
     seedModelsCache(dirs.cache)
   },
   async launch(spec) {
     if (!spec.isolation) throw new Error(t('merr.task.noPrivateDir'))
-    const dirs = sandboxDirs(spec.isolation.privateDir)
+    // Otra vez justo antes del perfil (por si `prepare` no corrió o algo cambió entre medias).
+    const dirs = ensureTaskPrivateDir(spec.isolation)
     seedModelsCache(dirs.cache)
     if (!legacyCleaned) {
       legacyCleaned = true

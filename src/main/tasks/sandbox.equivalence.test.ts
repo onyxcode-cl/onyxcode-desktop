@@ -32,6 +32,11 @@
  * Actualización DELIBERADA (1.8.16, revisión 1, agentes de launchd con `SMAppService`): el fixture se recapturó (y se pasó por Prettier)
  * y el diff es SOLO una línea nueva, `(global-name "com.apple.xpc.smd")`, en el bloque `(deny mach-lookup …)` de cada uno de los 11
  * perfiles (ver `DENIED_MACH`). Nada más cambió.
+ *
+ * Actualización DELIBERADA (1.8.18, carpeta privada cambiada por un enlace): el fixture se recapturó (y se pasó por Prettier) y el diff son
+ * SOLO dos líneas nuevas al FINAL de cada uno de los 11 perfiles: el comentario y `(deny file-write-unlink (literal <privada>) (literal
+ * <privada>/config|data|cache|state|tmp) (literal <carpeta>) (literal <cada rw adicional>…))` (más el salto de línea final). Comando,
+ * argumentos, entorno, red, proxies y limpieza no cambiaron.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

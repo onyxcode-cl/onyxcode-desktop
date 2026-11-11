@@ -52,6 +52,9 @@ export interface SandboxDirs {
   tmp: string
 }
 
+/** Subcarpetas fijas de la carpeta privada (las crea el proceso principal; el perfil niega borrarlas o renombrarlas). */
+export const PRIVATE_SUBDIRS = ['config', 'data', 'cache', 'state', 'tmp'] as const
+
 export function sandboxDirs(root: string): SandboxDirs {
   return {
     root,
@@ -515,5 +518,15 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
       ''
     )
   }
+  // La propia carpeta privada (y sus subcarpetas fijas), la carpeta de la tarea y las adicionales `rw` no se pueden borrar ni renombrar
+  // (1.8.18), tampoco con «Permitir borrar»: vaciada y cambiada por un enlace, el SIGUIENTE arranque concedía el destino del enlace (la
+  // carpeta personal) por encima de las negaciones de secretos. Solo el literal: borrar y renombrar DENTRO sigue como antes. Al final:
+  // gana sobre cualquier `allow file-write-unlink` anterior.
+  const fixed = [priv, ...PRIVATE_SUBDIRS.map((d) => join(priv, d)), folder, ...extraRw]
+  lines.push(
+    ';; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).',
+    `(deny file-write-unlink ${[...new Set(fixed)].map((p) => `(literal ${sbString(p)})`).join(' ')})`,
+    ''
+  )
   return lines.join('\n')
 }
