@@ -4,6 +4,43 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.19] - 2026-11-11
+
+### Corrección de seguridad en Tareas
+
+- **Comandos fuera del aislamiento sin tu aprobación.** Un programa ejecutado dentro de una tarea podía hacer que se ejecutara un comando en tu computador, fuera del aislamiento, sin que lo aprobaras: la pregunta la hacía y la respondía el motor, que corre dentro del aislamiento. Estaba así desde la 1.8.10. Lo encontramos nosotros al revisar y no tenemos señales de que se haya usado. Como en los casos anteriores, el modelo tenía que ejecutar ese código (por ejemplo, engañado por instrucciones escondidas en un archivo o en una página). Ahora cada comando fuera del aislamiento lo pregunta la propia app, mostrando el comando completo. No hay «permitir siempre» para estos comandos, y si no respondes, no se ejecuta.
+- **Lo mismo para tus conectores marcados «preguntar cada vez»** (los que pasan por la app): ahora la pregunta la hace la app y no el motor.
+- **En Tareas con aislamiento, el motor ya no carga programas que vengan de la carpeta de la tarea**: complementos, herramientas, conectores locales y formateadores. Los ayudantes y los comandos de texto del proyecto siguen funcionando, pero ya no pueden darse permisos.
+- **Los «permitir siempre» de Tareas ahora los guarda la app**, fuera del alcance de la tarea. Antes quedaban donde un programa de la tarea podía cambiarlos.
+- **Carpeta extra de solo lectura dentro de la carpeta de la tarea:** ya no se pueden sacar archivos de ella.
+- **Desde una tarea ya no se pueden controlar Ajustes del Sistema ni el editor de scripts.**
+
+### Cambios que puedes notar
+
+- **Tarjeta nueva para comandos fuera del aislamiento**, con el comando completo y el botón «Permitir esta vez».
+- **Desde el celular puedes negar un comando, pero para permitirlo hay que confirmarlo en el computador.**
+- **Un «siempre» respondido desde el celular en una tarea aislada dura hasta que reinicias la app.**
+- **En Tareas con aislamiento dejan de cargarse** los complementos, herramientas, conectores locales y formateadores del proyecto, las reglas por ruta y las instrucciones de carpetas superiores. Un ayudante del proyecto usa el modelo y los permisos de la tarea. En «Control total» nada cambia.
+
+### Otros arreglos
+
+- **Errores claros al crear documentos.** Cuando el asistente entregaba los datos mal armados, la herramienta de documentos fallaba con «Error interno». Ahora dice qué estaba mal, para que el asistente lo corrija.
+- **Avisos en tu idioma cuando una tarea no puede preparar sus carpetas**, también cuando el disco está lleno o la ruta es demasiado larga.
+- **Ya no queda una carpeta interna al rechazar una descarga grande.**
+- **Tras «Reiniciar y actualizar», la ventana vuelve al frente.**
+- **Una edición que no se aplicó ya no muestra los cambios como hechos.**
+- **Al pasar de «Solo explorar» a «Hacer», el indicador muestra el modo que de verdad rige.**
+
+### Lo que todavía no está cerrado
+
+- **Algunos conectores siguen protegidos solo por la pregunta del motor:** los remotos que el motor contacta directo (públicos o con inicio de sesión propio) y los conectores locales.
+- **El control de apps del Mac y el navegador integrado desde una tarea** tienen barreras propias, pero todavía no una aprobación por cada acción.
+- **Un programa de una tarea puede seguir vivo después de cerrarla.**
+- **El git interno del motor puede ejecutar configuraciones dejadas en un repositorio.** Se corrige con la próxima versión del motor.
+- **No hay un tope de gasto del servicio de IA desde una tarea.**
+- **El encierro nuevo de Tareas** (prohíbe todo y permite solo una lista) sigue en construcción.
+- **Nada de esto se ha probado todavía en Windows con la app abierta.** Se actualizará con las pruebas a mano.
+
 ## [1.8.18] - 2026-11-11
 
 ### Corrección de seguridad en Tareas en Mac
