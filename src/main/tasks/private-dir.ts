@@ -12,10 +12,28 @@
  *    error claro.
  */
 import { t } from '@shared/i18n'
-import { mkdirSync } from 'node:fs'
+import { lstatSync, mkdirSync } from 'node:fs'
 import { join, sep } from 'node:path'
-import { ensureRealDir, isWriteDenied, LinkRefusedError } from './no-follow'
-import { PRIVATE_SUBDIRS, sandboxDirs, TASK_APP_DIRS, type SandboxDirs } from './sandbox-profile'
+import { ensureRealDir, isWriteDenied, LinkRefusedError, writeFileNoFollow } from './no-follow'
+import { ENGINE_CONFIG_DIR_NAME, PRIVATE_SUBDIRS, sandboxDirs, TASK_APP_DIRS, type SandboxDirs } from './sandbox-profile'
+
+/** El `.gitignore` que el motor escribe en cada carpeta de config (motor lazunox.17; sin salto final). */
+export const ENGINE_GITIGNORE = ['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'].join('\n')
+
+/**
+ * El motor escribe su `.gitignore` en la carpeta de config si falta y NO arranca si no puede; desde la 1.8.19 la jaula le niega escribir en
+ * su config privada, así que lo deja la app (mismo contenido). Sin seguir enlaces y sin sobrescribir lo que ya haya.
+ */
+export function ensureEngineGitignore(dir: string): void {
+  const file = join(dir, '.gitignore')
+  try {
+    lstatSync(file)
+    return
+  } catch {
+    /* falta: se crea */
+  }
+  writeFileNoFollow(file, ENGINE_GITIGNORE, { exclusive: true })
+}
 
 export interface PrivateDirIsolation {
   privateDir: string
@@ -39,6 +57,14 @@ export function ensureTaskPrivateDir(
       log(`la carpeta privada tenía un enlace o un archivo en ${p}; se quitó el enlace y se creó una carpeta nueva`)
     ensureRealDir(tasksRoot, iso.privateDir, { create: true, replace: true, onReplaced })
     for (const sub of PRIVATE_SUBDIRS) ensureRealDir(iso.privateDir, join(iso.privateDir, sub), { create: true, replace: true, onReplaced })
+    // Config global privada del motor (1.8.19): el perfil la deja de SOLO LECTURA desde dentro, así que la carpeta y el `.gitignore` que el
+    // motor necesita (sin él no arranca) los deja la app. Por cualquier camino de lanzamiento (también `startTasksServer` directo).
+    const engineConf = ensureRealDir(iso.privateDir, join(iso.privateDir, 'config', ENGINE_CONFIG_DIR_NAME), {
+      create: true,
+      replace: true,
+      onReplaced
+    })
+    ensureEngineGitignore(engineConf)
   } catch (e) {
     if (e instanceof LinkRefusedError) throw new Error(t('merr.task.privateDirUnsafe'))
     throw e

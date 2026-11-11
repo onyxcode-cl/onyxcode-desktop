@@ -27,7 +27,8 @@
  */
 import { existsSync, lstatSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { ensureRealDir, writeFileNoFollow } from './no-follow'
+import { ensureRealDir } from './no-follow'
+import { ensureEngineGitignore } from './private-dir'
 import { readProjectHelpers } from './project-helpers'
 
 /** Variables que apagan la config del proyecto en el motor con jaula. Control total: ninguna. */
@@ -89,8 +90,6 @@ export function sandboxProjectText(
 /** Cuántas cuarentenas se guardan (las más nuevas). */
 export const QUARANTINE_KEEP = 3
 /** Lo que el propio motor escribe en su config global al arrancar (`config/config.ts:310-327, 484-492`). No es código que cargue. */
-/** El `.gitignore` que el motor escribe en cada carpeta de config (motor lazunox.17; sin salto final). */
-export const ENGINE_GITIGNORE = ['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'].join('\n')
 const ENGINE_OWN = new Set(['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'])
 
 /**
@@ -130,15 +129,6 @@ export function quarantineEngineUserConfig(
   log(`config global privada del motor: se apartó a la cuarentena lo que dejó la tarea (${moved.join(', ')})`)
   ensureEngineGitignore(dir)
   return moved
-}
-
-/**
- * El motor escribe su `.gitignore` en la carpeta de config si falta y NO arranca si no puede; desde la 1.8.19 la jaula le niega escribir
- * en esta carpeta, así que lo deja la app (mismo contenido). Después de la cuarentena (un `.gitignore` que sea un enlace ya se apartó).
- * Sin seguir enlaces y sin sobrescribir.
- */
-function ensureEngineGitignore(dir: string): void {
-  if (!lstatOrNull(join(dir, '.gitignore'))) writeFileNoFollow(join(dir, '.gitignore'), ENGINE_GITIGNORE, { exclusive: true })
 }
 
 function lstatOrNull(p: string): ReturnType<typeof lstatSync> | null {

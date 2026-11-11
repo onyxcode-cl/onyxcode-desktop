@@ -14,7 +14,8 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildInlineConfig, type InlineConfigInput } from './inline-config'
-import { ENGINE_GITIGNORE, projectCodeEnv, projectText, QUARANTINE_DIR, QUARANTINE_KEEP, quarantineEngineUserConfig } from './project-code'
+import { ENGINE_GITIGNORE } from './private-dir'
+import { projectCodeEnv, projectText, QUARANTINE_DIR, QUARANTINE_KEEP, quarantineEngineUserConfig } from './project-code'
 
 const base = (over: Partial<InlineConfigInput> = {}): InlineConfigInput => ({
   fullAccess: false,

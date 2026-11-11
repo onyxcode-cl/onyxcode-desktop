@@ -12,7 +12,8 @@ import { createServer } from 'node:net'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { macOnly } from '../../test/platform'
-import { ENGINE_GITIGNORE, quarantineEngineUserConfig } from './project-code'
+import { ENGINE_GITIGNORE } from './private-dir'
+import { quarantineEngineUserConfig } from './project-code'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxProfileOptions } from './sandbox-profile'
 
 const HAS_SBX = macOnly && existsSync('/usr/bin/sandbox-exec')
