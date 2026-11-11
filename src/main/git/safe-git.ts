@@ -28,7 +28,9 @@ const CONFIG = [
   '-c',
   'core.askPass=',
   '-c',
-  'core.quotepath=off'
+  'core.quotepath=off',
+  '-c',
+  'submodule.recurse=false'
 ]
 function environment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
@@ -86,19 +88,37 @@ function records(out: Buffer): Array<[string, string]> {
 /** Lee solo filtros, sin volcar otras opciones del repositorio ni sus posibles credenciales. */
 async function localFilters(opts: SafeGitOptions, env: NodeJS.ProcessEnv, base: string[]): Promise<string[]> {
   const result = await raw(
-    [...base, 'config', '--local', '--includes', '--null', '--get-regexp', '^filter\\..*\\.(clean|smudge|process)$'],
+    [
+      ...base,
+      'config',
+      '--local',
+      '--includes',
+      '--null',
+      '--get-regexp',
+      '^(filter\\..*\\.(clean|smudge|process)|merge\\..*\\.driver|diff\\..*\\.(command|textconv)|mergetool\\..*\\.cmd|difftool\\..*\\.cmd|core\\.(editor|gitproxy|alternaterefscommand)|sequence\\.editor|credential\\.helper|uploadpack\\.packobjectshook|gpg\\.(program|ssh\\.program)|alias\\..*)$'
+    ],
     opts,
     env
   )
   const code = result.error?.code
   if (result.error && code !== 1) throw new Error('No se pudo revisar la configuración local de filtros de Git')
   const names = new Set<string>()
+  const active: string[] = []
   for (const [key] of records(result.stdout)) {
     const match = /^filter\.([a-zA-Z0-9][a-zA-Z0-9._-]*)\.(?:clean|smudge|process)$/i.exec(key)
-    if (!match) throw new Error('No se pudo verificar un filtro local de Git')
-    names.add(match[1])
+    if (match) {
+      names.add(match[1])
+      continue
+    }
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(key)) throw new Error('No se pudo verificar una opción local de Git')
+    const value = /^(merge\..*\.driver|mergetool\..*\.cmd|difftool\..*\.cmd|gpg\..*program)$/i.test(key)
+      ? 'false'
+      : /^(core\.editor|sequence\.editor)$/i.test(key)
+        ? 'true'
+        : ''
+    active.push('-c', `${key}=${value}`)
   }
-  if (!names.size) return []
+  if (!names.size) return active
   // El filtro global de LFS tiene prioridad explícita frente a cualquier redefinición local.
   let globalLfs = new Map<string, string>()
   if (names.has('lfs')) {
@@ -110,7 +130,7 @@ async function localFilters(opts: SafeGitOptions, env: NodeJS.ProcessEnv, base: 
     if (!global.error) globalLfs = new Map(records(global.stdout))
     else if (global.error.code !== 1 && global.error.code !== 128) throw new Error('No se pudo revisar Git LFS global')
   }
-  const args: string[] = []
+  const args: string[] = [...active]
   for (const name of names) {
     for (const key of ['clean', 'smudge', 'process', 'required']) {
       const fallback = key === 'required' ? 'false' : ''
@@ -124,9 +144,53 @@ export async function execSafeGit(args: readonly string[], opts: SafeGitOptions)
   const env = environment(opts.env ?? process.env)
   const base = [...CONFIG, ...(opts.allowHooks ? [] : ['-c', `core.hooksPath=${devNull}`])]
   const sub = command(args)
-  const mayFilter = new Set(['add', 'commit', 'status', 'diff', 'checkout', 'switch', 'worktree', 'apply', 'reset', 'merge', 'restore'])
-  const filters = mayFilter.has(sub.name) ? await localFilters(opts, env, base) : []
+  // Lista explícita de comandos reales: nunca se despacha un alias del repositorio.
+  const builtins = new Set([
+    'add',
+    'commit',
+    'status',
+    'diff',
+    'checkout',
+    'switch',
+    'worktree',
+    'apply',
+    'reset',
+    'merge',
+    'restore',
+    'stash',
+    'push',
+    'pull',
+    'rebase',
+    'cherry-pick',
+    'revert',
+    'am',
+    'archive',
+    'clone',
+    'fetch',
+    'submodule',
+    'read-tree',
+    'checkout-index',
+    'rev-parse',
+    'config',
+    'remote',
+    'branch',
+    'log',
+    'show',
+    'for-each-ref',
+    'ls-remote',
+    'version',
+    'show-ref',
+    'check-ref-format',
+    'rev-list',
+    'ls-files',
+    'rm',
+    'update-index'
+  ])
+  if (sub.name && !builtins.has(sub.name)) throw new Error('Subcomando de Git no permitido')
+  if (sub.name === 'submodule') throw new Error('La app no actualiza submódulos')
+  const filters = sub.name && !['config', 'version', 'rev-parse'].includes(sub.name) ? await localFilters(opts, env, base) : []
   const adjusted = [...args]
+  if (['fetch', 'pull', 'clone'].includes(sub.name)) adjusted.splice(sub.index + 1, 0, '--no-recurse-submodules')
   if (['diff', 'log', 'show'].includes(sub.name)) adjusted.splice(sub.index + 1, 0, '--no-ext-diff', '--no-textconv')
   return raw([...base, ...filters, ...adjusted], opts, env, opts.input)
 }
