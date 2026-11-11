@@ -3,7 +3,7 @@
  * rutas nunca se interpolan en una línea de comandos. Los hooks del repositorio se desactivan en estas llamadas.
  * No importa `electron`.
  */
-import { execFile } from 'node:child_process'
+import { execSafeGit } from '../git/safe-git'
 import { lstatSync, mkdirSync, realpathSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { t } from '@shared/i18n'
@@ -20,7 +20,6 @@ export class CompareGitError extends Error {
 
 const TIMEOUT_MS = 120_000
 const MAX_BUFFER = 256 * 1024 * 1024
-const NULL_DEVICE = process.platform === 'win32' ? 'NUL' : '/dev/null'
 
 interface Out {
   stdout: Buffer
@@ -28,33 +27,14 @@ interface Out {
   code: number
 }
 
-function runBuf(cwd: string, args: string[], opts: { input?: Buffer | string; okCodes?: number[] } = {}): Promise<Out> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      'git',
-      ['-c', `core.hooksPath=${NULL_DEVICE}`, '-c', 'core.quotepath=off', ...args],
-      {
-        cwd,
-        shell: false,
-        maxBuffer: MAX_BUFFER,
-        timeout: TIMEOUT_MS,
-        encoding: 'buffer',
-        env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C', LANG: 'C' }
-      },
-      (err, stdout, stderr) => {
-        const e = err as (NodeJS.ErrnoException & { code?: number | string }) | null
-        const errText = stderr.toString('utf8')
-        if (e && e.code === 'ENOENT') return reject(new CompareGitError(t('common.git.notInstalled')))
-        const code = e ? (typeof e.code === 'number' ? e.code : 1) : 0
-        if (code !== 0 && !(opts.okCodes ?? []).includes(code)) {
-          return reject(new CompareGitError(errText.trim().split('\n')[0] || `git ${args[0]} failed`, errText))
-        }
-        resolve({ stdout, stderr: errText, code })
-      }
-    )
-    if (opts.input !== undefined) child.stdin?.end(opts.input)
-    else child.stdin?.end()
-  })
+async function runBuf(cwd: string, args: string[], opts: { input?: Buffer | string; okCodes?: number[] } = {}): Promise<Out> {
+  const { error, stdout, stderr } = await execSafeGit(args, { cwd, input: opts.input, timeout: TIMEOUT_MS, maxBuffer: MAX_BUFFER })
+  const errText = stderr.toString('utf8')
+  if (error?.code === 'ENOENT') throw new CompareGitError(t('common.git.notInstalled'))
+  const code = error ? (typeof error.code === 'number' ? error.code : 1) : 0
+  if (code !== 0 && !(opts.okCodes ?? []).includes(code))
+    throw new CompareGitError(errText.trim().split('\n')[0] || `git ${args[0]} failed`, errText)
+  return { stdout, stderr: errText, code }
 }
 
 async function git(cwd: string, args: string[], opts?: { input?: Buffer | string; okCodes?: number[] }): Promise<string> {
