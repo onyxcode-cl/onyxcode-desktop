@@ -69,7 +69,8 @@ describe('H5: ayudantes del proyecto saneados', () => {
       projectText: { instructionFile: '/c/AGENTS.md', skillDirs: [], agents: r.agents, commands: r.commands }
     })
     const a = (cfg.agent as Record<string, Record<string, unknown>>)['revisor-textos']!
-    for (const k of ['permission', 'tools', 'model', 'mcp', 'hooks', 'options', 'otra_clave']) expect(a).not.toHaveProperty(k)
+    for (const k of ['tools', 'model', 'mcp', 'hooks', 'options', 'otra_clave']) expect(a).not.toHaveProperty(k)
+    expect(a.permission).toMatchObject({ bash: { 'git push*': 'deny', 'rm *': 'ask' } })
     expect(a.mode).toBe('subagent')
     expect(JSON.stringify(cfg)).not.toContain('modelo-caro')
   })

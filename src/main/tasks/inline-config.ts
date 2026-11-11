@@ -7,6 +7,7 @@
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
 import { HOST_ROUTE_NAME } from '../host-exec/names'
+import { TASKS_BASE_PERMISSION } from './helper-permissions'
 import { deepMerge } from './config-merge'
 import { modelFallbackInline, normalizeModelFallback } from '@shared/model-fallback'
 
@@ -182,5 +183,34 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     ? { agent: { [TASKS_AGENT_ID]: { permission: i.rulesPermission }, [COMPUTER_AGENT_ID]: { permission: i.rulesPermission } } }
     : {}
   const instr = !i.fullAccess && i.instructions?.length ? i.instructions.map((p) => (i.toSandbox ? i.toSandbox(p) : p)) : []
-  return deepMerge(base, mcpBlock, rulesBlock, i.skills, projectTextBlock(i, instr), fallbackBlock(i))
+  const result = deepMerge(base, mcpBlock, rulesBlock, i.skills, projectTextBlock(i, instr), fallbackBlock(i))
+  if (!i.fullAccess && Object.keys(i.projectText?.agents ?? {}).length) {
+    const agents = result.agent as Record<string, Record<string, unknown>>
+    const permission = deepMerge(TASKS_BASE_PERMISSION, (agents[TASKS_AGENT_ID]?.permission as Record<string, unknown>) ?? {})
+    // La herramienta task compara el nombre del ayudante: solo se abren los aceptados por main.
+    permission.task = {
+      '*': 'deny',
+      'lazunox-helper': 'allow',
+      ...Object.fromEntries(Object.keys(i.projectText!.agents!).map((name) => [name, 'allow']))
+    }
+    agents[TASKS_AGENT_ID] = { ...agents[TASKS_AGENT_ID], permission }
+    for (const name of Object.keys(i.projectText!.agents!)) {
+      const agent = agents[name]
+      const denied = Array.isArray(agent.disallowed_tools) ? agent.disallowed_tools.filter((v): v is string => typeof v === 'string') : []
+      agents[name] = {
+        ...agent,
+        permission: deepMerge(
+          permission,
+          Object.fromEntries(
+            denied.flatMap((tool) => {
+              const key = tool.toLowerCase()
+              // write y patch piden el permiso edit en el motor. Nunca dejar que el allow base gane.
+              return [[key, 'deny'], ...(['write', 'patch', 'apply_patch', 'multiedit'].includes(key) ? [['edit', 'deny']] : [])]
+            })
+          )
+        )
+      }
+    }
+  }
+  return result
 }

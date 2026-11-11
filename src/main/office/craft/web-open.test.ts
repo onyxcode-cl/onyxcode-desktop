@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -18,6 +18,7 @@ const recordCraftProblem = vi.fn()
 vi.mock('./craft-problems', () => ({ recordCraftProblem: (...a: unknown[]) => recordCraftProblem(...a) }))
 vi.mock('../../viewer/view', () => ({ attach: vi.fn(), closeView: vi.fn() }))
 
+import { closeWeb } from './web-view'
 import { WEB_PROGRAM, openInCraftWeb } from './web-open'
 
 let dir: string
@@ -28,6 +29,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'web-open-'))
   return () => rmSync(dir, { recursive: true, force: true })
 })
+afterEach(() => vi.useRealTimers())
 const file = (bytes = 10): string => {
   const f = join(dir, 'a.bin')
   writeFileSync(f, Buffer.alloc(bytes, 1))
@@ -90,6 +92,25 @@ describe('web-open (prueba Craft)', () => {
     openWebDoc.mockResolvedValueOnce(false)
     await openInCraftWeb('docx', file(), 'T')
     expect(recordCraftProblem).toHaveBeenCalledTimes(2)
+  })
+
+  it('a los cinco segundos cierra la web y devuelve false para mostrar el visor clásico', async () => {
+    webDir.mockReturnValue('/web/x')
+    let done!: (ok: boolean) => void
+    openWebDoc.mockImplementation(
+      () =>
+        new Promise<boolean>((r) => {
+          done = r
+        })
+    )
+    vi.useFakeTimers()
+    const second = openInCraftWeb('docx', file(), 'T')
+    await vi.waitFor(() => expect(openWebDoc).toHaveBeenCalledOnce())
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(await second).toBe(false)
+    expect(closeWeb).toHaveBeenCalled()
+    done(true)
+    await Promise.resolve()
   })
 
   it('sin la versión web instalada se anota como aviso (no como error)', async () => {

@@ -1223,9 +1223,9 @@ export interface TasksInvokeContract {
    * carpeta, detecta el tipo por bytes mágicos y emite un token de un solo uso; `attach` sincroniza
    * el hueco del panel «Documento» con la vista nativa (mismo patrón que `browser:attach`).
    */
-  'tasks:viewer:open': { req: { path: string; lang: 'es' | 'en'; theme: 'light' | 'dark' }; res: ViewerOpenResult }
+  'tasks:viewer:open': { req: { path: string; lang: 'es' | 'en'; theme: 'light' | 'dark'; openingId: string }; res: ViewerOpenResult }
   'tasks:viewer:attach': { req: { rect: ViewerRect; visible: boolean }; res: void }
-  'tasks:viewer:close': { req: void; res: void }
+  'tasks:viewer:close': { req: { openingId: string }; res: void }
 
   /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }

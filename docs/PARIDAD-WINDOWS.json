@@ -992,6 +992,40 @@
       ],
       "nota": "Probado con DNS simulado en macOS. No se ha comprobado la enumeración de interfaces ni la salida de Tareas por WSL en Windows.",
       "comprobacion": null
+    },
+    {
+      "id": "N10",
+      "funcion": "Ayudantes del proyecto con los permisos efectivos de Tareas",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/helper-permissions.test.ts:1",
+        "src/main/tasks/inline-config.ts:1"
+      ],
+      "nota": "Reglas base, conectores, reglas guardadas y carpetas adicionales iguales al agente de Tareas; disallowed_tools solo resta. Pruebas unitarias en Mac; sin ejecución en Windows ni motor real.",
+      "comprobacion": null
+    },
+    {
+      "id": "N11",
+      "funcion": "Vista previa con aperturas identificadas y respaldo a los cinco segundos",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/ipc/tasks-viewer-handlers.race.test.ts:1",
+        "src/main/office/craft/web-view.race.test.ts:1"
+      ],
+      "nota": "Probado en Mac con Electron simulado: cierres antiguos, cambio de tema y plazo agotado. Sin app abierta; wasm, ventana minimizada y Windows pendientes.",
+      "comprobacion": null
+    },
+    {
+      "id": "N12",
+      "funcion": "Aviso del navegador sin concesiones y recuperación de tarjetas pendientes",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/embedded-browser/approvals.test.ts:1",
+        "src/renderer/src/features/browser/BrowserPanel.approvals.test.tsx:1",
+        "src/main/util/native-dialog.test.ts:1"
+      ],
+      "nota": "El aviso solo niega o abre la ventana Navegador de Lazunox con la tarjeta del dueño correcto. macOS cancela si falla osascript, sin Electron sin padre. Plataformas simuladas y DOM en Mac; sin prueba real de ventanas ni en Windows.",
+      "comprobacion": null
     }
   ]
 }

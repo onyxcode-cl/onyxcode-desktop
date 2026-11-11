@@ -31,13 +31,14 @@ function readHeader(path: string): Uint8Array {
 let tasksValidatorRegistered = false
 /** Número de la última apertura: un cierre (o otra apertura) mientras la vista web de ArtCraft aún cargaba invalida la anterior. */
 let openGeneration = 0
+let activeOpeningId: string | null = null
 
 export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodule {
   const { handle, tasks, send } = ctx
   const offViewer = onViewerEvent((event) => send('tasks:viewer:event', event))
   const offWeb = onWebEvent((event) => send('tasks:viewer:event', event))
 
-  handle('tasks:viewer:open', async ({ path, lang, theme }) => {
+  handle('tasks:viewer:open', async ({ path, lang, theme, openingId }) => {
     // Perezoso: crea la sesión/el esquema de Electron recién al primer uso real, no al registrar los
     // canales (al arrancar la app) — algunos arranques (p. ej. sin Control del PC) nunca lo necesitan.
     if (!tasksValidatorRegistered) {
@@ -46,6 +47,7 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
     }
     installViewerScheme()
     const generation = ++openGeneration
+    activeOpeningId = openingId
     const real = tasks.assertInsideApproved(path)
     const kind = sniffDocKind(real, readHeader(real))
     if (!kind) return { ok: false, reason: 'unsupported' }
@@ -64,7 +66,6 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
     // La persona salió de la vista (o abrió otro archivo) mientras cargaba: no se deja nada abierto ni se abre el visor de respaldo
     // con un token ya revocado (quedaba pegado a la derecha mostrando «No se pudo mostrar el documento»).
     if (generation !== openGeneration) {
-      if (openedInCraft) panelClose()
       return { ok: false, reason: 'unsupported' }
     }
     if (openedInCraft) return { ok: true, token, kind }
@@ -78,7 +79,9 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
     if (win) panelAttach(win, rect, visible)
   })
 
-  handle('tasks:viewer:close', () => {
+  handle('tasks:viewer:close', ({ openingId }) => {
+    if (openingId !== activeOpeningId) return
+    activeOpeningId = null
     openGeneration++
     revokeActive()
     panelClose()
@@ -88,7 +91,10 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
     dispose: () => {
       offViewer()
       offWeb()
+      activeOpeningId = null
+      openGeneration++
       revokeActive()
+      panelClose()
       detach()
     }
   }

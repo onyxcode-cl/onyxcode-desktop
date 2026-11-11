@@ -1,5 +1,5 @@
 /**
- * Carrera real vista en la app: la persona sale de la vista del documento (cierre) mientras la vista web de ArtCraft aún carga (hasta 20 s).
+ * Carrera real vista en la app: la persona sale de la vista del documento (cierre) mientras la vista web de ArtCraft aún carga (hasta 5 s).
  * Al terminar la espera, `open` abría el visor de respaldo con un token ya revocado y quedaba pegado a la derecha mostrando
  * «No se pudo mostrar el documento». Ahora un cierre (o una apertura nueva) invalida la apertura en curso.
  */
@@ -50,7 +50,8 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-const open = () => handlers['tasks:viewer:open']!({ path: join(dir, 'a.pdf'), lang: 'es', theme: 'dark' })
+const open = (openingId = 'first', theme = 'dark') =>
+  handlers['tasks:viewer:open']!({ path: join(dir, 'a.pdf'), lang: 'es', theme, openingId })
 
 describe('tasks:viewer:open / close', () => {
   it('sin cierre en medio: si ArtCraft no abre, usa el visor de siempre', async () => {
@@ -64,26 +65,39 @@ describe('tasks:viewer:open / close', () => {
   it('un cierre mientras ArtCraft carga: al terminar NO se abre el visor de respaldo', async () => {
     const p = open()
     await vi.waitFor(() => expect(state.craft.length).toBe(1))
-    handlers['tasks:viewer:close']!(undefined)
+    handlers['tasks:viewer:close']!({ openingId: 'first' })
     state.craft[0]!(false)
     expect((await p).ok).toBe(false)
     expect(state.calls.some((c) => c.startsWith('openDoc'))).toBe(false)
   })
 
-  it('un cierre mientras ArtCraft carga y luego abre bien: se vuelve a cerrar', async () => {
+  it('un cierre mientras ArtCraft carga y luego abre bien: no afecta a una apertura posterior', async () => {
     const p = open()
     await vi.waitFor(() => expect(state.craft.length).toBe(1))
-    handlers['tasks:viewer:close']!(undefined)
+    handlers['tasks:viewer:close']!({ openingId: 'first' })
     state.calls.length = 0
     state.craft[0]!(true)
     await p
-    expect(state.calls).toEqual(['panelClose'])
+    expect(state.calls).toEqual([])
+  })
+
+  it.each(['dark', 'light'])('abrir, cerrar y reabrir con tema %s: un cierre viejo no destruye la vigente', async (theme) => {
+    const first = open()
+    handlers['tasks:viewer:close']!({ openingId: 'first' })
+    const second = open('second', theme)
+    state.calls.length = 0
+    handlers['tasks:viewer:close']!({ openingId: 'first' })
+    state.craft[1]!(true)
+    expect((await second).ok).toBe(true)
+    state.craft[0]!(true)
+    expect((await first).ok).toBe(false)
+    expect(state.calls).toEqual([])
   })
 
   it('una apertura nueva invalida la anterior (la vieja no abre nada)', async () => {
     const first = open()
     await vi.waitFor(() => expect(state.craft.length).toBe(1))
-    const second = open()
+    const second = open('second')
     await vi.waitFor(() => expect(state.craft.length).toBe(2))
     state.craft[0]!(false)
     expect((await first).ok).toBe(false)

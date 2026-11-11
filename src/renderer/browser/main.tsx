@@ -9,11 +9,11 @@
  * `owner` NO viaja en la URL: main lo empuja por el evento `browser:state` en cuanto abre o
  * reutiliza la ventana (`service.ts` → `pushOwnerToPopout`), y aquí solo se escucha.
  */
-import { StrictMode, useEffect, useState } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { BrowserOwner, BrowserProduct } from '@shared/ipc-browser'
+import type { BrowserProduct } from '@shared/ipc-browser'
 import { BrowserPanel } from '../src/features/browser'
-import { onBrowser } from '../src/features/browser/bridge'
+import { useAssignedOwner } from '../src/features/browser/useAssignedOwner'
 import '../src/app/globals.css'
 
 function syncSystemTheme(): void {
@@ -23,20 +23,6 @@ function syncSystemTheme(): void {
   }
   apply()
   mq.addEventListener('change', apply)
-}
-
-/** Espera el primer `owner` que main empuje (por `browser:state` o, de respaldo, `browser:reveal`). */
-function useAssignedOwner(): BrowserOwner | null {
-  const [owner, setOwner] = useState<BrowserOwner | null>(null)
-  useEffect(() => {
-    const offState = onBrowser('browser:state', (state) => setOwner((prev) => prev ?? state.owner))
-    const offReveal = onBrowser('browser:reveal', (ev) => setOwner((prev) => prev ?? ev.owner))
-    return () => {
-      offState()
-      offReveal()
-    }
-  }, [])
-  return owner
 }
 
 function BrowserWindowApp(): React.JSX.Element {

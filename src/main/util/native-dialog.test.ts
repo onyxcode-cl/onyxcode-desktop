@@ -42,11 +42,11 @@ describe('diálogo de botones que no congela la app', () => {
     expect(await askButtons(D, { platform: 'darwin', run: async () => 'Nombre raro', electronDialog: electron })).toBe(0)
   })
 
-  it('si osascript falla vuelve al diálogo de Electron', async () => {
+  it.each(['sin osascript', 'SIGKILL'])('si osascript falla o lo matan (%s), cancela sin abrir Electron', async (error) => {
     const e = { showMessageBox: vi.fn(async () => ({ response: 2 })) } as never
-    const i = await askButtons(D, { platform: 'darwin', run: async () => Promise.reject(new Error('sin osascript')), electronDialog: e })
-    expect(i).toBe(2)
-    expect((e as { showMessageBox: ReturnType<typeof vi.fn> }).showMessageBox).toHaveBeenCalledOnce()
+    const i = await askButtons(D, { platform: 'darwin', run: async () => Promise.reject(new Error(error)), electronDialog: e })
+    expect(i).toBe(0)
+    expect((e as { showMessageBox: ReturnType<typeof vi.fn> }).showMessageBox).not.toHaveBeenCalled()
   })
 
   it('fuera de macOS usa el diálogo de Electron, con el botón seguro por defecto', async () => {
@@ -57,10 +57,12 @@ describe('diálogo de botones que no congela la app', () => {
     )
   })
 
-  it('botones repetidos o fuera de 2 a 3: no se arriesga con osascript y usa Electron', async () => {
+  it('botones repetidos o fuera de 2 a 3: cancela sin abrir osascript ni Electron', async () => {
     const run = vi.fn(async (_a: string[]) => 'x')
-    await askButtons({ ...D, buttons: ['No', 'No'] }, { platform: 'darwin', run, electronDialog: electron })
-    await askButtons({ ...D, buttons: ['a', 'b', 'c', 'd'] }, { platform: 'darwin', run, electronDialog: electron })
+    const e = { showMessageBox: vi.fn(async () => ({ response: 2 })) }
+    expect(await askButtons({ ...D, buttons: ['No', 'No'] }, { platform: 'darwin', run, electronDialog: e as never })).toBe(0)
+    expect(await askButtons({ ...D, buttons: ['a', 'b', 'c', 'd'] }, { platform: 'darwin', run, electronDialog: e as never })).toBe(0)
+    expect(e.showMessageBox).not.toHaveBeenCalled()
     expect(run).not.toHaveBeenCalled()
   })
 

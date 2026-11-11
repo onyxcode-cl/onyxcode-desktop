@@ -10,7 +10,8 @@ import type { DocKind } from '@shared/doc-kind'
 import { attach as attachViewer, closeView } from '../../viewer/view'
 import { recordCraftProblem } from './craft-problems'
 import { craftService } from './service'
-import { MAX_WEB_FILE_BYTES, attachWeb, closeWeb, deactivateWeb, isWebActive, openWebDoc } from './web-view'
+import { WEB_OPEN_TIMEOUT_MS, withTimeout } from './web-timeout'
+import { MAX_WEB_FILE_BYTES, attachWeb, closeWeb, isWebActive, openWebDoc } from './web-view'
 
 /** Programa de ArtCraft cuya versión web muestra cada tipo de documento. */
 export const WEB_PROGRAM: Record<DocKind, string> = { xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft', pdf: 'pdfcraft' }
@@ -21,6 +22,7 @@ interface Last {
   visible: boolean
 }
 let last: Last | null = null
+let openGeneration = 0
 
 /** Reaplica el último hueco: la vista activa lo muestra y la otra se oculta. */
 export function applyPanel(): void {
@@ -37,13 +39,15 @@ export function panelAttach(win: BrowserWindow, rect: Last['rect'], visible: boo
 
 /** Cierra ambas vistas (al cerrar el documento). */
 export function panelClose(): void {
+  openGeneration++
   closeView()
   closeWeb()
 }
 
 /** Marca que el documento actual va por el visor de siempre (oculta la vista web) y reaplica el hueco. */
 export function useClassicViewer(): void {
-  deactivateWeb()
+  openGeneration++
+  closeWeb()
   applyPanel()
 }
 
@@ -52,6 +56,8 @@ export function useClassicViewer(): void {
  * demasiado grande o si algo falla: quien llama usa entonces el visor de siempre. `title` solo da nombre al archivo en la pantalla del programa.
  */
 export async function openInCraftWeb(kind: DocKind, file: string, title: string): Promise<boolean> {
+  const generation = ++openGeneration
+  const current = (): boolean => generation === openGeneration
   const dir = craftService().webDir(WEB_PROGRAM[kind])
   if (!dir) {
     console.warn(`[craft-web] la versión web de ${WEB_PROGRAM[kind]} no está instalada; se usa el visor de siempre`)
@@ -64,11 +70,21 @@ export async function openInCraftWeb(kind: DocKind, file: string, title: string)
     return false
   }
   try {
-    if ((await stat(file)).size > MAX_WEB_FILE_BYTES) return false
-    const name = `${title.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 60) || 'documento'}.${kind}`
-    const ok = await openWebDoc(dir, kind, name, await readFile(file))
+    const ok = await withTimeout(
+      (async () => {
+        if ((await stat(file)).size > MAX_WEB_FILE_BYTES || !current()) return false
+        const name = `${title.replace(/[^\p{L}\p{N} _.-]/gu, '').slice(0, 60) || 'documento'}.${kind}`
+        const bytes = await readFile(file)
+        if (!current()) return false
+        return openWebDoc(dir, kind, name, bytes)
+      })(),
+      WEB_OPEN_TIMEOUT_MS,
+      'apertura'
+    )
+    if (!current()) return false
     if (ok) applyPanel()
     else {
+      closeWeb()
       console.warn(`[craft-web] la vista web de ${WEB_PROGRAM[kind]} no recibió el archivo (${kind}); se usa el visor de siempre`)
       recordCraftProblem('vista web', new Error(`la vista web de ${WEB_PROGRAM[kind]} no recibió el archivo (${kind})`), {
         programa: WEB_PROGRAM[kind]
@@ -76,6 +92,9 @@ export async function openInCraftWeb(kind: DocKind, file: string, title: string)
     }
     return ok
   } catch (e) {
+    if (!current()) return false
+    openGeneration++
+    closeWeb()
     console.warn(`[craft-web] no se pudo abrir ${kind} en la vista web:`, e instanceof Error ? e.message : e)
     recordCraftProblem('vista web', e, { programa: WEB_PROGRAM[kind] })
     return false
