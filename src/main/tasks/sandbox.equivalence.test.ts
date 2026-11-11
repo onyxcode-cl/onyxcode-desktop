@@ -44,6 +44,10 @@
  * `TASK_APP_DIRS`), y en el `env` de los dos lanzamientos con aislamiento `OPENCODE_DISABLE_MODELS_FETCH=1` (el catálogo va a la config
  * con `OPENCODE_MODELS_PATH`, que aquí no aparece porque el doble no tiene catálogo principal). Comando, argumentos, red, proxies y
  * limpieza no cambiaron.
+ *
+ * Actualización DELIBERADA (1.8.19, carpetas adicionales de solo lectura): en el perfil `extras` y en el lanzamiento con carpetas
+ * adicionales, SOLO la línea de cada carpeta `ro` pasa de `(deny file-write* (subpath …))` a `(deny file-write* file-write-unlink
+ * (subpath …))` (2 líneas en total). Nada más cambió.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'

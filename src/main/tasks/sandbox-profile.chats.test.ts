@@ -83,7 +83,7 @@ describe.skipIf(!macOnly)('perfil Seatbelt: lectura de ~/Lazunox/Chats (texto)',
     expect(out).toContain(`(allow file-read* file-write* (subpath "${HOME}/Lazunox/Chats/rw1"))`)
     expect(out).toContain(`(allow file-read* (subpath "${HOME}/Lazunox/Chats/ro1"))`)
     expect(out).not.toContain('"/fixture/otra"))\n(allow file-read')
-    expect(out).toContain(`(deny file-write* (subpath "${HOME}/Lazunox/Chats/ro1"))`)
+    expect(out).toContain(`(deny file-write* file-write-unlink (subpath "${HOME}/Lazunox/Chats/ro1"))`)
   })
 })
 
