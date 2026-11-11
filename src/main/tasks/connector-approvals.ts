@@ -14,7 +14,7 @@
 import { randomBytes } from 'node:crypto'
 import type { ConnectorApprovalRequest, ConnectorDecision } from '@shared/ipc-tasks'
 import { revealHiddenChars } from '../host-exec/policy'
-import type { ToolCallGate, ToolCallVerdict } from './mcp-proxy'
+import type { McpRouteSpec, ToolCallGate, ToolCallVerdict } from './mcp-proxy'
 
 export const CONNECTOR_APPROVAL_TIMEOUT_MS = 5 * 60 * 1000
 export const CONNECTOR_COOLDOWN_MS = 30_000
@@ -248,4 +248,12 @@ export function createConnectorGate(opts: {
     }
     return { ok: false, message: outcome === 'deny' ? CONNECTOR_TEXTS.denied : CONNECTOR_TEXTS.noAnswer }
   }
+}
+
+/**
+ * Ruta del proxy para un conector con «preguntar cada herramienta» (H2): SOLO su ruta exacta (ni la API REST del mismo servicio ni otras
+ * rutas con las cabeceras de la persona) y la puerta de main.
+ */
+export function gatedConnectorRoute(spec: McpRouteSpec, folder: string): McpRouteSpec {
+  return { ...spec, exactPath: true, toolCallGate: createConnectorGate({ folder, server: spec.name }) }
 }

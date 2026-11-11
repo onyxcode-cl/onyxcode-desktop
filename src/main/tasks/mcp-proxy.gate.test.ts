@@ -4,6 +4,7 @@
  */
 import { createServer, type Server } from 'node:http'
 import { afterEach, describe, expect, it } from 'vitest'
+import { gatedConnectorRoute } from './connector-approvals'
 import { McpProxy, findToolCall, type ToolCall, type ToolCallGate, type ToolCallVerdict } from './mcp-proxy'
 
 let upstream: Server
@@ -14,7 +15,7 @@ afterEach(async () => {
   seen = []
 })
 
-async function setup(gate: ToolCallGate): Promise<{ url: string; token: string }> {
+async function setup(gate: ToolCallGate, exactPath = false): Promise<{ url: string; token: string }> {
   upstream = createServer((req, res) => {
     const chunks: Buffer[] = []
     req.on('data', (c: Buffer) => chunks.push(c))
@@ -34,6 +35,7 @@ async function setup(gate: ToolCallGate): Promise<{ url: string; token: string }
     await new Promise<void>((r) => upstream.close(() => r()))
   })
   const route = p.addRoute({
+    exactPath,
     name: 'crm',
     url: `http://127.0.0.1:${port}/mcp`,
     headers: { Authorization: 'Bearer real' },
@@ -168,5 +170,32 @@ describe('McpProxy con puerta de main', () => {
     release?.({ ok: true })
     await new Promise((r) => setTimeout(r, 50))
     expect(seen).toEqual([])
+  })
+})
+
+describe('H2: una ruta con puerta solo deja usar la ruta exacta del conector', () => {
+  it('la ruta registrada para «preguntar» lleva exactPath y la puerta', () => {
+    const r = gatedConnectorRoute({ name: 'gh', url: 'https://api.example.test/mcp', headers: {} }, '/Users/ana/p')
+    expect(r.exactPath).toBe(true)
+    expect(typeof r.toolCallGate).toBe('function')
+  })
+
+  it('POST a otra ruta del servicio: 404 y no llega nada', async () => {
+    const { url, token } = await setup(async () => ({ ok: true }), true)
+    const other = url.replace(/\/mcp$/, '/api/v1/repos/x')
+    expect((await post(other, token, '{"jsonrpc":"2.0","id":1,"method":"tools/list"}')).status).toBe(404)
+    expect(seen).toEqual([])
+  })
+
+  it('GET o DELETE con cuerpo: 400; GET sin pedir el flujo de eventos: 406; GET de eventos y DELETE sin cuerpo pasan', async () => {
+    const { url, token } = await setup(async () => ({ ok: true }), true)
+    const h = { authorization: `Bearer ${token}` }
+    const del = await fetch(url, { method: 'DELETE', body: call('delete_repo', {}), headers: h })
+    expect(del.status).toBe(400)
+    expect((await fetch(url, { method: 'GET', headers: h })).status).toBe(406)
+    expect(seen).toEqual([])
+    expect((await fetch(url, { method: 'GET', headers: { ...h, accept: 'text/event-stream' } })).status).toBe(200)
+    expect((await fetch(url, { method: 'DELETE', headers: h })).status).toBe(200)
+    expect(seen).toEqual(['GET ', 'DELETE '])
   })
 })

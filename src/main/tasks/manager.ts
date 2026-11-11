@@ -88,7 +88,7 @@ import { ChatIndexStore } from './chat-index'
 import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
-import { createConnectorGate } from './connector-approvals'
+import { gatedConnectorRoute } from './connector-approvals'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
 import { applyComputerAgent } from './computer-agent'
 import type { EgressBlockedEvent } from './proxy'
@@ -1485,10 +1485,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     // Conectores de la persona con «preguntar cada herramienta»: la puerta de main en su ruta (`connector-approvals.ts`), por tarea.
     const c = tasksMcpContribution({
       sandboxed: !fullAccess,
-      registerRoute: mcpProxy
-        ? (spec, o) =>
-            mcpProxy.addRoute(o?.askEachTool ? { ...spec, toolCallGate: createConnectorGate({ folder, server: spec.name }) } : spec)
-        : undefined
+      registerRoute: mcpProxy ? (spec, o) => mcpProxy.addRoute(o?.askEachTool ? gatedConnectorRoute(spec, folder) : spec) : undefined
     })
     if (c.blocked.length) {
       console.warn(`[tasks] MCP no disponibles en el sandbox (secretos en el entorno): ${c.blocked.join(', ')}`)

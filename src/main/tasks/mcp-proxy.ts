@@ -431,7 +431,26 @@ export class McpProxy {
     const q = rest.indexOf('?')
     const path = q === -1 ? rest : rest.slice(0, q)
     const clientQuery = new URLSearchParams(q === -1 ? '' : rest.slice(q + 1))
-    if (route.exactPath && path !== route.basePath) return this.reply(res, 404, 'not found')
+    if (route.exactPath && path !== route.basePath) {
+      if (route.toolCallGate) {
+        log(
+          route.name,
+          'petición a otra ruta del conector rechazada: con «preguntar cada herramienta» solo se usa la ruta exacta del conector. ' +
+            'Si este conector usa el transporte SSE antiguo (POST a /messages), con «preguntar» no funciona en Tareas aisladas: usa ' +
+            'su dirección «streamable HTTP» o quita «preguntar»'
+        )
+      }
+      return this.reply(res, 404, 'not found')
+    }
+    // Ruta con puerta: solo POST lleva cuerpo (y se revisa). GET únicamente para el flujo de eventos y DELETE para cerrar la sesión,
+    // los dos sin cuerpo: un cuerpo ahí llegaría al servicio sin pasar por la puerta.
+    if (route.toolCallGate && method !== 'POST') {
+      const cl = req.headers['content-length']
+      if ((cl !== undefined && cl !== '0') || req.headers['transfer-encoding'] !== undefined)
+        return this.reply(res, 400, 'body not allowed')
+      const accept = String(req.headers.accept ?? '')
+      if (method === 'GET' && !accept.toLowerCase().includes('text/event-stream')) return this.reply(res, 406, 'only event stream')
+    }
     let target: URL
     try {
       target = new URL(`${route.origin}${path}`)
