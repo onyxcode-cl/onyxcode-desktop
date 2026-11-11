@@ -2,21 +2,87 @@ import { execFileSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as service from './service'
 import { execSafeGit } from './safe-git'
 import { dirtyPaths } from '../compare/git'
 import { runGit } from '../pr/git'
 
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+  return { ...actual, execFile: vi.fn(actual.execFile) }
+})
+import { execFile } from 'node:child_process'
+
 const roots: string[] = []
 const previousGlobal = process.env.GIT_CONFIG_GLOBAL
 afterEach(() => {
+  vi.restoreAllMocks()
   if (previousGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL
   else process.env.GIT_CONFIG_GLOBAL = previousGlobal
   for (const dir of roots.splice(0)) rmSync(dir, { recursive: true, force: true })
 })
 
 describe('Git de la app con configuración local hostil', () => {
+  it('consulta referencias y remotos y transfiere sin ejecutar programas locales ni recurrir a submódulos', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lzx-git-remotos-'))
+    roots.push(dir)
+    process.env.GIT_CONFIG_GLOBAL = join(dir, 'global')
+    writeFileSync(process.env.GIT_CONFIG_GLOBAL, '')
+    const g = (...args: string[]): string => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: 'pipe' }).trim()
+    g('init', '-q', '-b', 'main')
+    g('config', 'user.name', 'Prueba')
+    g('config', 'user.email', 'prueba@example.invalid')
+    writeFileSync(join(dir, 'a.dat'), 'contenido\n')
+    writeFileSync(join(dir, '.gitattributes'), '*.dat filter=trampa diff=trampa\n')
+    writeFileSync(join(dir, '.gitignore'), 'ignorado\n')
+    g('add', '--', 'a.dat', '.gitattributes', '.gitignore')
+    g('commit', '-qm', 'inicial')
+    const head = g('rev-parse', 'HEAD')
+    g('init', '-q', '--bare', 'origin.git')
+    g('remote', 'add', 'origin', join(dir, 'origin.git'))
+    const sentinel = join(dir, 'centinela.txt')
+    const program = join(dir, 'trampa')
+    writeFileSync(program, `#!/bin/sh\necho trampa >> '${sentinel}'\ncat\n`)
+    chmodSync(program, 0o755)
+    for (const key of [
+      'core.fsmonitor',
+      'core.sshCommand',
+      'core.askPass',
+      'filter.trampa.clean',
+      'filter.trampa.smudge',
+      'filter.trampa.process',
+      'credential.helper',
+      'diff.trampa.textconv'
+    ])
+      g('config', key, program)
+    g('config', 'fetch.recurseSubmodules', 'true')
+    g('config', 'push.recurseSubmodules', 'on-demand')
+    const calls = vi.mocked(execFile)
+    calls.mockClear()
+    const safe = async (args: string[]): Promise<string> => {
+      const r = await execSafeGit(args, { cwd: dir })
+      expect(r.error, r.stderr.toString()).toBeNull()
+      expect(existsSync(sentinel)).toBe(false)
+      return r.stdout.toString().trim()
+    }
+    expect(await safe(['symbolic-ref', '--short', 'HEAD'])).toBe('main')
+    expect(await safe(['merge-base', 'HEAD', 'HEAD'])).toBe(head)
+    expect(await safe(['cat-file', '-p', 'HEAD:a.dat'])).toBe('contenido')
+    expect(await safe(['check-ignore', '--', 'ignorado'])).toBe('ignorado')
+    expect(await safe(['rev-list', '--count', 'HEAD'])).toBe('1')
+    expect(await safe(['show-ref', '--verify', 'refs/heads/main'])).toContain(head)
+    expect(await safe(['remote', 'get-url', 'origin'])).toBe(join(dir, 'origin.git'))
+    await safe(['push', '--', 'origin', 'refs/heads/main:refs/heads/main'])
+    expect(await safe(['ls-remote', '--heads', 'origin'])).toContain(head)
+    await safe(['fetch', '--', 'origin'])
+    for (const [, args] of calls.mock.calls) {
+      expect(args).toEqual(expect.arrayContaining(['core.fsmonitor=false', 'core.sshCommand=', 'core.askPass=', 'submodule.recurse=false']))
+      if (args?.includes('push') || args?.includes('fetch')) expect(args).toContain('--no-recurse-submodules')
+      expect(args).not.toContain('--no-verify')
+    }
+  })
+
   it('respeta LFS global y neutraliza una redefinición local', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'lzx-git-lfs-'))
     roots.push(dir)

@@ -3,12 +3,13 @@
  * verdad, sin red y sin GitHub. Cubre la lista blanca de ramas/remotos, las ramas protegidas, la revisión de secretos y que nunca se fuerza.
  */
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { posixOnly } from '../../test/platform'
 import { branchChanges, createBranch, listRemotes, push, pushPlan, repoStatus, workingDiff } from './git'
+import * as safeGit from '../git/safe-git'
 
 const ghToken = (): string => 'ghp' + '_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8'
 
@@ -65,7 +66,7 @@ beforeEach(() => {
   git(work, 'push', '-q', 'origin', 'main')
   git(work, 'remote', 'set-head', 'origin', 'main')
 })
-afterEach(() => undefined)
+afterEach(() => vi.restoreAllMocks())
 
 const bareHas = (ref: string): boolean => {
   try {
@@ -267,16 +268,27 @@ describe.skipIf(!posixOnly)('plan de subida y subida real', () => {
     expect(git(bare, 'rev-parse', 'refs/heads/feat/ff')).toBe(theirs)
   })
 
-  it('respeta el gancho pre-push del proyecto (no se salta con --no-verify)', async () => {
+  it('pre-push no corre por defecto; habilitado puede bloquear, sin --no-verify en ningún caso', async () => {
     await createBranch(work, 'feat/hook')
     const head = commit(work, 'h.txt', '1')
     const hook = join(work, '.git', 'hooks', 'pre-push')
-    writeFileSync(hook, '#!/bin/sh\necho "bloqueado por el gancho" >&2\nexit 1\n')
+    const sentinel = join(work, 'centinela.txt')
+    writeFileSync(hook, `#!/bin/sh\necho gancho >> '${sentinel}'\necho "bloqueado por el gancho" >&2\nexit 1\n`)
     chmodSync(hook, 0o755)
-    await expect(push({ cwd: work, remote: 'origin', branch: 'feat/hook', expectHead: head })).rejects.toMatchObject({
+    const calls = vi.spyOn(safeGit, 'execSafeGit')
+    await push({ cwd: work, remote: 'origin', branch: 'feat/hook', expectHead: head })
+    expect(existsSync(sentinel)).toBe(false)
+    expect(git(bare, 'rev-parse', 'refs/heads/feat/hook')).toBe(head)
+    const next = commit(work, 'h.txt', '2')
+    await expect(push({ cwd: work, remote: 'origin', branch: 'feat/hook', expectHead: next }, true)).rejects.toMatchObject({
       code: 'push-failed'
     })
-    expect(bareHas('refs/heads/feat/hook')).toBe(false)
+    expect(readFileSync(sentinel, 'utf8')).toBe('gancho\n')
+    expect(git(bare, 'rev-parse', 'refs/heads/feat/hook')).toBe(head)
+    const pushes = calls.mock.calls.filter(([args]) => args[0] === 'push')
+    expect(pushes).toHaveLength(2)
+    expect(pushes.map(([, opts]) => opts.allowHooks)).toEqual([false, true])
+    for (const [args] of calls.mock.calls) expect(args).not.toContain('--no-verify')
   })
 
   it('HEAD suelto: no hay rama que subir', async () => {

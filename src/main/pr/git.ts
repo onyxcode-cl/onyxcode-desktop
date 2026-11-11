@@ -43,7 +43,8 @@ export async function runGit(cwd: string, args: readonly string[], opts: RunOpti
       env: opts.env ?? minimalEnv(),
       input: opts.input,
       timeout: opts.timeoutMs,
-      maxBuffer: opts.maxBuffer
+      maxBuffer: opts.maxBuffer,
+      allowHooks: opts.allowHooks
     })
     const stdout = out.toString('utf8'),
       stderr = errout.toString('utf8')
@@ -270,7 +271,7 @@ export async function pushPlan(cwd: string, remoteName: string): Promise<PrPushP
 }
 
 /** Sube la rama actual al remoto elegido. Todo se vuelve a comprobar aquí: lo que la persona vio debe ser lo que se sube. */
-export async function push(req: PrPushRequest): Promise<PrPushResult> {
+export async function push(req: PrPushRequest, allowHooks = false): Promise<PrPushResult> {
   const plan = await pushPlan(req.cwd, req.remote)
   if (plan.branch !== req.branch) throw perr('changed', 'pr.err.branchChanged')
   if (plan.head !== req.expectHead) throw perr('changed', 'pr.err.headChanged')
@@ -282,7 +283,11 @@ export async function push(req: PrPushRequest): Promise<PrPushResult> {
   const refspec = `refs/heads/${plan.branch}:refs/heads/${plan.branch}`
   let r: RunResult
   try {
-    r = await runGit(root, ['push', '--set-upstream', '--', plan.remote, refspec], { timeoutMs: PUSH_TIMEOUT, env: minimalEnv() })
+    r = await runGit(root, ['push', '--set-upstream', '--', plan.remote, refspec], {
+      timeoutMs: PUSH_TIMEOUT,
+      env: minimalEnv(),
+      allowHooks
+    })
   } catch (e) {
     if (e instanceof PrError && e.code === 'timeout') throw perr('timeout', 'pr.err.pushTimeout')
     throw e

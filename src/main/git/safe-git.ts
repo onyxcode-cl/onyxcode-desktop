@@ -180,7 +180,11 @@ export async function execSafeGit(args: readonly string[], opts: SafeGitOptions)
     'ls-remote',
     'version',
     'show-ref',
+    'symbolic-ref',
     'check-ref-format',
+    'check-ignore',
+    'merge-base',
+    'cat-file',
     'rev-list',
     'ls-files',
     'rm',
@@ -188,10 +192,11 @@ export async function execSafeGit(args: readonly string[], opts: SafeGitOptions)
   ])
   if (sub.name && !builtins.has(sub.name)) throw new Error('Subcomando de Git no permitido')
   if (sub.name === 'submodule') throw new Error('La app no actualiza submódulos')
-  if (args.some((a) => /^--(?:recurse-submodules|recursive)(?:=|$)/.test(a) || /^submodule\.recurse=(?:true|1|yes)$/i.test(a))) throw new Error('La app no actualiza submódulos')
+  if (args.some((a) => /^--(?:recurse-submodules|recursive)(?:=|$)/.test(a) || /^submodule\.recurse=(?:true|1|yes)$/i.test(a)))
+    throw new Error('La app no actualiza submódulos')
   const filters = sub.name && !['config', 'version', 'rev-parse'].includes(sub.name) ? await localFilters(opts, env, base) : []
   const adjusted = [...args]
-  if (['fetch', 'pull', 'clone'].includes(sub.name)) adjusted.splice(sub.index + 1, 0, '--no-recurse-submodules')
+  if (['fetch', 'pull', 'clone', 'push'].includes(sub.name)) adjusted.splice(sub.index + 1, 0, '--no-recurse-submodules')
   if (['diff', 'log', 'show'].includes(sub.name)) adjusted.splice(sub.index + 1, 0, '--no-ext-diff', '--no-textconv')
   return raw([...base, ...filters, ...adjusted], opts, env, opts.input)
 }

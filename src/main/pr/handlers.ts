@@ -9,6 +9,7 @@ import { makeInvokeHandler } from '../ipc/handle'
 import { createPr, ghInfo, postReview, reviewInfo, viewBranchPr } from './gh'
 import { branchChanges, createBranch, workingDiff, listRemotes, push, pushPlan, repoRootOf, repoStatus } from './git'
 import { PrError } from './exec'
+import { settingsStore } from '../store'
 
 const on = makeInvokeHandler<CodeInvokeContract>({ withCode: true, silent: (err) => err instanceof PrError })
 
@@ -34,7 +35,7 @@ export function registerPrHandlers(ipcMain: IpcMain, deps: PrHandlerDeps): void 
   })
   on(ipcMain, 'pr:createBranch', (r, event) => createBranch(ok(r.cwd, event), r.name))
   on(ipcMain, 'pr:pushPlan', (r, event) => pushPlan(ok(r.cwd, event), r.remote))
-  on(ipcMain, 'pr:push', (r, event) => push({ ...r, cwd: ok(r.cwd, event) }))
+  on(ipcMain, 'pr:push', (r, event) => push({ ...r, cwd: ok(r.cwd, event) }, settingsStore.get().gitHooksEnabled === true))
   on(ipcMain, 'pr:changes', (r, event) => branchChanges(ok(r.cwd, event), r.remote, r.base))
   on(ipcMain, 'pr:workDiff', (r, event) => workingDiff(ok(r.cwd, event), r.staged))
   on(ipcMain, 'pr:view', (r, event) => viewBranchPr(ok(r.cwd, event), r.remote, r.branch))

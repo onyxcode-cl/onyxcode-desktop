@@ -81,6 +81,8 @@ export interface RunOptions {
   /** Códigos de salida que no son error. */
   okCodes?: number[]
   env?: NodeJS.ProcessEnv
+  /** Solo desde el ajuste de la app; apagado por defecto. */
+  allowHooks?: boolean
 }
 
 export interface RunResult {
