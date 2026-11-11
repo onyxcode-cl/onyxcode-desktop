@@ -294,7 +294,7 @@ describe('D: confirmación en el Mac', () => {
       ...ctx,
       connectorApprovalDetail: (id) => (id === 'cd34' ? ['gmail · send_email', args, '/Users/me/p'] : undefined)
     })
-    expect('confirm' in d && d.summary.es).toMatch(/en esta tarea/)
+    expect('confirm' in d && d.summary.es).toMatch(/con cualquier dato, mientras esa carpeta siga abierta/)
     expect('confirm' in d && d.detail).toEqual(['gmail · send_email', '{', '  "to": "ana@example.com"', '}', '— /Users/me/p'])
     expect(eventPolicy('tasks:connector:approval')).toBe('sanitize')
     expect(eventPolicy('tasks:connector:approvalDone')).toBe('allow')

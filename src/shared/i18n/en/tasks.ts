@@ -800,7 +800,8 @@ export const tasks = {
   'tasks.connector.server': 'Connector',
   'tasks.connector.tool': 'Tool',
   'tasks.connector.args': 'Data it will send',
-  'tasks.connector.allowTask': 'Allow in this task',
-  'tasks.connector.taskHint': '“Allow in this task” covers only this tool, until the task is closed.',
+  'tasks.connector.allowTask': 'Allow while this folder stays open',
+  'tasks.connector.taskHint':
+    '“Allow while this folder stays open” covers this tool with any data, in every conversation in this folder, until its task is stopped in Lazunox. It isn’t saved.',
   'tasks.connector.expiresIn': 'If you don’t answer within {seconds} s, it won’t be used.'
 } as const satisfies Messages<typeof es>

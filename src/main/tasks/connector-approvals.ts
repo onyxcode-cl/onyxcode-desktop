@@ -7,8 +7,10 @@
  *
  * Igual que `equipo` (`host-exec/approvals.ts`): tarjeta propia de main con los argumentos completos; «No» por defecto; vence denegando;
  * una tarjeta a la vez por tarea y conector («ocupado»); 30 s sin tarjetas tras un «No» o sin respuesta; pausa de 10 min tras 3 «No»
- * seguidos; desde el celular solo se puede negar (o confirmar en el computador). Además, «Permitir en esta tarea» para ESA herramienta
- * exacta: memoria de main que se borra al cerrar la tarea (la puerta es de la ruta, que muere con el servidor). Nunca «siempre».
+ * seguidos; desde el celular solo se puede negar (o confirmar en el computador). Además, «Permitir mientras esta carpeta siga abierta»
+ * (antes «en esta tarea»): por SERVIDOR de la carpeta, no por conversación, porque la llamada MCP no dice de qué conversación viene (un id
+ * lo pondría quien llama). Vale para ESA herramienta, con cualquier dato, en memoria de main, hasta que se detiene el servidor de la
+ * carpeta (la puerta es de la ruta, que muere con él). Nunca «siempre».
  * No importa `electron`: la tarjeta y el diálogo nativo los pone `ipc/tasks-connector-handlers.ts`.
  */
 import { randomBytes } from 'node:crypto'
