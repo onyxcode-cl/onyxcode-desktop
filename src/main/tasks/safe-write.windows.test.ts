@@ -31,7 +31,7 @@ const tmps = (): string[] => readdirSync(root).filter((f) => f.startsWith('.lzx-
 describe('2. el temporal que no se puede borrar no cambia el resultado (antivirus con el archivo abierto)', () => {
   it('link bien y unlink del temporal con EPERM: se crea UN archivo con el nombre pedido, sin copias (2)', () => {
     let unlinks = 0
-    safeWriteOps.unlink = (p) => {
+    safeWriteOps.unlink = () => {
       unlinks++
       throw fail('EPERM')
     }
@@ -94,5 +94,71 @@ describe('3. disco sin enlaces duros (memoria USB FAT): EISDIR entra al camino d
     }
     writeFileSync(join(root, 'a.txt'), 'viejo')
     expect(safeWriteNewFile(root, root, 'nuevo', names('a.txt'))).toBe(join(root, 'a (2).txt'))
+  })
+})
+
+describe('4. rename final con el archivo abierto por otro programa (solo Windows)', () => {
+  const target = (): string => join(root, 'memoria.md')
+
+  it.each(['EPERM', 'EBUSY', 'EACCES'])('Windows, %s dos veces y luego bien: reintenta con espera creciente y guarda', (code) => {
+    safeWriteOps.isWindows = () => true
+    let n = 0
+    safeWriteOps.rename = (a, b) => {
+      if (n++ < 2) throw fail(code)
+      renameSync(a, b)
+    }
+    safeWriteFile(root, target(), 'nuevo', { replace: true })
+    expect(n).toBe(3)
+    expect(sleeps).toHaveLength(2)
+    expect(sleeps[1]).toBeGreaterThan(sleeps[0])
+    expect(readFileSync(target(), 'utf8')).toBe('nuevo')
+    expect(tmps()).toEqual([])
+  })
+
+  it('Windows, falla siempre: 5 intentos, espera total cerca de 1 s, error claro por i18n y el temporal se borra', () => {
+    safeWriteOps.isWindows = () => true
+    writeFileSync(target(), 'anterior')
+    let n = 0
+    safeWriteOps.rename = () => {
+      n++
+      throw fail('EBUSY')
+    }
+    expect(() => safeWriteFile(root, target(), 'nuevo', { replace: true })).toThrow(t('merr.task.fileBusy', { path: 'memoria.md' }))
+    expect(n).toBe(5)
+    const total = sleeps.reduce((a, b) => a + b, 0)
+    expect(total).toBeGreaterThanOrEqual(500)
+    expect(total).toBeLessThanOrEqual(1100)
+    expect(tmps()).toEqual([])
+    expect(readFileSync(target(), 'utf8')).toBe('anterior')
+  })
+
+  it('fuera de Windows no se reintenta: el error sale tal cual', () => {
+    safeWriteOps.isWindows = () => false
+    let n = 0
+    safeWriteOps.rename = () => {
+      n++
+      throw fail('EPERM')
+    }
+    expect(() => safeWriteFile(root, target(), 'x', { replace: true })).toThrow('EPERM')
+    expect(n).toBe(1)
+    expect(sleeps).toEqual([])
+    expect(tmps()).toEqual([])
+  })
+
+  it('en Windows, otro código (ENOSPC) no se reintenta', () => {
+    safeWriteOps.isWindows = () => true
+    let n = 0
+    safeWriteOps.rename = () => {
+      n++
+      throw fail('ENOSPC')
+    }
+    expect(() => safeWriteFile(root, target(), 'x', { replace: true })).toThrow('ENOSPC')
+    expect(n).toBe(1)
+  })
+
+  it('el rename normal (sin errores) no espera nada', () => {
+    safeWriteFile(root, target(), 'ok', { replace: true })
+    expect(sleeps).toEqual([])
+    expect(existsSync(target())).toBe(true)
   })
 })

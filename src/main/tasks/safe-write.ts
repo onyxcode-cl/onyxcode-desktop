@@ -34,6 +34,8 @@
  * Windows: no hay encierro Seatbelt y crear enlaces pide administrador; `O_NOFOLLOW` no existe. Allí se usa el camino anterior más el
  * nombre al azar: carpetas comprobadas con `ensureRealDir`, temporal `O_EXCL`, `rename`/`link`, SIN las comparaciones de dispositivo e
  * inodo (sin verificar en Windows: ver `docs/PARIDAD-WINDOWS.json`).
+ * Revisión 2: en Windows el `rename` final se reintenta unas veces (OneDrive, antivirus) y borrar el temporal es mejor esfuerzo; un fallo de
+ * ese borrado nunca cambia el resultado. Ver `safeWriteOps` (enganche de pruebas).
  *
  * Puntos de enganche (`hooks`): SOLO para pruebas; permiten simular el cambio de una carpeta por un enlace entre dos pasos.
  * Módulo puro (solo `node:*`).
@@ -57,6 +59,7 @@ import {
 } from 'node:fs'
 import { open as openAsync } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path'
+import { t } from '@shared/i18n'
 import { ensureRealDir, LinkRefusedError } from './no-follow'
 
 const O_NOFOLLOW = (constants as Record<string, number | undefined>).O_NOFOLLOW ?? 0
@@ -82,6 +85,8 @@ export const safeWriteOps = {
   isWindows: (): boolean => IS_WIN
 }
 
+/** Esperas (ms) entre los 5 intentos del `rename` final en Windows (~1 s en total). */
+const RENAME_WAITS = [100, 200, 300, 400]
 /** Esperas (ms) entre los reintentos de borrar el temporal ya innecesario (mejor esfuerzo). */
 const TMP_UNLINK_WAITS = [50, 100]
 
@@ -274,7 +279,7 @@ export class SafeTempFile {
     const final = join(this.dir, name)
     if (opts.replace) {
       if (opts.refuseLinkTarget && lstatOrNull(final)?.isSymbolicLink()) throw new LinkRefusedError(final, 'link')
-      renameSync(this.tmpPath, final) // mismo directorio: si la carpeta cambió por un enlace, ENOENT (el temporal no está allí)
+      this.renameFinal(final) // mismo directorio: si la carpeta cambió por un enlace, ENOENT (el temporal no está allí)
     } else {
       let linked = false
       try {
@@ -325,6 +330,25 @@ export class SafeTempFile {
     this.closeFd()
     this.dropTmp()
     return true
+  }
+
+  /**
+   * `rename(temporal, destino)` en la misma carpeta. Solo en Windows y solo con EPERM, EBUSY o EACCES (OneDrive, el antivirus o un editor
+   * con el destino abierto) se reintenta unas pocas veces con espera corta creciente (5 intentos, ~1 s en total); si sigue fallando,
+   * error claro y `discard` (de quien llama) borra el temporal. En el resto de casos el error sale tal cual.
+   */
+  private renameFinal(final: string): void {
+    for (let i = 0; ; i++) {
+      try {
+        safeWriteOps.rename(this.tmpPath, final)
+        return
+      } catch (e) {
+        const code = errno(e)
+        if (!safeWriteOps.isWindows() || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e
+        if (i >= RENAME_WAITS.length) throw new Error(t('merr.task.fileBusy', { path: basename(final) }))
+        safeWriteOps.sleep(RENAME_WAITS[i])
+      }
+    }
   }
 
   /**
