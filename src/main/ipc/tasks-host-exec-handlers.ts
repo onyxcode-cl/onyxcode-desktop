@@ -85,16 +85,21 @@ export function registerTasksHostExecHandlers(ctx: TasksIpcContext): TasksSubmod
         showWindow()
         return 'open'
       }
+      // 1.8.19: el diálogo nativo NUNCA aprueba. Aparece encima de lo que la persona esté haciendo y un clic reflejo para quitarlo de en
+      // medio no puede ejecutar un comando fuera del aislamiento: aquí solo se niega o se abre la app, donde la tarjeta muestra el comando
+      // y «Permitir esta vez» tarda en activarse.
       const i = await askButtons({
         message: t('merr.hostExec.dialog'),
         detail: hostApprovalDialogDetail(req),
-        buttons: [t('merr.dialog.no'), t('merr.hostExec.allowOnce')],
+        buttons: [t('merr.dialog.no'), t('merr.hostExec.openApp')],
         defaultIndex: 0,
         cancelIndex: 0,
         giveUpSeconds,
         signal
       })
-      return i === 1 && !signal.aborted ? 'allow' : 'deny'
+      if (i !== 1 || signal.aborted) return 'deny'
+      showWindow()
+      return 'open'
     }
   })
 

@@ -75,16 +75,23 @@ afterEach(async () => {
 })
 
 describe('tasks-host-exec-handlers', () => {
-  it('ventana minimizada: diálogo nativo con «No» por defecto; cerrarlo o elegir «No» deniega', async () => {
-    const { sent, mod } = setup({ visible: true, minimized: true })
+  it('ventana minimizada: el diálogo nativo NUNCA aprueba; «No» deniega y «abrir la app» deja la tarjeta pendiente', async () => {
+    const { sent, handlers, mod } = setup({ visible: true, minimized: true })
     dispose = mod.dispose
     answer = 0
     await expect(requestHostApproval(input)).resolves.toBe('deny')
-    expect(asked[0]).toMatchObject({ buttons: ['merr.dialog.no', 'merr.hostExec.allowOnce'], defaultIndex: 0, cancelIndex: 0 })
+    expect(asked[0]).toMatchObject({ buttons: ['merr.dialog.no', 'merr.hostExec.openApp'], defaultIndex: 0, cancelIndex: 0 })
+    expect(asked[0]!.buttons).not.toContain('merr.hostExec.allowOnce')
     expect(asked[0]!.detail?.split('\n')[0]).toBe(input.command)
     expect(sent.map(([ch]) => ch)).toEqual(['tasks:hostExec:approval', 'tasks:hostExec:approvalDone'])
+    // Elegir el segundo botón (un clic reflejo para quitar el diálogo) no ejecuta nada: solo abre la app; decide la tarjeta.
     answer = 1
-    await expect(requestHostApproval(input)).resolves.toBe('allow')
+    const p = requestHostApproval(input)
+    await new Promise((r) => setTimeout(r, 0))
+    const req = sent.filter(([ch]) => ch === 'tasks:hostExec:approval').at(-1)![1] as { id: string }
+    expect(pendingHostApprovals().map((r) => r.id)).toContain(req.id)
+    handlers.get('tasks:hostExec:respond')!({ id: req.id, decision: 'deny' })
+    await expect(p).resolves.toBe('deny')
   })
 
   it('ventana visible: tarjeta en el renderer (sin diálogo); responde por IPC y lista lo pendiente', async () => {

@@ -54,14 +54,14 @@ export function registerTasksConnectorHandlers(ctx: TasksIpcContext): TasksSubmo
         detail: short
           ? `${req.args}\n\n${t('merr.hostExec.folder', { folder: req.folder })}`
           : t('merr.connector.dialogLong', { chars: req.args.length, folder: req.folder }),
-        buttons: [t('merr.dialog.no'), short ? t('merr.hostExec.allowOnce') : t('merr.hostExec.openApp')],
+        // 1.8.19: el diálogo nativo nunca aprueba (un clic reflejo para quitarlo no puede usar un conector): solo negar o abrir la app.
+        buttons: [t('merr.dialog.no'), t('merr.hostExec.openApp')],
         defaultIndex: 0,
         cancelIndex: 0,
         giveUpSeconds,
         signal
       })
       if (i !== 1 || signal.aborted) return 'deny'
-      if (short) return 'allow'
       showWindow()
       return 'open'
     }

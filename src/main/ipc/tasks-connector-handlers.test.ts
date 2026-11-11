@@ -52,14 +52,19 @@ afterEach(async () => {
 })
 
 describe('tasks-connector-handlers', () => {
-  it('sin ventana: «No» por defecto; con datos cortos se puede permitir una vez', async () => {
-    const { mod } = setup(false)
+  it('sin ventana: el diálogo nativo NUNCA aprueba, tampoco con datos cortos', async () => {
+    const { handlers, sent, mod } = setup(false)
     dispose = mod.dispose
     answer = 0
     await expect(requestConnectorApproval(input)).resolves.toBe('deny')
-    expect(asked[0]).toMatchObject({ buttons: ['merr.dialog.no', 'merr.hostExec.allowOnce'], defaultIndex: 0, cancelIndex: 0 })
+    expect(asked[0]).toMatchObject({ buttons: ['merr.dialog.no', 'merr.hostExec.openApp'], defaultIndex: 0, cancelIndex: 0 })
     answer = 1
-    await expect(requestConnectorApproval(input)).resolves.toBe('allow')
+    const p = requestConnectorApproval(input)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(pendingConnectorApprovals()).toHaveLength(1)
+    const req = sent.filter(([ch]) => ch === 'tasks:connector:approval').at(-1)![1] as { id: string }
+    handlers.get('tasks:connector:respond')!({ id: req.id, decision: 'deny' })
+    await expect(p).resolves.toBe('deny')
   })
 
   it('datos largos: el diálogo no ofrece permitir; «abrir la app» deja la tarjeta pendiente', async () => {
