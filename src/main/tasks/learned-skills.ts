@@ -13,7 +13,8 @@ import { dirname, join } from 'node:path'
 import { app } from 'electron'
 import { t } from '@shared/i18n'
 import { maskSecretPatterns } from '@shared/redact-patterns'
-import { ensureRealDir, LinkRefusedError, writeFileNoFollow } from './no-follow'
+import { ensureRealDir, LinkRefusedError } from './no-follow'
+import { safeWriteFile } from './safe-write'
 import { SKILL_NAME_RE, MAX_SKILL_NAME, MAX_SKILL_DESCRIPTION, MAX_SKILL_BODY_CHARS, MAX_SKILL_BODY_LINES } from '@shared/skill-proposal'
 
 export interface SkillToWrite {
@@ -85,18 +86,16 @@ export function writeApprovedSkill(folder: string, skill: SkillToWrite): WriteSk
   const path = join(dir, 'SKILL.md')
   if (lexists(path)) return { ok: false, reason: 'ya-existe' }
   // La carpeta de la tarea la controla la tarea (1.8.18): `.opencode`, `skills` y la carpeta de la skill tienen que ser carpetas reales
-  // (un enlace `.opencode` → `~/.config/opencode` dejaba la skill en la config GLOBAL que carga el motor sin encierro). El temporal se
-  // escribe sin seguir enlaces y `rename` no sigue un enlace en el destino.
+  // (un enlace `.opencode` → `~/.config/opencode` dejaba la skill en la config GLOBAL que carga el motor sin encierro). Escritura segura
+  // (`safe-write.ts`): temporal de nombre al azar (ya no `SKILL.md.tmp`), verificado después de abrir, y `link` sin sobrescribir.
+  const content = frontmatter(skill.name, description) + body + '\n'
   try {
-    ensureRealDir(folder, dir, { create: true })
+    safeWriteFile(folder, path, content)
   } catch (e) {
     if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: join('.opencode', 'skills', skill.name) }))
+    if ((e as NodeJS.ErrnoException).code === 'EEXIST') return { ok: false, reason: 'ya-existe' }
     throw e
   }
-  const content = frontmatter(skill.name, description) + body + '\n'
-  const tmp = `${path}.tmp`
-  writeFileNoFollow(tmp, content, { replace: true })
-  renameSync(tmp, path)
   recordApproval(folder, skill.name)
   return { ok: true, path }
 }

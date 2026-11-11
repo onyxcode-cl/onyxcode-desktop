@@ -323,6 +323,7 @@ describe('escritura atómica', () => {
       // Con recursive: true, los nombres son rutas relativas (e.g., 'atomica/SKILL.md')
       const fileStr = files.join('|')
       expect(fileStr).not.toContain('SKILL.md.tmp')
+      expect(fileStr).not.toContain('.tmp') // temporal de nombre al azar (`safe-write.ts`): tampoco queda
       expect(fileStr).toContain('SKILL.md')
     }
   })

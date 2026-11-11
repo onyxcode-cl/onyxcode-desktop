@@ -10,7 +10,7 @@
  * - Destinos: Tareas → `<carpeta>/.lazunox/trabajo/descargas/`; Code → `~/Downloads/<INTERNAL_NAME>/`.
  */
 import { execFile } from 'node:child_process'
-import { constants as fsc, copyFileSync, lstatSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
+import { lstatSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
@@ -19,6 +19,7 @@ import { INTERNAL_NAME } from '@shared/brand'
 import type { BrowserOwner } from '@shared/ipc-browser'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
 import { ensureRealDir } from '../tasks/no-follow'
+import { candidateNames, safeCopyIntoDir } from '../tasks/safe-write'
 import { hostOf, siteOf } from './sites'
 import { requestApproval } from './approvals'
 import { tabByWebContents } from './surface'
@@ -135,27 +136,17 @@ export function stagingDirForTaskDownload(userData: string): string {
   return mkdtempSync(join(base, 'd-'))
 }
 
-/** Mueve la descarga terminada a la carpeta de descargas de la tarea sin seguir enlaces. Devuelve la ruta final, o null si no se pudo. */
-export function moveDownloadIntoTaskFolder(staged: string, folder: string, dir: string, name: string): string | null {
+/**
+ * Deja la descarga terminada en la carpeta de descargas de la tarea sin seguir enlaces. Devuelve la ruta final, o null si no se pudo.
+ * Corrección tras la revisión 1: antes era `rename(staged, final)` por ruta después de comprobar las carpetas, y un proceso de la tarea
+ * que cambiara `descargas` por un enlace justo entre medias dejaba el archivo (nombre y contenido del atacante) en el destino del enlace,
+ * por ejemplo `~/Library/LaunchAgents`. Ahora: escritura segura (`safe-write.ts`: temporal de nombre al azar verificado después de abrir,
+ * copia POR DESCRIPTOR sin bloquear el proceso principal, `link` con el primer nombre libre) y, además, `descargas` y sus madres no se
+ * pueden renombrar desde dentro del encierro (perfil Seatbelt). La copia en `staged` la borra quien llama.
+ */
+export async function moveDownloadIntoTaskFolder(staged: string, folder: string, dir: string, name: string): Promise<string | null> {
   try {
-    ensureRealDir(folder, dir, { create: true })
-    for (let i = 0; i < 20; i++) {
-      const final = uniquePath(dir, name)
-      try {
-        renameSync(staged, final)
-        return final
-      } catch (err) {
-        const code = (err as NodeJS.ErrnoException).code
-        if (code === 'EXDEV') {
-          // Otro volumen: copia exclusiva (`O_EXCL`: falla si hay cualquier cosa con ese nombre, enlace incluido).
-          copyFileSync(staged, final, fsc.COPYFILE_EXCL)
-          rmSync(staged, { force: true })
-          return final
-        }
-        if (code !== 'EEXIST' && code !== 'EISDIR' && code !== 'ENOTEMPTY') throw err
-      }
-    }
-    return null
+    return await safeCopyIntoDir(folder, dir, staged, candidateNames(name))
   } catch (err) {
     console.warn('[embedded-browser] no se pudo dejar la descarga en la carpeta de la tarea (¿hay un enlace en el camino?):', err)
     return null
@@ -201,15 +192,19 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
     item.setSavePath(staged ?? savePath)
     item.resume()
     item.once('done', (_e, state) => {
-      let finalPath: string | null = item.getSavePath()
-      if (staged) {
-        finalPath =
-          state === 'completed' && owner.kind === 'tasks' ? moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath)) : null
-        rmSync(dirname(staged), { recursive: true, force: true })
-      }
-      if (state !== 'completed' || !finalPath) return
-      if (attribution.agent) applyQuarantine(finalPath)
-      void applyZoneIdentifier(finalPath, item.getURL())
+      void (async () => {
+        let finalPath: string | null = item.getSavePath()
+        if (staged) {
+          finalPath =
+            state === 'completed' && owner.kind === 'tasks'
+              ? await moveDownloadIntoTaskFolder(staged, owner.folder, dir, basename(savePath))
+              : null
+          rmSync(dirname(staged), { recursive: true, force: true })
+        }
+        if (state !== 'completed' || !finalPath) return
+        if (attribution.agent) applyQuarantine(finalPath)
+        void applyZoneIdentifier(finalPath, item.getURL())
+      })().catch((err) => console.warn('[embedded-browser] al terminar la descarga:', err))
     })
   }
 

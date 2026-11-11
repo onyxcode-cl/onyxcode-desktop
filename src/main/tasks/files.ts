@@ -6,20 +6,18 @@
 import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
 import {
-  constants as fsConstants,
-  copyFileSync,
   lstatSync,
   openSync,
   readSync,
   closeSync,
   readFileSync,
   statSync,
-  writeFileSync
 } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
 import JSZip from 'jszip'
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { isInside, samePath } from '../util/paths'
+import { candidateNames, safeCopyIntoDirSync, safeWriteNewFile } from './safe-write'
 
 const TEXT_EXT = new Set([
   '.md',
@@ -71,18 +69,6 @@ function taken(p: string): boolean {
   }
 }
 
-/** Nombre libre en `dir` para `name` ("informe.pdf" → "informe (2).pdf"). */
-function freeName(dir: string, name: string): string {
-  if (!taken(join(dir, name))) return name
-  const ext = extname(name)
-  const stem = name.slice(0, name.length - ext.length)
-  for (let i = 2; i < 1000; i++) {
-    const candidate = `${stem} (${i})${ext}`
-    if (!taken(join(dir, candidate))) return candidate
-  }
-  return `${stem}-${Date.now()}${ext}`
-}
-
 /** Copia `sources` (archivos) a `folder` sin sobrescribir. */
 export function importFilesInto(folder: string, sources: string[]): TasksDeliverable[] {
   const out: TasksDeliverable[] = []
@@ -94,15 +80,16 @@ export function importFilesInto(folder: string, sources: string[]): TasksDeliver
       continue
     }
     if (!st.isFile()) continue
-    const dest = join(folder, freeName(folder, basename(src)))
     // Si el archivo ya está dentro de la carpeta, no duplicarlo.
     if (samePath(src, join(folder, basename(src))) || isInside(src, folder)) {
       out.push({ path: src, relPath: relative(folder, src), size: st.size, mtime: st.mtimeMs })
       continue
     }
-    // `COPYFILE_EXCL`: falla si aparece cualquier cosa con ese nombre (enlace incluido) entre la elección y la copia; nunca se sigue.
-    copyFileSync(src, dest, fsConstants.COPYFILE_EXCL)
-    const dst = statSync(dest)
+    // Escritura segura (1.8.18, `safe-write.ts`): la carpeta la controla la tarea. Temporal de nombre al azar verificado después de abrir,
+    // copia por descriptor y `link` con el primer nombre libre (nunca sobrescribe ni sigue un enlace, tampoco uno roto).
+    const dest = safeCopyIntoDirSync(folder, folder, src, candidateNames(basename(src)))
+    if (!dest) continue
+    const dst = lstatSync(dest)
     out.push({ path: dest, relPath: relative(folder, dest), size: dst.size, mtime: dst.mtimeMs })
   }
   return out
@@ -118,20 +105,18 @@ export function freePathWithSuffix(dir: string, stem: string, ext: string): stri
 }
 
 /**
- * Guarda `data` como `<stem><ext>` junto a `dir` sin sobrescribir nada (flag `wx`: si otro proceso
- * crea el mismo nombre entre la comprobación y la escritura, reintenta con el siguiente sufijo).
+ * Guarda `data` como `<stem><ext>` en `dir` sin sobrescribir nada: si existe, `<stem>-1<ext>`, `<stem>-2<ext>`… `dir` está en la carpeta
+ * de la tarea, que la tarea controla: escritura segura (1.8.18, `safe-write.ts`; antes `wx` por ruta, que seguía un enlace en una carpeta
+ * intermedia cambiada entre medias).
  */
 export function writeNewFile(dir: string, stem: string, ext: string, data: Buffer): string {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const target = freePathWithSuffix(dir, stem, ext)
-    try {
-      writeFileSync(target, data, { flag: 'wx' })
-      return target
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
-    }
+  function* names(): Generator<string> {
+    yield `${stem}${ext}`
+    for (let i = 1; i < 10_000; i++) yield `${stem}-${i}${ext}`
   }
-  throw new Error('No se pudo elegir un nombre libre para el archivo.')
+  const out = safeWriteNewFile(dir, dir, data, names(), { create: false })
+  if (!out) throw new Error('No se pudo elegir un nombre libre para el archivo.')
+  return out
 }
 
 /** Describe un archivo como entregable relativo a `root` (la carpeta que lo contiene por defecto). */

@@ -22,7 +22,8 @@ import { createInterface } from 'node:readline'
 import { join } from 'node:path'
 import { runHelper } from '../util/exec'
 import { migrateFolderScratch } from '../migrations/migrate-folder-scratch'
-import { ensureRealDir, LinkRefusedError, writeFileNoFollow } from '../tasks/no-follow'
+import { ensureRealDir, LinkRefusedError } from '../tasks/no-follow'
+import { safeCopyIntoDir } from '../tasks/safe-write'
 import { EventEmitter } from 'node:events'
 import { APP_ID } from '@shared/brand'
 import type { RecordedStep, SkillRecording, SkillRecordingState } from '@shared/ipc-tasks'
@@ -191,11 +192,12 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     // Migra la carpeta de trabajo heredada a `.lazunox/trabajo/` antes de escribir.
     migrateFolderScratch(root, (m, e) => console.warn('[computer]', m, e ?? ''))
     const relDir = join('.lazunox', 'trabajo', 'grabaciones', id)
-    // La carpeta de trabajo la controla la tarea (1.8.18): ningún tramo puede ser un enlace y cada captura se escribe sin seguir enlaces
-    // (`O_NOFOLLOW` + `O_EXCL`); si algo no cuadra, se lanza y no se escribe nada fuera.
-    let destDir: string
+    // La carpeta de trabajo la controla la tarea (1.8.18): ningún tramo puede ser un enlace y cada captura se copia con la escritura
+    // segura (`safe-write.ts`: temporal de nombre al azar verificado después de abrir, `link` sin sobrescribir); si algo no cuadra, se
+    // lanza y no se escribe nada fuera. `grabaciones` (y sus madres) además no se pueden renombrar desde dentro (perfil Seatbelt).
+    const destDir = join(root, relDir)
     try {
-      destDir = ensureRealDir(root, join(root, relDir), { create: true })
+      ensureRealDir(root, destDir, { create: true })
     } catch (e) {
       if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: relDir }))
       throw e
@@ -203,7 +205,7 @@ export class SkillRecorder extends EventEmitter<RecorderEvents> {
     for (const shot of rec.shots) {
       try {
         const from = join(srcDir, shot)
-        if (existsSync(from)) writeFileNoFollow(join(destDir, shot), readFileSync(from), { exclusive: true })
+        if (existsSync(from)) await safeCopyIntoDir(root, destDir, from, [shot], { create: false })
       } catch (err) {
         console.error('[computer] copiando captura de la grabación:', err)
       }

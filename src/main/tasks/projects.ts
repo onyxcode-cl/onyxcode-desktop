@@ -7,9 +7,10 @@
 import { getLang, t } from '@shared/i18n'
 import { app } from 'electron'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, relative } from 'node:path'
 import { isInside } from '../util/paths'
-import { ensureRealDir, LinkRefusedError, readFileNoFollow, writeFileNoFollow } from './no-follow'
+import { ensureRealDir, LinkRefusedError, readFileNoFollow } from './no-follow'
+import { safeWriteFile } from './safe-write'
 import type { TasksAgentsMd, TasksMemory, TasksProject } from '@shared/ipc-tasks'
 import { TASKS_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
 
@@ -164,8 +165,9 @@ export function getMemory(folder: string): TasksMemory {
 export function saveMemory(folder: string, content: string): TasksMemory {
   const trimmed = content.slice(0, MEMORY_MAX_BYTES)
   try {
-    ensureRealDir(folder, join(folder, '.lazunox'), { create: true })
-    writeFileNoFollow(memoryPath(folder), trimmed)
+    // Escritura segura (`safe-write.ts`): carpetas reales comprobadas antes y después de abrir un temporal de nombre al azar, y `rename`.
+    // Si `memoria.md` es un enlace, error claro (no se reemplaza: puede ser de la persona).
+    safeWriteFile(folder, memoryPath(folder), trimmed, { replace: true, refuseLinkTarget: true })
   } catch (e) {
     if (e instanceof LinkRefusedError) throw new Error(t('merr.projects.memoryLink'))
     throw e
@@ -240,8 +242,16 @@ export function saveAgentsMd(folder: string, content: string): TasksAgentsMd {
     throw new Error(t('merr.projects.overLimit', { max: AGENTS_MD_MAX_CHARS.toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL') }))
   }
   const r = resolveAgentsMd(folder)
-  const tmp = `${r.real}.lazunox-tmp`
-  writeFileSync(tmp, content, 'utf8')
-  renameSync(tmp, r.real)
+  // 1.8.18: antes, un temporal de nombre fijo (`AGENTS.md.lazunox-tmp`) que la tarea podía dejar como enlace a un archivo de fuera se
+  // escribía SIGUIÉNDOLO. Ahora escritura segura (`safe-write.ts`): temporal de nombre al azar, verificado, y `rename` en la misma
+  // carpeta. Un `AGENTS.md` enlazado dentro de la carpeta se sigue respetando (se escribe su destino real, ya comprobado arriba).
+  const folderReal = realpathSync(folder)
+  const target = r.real === r.path ? join(folderReal, 'AGENTS.md') : r.real
+  try {
+    safeWriteFile(folderReal, target, content, { replace: true })
+  } catch (e) {
+    if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: relative(folderReal, target) }))
+    throw e
+  }
   return getAgentsMd(folder)
 }

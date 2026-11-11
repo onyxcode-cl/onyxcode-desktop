@@ -1,7 +1,8 @@
 /**
  * El proceso principal no escribe, copia, borra ni cambia permisos A TRAVÉS de un enlace simbólico que una tarea dejó en su carpeta
- * privada o en su carpeta de trabajo (1.8.18): sembrado del catálogo y de `rg`, permisos guardados, limpieza de almacenamiento, skills
- * aprobadas, importación de archivos y descargas del navegador integrado. Enlaces simbólicos sin privilegios: solo macOS/Linux.
+ * privada o en su carpeta de trabajo (1.8.18): temporales de nombre fijo (`AGENTS.md`, skills), permisos guardados, limpieza de
+ * almacenamiento, skills aprobadas, importación de archivos, descargas del navegador integrado y memoria. (El sembrado en la carpeta
+ * privada se eliminó en la corrección tras la revisión 1.) Enlaces simbólicos sin privilegios: solo macOS/Linux.
  */
 import {
   existsSync,
@@ -14,7 +15,6 @@ import {
   rmSync,
   statSync,
   symlinkSync,
-  utimesSync,
   writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -30,8 +30,7 @@ import { moveDownloadIntoTaskFolder } from '../embedded-browser/downloads'
 import { ensureSandboxPermissionDir, forgetSavedPermissions, sandboxPermissionDir } from '../opencode/permission-store'
 import { importFilesInto } from './files'
 import { removeSkill, writeApprovedSkill } from './learned-skills'
-import { deleteMemory, getMemory, saveMemory } from './projects'
-import { seedBinaries, seedModelsCache } from './models-cache'
+import { deleteMemory, getMemory, saveAgentsMd, saveMemory } from './projects'
 import { storageClean } from './storage'
 
 let root: string
@@ -45,54 +44,32 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(root, { recursive: true, force: true }))
 
-describe.skipIf(!posixOnly)('sembrado (models-cache)', () => {
-  const setup = (): { main: string; cache: string } => {
-    const main = join(root, 'main')
-    mkdirSync(join(main, 'bin'), { recursive: true })
-    writeFileSync(join(main, 'models.json'), '{"catalogo":1}')
-    writeFileSync(join(main, 'bin', 'rg'), 'rg')
-    const cache = join(root, 'priv', 'cache')
-    mkdirSync(join(cache, 'opencode'), { recursive: true })
-    return { main, cache }
-  }
-  it('models.json enlace a un archivo más viejo: no se sobrescribe; se deja un archivo propio', () => {
-    const { main, cache } = setup()
-    const victim = join(outside, 'doc.txt')
-    writeFileSync(victim, 'IMPORTANTE')
-    const old = new Date(Date.now() - 86_400_000)
-    utimesSync(victim, old, old)
-    symlinkSync(victim, join(cache, 'opencode', 'models.json'))
-    expect(seedModelsCache(cache, main)).toBe(true)
-    expect(readFileSync(victim, 'utf8')).toBe('IMPORTANTE')
-    expect(lstatSync(join(cache, 'opencode', 'models.json')).isSymbolicLink()).toBe(false)
-    expect(readFileSync(join(cache, 'opencode', 'models.json'), 'utf8')).toBe('{"catalogo":1}')
+describe.skipIf(!posixOnly)('temporales de nombre fijo (corrección tras la revisión 1)', () => {
+  it('saveAgentsMd: `AGENTS.md.lazunox-tmp` dejado como enlace a un archivo de fuera ya no se sigue', () => {
+    const f = join(root, 'a1')
+    mkdirSync(f)
+    writeFileSync(join(outside, 'zshrc'), 'ORIGINAL')
+    symlinkSync(join(outside, 'zshrc'), join(f, 'AGENTS.md.lazunox-tmp'))
+    expect(saveAgentsMd(f, 'INSTRUCCIONES').content).toBe('INSTRUCCIONES')
+    expect(readFileSync(join(outside, 'zshrc'), 'utf8')).toBe('ORIGINAL')
+    expect(lstatSync(join(f, 'AGENTS.md')).isSymbolicLink()).toBe(false)
   })
-  it('opencode/bin enlace a otra carpeta: no aparece rg allí', () => {
-    const { main, cache } = setup()
-    symlinkSync(outside, join(cache, 'opencode', 'bin'))
-    expect(seedBinaries(cache, main)).toBe(true)
-    expect(readdirSync(outside)).toEqual([])
-    expect(statSync(join(cache, 'opencode', 'bin', 'rg')).mode & 0o111).not.toBe(0)
+  it('saveAgentsMd: un AGENTS.md enlazado DENTRO de la carpeta se sigue respetando (se escribe su destino real)', () => {
+    const f = join(root, 'a2')
+    mkdirSync(join(f, 'docs'), { recursive: true })
+    writeFileSync(join(f, 'docs', 'AGENTS.md'), 'viejo')
+    symlinkSync(join(f, 'docs', 'AGENTS.md'), join(f, 'AGENTS.md'))
+    saveAgentsMd(f, 'nuevo')
+    expect(readFileSync(join(f, 'docs', 'AGENTS.md'), 'utf8')).toBe('nuevo')
+    expect(lstatSync(join(f, 'AGENTS.md')).isSymbolicLink()).toBe(true)
   })
-  it('opencode entera como enlace, o la caché misma como enlace: nada se escribe en el destino', () => {
-    const { main, cache } = setup()
-    rmSync(join(cache, 'opencode'), { recursive: true })
-    symlinkSync(outside, join(cache, 'opencode'))
-    seedModelsCache(cache, main)
-    expect(readdirSync(outside)).toEqual([])
-    const linkedCache = join(root, 'priv', 'cache2')
-    symlinkSync(outside, linkedCache)
-    expect(seedModelsCache(linkedCache, main)).toBe(false)
-    expect(readdirSync(outside)).toEqual([])
-  })
-  it('rg como enlace a un archivo de fuera: no se sobrescribe', () => {
-    const { main, cache } = setup()
-    mkdirSync(join(cache, 'opencode', 'bin'))
+  it('writeApprovedSkill: `SKILL.md.tmp` dejado como enlace ya no importa', () => {
+    const f = join(root, 'a3')
+    mkdirSync(join(f, '.opencode', 'skills', 'mi-skill'), { recursive: true })
     writeFileSync(join(outside, 'x'), 'NO TOCAR')
-    symlinkSync(join(outside, 'x'), join(cache, 'opencode', 'bin', 'rg'))
-    seedBinaries(cache, main)
+    symlinkSync(join(outside, 'x'), join(f, '.opencode', 'skills', 'mi-skill', 'SKILL.md.tmp'))
+    expect(writeApprovedSkill(f, { name: 'mi-skill', description: 'd', body: 'b' })).toMatchObject({ ok: true })
     expect(readFileSync(join(outside, 'x'), 'utf8')).toBe('NO TOCAR')
-    expect(readFileSync(join(cache, 'opencode', 'bin', 'rg'), 'utf8')).toBe('rg')
   })
 })
 
@@ -183,21 +160,21 @@ describe.skipIf(!posixOnly)('carpeta de la tarea: skills, importar archivos, des
     expect(d!.relPath).toBe('informe (2).txt')
     expect(readFileSync(join(f, 'informe (2).txt'), 'utf8')).toBe('contenido')
   })
-  it('descarga de la tarea: con `descargas` como enlace no se mueve a través de él; lo normal sí', () => {
+  it('descarga de la tarea: con `descargas` como enlace no se mueve a través de él; lo normal sí', async () => {
     const f = folder()
     const dir = join(f, '.lazunox', 'trabajo', 'descargas')
     mkdirSync(join(f, '.lazunox', 'trabajo'), { recursive: true })
     symlinkSync(outside, dir)
     const staged = join(root, 'staged.plist')
     writeFileSync(staged, '<plist/>')
-    expect(moveDownloadIntoTaskFolder(staged, f, dir, 'x.plist')).toBeNull()
+    expect(await moveDownloadIntoTaskFolder(staged, f, dir, 'x.plist')).toBeNull()
     expect(readdirSync(outside)).toEqual([])
     rmSync(dir)
-    expect(moveDownloadIntoTaskFolder(staged, f, dir, 'x.plist')).toBe(join(dir, 'x.plist'))
+    expect(await moveDownloadIntoTaskFolder(staged, f, dir, 'x.plist')).toBe(join(dir, 'x.plist'))
     // Un enlace roto con el mismo nombre: se elige otro nombre y el destino del enlace no se crea.
     writeFileSync(staged, 'otra')
     symlinkSync(join(outside, 'y.plist'), join(dir, 'y.plist'))
-    expect(moveDownloadIntoTaskFolder(staged, f, dir, 'y.plist')).toBe(join(dir, 'y (2).plist'))
+    expect(await moveDownloadIntoTaskFolder(staged, f, dir, 'y.plist')).toBe(join(dir, 'y (2).plist'))
     expect(existsSync(join(outside, 'y.plist'))).toBe(false)
   })
 })
