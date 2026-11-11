@@ -69,3 +69,30 @@ describe('2. el temporal que no se puede borrar no cambia el resultado (antiviru
     expect(readFileSync(join(root, 'informe.txt'), 'utf8')).toBe('viejo')
   })
 })
+
+describe('3. disco sin enlaces duros (memoria USB FAT): EISDIR entra al camino de copia', () => {
+  it.each(['EISDIR', 'EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS'])('link con %s: se copia por descriptor', (code) => {
+    safeWriteOps.link = () => {
+      throw fail(code)
+    }
+    const out = safeWriteNewFile(root, root, 'contenido', names('a.txt'))
+    expect(out).toBe(join(root, 'a.txt'))
+    expect(readFileSync(out!, 'utf8')).toBe('contenido')
+    expect(tmps()).toEqual([])
+  })
+
+  it('otro código (EIO) sigue fallando', () => {
+    safeWriteOps.link = () => {
+      throw fail('EIO')
+    }
+    expect(() => safeWriteNewFile(root, root, 'x', names('a.txt'))).toThrow('EIO')
+  })
+
+  it('con el camino alternativo, un nombre ya ocupado prueba el siguiente', () => {
+    safeWriteOps.link = () => {
+      throw fail('EISDIR')
+    }
+    writeFileSync(join(root, 'a.txt'), 'viejo')
+    expect(safeWriteNewFile(root, root, 'nuevo', names('a.txt'))).toBe(join(root, 'a (2).txt'))
+  })
+})

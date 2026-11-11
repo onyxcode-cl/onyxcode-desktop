@@ -285,7 +285,8 @@ export class SafeTempFile {
       } catch (e) {
         const code = errno(e)
         if (code === 'EEXIST') return null
-        if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EOPNOTSUPP' && code !== 'ENOSYS') throw e
+        // EISDIR: en memorias USB con FAT/exFAT en Windows el sistema puede traducir «no admite enlaces duros» a ese código.
+        if (code !== 'EPERM' && code !== 'ENOTSUP' && code !== 'EOPNOTSUPP' && code !== 'ENOSYS' && code !== 'EISDIR') throw e
         // Sin enlaces duros (FAT, exFAT, algunas unidades de red): el destino se abre exclusivo, se verifica igual y se copia.
         if (!this.copyIntoExclusive(final)) return null
       }
