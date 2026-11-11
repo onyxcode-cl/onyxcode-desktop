@@ -213,9 +213,12 @@ function editInfo(part: ToolPart, root: string | null): { file: string; patch: s
 export function EditChip({ part, root }: { part: ToolPart; root: string | null }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const t = useT()
-  const { file, patch, exists } = useMemo(() => editInfo(part, root), [part, root])
+  const info = useMemo(() => editInfo(part, root), [part, root])
+  const { file, exists } = info
   // Negada (regla deny), rechazada o fallida: no se hizo nada, nunca «Editó».
   const rejected = part.state.status === 'error'
+  // Lo que no se aplicó no enseña un diff (+/−) como si hubiera cambiado el archivo: solo el motivo.
+  const patch = rejected ? '' : info.patch
   // Mientras espera tu permiso (o se aplica) aún no cambió nada: «Quiere editar»; «Editó» solo cuando ya se aplicó (U5).
   const waiting = part.state.status === 'pending' || part.state.status === 'running'
   const label = rejected
