@@ -63,6 +63,7 @@ import { loadRendererPage, preloadPath } from './extras/windows'
 import { clampBounds } from './window-bounds'
 import { syncTitleBarOverlay, themeOf } from './window-overlay'
 import { titleBarOptions } from '@shared/window-chrome'
+import { bringToFront, consumeJustUpdated } from './update/front'
 import { applyE2eHeadless, E2E_HEADLESS, presentWindow } from './e2e-headless'
 import { describeError, initProblemLog, recordProblem } from './diagnostics/problem-log'
 
@@ -204,7 +205,11 @@ function createWindow(): BrowserWindow {
 
   mainWindow = win
   installEditContextMenu(win.webContents)
-  win.on('ready-to-show', () => presentWindow(win))
+  win.on('ready-to-show', () => {
+    presentWindow(win)
+    // Arranque tras «Reiniciar y actualizar»: la persona lo pidió, así que la ventana pasa al frente (nunca en un arranque normal).
+    if (!E2E_HEADLESS && consumeJustUpdated()) bringToFront(win, process.platform, () => app.focus({ steal: true }))
+  })
   // Si el agente llevó el navegador a una ventana aparte mientras esta ventana estaba oculta, vuelve al panel al mostrarse.
   win.on('restore', () => returnAutoPopoutsToPanel())
   win.on('focus', () => repaintOnWindowFocus())
