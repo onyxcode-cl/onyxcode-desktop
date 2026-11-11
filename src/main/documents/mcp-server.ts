@@ -351,7 +351,12 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         }
     }
     if (!allowMarkers && (tipo === 'pptx' || tipo === 'docx')) {
-      const empty = moneyWithoutNumbers(tipo, spec)
+      let empty: string[] = []
+      try {
+        empty = moneyWithoutNumbers(tipo, spec)
+      } catch {
+        empty = [] // forma rara del spec (p. ej. `blocks` que no es lista): la validación de esquema de abajo da el error claro
+      }
       if (empty.length)
         return {
           error: `Hay contenido de presupuesto, inversión o costos sin ninguna cifra (${empty.join(', ')}). No quites las cifras ni las reemplaces por «en evaluación»: pon cifras de ejemplo plausibles y márcalas como «cifras de ejemplo» en una nota o el pie. No se generó nada: corrige y vuelve a crear.`
@@ -531,7 +536,23 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     }
   }
 
+  /**
+   * Cualquier fallo inesperado se vuelve un resultado de herramienta (no un error de protocolo «Error interno» sin texto): el agente recibe un
+   * aviso claro de que NO es un problema de su contenido, y el detalle técnico (con la traza) queda solo en el registro de la app.
+   */
   protected async callTool(binding: DocumentsBinding, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+    try {
+      return await this.callToolInner(binding, name, args)
+    } catch (err) {
+      console.warn(`[documentos-mcp] fallo inesperado en ${name}:`, err instanceof Error ? (err.stack ?? err.message) : String(err))
+      return this.text(
+        'Falló el programa por dentro; no es un error de tu contenido. Vuelve a intentarlo una vez; si se repite, avisa a la persona y sigue sin esta herramienta. El detalle técnico quedó en el registro de la app.',
+        true
+      )
+    }
+  }
+
+  private async callToolInner(binding: DocumentsBinding, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
     const now = this.deps.now ?? Date.now
     const t0 = now()
     if (name === 'renderizar' && this.deps.preview) return this.callPreview(binding, args)
@@ -647,7 +668,8 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         )
       if (code === 'invalid') return this.text((err as Error).message, true)
       if (err instanceof TimeoutError) return this.text('El documento tardó demasiado y se canceló. Prueba con menos contenido.', true)
-      // La salida cruda del motor puede traer rutas del equipo: no se le entrega al agente.
+      // La salida cruda del motor puede traer rutas del equipo: no se le entrega al agente, pero sí queda (con traza) en el registro de la app.
+      console.warn('[documentos-mcp] el motor falló al crear:', err instanceof Error ? (err.stack ?? err.message) : String(err))
       return this.text('No se pudo generar el documento con el motor de la app. Revisa el contenido (spec) e inténtalo de nuevo.', true)
     } finally {
       await prepared?.cleanup()
