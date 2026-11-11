@@ -1,8 +1,20 @@
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildInlineConfig, type InlineConfigInput } from './inline-config'
+import { ENGINE_GITIGNORE } from './private-dir'
 import { projectCodeEnv, projectText, QUARANTINE_DIR, QUARANTINE_KEEP, quarantineEngineUserConfig } from './project-code'
 
 const base = (over: Partial<InlineConfigInput> = {}): InlineConfigInput => ({
@@ -98,34 +110,53 @@ describe('H5: cuarentena de la config global privada del motor', () => {
     writeFileSync(join(conf, 'package.json'), '{}')
     const moved = quarantineEngineUserConfig(priv, log, 1000)
     expect(moved.sort()).toEqual(
-      ['AGENTS.md', 'agent', 'command', 'config.json', 'mode', 'opencode.json', 'opencode.jsonc', 'plugin', 'plugins', 'skills', 'tool', 'tools'].sort()
+      [
+        'AGENTS.md',
+        'agent',
+        'command',
+        'config.json',
+        'mode',
+        'opencode.json',
+        'opencode.jsonc',
+        'plugin',
+        'plugins',
+        'skills',
+        'tool',
+        'tools'
+      ].sort()
     )
-    expect(readdirSync(conf)).toEqual(['package.json'])
+    expect(readdirSync(conf).sort()).toEqual(['.gitignore', 'package.json'])
     expect(readFileSync(join(priv, QUARANTINE_DIR, '1000', 'plugin', 'x.js'), 'utf8')).toBe('nada')
     expect(logs.join(' ')).toContain('plugin')
   })
 
-  it.skipIf(process.platform === 'win32')('un enlace con nombre «propio» (node_modules → fuera) también se aparta, sin tocar su destino', () => {
-    const fuera = join(root, 'fuera')
-    mkdirSync(fuera)
-    writeFileSync(join(fuera, 'dato'), 'intacto')
-    symlinkSync(fuera, join(conf, 'node_modules'))
-    expect(quarantineEngineUserConfig(priv, log, 5)).toEqual(['node_modules'])
-    expect(lstatSync(join(priv, QUARANTINE_DIR, '5', 'node_modules')).isSymbolicLink()).toBe(true)
-    expect(readFileSync(join(fuera, 'dato'), 'utf8')).toBe('intacto')
-  })
+  it.skipIf(process.platform === 'win32')(
+    'un enlace con nombre «propio» (node_modules → fuera) también se aparta, sin tocar su destino',
+    () => {
+      const fuera = join(root, 'fuera')
+      mkdirSync(fuera)
+      writeFileSync(join(fuera, 'dato'), 'intacto')
+      symlinkSync(fuera, join(conf, 'node_modules'))
+      expect(quarantineEngineUserConfig(priv, log, 5)).toEqual(['node_modules'])
+      expect(lstatSync(join(priv, QUARANTINE_DIR, '5', 'node_modules')).isSymbolicLink()).toBe(true)
+      expect(readFileSync(join(fuera, 'dato'), 'utf8')).toBe('intacto')
+    }
+  )
 
-  it.skipIf(process.platform === 'win32')('si `config/opencode` es un enlace, se quita el enlace (no su destino) y queda una carpeta real vacía', () => {
-    const fuera = join(root, 'fuera')
-    mkdirSync(join(fuera, 'plugin'), { recursive: true })
-    writeFileSync(join(fuera, 'plugin', 'x.js'), 'intacto')
-    rmSync(conf, { recursive: true })
-    symlinkSync(fuera, conf)
-    expect(quarantineEngineUserConfig(priv, log)).toEqual([])
-    expect(lstatSync(conf).isDirectory()).toBe(true)
-    expect(lstatSync(conf).isSymbolicLink()).toBe(false)
-    expect(readFileSync(join(fuera, 'plugin', 'x.js'), 'utf8')).toBe('intacto')
-  })
+  it.skipIf(process.platform === 'win32')(
+    'si `config/opencode` es un enlace, se quita el enlace (no su destino) y queda una carpeta real vacía',
+    () => {
+      const fuera = join(root, 'fuera')
+      mkdirSync(join(fuera, 'plugin'), { recursive: true })
+      writeFileSync(join(fuera, 'plugin', 'x.js'), 'intacto')
+      rmSync(conf, { recursive: true })
+      symlinkSync(fuera, conf)
+      expect(quarantineEngineUserConfig(priv, log)).toEqual([])
+      expect(lstatSync(conf).isDirectory()).toBe(true)
+      expect(lstatSync(conf).isSymbolicLink()).toBe(false)
+      expect(readFileSync(join(fuera, 'plugin', 'x.js'), 'utf8')).toBe('intacto')
+    }
+  )
 
   it('crea `config/opencode` si falta y guarda solo las cuarentenas más nuevas', () => {
     rmSync(join(priv, 'config'), { recursive: true })
@@ -138,6 +169,25 @@ describe('H5: cuarentena de la config global privada del motor', () => {
     const kept = readdirSync(join(priv, QUARANTINE_DIR)).sort()
     expect(kept).toHaveLength(QUARANTINE_KEEP)
     expect(kept.at(-1)).toBe(String(1000 + QUARANTINE_KEEP + 2))
+  })
+
+  it('deja el .gitignore del motor si falta (la jaula ya no le deja escribirlo) y no pisa uno que ya exista', () => {
+    expect(quarantineEngineUserConfig(priv, log)).toEqual([])
+    expect(readFileSync(join(conf, '.gitignore'), 'utf8')).toBe(ENGINE_GITIGNORE)
+    expect(ENGINE_GITIGNORE).toBe('node_modules\npackage.json\npackage-lock.json\nbun.lock\n.gitignore')
+    writeFileSync(join(conf, '.gitignore'), 'propio')
+    quarantineEngineUserConfig(priv, log)
+    expect(readFileSync(join(conf, '.gitignore'), 'utf8')).toBe('propio')
+  })
+
+  it.skipIf(process.platform === 'win32')('un .gitignore que es un enlace se aparta y se crea uno real (el destino no se toca)', () => {
+    const fuera = join(root, 'fuera.txt')
+    writeFileSync(fuera, 'intacto')
+    symlinkSync(fuera, join(conf, '.gitignore'))
+    expect(quarantineEngineUserConfig(priv, log, 9)).toEqual(['.gitignore'])
+    expect(lstatSync(join(conf, '.gitignore')).isFile()).toBe(true)
+    expect(readFileSync(join(conf, '.gitignore'), 'utf8')).toBe(ENGINE_GITIGNORE)
+    expect(readFileSync(fuera, 'utf8')).toBe('intacto')
   })
 
   it('misma marca de tiempo dos veces: no pisa la cuarentena anterior', () => {

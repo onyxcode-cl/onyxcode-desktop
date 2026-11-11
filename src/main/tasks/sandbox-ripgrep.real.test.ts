@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { macOnly } from '../../test/platform'
 import { seedConfigModels } from './models-cache'
+import { ensureEngineGitignore } from './private-dir'
 import { ripgrepPathEnv } from './ripgrep-runtime'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv } from './sandbox-profile'
 
@@ -116,6 +117,9 @@ async function scenario(withRg: boolean, catalog: CatalogMode = 'none'): Promise
   const configDir = join(userData, 'opencode-config')
   const dirs = sandboxDirs(privateDir)
   for (const d of [home, folder, dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
+  // Config privada del motor con su `.gitignore`, como la deja la app (1.8.19: el perfil la deja de solo lectura desde dentro).
+  mkdirSync(join(dirs.config, 'opencode'), { recursive: true })
+  ensureEngineGitignore(join(dirs.config, 'opencode'))
   writeFileSync(join(folder, 'hola.txt'), 'palabra-unica-xyz\n')
   // Copia de las skills y agentes de la app, con el `.gitignore` que la app deja (el perfil solo da lectura a esta carpeta).
   spawnSync('cp', ['-R', CONFIG, configDir])

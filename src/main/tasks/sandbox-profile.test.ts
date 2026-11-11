@@ -15,7 +15,7 @@ vi.mock('node:os', async (importOriginal) => {
 })
 
 import { NEW_FOLDER_SCRATCH } from '../migrations/legacy-names'
-import { buildSandboxProfile, type SandboxProfileOptions } from './sandbox-profile'
+import { buildSandboxProfile, sandboxDirs, sandboxEnv, type SandboxProfileOptions } from './sandbox-profile'
 import { macOnly } from '../../test/platform'
 
 // Caracteriza el perfil de SIEMPRE: con el modo unificado apagado (LAZUNOX_UNIFIED_APPS=0); encendido, el perfil lo cubre sandbox-profile.chats.test.ts.
@@ -104,6 +104,35 @@ describe.skipIf(!macOnly)('buildSandboxProfile (caracterización Seatbelt)', () 
     expect(allowMain).toBeGreaterThan(-1)
     expect(denyRo).toBeGreaterThan(allowMain)
     expect(out).not.toContain(`(deny file-write* (subpath "${ro}"))`)
+  })
+
+  it('config privada del motor: solo lectura, última regla, con file-write-unlink nombrado (gana a cualquier allow concreto)', () => {
+    for (const allowDelete of [false, true]) {
+      const lines = buildSandboxProfile({ ...base, allowDelete })
+        .trim()
+        .split('\n')
+      const i = lines.indexOf(`(deny file-write* file-write-unlink (subpath "${base.privateDir}/config/opencode"))`)
+      // Después de toda permisión de escritura (la última es la de borrado de la carpeta o del scratch).
+      expect(i).toBeGreaterThan(lines.findLastIndex((l) => l.startsWith('(allow file-write')))
+    }
+  })
+
+  it('ganchos de git: operaciones concretas en **/.git/hooks de la carpeta y de las rw; git sin plantilla', () => {
+    const out = buildSandboxProfile({ ...base, extraFolders: [{ path: '/fixture/otra/rw', mode: 'rw' }] })
+    expect(out).toContain(
+      '(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto") (subpath "/fixture/otra/rw"))))'
+    )
+    expect(sandboxEnv(sandboxDirs(base.privateDir)).GIT_TEMPLATE_DIR).toBe('')
+  })
+
+  it('contenedores: docker/podman/nerdctl/kubectl por nombre y sus sockets', () => {
+    const out = buildSandboxProfile(base)
+    expect(out).toContain('(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))')
+    expect(out).toContain('(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))')
+    const re = /\/(docker|podman|nerdctl|kubectl)$/
+    for (const ok of ['/usr/local/bin/docker', '/opt/homebrew/bin/podman', '/Users/x/.orbstack/bin/kubectl'])
+      expect(re.test(ok), ok).toBe(true)
+    for (const no of ['/usr/bin/dockerd-helper', '/x/docker-compose', '/x/mydocker']) expect(re.test(no), no).toBe(false)
   })
 
   it('sin userData: no hay bloque de userData', () => {

@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { t } from '@shared/i18n'
 import { posixOnly } from '../../test/platform'
 import { chmodDirNoFollow, ensureRealDir, LinkRefusedError, readFileNoFollow, writeFileNoFollow } from './no-follow'
-import { ensureTaskPrivateDir } from './private-dir'
+import { ENGINE_GITIGNORE, ensureTaskPrivateDir } from './private-dir'
 
 let root: string
 let outside: string
@@ -166,6 +166,20 @@ describe.skipIf(!posixOnly)('ensureTaskPrivateDir', () => {
     expect(lstatSync(i.privateDir).isSymbolicLink()).toBe(false)
     expect(readdirSync(outside)).toEqual([])
     expect(logs.length).toBe(1)
+  })
+  it('deja la config privada del motor (config/opencode) con su .gitignore, sin pisar uno existente ni seguir un enlace', () => {
+    const i = iso()
+    ensureTaskPrivateDir(i)
+    const conf = join(i.privateDir, 'config', 'opencode')
+    expect(readFileSync(join(conf, '.gitignore'), 'utf8')).toBe(ENGINE_GITIGNORE)
+    writeFileSync(join(conf, '.gitignore'), 'propio')
+    ensureTaskPrivateDir(i)
+    expect(readFileSync(join(conf, '.gitignore'), 'utf8')).toBe('propio')
+    rmSync(conf, { recursive: true })
+    symlinkSync(outside, conf)
+    ensureTaskPrivateDir(i)
+    expect(lstatSync(conf).isSymbolicLink()).toBe(false)
+    expect(readdirSync(outside)).toEqual([])
   })
   it('una subcarpeta fija como enlace: se quita el enlace y se crea la carpeta', () => {
     const i = iso()

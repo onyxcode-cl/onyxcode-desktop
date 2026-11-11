@@ -175,6 +175,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -198,6 +202,12 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > "Permitir borrar" con
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -376,6 +386,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -405,6 +419,12 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpeta de trabajo rw
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -584,6 +604,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -617,6 +641,12 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > carpetas adicionales:
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones") (literal "/fixture/otra/escribible"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto") (subpath "/fixture/otra/escribible"))))
 "
 `;
 
@@ -795,6 +825,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -830,6 +864,12 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > red: solo los proxies
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -1009,6 +1049,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -1041,6 +1085,12 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > rw que contiene a la 
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones") (literal "/fixture/work"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto") (subpath "/fixture/work"))))
 "
 `;
 
@@ -1219,6 +1269,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -1249,6 +1303,12 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > scratchDirs explícit
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;
 
@@ -1418,6 +1478,10 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
   (literal "/usr/bin/pbpaste")
 )
 (deny appleevent-send)
+;; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;
+;; la regla los nombra por si un día se abre alguno.
+(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))
+(deny network-outbound (remote unix-socket (path-regex #"/(docker|podman)\\.sock$")))
 ;; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el
 ;; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; \`(target others)\`
 ;; no se aplica). OJO: KERN_PROCARGS2 (\`ps eww\`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.
@@ -1447,5 +1511,11 @@ exports[`buildSandboxProfile (caracterización Seatbelt) > sin userData: no hay 
 
 ;; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).
 (deny file-write-unlink (literal "/fixture/userData/tasks-sandbox/0123456789abcdef") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/config") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/data") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/cache") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/state") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/tmp") (literal "/fixture/userData/tasks-sandbox/0123456789abcdef/permisos-siempre") (literal "/fixture/work/proyecto") (literal "/fixture/work/proyecto/.lazunox") (literal "/fixture/work/proyecto/.lazunox/trabajo") (literal "/fixture/work/proyecto/.lazunox/trabajo/descargas") (literal "/fixture/work/proyecto/.lazunox/trabajo/grabaciones"))
+
+;; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).
+(deny file-write* file-write-unlink (subpath "/fixture/userData/tasks-sandbox/0123456789abcdef/config/opencode"))
+
+;; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.
+(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any (subpath "/fixture/work/proyecto"))))
 "
 `;

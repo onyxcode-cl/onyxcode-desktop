@@ -58,6 +58,9 @@ export interface SandboxDirs {
   tmp: string
 }
 
+/** Carpeta de la config global del motor dentro de `XDG_CONFIG_HOME` (`<privada>/config/opencode`). */
+export const ENGINE_CONFIG_DIR_NAME = 'opencode'
+
 /** Subcarpetas fijas de la carpeta privada (las crea el proceso principal; el perfil niega borrarlas o renombrarlas). */
 export const PRIVATE_SUBDIRS = ['config', 'data', 'cache', 'state', 'tmp'] as const
 
@@ -111,6 +114,9 @@ export function sandboxEnv(dirs: SandboxDirs): Record<string, string> {
     GIT_AUTHOR_EMAIL: SANDBOX_GIT_EMAIL,
     GIT_COMMITTER_NAME: SANDBOX_GIT_NAME,
     GIT_COMMITTER_EMAIL: SANDBOX_GIT_EMAIL,
+    // Sin plantilla (1.8.19): `git init`/`git clone` no copian los ganchos de ejemplo a `.git/hooks`, que el perfil no deja escribir (ver
+    // `buildSandboxProfile`). Vacía = sin plantilla y sin aviso (con una ruta inexistente git avisa «templates not found»).
+    GIT_TEMPLATE_DIR: '',
     npm_config_cache: join(dirs.cache, 'npm'),
     BUN_INSTALL_CACHE_DIR: join(dirs.cache, 'bun'),
     PIP_CACHE_DIR: join(dirs.cache, 'pip'),
@@ -324,6 +330,15 @@ export const DENIED_EXEC = [
  * sesión. Con `smd` negado el registro falla (Python: status 3; Swift: «Socket is not connected»). Negar `backgroundtaskmanagement`
  * en su lugar NO lo cierra. Lo normal de una tarea tampoco lo usa (1.8.16, revisión 1).
  */
+/**
+ * Contenedores (1.8.19; idea de Gemini CLI, que los niega en su perfil; regla propia). Con el socket de Docker/Podman/colima/OrbStack un
+ * proceso de la tarea lanza un contenedor con la carpeta personal montada, fuera de la jaula. Por nombre del programa (una copia con otro
+ * nombre corre, pero sin el socket no hace nada) y por el nombre del socket (`/var/run/docker.sock`, `~/.docker/run/docker.sock`,
+ * `~/.colima/<perfil>/docker.sock`, `~/.orbstack/run/docker.sock`, `podman.sock`).
+ */
+export const CONTAINER_EXEC_REGEX = '/(docker|podman|nerdctl|kubectl)$'
+export const CONTAINER_SOCKET_REGEX = '/(docker|podman)\\.sock$'
+
 export const DENIED_MACH = [
   'com.apple.coreservices.launchservicesd',
   'com.apple.lsd.open',
@@ -451,6 +466,10 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
     ...DENIED_EXEC.map((p) => `  (literal ${sbString(p)})`),
     ')',
     '(deny appleevent-send)',
+    ';; Contenedores (1.8.19): ni los programas de Docker, Podman, nerdctl y kubectl, ni sus sockets. La red ya niega los sockets Unix;',
+    ';; la regla los nombra por si un día se abre alguno.',
+    `(deny process-exec (regex #"${CONTAINER_EXEC_REGEX}"))`,
+    `(deny network-outbound (remote unix-socket (path-regex #"${CONTAINER_SOCKET_REGEX}")))`,
     ';; Información de OTROS procesos (libproc: ruta, tareas, recursos, descriptores): denegada; solo el',
     ';; propio. Forma "deny todo + allow (target self)" (la de los perfiles del sistema; `(target others)`',
     ';; no se aplica). OJO: KERN_PROCARGS2 (`ps eww`) no pasa por ninguna operación Seatbelt: ver SEGURIDAD.md.',
@@ -557,6 +576,31 @@ export function buildSandboxProfile(opts: SandboxProfileOptions): string {
   lines.push(
     ';; Carpeta privada, sus subcarpetas fijas, carpeta de la tarea y adicionales rw: sin borrarlas ni renombrarlas (solo su contenido).',
     `(deny file-write-unlink ${[...new Set(fixed)].map((p) => `(literal ${sbString(p)})`).join(' ')})`,
+    ''
+  )
+  // Config global privada del motor (`<privada>/config/opencode`, su `XDG_CONFIG_HOME/opencode`): SOLO LECTURA desde dentro (1.8.19).
+  // El motor vuelve a leer de ahí complementos, herramientas, comandos, agentes y `opencode.json` en cada instancia nueva; la cuarentena
+  // de `project-code.ts` los aparta antes de cada arranque, pero un proceso de la tarea vivo podía dejarlos para la SIGUIENTE instancia del
+  // mismo arranque. Probado con el motor publicado: con esta carpeta de solo lectura arranca, crea sesiones y corre órdenes; lo único que
+  // escribe ahí es su `.gitignore`, y solo si falta (lo deja `quarantineEngineUserConfig`). `file-write-unlink` va nombrado aparte: en
+  // SBPL una regla de operación concreta gana a una con comodín sin importar el orden.
+  lines.push(
+    ';; Config privada del motor: solo lectura (ni crear, ni cambiar, ni borrar, ni renombrar).',
+    `(deny file-write* file-write-unlink (subpath ${sbString(join(priv, 'config', ENGINE_CONFIG_DIR_NAME))}))`,
+    ''
+  )
+  // Ganchos de git (1.8.19; idea de sandbox-runtime de Anthropic y de Codex, que los protegen siempre; regla propia): dentro de la carpeta de
+  // la tarea y de las adicionales `rw`, nada se crea, cambia ni se vuelve ejecutable en `**/.git/hooks` (ni la carpeta misma, ni un enlace
+  // con ese nombre). Esos ganchos los ejecuta FUERA de la jaula quien use git en esa carpeta (la persona, o la app en el modo Código). Con
+  // `GIT_TEMPLATE_DIR` vacío (`sandboxEnv`) `git init`, `add`, `commit`, `config` y `clone` siguen funcionando (probado). Operaciones
+  // concretas (no `file-write*`): en SBPL una concreta gana a un comodín sin importar el orden, y así borrar o mover FUERA un gancho sigue la
+  // regla de borrado de siempre. Límite (SE ANOTA): `.git/config` no se puede negar sin romper `git init`, y con `core.hooksPath` (o
+  // renombrando `.git` donde se permite borrar) una tarea apunta los ganchos a otra carpeta: el arreglo completo es que quien usa git FUERA
+  // lo haga con `-c core.hooksPath=/dev/null`.
+  const gitRoots = [...new Set([folder, ...extraRw])]
+  lines.push(
+    ';; Ganchos de git en la carpeta de la tarea y las adicionales rw: no se crean, cambian ni se hacen ejecutables.',
+    `(deny file-write-create file-write-data file-write-mode (require-all (regex #"/\\.git/hooks(/|$)") (require-any ${gitRoots.map((p) => `(subpath ${sbString(p)})`).join(' ')})))`,
     ''
   )
   return lines.join('\n')
