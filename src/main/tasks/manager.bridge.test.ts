@@ -127,17 +127,19 @@ describe.skipIf(!macOnly)('puente de apps en el servidor aislado', () => {
   })
 
   it('instrucciones del agente: solo con el modo encendido (archivo en la config de la app) y nunca con LAZUNOX_UNIFIED_APPS=0', async () => {
+    // H5: la primera instrucción es siempre el archivo de la carpeta (`AGENTS.md`); aquí solo cuenta la del puente.
+    const apps = (cfg: Record<string, unknown>): string[] => ((cfg.instructions ?? []) as string[]).filter((p) => !/AGENTS\.md$/.test(p))
     process.env[UNIFIED_APPS_ENV] = '0'
-    expect((await startIsolated()).cfg.instructions).toBeUndefined()
+    expect(apps((await startIsolated()).cfg)).toEqual([])
     started.length = 0
     process.env[UNIFIED_APPS_ENV] = '1'
-    const ins = (await startIsolated()).cfg.instructions as string[]
+    const ins = apps((await startIsolated()).cfg)
     expect(ins).toHaveLength(1)
     expect(ins[0]).toMatch(/unified-apps\.md$/)
     expect(readFileSync(ins[0], 'utf8')).toContain('computer_request_access')
     started.length = 0
     pol.value = { disableComputerUse: true }
-    expect((await startIsolated()).cfg.instructions).toBeUndefined()
+    expect(apps((await startIsolated()).cfg)).toEqual([])
   })
 
   it('con bandera pero la política `disableComputerUse` activa: no hay ruta del puente', async () => {

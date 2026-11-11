@@ -69,6 +69,7 @@ import { projectProfiles } from '../project-profile'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
 import { ensureTaskPrivateDir } from './private-dir'
+import { projectCodeEnv, quarantineEngineUserConfig, sandboxProjectText } from './project-code'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
@@ -1523,6 +1524,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       skills: skillsInlineConfig(),
       modelFallback: this.opts.modelFallback?.(),
       credentialProviderIds: fullAccess ? undefined : this.credentialIds(),
+      // H5: el motor con jaula ignora la config de la carpeta (`projectCodeEnv`); lo que es texto (instrucciones, skills) se le da aquí.
+      projectText: fullAccess ? undefined : sandboxProjectText(folder, getOpencodeConfigDir()),
       // Windows: las carpetas vinculadas se conceden con su ruta DENTRO de la distro (`/win/d/…`), no con la de Windows.
       toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })
@@ -1596,7 +1599,17 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // no un enlace que dejó la tarea; si no se puede garantizar, no se arranca (error claro). Ver `private-dir.ts`.
       // (Seatbelt; con WSL la carpeta privada vive en la distro.)
       const seatbeltIso = fullAccess || this.platform === 'win32' ? undefined : privateIso
-      if (seatbeltIso) ensureTaskPrivateDir(seatbeltIso)
+      if (seatbeltIso) {
+        ensureTaskPrivateDir(seatbeltIso)
+        // H5: lo que la tarea dejó en la config global privada del motor (complementos, herramientas, `opencode.json` con MCP locales…) se
+        // aparta ANTES de lanzar. Si no se puede garantizar, no se arranca.
+        try {
+          quarantineEngineUserConfig(seatbeltIso.privateDir)
+        } catch (e) {
+          console.error('[tasks] no se pudo revisar la config global privada del motor:', e instanceof Error ? e.message : 'error')
+          throw new Error(t('merr.task.privateDirUnsafe'))
+        }
+      }
       // «Recordar mis siempre» solo en Control total (carpeta general, fuera de cualquier jaula). Un servidor aislado NO guarda ni carga
       // «siempre» en el motor: su carpeta privada la escribe la tarea (podría plantar `{bash, "*a*"}`). Sus «siempre» los guarda main al
       // pulsar «Siempre» en la tarjeta de la app (`tasks:rules:add`) y llegan con `rulesPermission`.
@@ -1644,7 +1657,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // nombre (docx, pdf, pptx, xlsx), gana una u otra al azar (medido en Control total: el agente usó
           // la `pptx` de otra herramienta en vez de la de la app). Con esto ganan siempre las de la app; las
           // skills del proyecto (`.opencode/skills`) se siguen viendo.
-          OPENCODE_DISABLE_EXTERNAL_SKILLS: '1'
+          OPENCODE_DISABLE_EXTERNAL_SKILLS: '1',
+          // H5: con jaula, nada «ejecutable» de la carpeta (complementos, herramientas, MCP locales, formateadores, LSP, comandos, agentes
+          // de `opencode.json` y `.opencode/`): lo podría haber escrito la tarea y correría dentro del motor con sus secretos (`project-code.ts`).
+          ...projectCodeEnv(fullAccess)
         },
         networkAllowlist: fullAccess
           ? undefined

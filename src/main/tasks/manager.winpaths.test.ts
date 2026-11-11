@@ -342,7 +342,8 @@ describe('TasksManager en win32: Control total no existe y el arranque falla cer
       expect(routes).not.toContain('computer')
       const env = (started[0]!.extraEnv ?? {}) as Record<string, string>
       expect(env.LAZUNOX_UNIFIED_BRIDGE).toBeUndefined()
-      expect(JSON.parse(env.OPENCODE_CONFIG_CONTENT!).instructions).toBeUndefined()
+      // H5: solo queda el archivo de instrucciones de la carpeta (ruta de la distro), nunca el del puente.
+      expect(JSON.parse(env.OPENCODE_CONFIG_CONTENT!).instructions).toEqual(['/win/c/lzx/tareas/a/AGENTS.md'])
       await m.stopAll()
     } finally {
       if (prev === undefined) delete process.env.LAZUNOX_UNIFIED_APPS

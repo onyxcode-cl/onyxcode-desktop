@@ -22,7 +22,7 @@
     "src/main/tasks/backends/wsl-status.ts": "bc00f8de1b51952a7f467cd7bc465f4508b55aa4a070ba450887ae16ffd6c969",
     "src/main/tasks/backends/wsl.ts": "f88cff85590d03109263cddc9fc5002f7660d75220e62dc34c0c01e24fc5e36e",
     "src/main/tasks/folder-policy-win.ts": "5483ac4eedc3a8ac1c38a30b87a936995a8ac85bda6cb6ef4225d1cfabb52f41",
-    "src/main/tasks/folder-policy.ts": "aa174c0cfe2d651b4dcaa2a24768db0a195c19afc75639b73d8d6356f6a19545",
+    "src/main/tasks/folder-policy.ts": "e88ab3a59150aaa6fdc72762136c9195a578e60f9c1c3d3572cf03230c63262f",
     "src/main/tasks/opencode-config.ts": "34b6ca47d4924360b902db64d99dc2ec0535c3ff793eed2d545092c502864373",
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "21f36a387c0a460419338425ddf248ea238a5ec608cd05e97c22f3b478e8af3f",
@@ -198,6 +198,15 @@
       "motivo": "1.8.19 Tareas macOS: la regla de las carpetas adicionales de solo lectura niega también file-write-unlink (una regla concreta gana a un comodín en SBPL)",
       "cambiados": [
         "src/main/tasks/sandbox-profile.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-11",
+      "motivo": "H5: folder-policy rechaza ~/.opencode (y ~/.claude, ~/.config/opencode) como carpeta de tarea o extra",
+      "cambiados": [
+        "src/main/tasks/folder-policy.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

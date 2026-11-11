@@ -229,6 +229,8 @@ export const mainErrors = {
   'merr.folder.system': '«{system}» es una carpeta del sistema y no se puede usar. Elige una carpeta dentro de tu carpeta personal.',
   'merr.folder.secrets':
     'Esa carpeta guarda credenciales o datos privados ({path}) y las tareas no pueden darle acceso al agente. Elige otra carpeta.',
+  'merr.folder.engineConfig':
+    'Esa carpeta guarda la configuración de tus agentes ({path}). Lo que una tarea deje ahí podría ejecutarse después sin aislamiento. Elige otra carpeta.',
   // Carpetas de Tareas en Windows (zona INTOCABLE: política estricta, falla cerrado)
   'merr.folder.winBadPath':
     'Esa ruta no es válida o es ambigua en Windows (lleva «..», «:», nombres reservados como CON o NUL, nombres cortos 8.3, o termina en punto o espacio). Escribe la ruta completa con su unidad, por ejemplo C:\\Proyectos\\mi-carpeta.',
