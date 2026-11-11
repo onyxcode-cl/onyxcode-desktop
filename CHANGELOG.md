@@ -4,6 +4,47 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.20] - 2026-11-11
+
+### Corrección de seguridad en Tareas
+
+- **Los complementos que haya en la carpeta de una tarea ya no se ejecutan.** Era lo que la 1.8.19 dejó anotado como pendiente: el motor tenía un segundo camino de carga que no respetaba la orden de ignorar la carpeta. Esta versión trae un motor nuevo que lo cierra, en Mac y en Windows. Lo comprobamos con el motor real: con el anterior el complemento de prueba se ejecutaba y con el nuevo no.
+- **Los programas que lanza el motor ya no reciben sus claves.** Antes, cualquier programa ejecutado desde una tarea heredaba las claves internas del motor y las que tuvieras exportadas en el sistema.
+- **Git ya no ejecuta lo que un repositorio traiga preparado.** Ni el git interno del motor ni el de la app ejecutan ganchos, filtros ni otros programas definidos dentro del repositorio. Así una tarea no puede dejar algo listo para que se ejecute cuando guardes cambios desde Código.
+- **Un sitio permitido ya no puede apuntar hacia dentro.** En Tareas, si el nombre de un sitio permitido lleva a una dirección de tu propio computador o de tu red local, la conexión se rechaza. Solo se aceptan los puertos habituales de la web.
+- **Los avisos del sistema ya no pueden conceder permisos de sitios.** Como en la 1.8.19 con los comandos y los conectores: el aviso solo deja negar o abrir Lazunox, y el permiso se da en la tarjeta de la app.
+- **Los ayudantes del proyecto usan exactamente las reglas de la tarea**, nunca más amplias, y ya se pueden usar desde una tarea aislada.
+
+### Cambios que puedes notar
+
+- **Un comando que dependía de una clave exportada en tu sistema ya no la ve** (por ejemplo, la de un servicio de código). Si lo necesitas, hay una opción para volver al comportamiento anterior.
+- **Sitios de tu red interna o en puertos poco comunes dejan de funcionar en Tareas** hasta que los marques: en los ajustes de sitios permitidos puedes indicar que un sitio «está en mi red interna» y sus puertos. Eso solo se puede hacer desde los ajustes, no desde una tarea ni desde el celular.
+- **Los ganchos de git de un repositorio no se ejecutan al guardar cambios desde la app.** Si usas ganchos propios, hay un ajuste para volver a encenderlos.
+- **El modelo puede pedir confirmación si detecta que está repitiendo los mismos pasos.** Se puede apagar.
+
+### Otros arreglos
+
+- **La vista previa de un documento recién creado ya no queda en blanco**: si la vista tarda más de cinco segundos, se muestra el visor clásico.
+- **Un comando ya no pierde su salida ni entrega un resultado vacío** cuando termina muy rápido, y las órdenes directas con `$(…)` vuelven a funcionar.
+- **Al resumir una conversación larga, el motor trata como datos las instrucciones que vengan dentro de archivos o páginas**, en vez de arrastrarlas al resumen como órdenes.
+- **El modelo repasa lo pedido antes de dar un trabajo por terminado** y dice qué comprobó y qué no.
+- **Un aviso del sistema que falla ya no deja la app sin responder.**
+
+### Componente actualizado
+
+- Motor de Lazunox `v1.19.0-lazunox.18` (antes `.17`).
+
+### Lo que todavía no está cerrado
+
+- **Nada de esta versión se ha comprobado todavía en Windows con la app abierta**; se actualizará con las pruebas a mano.
+- **Algunos conectores siguen protegidos solo por la pregunta del motor:** los remotos que el motor contacta directo (públicos o con inicio de sesión propio) y los conectores locales.
+- **Un conector marcado «permitir» no se revisa mensaje por mensaje.**
+- **El control de apps del Mac y el navegador integrado desde una tarea** tienen barreras propias, pero todavía no una aprobación por cada acción.
+- **Un programa de una tarea puede seguir vivo después de cerrarla.**
+- **Cuando el aislamiento impide algo, el error todavía no explica que fue el aislamiento ni qué hacer.** Está en preparación.
+- **No hay tope de gasto del servicio de IA desde una tarea.**
+- **El aislamiento nuevo de Tareas (el que niega todo y permite una lista corta) sigue en construcción.**
+
 ## [1.8.19] - 2026-11-11
 
 ### Corrección de seguridad en Tareas
