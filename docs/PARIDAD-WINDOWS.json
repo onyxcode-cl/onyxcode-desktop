@@ -926,9 +926,23 @@
         "src/main/tasks/ripgrep-runtime.ts:19",
         "src/main/tasks/ripgrep-runtime.ts:65",
         "src/main/opencode/server.ts:315",
-        "src/main/tasks/backends/seatbelt.ts:103"
+        "src/main/tasks/backends/seatbelt.ts:113"
       ],
       "nota": "Programa de búsqueda rg incluido en la app y puesto en el PATH de los motores (1.8.17). Motor principal (Mac y Windows): cubierto por pruebas unitarias src/main/opencode/server.ripgrep-path.test.ts y src/main/tasks/ripgrep-runtime.test.ts. Tareas en Mac: cubierto por src/main/tasks/backends/ripgrep-path.test.ts y por la prueba real src/main/tasks/sandbox-ripgrep.real.test.ts (pasó). Tareas en Windows: no aplica, el motor corre dentro de WSL y la distro ya trae su propio rg. En Windows no se ha probado todavía en una app armada: implementado, sin verificar en Windows.",
+      "comprobacion": null
+    },
+    {
+      "id": "N05",
+      "funcion": "Escritura segura del proceso principal en la carpeta de una tarea (memoria, AGENTS.md, skills aprobadas, ayudantes, importar, pegar, descargas, documentos, puntos de restauración)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/safe-write.ts:64",
+        "src/main/tasks/projects.ts:165",
+        "src/main/tasks/projects.ts:240",
+        "src/main/embedded-browser/downloads.ts:147",
+        "src/main/tasks/files.ts:112"
+      ],
+      "nota": "1.8.18, corrección tras la revisión 1 del arreglo de enlaces: el proceso principal escribe en las carpetas que una tarea controla con un temporal de nombre al azar (O_EXCL), verificado después de abrir, y termina con rename o link en la misma carpeta. En macOS además compara dispositivo e inodo de cada carpeta y del archivo abierto (O_NOFOLLOW). En Windows esas comparaciones se omiten a propósito (no hay encierro Seatbelt, crear enlaces pide administrador y O_NOFOLLOW no existe): queda el camino anterior con el nombre al azar. Cambios de comportamiento en Windows: la memoria se guarda con temporal y rename (antes se escribía directa) y las descargas de una tarea se copian por descriptor en vez de rename. Cubierto en Mac por src/main/tasks/safe-write.test.ts y src/main/tasks/enlaces-main.test.ts (en Windows esas pruebas se saltan porque usan enlaces). Implementado, sin verificar en Windows: guardar y leer la memoria, guardar AGENTS.md, aprobar una skill, importar y pegar archivos, descargar con el navegador de una tarea, crear un documento y deshacer con un punto de restauración.",
       "comprobacion": null
     }
   ]
