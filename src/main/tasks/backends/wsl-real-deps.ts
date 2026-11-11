@@ -4,6 +4,7 @@
  * Los comandos llegan ya como `WslSpawnSpec` (lista cerrada de `wsl-spec.ts`): aquí no se arma ningún argumento.
  */
 import { spawn, type ChildProcess } from 'node:child_process'
+import { friendlyAppDirError } from '../private-dir'
 import { createReadStream, createWriteStream, mkdirSync, statfsSync } from 'node:fs'
 import { connect as netConnect, createServer } from 'node:net'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
@@ -216,7 +217,13 @@ export function createRealWslDeps(o: RealWslDepsOptions): WslDeps {
     listen: realListen,
     policyDisabled: o.policyDisabled,
     setup: createRealSetupExtras(o),
-    ensureDir: (p) => mkdirSync(p, { recursive: true }),
+    ensureDir: (p) => {
+      try {
+        mkdirSync(p, { recursive: true })
+      } catch (e) {
+        throw friendlyAppDirError(e, '.lazunox')
+      }
+    },
     seedModels: (configDir) => seedConfigModels(configDir)
   }
 }

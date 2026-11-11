@@ -410,6 +410,10 @@ export const mainErrors = {
     'Couldn’t save in the task folder: “{path}” doesn’t allow writing (read-only folder or no permission). Give the folder write permission and try again.',
   'merr.task.fileBusy':
     'Couldn’t save “{path}”: another program (antivirus, OneDrive or other) has it open, or there’s no permission. Close it or wait a few seconds and try again.',
+  'merr.task.diskFull':
+    'Could not set up the task folder: the disk is full. Free up some space and try again.',
+  'merr.task.pathTooLong':
+    'Could not set up the task folder: the path is too long. Use a folder with a shorter path and try again.',
   'merr.task.linkInFolder':
     'Couldn’t save in the task folder: “{path}” is (or goes through) a shortcut (link) to another place. Delete it and try again.',
   'merr.task.winBackendUnavailable':

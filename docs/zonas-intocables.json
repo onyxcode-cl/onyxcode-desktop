@@ -16,7 +16,7 @@
     "src/main/tasks/backends/wsl-paths.ts": "653cf49ce6be0862778d921815217cbae46ee15b18f49d06b73a68ba3b858a00",
     "src/main/tasks/backends/wsl-payload.ts": "0160dcdda7781f75e828851a8fcf048aca7ee0e73136eec5cae86b323ec86093",
     "src/main/tasks/backends/wsl-pin.ts": "8c1286980ab18b750f78e2e0f0227c91030e9ce302ff1fbd2cc1b621c23c7f4b",
-    "src/main/tasks/backends/wsl-real-deps.ts": "2942146501434ce0cf6d9e2f510a589a166f3a3ec9af2201a03c1a07ebcbb548",
+    "src/main/tasks/backends/wsl-real-deps.ts": "92aacede0d53d2577d4821d639ee59e346b1f6ce77a398d6f41977e6e1123f2b",
     "src/main/tasks/backends/wsl-setup.ts": "a0db831101365ddb022d295542ad3c2b7d38fb3a501c6c66ab0a9edf3eca4dc1",
     "src/main/tasks/backends/wsl-spec.ts": "52a2d7bbc984d2a657f908749a09b5e06532aad5a6fa070a0afd1658ad1020fb",
     "src/main/tasks/backends/wsl-status.ts": "bc00f8de1b51952a7f467cd7bc465f4508b55aa4a070ba450887ae16ffd6c969",
@@ -189,6 +189,15 @@
       "motivo": "1.8.18 corrección del arreglo: sandbox-profile.ts repite localmente el nombre de la carpeta de permisos (antes lo importaba) para que verify:bundled cargue el módulo directo con Node; mismo valor, sin cambio de comportamiento",
       "cambiados": [
         "src/main/tasks/sandbox-profile.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-11",
+      "motivo": "mensajes claros al preparar carpetas de la app (private-dir)",
+      "cambiados": [
+        "src/main/tasks/backends/wsl-real-deps.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

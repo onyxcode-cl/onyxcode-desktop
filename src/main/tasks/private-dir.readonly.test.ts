@@ -73,11 +73,29 @@ describe('ensureTaskAppDirs: carpeta sin permiso de escritura', () => {
     expect(existsSync(join(folder, '.lazunox'))).toBe(false)
   })
 
-  it('cualquier otro error (ENOSPC, EIO) sigue fallando', () => {
-    for (const code of ['ENOSPC', 'EIO']) {
+  it('errores del sistema llegan como frase clara, sin el código crudo', () => {
+    const casos: Array<[string, string]> = [
+      ['ENOTDIR', 'merr.task.appDirUnsafe'],
+      ['EBUSY', 'merr.task.fileBusy'],
+      ['ENOSPC', 'merr.task.diskFull'],
+      ['ENAMETOOLONG', 'merr.task.pathTooLong']
+    ]
+    for (const [code, key] of casos) {
       fsState.mkdirError = code
-      expect(() => ensureTaskAppDirs(folder), code).toThrow(code)
+      let msg = ''
+      try {
+        ensureTaskAppDirs(folder)
+      } catch (e) {
+        msg = (e as Error).message
+      }
+      expect(msg, code).toBe(t(key as 'merr.task.diskFull', { path: '.lazunox' }))
+      expect(msg, code).not.toContain(code)
     }
+  })
+
+  it('un error desconocido (EIO) sigue fallando tal cual', () => {
+    fsState.mkdirError = 'EIO'
+    expect(() => ensureTaskAppDirs(folder)).toThrow('EIO')
   })
 
   it.skipIf(!posixOnly)('un enlace o un archivo en lugar de la carpeta sigue impidiendo el arranque con su mensaje', () => {
