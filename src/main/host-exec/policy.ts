@@ -48,6 +48,12 @@ export function unsafeTextChars(text: string): 'control' | 'hidden' | null {
   return null
 }
 
+const REVEAL = new RegExp(`(?:${CONTROL.source})|(?:${HIDDEN.source})`, 'gu')
+/** Muestra cada carácter de `unsafeTextChars` como `\u{XXXX}` (para enseñar tal cual un texto que no se rechaza, p. ej. argumentos JSON). */
+export function revealHiddenChars(text: string): string {
+  return text.replace(REVEAL, (ch) => `\\u{${(ch.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}}`)
+}
+
 /** Inicio de un comando dentro de una línea: al principio, o tras `;`, `&`, `|`, `(`, `{`, comillas de sustitución o espacio. */
 const BEFORE = String.raw`(?:^|[;&|(){}\x60\s])`
 

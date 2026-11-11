@@ -180,6 +180,26 @@ export interface HostExecApprovalRequest {
 
 export type HostExecDecision = 'allow' | 'deny'
 
+/**
+ * Tarjeta «¿Usar esta herramienta del conector?» para los conectores de la persona marcados «preguntar cada herramienta» en una Tarea
+ * aislada. La pide y la decide main (el proxy MCP retiene la llamada hasta la respuesta); los argumentos son los REALES que se enviarán.
+ */
+export interface ConnectorApprovalRequest {
+  id: string
+  /** Carpeta de la tarea. */
+  folder: string
+  /** Nombre del conector. */
+  server: string
+  tool: string
+  /** Argumentos en JSON con sangría; los caracteres invisibles se muestran como `\u{XXXX}`. */
+  args: string
+  createdAt: number
+  expiresAt: number
+}
+
+/** `task` = permitir esa herramienta exacta mientras dure esta tarea (memoria de main; nunca «siempre»). */
+export type ConnectorDecision = 'allow' | 'task' | 'deny'
+
 export interface AccessRequestApp {
   bundleId: string
   name: string
@@ -1280,6 +1300,9 @@ export interface TasksInvokeContract {
   'tasks:hostExec:respond': { req: { id: string; decision: HostExecDecision }; res: void }
   /** Tarjetas de `equipo` pendientes (para repintarlas al abrir la ventana). */
   'tasks:hostExec:pending': { req: void; res: HostExecApprovalRequest[] }
+  /** Respuesta a una tarjeta de conector (`tasks:connector:approval`). */
+  'tasks:connector:respond': { req: { id: string; decision: ConnectorDecision }; res: void }
+  'tasks:connector:pending': { req: void; res: ConnectorApprovalRequest[] }
   'computer:respondAccess': {
     req: {
       id: string
@@ -1482,6 +1505,9 @@ export interface TasksEventContract {
   'tasks:hostExec:approval': HostExecApprovalRequest
   /** La tarjeta de `equipo` con ese id ya se resolvió (respuesta, tiempo agotado o tarea terminada). */
   'tasks:hostExec:approvalDone': { id: string }
+  /** Tarjeta de aprobación de una herramienta de un conector de la persona, pedida por main. */
+  'tasks:connector:approval': ConnectorApprovalRequest
+  'tasks:connector:approvalDone': { id: string }
   /** Se detuvo el control (atajo global Cmd+Shift+Escape o computer:stop). */
   'computer:stopped': { at: number }
   /** Cambio del kill-switch (parada, reanudación o fallo al registrar el atajo global). */
@@ -1606,6 +1632,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'computer:respondAccess',
   'tasks:hostExec:respond',
   'tasks:hostExec:pending',
+  'tasks:connector:respond',
+  'tasks:connector:pending',
   'computer:revokePlan',
   'computer:approvedPlans',
   'computer:showMainWindow',
@@ -1692,6 +1720,8 @@ export const TASKS_EVENT_CHANNELS = [
   'computer:accessResolved',
   'tasks:hostExec:approval',
   'tasks:hostExec:approvalDone',
+  'tasks:connector:approval',
+  'tasks:connector:approvalDone',
   'computer:planState',
   'computer:blockedApps',
   'tasks:networkBlocked',

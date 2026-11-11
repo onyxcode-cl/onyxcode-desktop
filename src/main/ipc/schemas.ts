@@ -1037,6 +1037,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'computer:undenyApp': obj({ bundleId: str({ max: 255, min: 1 }) }),
   'tasks:hostExec:respond': obj({ id: hexId, decision: literal('allow', 'deny') }),
   'tasks:hostExec:pending': none,
+  'tasks:connector:respond': obj({ id: hexId, decision: literal('allow', 'task', 'deny') }),
+  'tasks:connector:pending': none,
   'computer:respondAccess': obj({
     id: str({ max: 100, min: 1 }),
     decisions: arr(

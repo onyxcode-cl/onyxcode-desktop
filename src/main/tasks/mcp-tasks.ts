@@ -37,8 +37,15 @@ export interface TasksMcpContribution {
   blocked: string[]
 }
 
-/** Registro de destinos del proxy MCP (fuera del sandbox): devuelve la URL y el token de sesión que ve el servidor. */
-export type McpRouteRegistrar = (spec: McpRouteSpec) => McpRouteClientConfig
+/**
+ * Registro de destinos del proxy MCP (fuera del sandbox): devuelve la URL y el token de sesión que ve el servidor. `askEachTool`: quien
+ * registra pone en la ruta la puerta de main (`connector-approvals.ts`) que pregunta por cada `tools/call`.
+ */
+export type McpRouteRegistrar = (spec: McpRouteSpec, opts?: { askEachTool?: boolean }) => McpRouteClientConfig
+
+/** Margen que el motor espera además de la llamada cuando main tiene que preguntar a la persona (aprobación de 5 min + holgura). */
+export const CONNECTOR_ASK_EXTRA_TIMEOUT_MS = 5 * 60 * 1000 + 15_000
+const DEFAULT_MCP_TIMEOUT_MS = 60_000
 
 /** ¿Tiene secretos que el sandbox no debe ver? Remoto con cabeceras, o local con variables de entorno. */
 export function mcpEntryHasSecrets(entry: McpEntry): boolean {
@@ -197,7 +204,9 @@ export function tasksMcpContribution(opts: {
       // Las cabeceras reales las pone el proxy MCP de main; el sandbox solo recibe URL loopback + token de sesión.
       let route: McpRouteClientConfig | null = null
       try {
-        route = opts.registerRoute ? opts.registerRoute({ name, url: entry.url, headers: entry.headers }) : null
+        route = opts.registerRoute
+          ? opts.registerRoute({ name, url: entry.url, headers: entry.headers }, { askEachTool: f.askEachTool })
+          : null
       } catch (err) {
         console.error(`[tasks] MCP "${name}" no entra en el sandbox:`, err instanceof Error ? err.message : 'error')
       }
@@ -211,9 +220,15 @@ export function tasksMcpContribution(opts: {
         headers: route.headers,
         oauth: false,
         enabled: true,
-        ...(entry.timeout ? { timeout: entry.timeout } : {})
+        // Con «preguntar cada herramienta» el proxy espera la respuesta de la persona antes de reenviar: el motor espera eso también.
+        ...(f.askEachTool
+          ? { timeout: (entry.timeout ?? DEFAULT_MCP_TIMEOUT_MS) + CONNECTOR_ASK_EXTRA_TIMEOUT_MS }
+          : entry.timeout
+            ? { timeout: entry.timeout }
+            : {})
       }
-      if (f.askEachTool) out.permission[`${name}_*`] = 'ask'
+      // La pregunta la hace main (la del motor se podía saltar desde la jaula): el motor no vuelve a preguntar.
+      if (f.askEachTool) out.permission[`${name}_*`] = 'allow'
       continue
     }
     if (entry.type === 'local') {

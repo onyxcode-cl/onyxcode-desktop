@@ -794,5 +794,13 @@ export const tasks = {
   'tasks.hostExec.once': 'Only this command is allowed, once. Each command asks again.',
   'tasks.hostExec.no': 'No',
   'tasks.hostExec.allowOnce': 'Allow this time',
-  'tasks.hostExec.expiresIn': 'If you don’t answer within {seconds} s, it won’t run.'
+  'tasks.hostExec.expiresIn': 'If you don’t answer within {seconds} s, it won’t run.',
+  'tasks.connector.title': 'Use this connector tool?',
+  'tasks.connector.intro': 'The task wants to use one of your connectors with your account on that service. Check the data it would send.',
+  'tasks.connector.server': 'Connector',
+  'tasks.connector.tool': 'Tool',
+  'tasks.connector.args': 'Data it will send',
+  'tasks.connector.allowTask': 'Allow in this task',
+  'tasks.connector.taskHint': '“Allow in this task” covers only this tool, until the task is closed.',
+  'tasks.connector.expiresIn': 'If you don’t answer within {seconds} s, it won’t be used.'
 } as const satisfies Messages<typeof es>

@@ -794,5 +794,13 @@ export const tasks = {
   'tasks.hostExec.once': 'Solo se permite este comando, una vez. Cada comando vuelve a preguntar.',
   'tasks.hostExec.no': 'No',
   'tasks.hostExec.allowOnce': 'Permitir esta vez',
-  'tasks.hostExec.expiresIn': 'Si no respondes en {seconds} s, no se ejecuta.'
+  'tasks.hostExec.expiresIn': 'Si no respondes en {seconds} s, no se ejecuta.',
+  'tasks.connector.title': '¿Usar esta herramienta del conector?',
+  'tasks.connector.intro': 'La tarea quiere usar un conector tuyo con tu cuenta en ese servicio. Revisa los datos que enviaría.',
+  'tasks.connector.server': 'Conector',
+  'tasks.connector.tool': 'Herramienta',
+  'tasks.connector.args': 'Datos que enviará',
+  'tasks.connector.allowTask': 'Permitir en esta tarea',
+  'tasks.connector.taskHint': '«Permitir en esta tarea» vale solo para esta herramienta y hasta que se cierre la tarea.',
+  'tasks.connector.expiresIn': 'Si no respondes en {seconds} s, no se usa.'
 } as const

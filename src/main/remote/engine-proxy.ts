@@ -24,6 +24,7 @@ import type { CallFrame, HttpFrame } from '@shared/remote/protocol'
 import type { AuditInput } from './audit'
 import { ApprovalLimiter } from './approval-limit'
 import { hostApprovalDetail } from '../host-exec/approvals'
+import { connectorApprovalDetail } from '../tasks/connector-approvals'
 import { ConfirmQueue, callDigest, deviceFingerprint } from './confirm-queue'
 import { EngineKnowledge, ScopeProvider, isDirectorySync, modelsFromProviderList } from './engine-scope'
 import { EngineRegistry, type EngineTarget } from './engine-registry'
@@ -105,7 +106,9 @@ const forbidden = (reason: string): MuxError => new MuxError('forbidden', reason
 /** Peticiones de control/permisos: salen con prioridad máxima. */
 export function isUrgentFrame(f: CallFrame | HttpFrame): boolean {
   if (f.t === 'call')
-    return /^(computer:(stop|respondAccess|resume)|browser:respond|tasks:hostExec:respond|tasks:fullAccess:revokeAll)$/.test(f.ch)
+    return /^(computer:(stop|respondAccess|resume)|browser:respond|tasks:hostExec:respond|tasks:connector:respond|tasks:fullAccess:revokeAll)$/.test(
+      f.ch
+    )
   return /^\/(permission|question)(\/|$)/.test(f.path) || /^\/session\/[^/]+\/(abort|permissions)(\/|$)/.test(f.path)
 }
 
@@ -208,6 +211,7 @@ export class EngineProxy implements MuxDispatch {
       permissionDetail: (id) => this.s.knowledge.permissionDetail(id),
       permissionText: (id) => this.s.knowledge.permissionText(id),
       hostApprovalDetail: (id) => hostApprovalDetail(id),
+      connectorApprovalDetail: (id) => connectorApprovalDetail(id),
       realpath: realpathLoose,
       canApproveCommands: extra.canApproveCommands ?? this.canApprove(),
       isDirectory: isDirectorySync

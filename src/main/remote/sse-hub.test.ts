@@ -176,6 +176,12 @@ describe('recorte de eventos del motor', () => {
     })
     // Tarjeta de `equipo`: solo si la carpeta de la tarea está en el ámbito; el comando va completo (es lo que se aprueba).
     expect(trimIpcEvent('tasks:hostExec:approval', { id: 'a', folder: outside, command: 'open x' }, trim)).toBeNull()
+    expect(trimIpcEvent('tasks:connector:approval', { id: 'b', folder: outside, server: 'gmail' }, trim)).toBeNull()
+    expect(trimIpcEvent('tasks:connector:approval', { id: 'b', folder: proj, server: 'gmail' }, trim)).toEqual({
+      id: 'b',
+      folder: proj,
+      server: 'gmail'
+    })
     expect(trimIpcEvent('tasks:hostExec:approval', { id: 'a', folder: proj, command: 'open "x y"' }, trim)).toEqual({
       id: 'a',
       folder: proj,

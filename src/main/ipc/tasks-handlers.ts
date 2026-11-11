@@ -47,6 +47,7 @@ import { registerTasksMemoryHandlers } from './tasks-memory-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
 import { registerTasksAutoHandlers } from './tasks-auto-handlers'
 import { registerTasksHostExecHandlers } from './tasks-host-exec-handlers'
+import { registerTasksConnectorHandlers } from './tasks-connector-handlers'
 import { registerTasksSandboxHandlers } from './tasks-sandbox-handlers'
 import { registerTasksPreflightHandlers } from './tasks-preflight-handlers'
 import { createRestorePoints, registerTasksRestoreHandlers } from './tasks-restore-handlers'
@@ -335,6 +336,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksFilesHandlers(ctx),
     registerTasksAutoHandlers(ctx),
     registerTasksHostExecHandlers(ctx),
+    registerTasksConnectorHandlers(ctx),
     registerTasksRestoreHandlers(ctx),
     sandboxModule,
     registerTasksPreflightHandlers(ctx, { computer, sandboxStatus: sandboxModule.status }),

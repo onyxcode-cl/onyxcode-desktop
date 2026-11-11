@@ -52,6 +52,8 @@ export interface PolicyContext {
   permissionDetail?: (requestId: string) => string[] | undefined
   /** Comando completo, motivo y carpeta de una tarjeta de `equipo` pendiente (de main, no del celular), para la confirmación en el Mac. */
   hostApprovalDetail?: (id: string) => string[] | undefined
+  /** Conector y herramienta, argumentos y carpeta de una tarjeta de conector pendiente (de main), para la confirmación en el Mac. */
+  connectorApprovalDetail?: (id: string) => string[] | undefined
   /** Este celular tiene encendido «Aprobar comandos desde este celular» (por dispositivo, apagado por defecto). */
   canApproveCommands?: boolean
   /** Texto íntegro que pide el permiso pendiente (aprendido del motor, no del celular), para la lista de denegación. */
@@ -454,6 +456,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   // Comandos de `equipo` (fuera del aislamiento): denegar es M; «Permitir esta vez» se confirma en el Mac con el comando completo a la vista.
   'tasks:hostExec:respond': (p) => (p.decision === 'deny' ? 'M' : 'D'),
   'tasks:hostExec:pending': 'X', // la lista trae carpetas de todas las tareas: el celular recibe las tarjetas por el evento, ya filtrado
+  // Conectores de la persona con «preguntar cada herramienta»: igual que `equipo` (permitir, también «en esta tarea», se confirma en el Mac).
+  'tasks:connector:respond': (p) => (p.decision === 'deny' ? 'M' : 'D'),
+  'tasks:connector:pending': 'X',
   'computer:showMainWindow': 'X',
   'computer:promptVisible': 'X',
   'tasks:keepAwakeState': 'R',
@@ -789,6 +794,8 @@ export const CELULAR_EVENTS: Record<string, EventPolicy> = {
   'computer:accessResolved': 'allow',
   'tasks:hostExec:approval': 'sanitize', // solo si la carpeta de la tarea está en el ámbito del celular
   'tasks:hostExec:approvalDone': 'allow',
+  'tasks:connector:approval': 'sanitize', // solo si la carpeta de la tarea está en el ámbito del celular
+  'tasks:connector:approvalDone': 'allow',
   'computer:planState': 'allow',
   'computer:blockedApps': 'allow',
   'tasks:networkBlocked': 'allow',
@@ -1559,6 +1566,19 @@ export const CELULAR_SUMMARIES: Record<string, Summary> = {
     // El comando con sus líneas TAL CUAL (no `headTail`, que junta las líneas), y después el motivo y la carpeta.
     detail: hostCommandLines(isStr(p.id) ? x.ctx.hostApprovalDetail?.(p.id) : undefined)
   }),
+  'tasks:connector:respond': (p, _h, x) => ({
+    text:
+      p.decision === 'task'
+        ? t(
+            'Permitir en esta tarea una herramienta de un conector tuyo (con tu cuenta en ese servicio)',
+            'Allow a tool of one of your connectors for this task (with your account on that service)'
+          )
+        : t(
+            'Permitir una vez una herramienta de un conector tuyo (con tu cuenta en ese servicio)',
+            'Allow once a tool of one of your connectors (with your account on that service)'
+          ),
+    detail: connectorLines(isStr(p.id) ? x.ctx.connectorApprovalDetail?.(p.id) : undefined)
+  }),
   'browser:respond': (p) => ({
     text: t('Permitir a un sitio o acción del navegador', 'Allow a browser site or action'),
     detail: [String(p.decision)]
@@ -1607,6 +1627,13 @@ function permissionReplySummary(p: Record<string, unknown>, x: SummaryExtra): { 
   }
 }
 
+/** `[conector · herramienta, argumentos, carpeta]` de main → una línea por línea de los argumentos, con el conector arriba. */
+function connectorLines(d: string[] | undefined): string[] {
+  if (!d || d.length < 3) return [t('La petición ya no está pendiente', 'The request is no longer pending').es]
+  const [what, args, folder] = d as [string, string, string]
+  return [what, ...args.split('\n'), `— ${folder}`]
+}
+
 /** `[comando, motivo, carpeta]` de main → una línea por línea del comando, luego el motivo (del agente) y la carpeta. */
 function hostCommandLines(d: string[] | undefined): string[] {
   if (!d || d.length < 3) return [t('La petición ya no está pendiente', 'The request is no longer pending').es]
@@ -1627,7 +1654,8 @@ function summaryFor(
   const r = s(payload, home, { ctx, params })
   const dir = req.kind === 'http' && isStr(req.query?.directory) ? [tilde(req.query.directory, home)] : []
   // Texto del celular: sin saltos ni secretos, con tope de longitud y de líneas (el dueño decide leyéndolo).
-  if (key === 'tasks:hostExec:respond') return { summary: r.text, detail: cleanCommandDetail(r.detail) }
+  if (key === 'tasks:hostExec:respond' || key === 'tasks:connector:respond')
+    return { summary: r.text, detail: cleanCommandDetail(r.detail) }
   return { summary: r.text, detail: cleanDetail([...dir, ...r.detail]) }
 }
 

@@ -184,6 +184,10 @@ export const mainErrors = {
   'merr.hostExec.dialogLongDetail':
     'It has {lines} lines and {chars} characters: it doesn’t fit here. Open Lazunox to see all of it before deciding.\n\nTask folder: {folder}',
   'merr.hostExec.openApp': 'Open Lazunox to see it',
+  'merr.connector.notif': 'A task wants to use a tool from “{server}”. Review it in Lazunox.',
+  'merr.connector.dialog': 'Let the task use “{tool}” from “{server}”?',
+  'merr.connector.dialogLong':
+    'The data it would send has {chars} characters: it doesn’t fit here. Open Lazunox to see all of it before deciding.\n\nTask folder: {folder}',
   'merr.hostExec.notif': 'A task wants to run a command on your computer. Review it in Lazunox.',
   'merr.dialog.attachTitle': 'Attach files to the task',
   'merr.dialog.attachButton': 'Attach',

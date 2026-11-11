@@ -87,6 +87,7 @@ import { ChatIndexStore } from './chat-index'
 import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
+import { createConnectorGate } from './connector-approvals'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
 import { applyComputerAgent } from './computer-agent'
 import type { EgressBlockedEvent } from './proxy'
@@ -1480,7 +1481,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       }
     }
     // MCP del usuario disponibles en Tareas (`mcp-tasks.ts`); sus hosts remotos (sin secretos) entran a la red.
-    const c = tasksMcpContribution({ sandboxed: !fullAccess, registerRoute: mcpProxy ? (spec) => mcpProxy.addRoute(spec) : undefined })
+    // Conectores de la persona con «preguntar cada herramienta»: la puerta de main en su ruta (`connector-approvals.ts`), por tarea.
+    const c = tasksMcpContribution({
+      sandboxed: !fullAccess,
+      registerRoute: mcpProxy
+        ? (spec, o) =>
+            mcpProxy.addRoute(o?.askEachTool ? { ...spec, toolCallGate: createConnectorGate({ folder, server: spec.name }) } : spec)
+        : undefined
+    })
     if (c.blocked.length) {
       console.warn(`[tasks] MCP no disponibles en el sandbox (secretos en el entorno): ${c.blocked.join(', ')}`)
     }
@@ -1489,7 +1497,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     // Permisos "siempre permitir" recordados para esta carpeta (`rules.ts`).
     // «Siempre» de una tarea aislada: los guarda y los pasa main (`tasks-rules.json`, fuera del alcance de la tarea), nunca el motor
     // (su carpeta privada la puede escribir la tarea). Los que el motor guardó antes se pasan una sola vez, saneados.
-    if (!fullAccess && this.platform !== 'win32') {
+    // (Seatbelt: con WSL `this.win` existe y la carpeta privada vive en la distro, donde el motor nunca guardó nada.)
+    if (!fullAccess && !this.win) {
       tasksRules.importEngineAlwaysRulesOnce(
         folder,
         sandboxPermissionDir(join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder))),

@@ -245,7 +245,9 @@ describe('D: confirmación en el Mac', () => {
     ['browser:agent', { owner: { kind: 'code', directory: P }, action: 'resume' }],
     ['browser:respond', { id: 'ab', decision: 'always' }],
     ['browser:respond', { id: 'ab', decision: 'allow' }],
-    ['tasks:hostExec:respond', { id: 'ab', decision: 'allow' }]
+    ['tasks:hostExec:respond', { id: 'ab', decision: 'allow' }],
+    ['tasks:connector:respond', { id: 'ab', decision: 'allow' }],
+    ['tasks:connector:respond', { id: 'ab', decision: 'task' }]
   ]
   it.each(D_IPC.map((c, i) => [i, c[0], c[1]] as const))('#%i %s pide confirmación con resumen es/en', (_i, ch, payload) => {
     const d = decide(ipc(ch, payload), ctx)
@@ -285,6 +287,18 @@ describe('D: confirmación en el Mac', () => {
     expect(eventPolicy('tasks:hostExec:approval')).toBe('sanitize')
     expect(eventPolicy('tasks:hostExec:approvalDone')).toBe('allow')
     expect(cls(ipc('tasks:hostExec:pending'))).toMatch(/^deny/)
+  })
+  it('conectores: permitir (una vez o en esta tarea) desde el celular se confirma en el Mac con los datos completos de main', () => {
+    const args = '{\n  "to": "ana@example.com"\n}'
+    const d = decide(ipc('tasks:connector:respond', { id: 'cd34', decision: 'task' }), {
+      ...ctx,
+      connectorApprovalDetail: (id) => (id === 'cd34' ? ['gmail · send_email', args, '/Users/me/p'] : undefined)
+    })
+    expect('confirm' in d && d.summary.es).toMatch(/en esta tarea/)
+    expect('confirm' in d && d.detail).toEqual(['gmail · send_email', '{', '  "to": "ana@example.com"', '}', '— /Users/me/p'])
+    expect(eventPolicy('tasks:connector:approval')).toBe('sanitize')
+    expect(eventPolicy('tasks:connector:approvalDone')).toBe('allow')
+    expect(cls(ipc('tasks:connector:pending'))).toMatch(/^deny/)
   })
   it('el detalle muestra rutas con ~ y nº de archivos', () => {
     const d = decide(ipc('git:discard', { cwd: '/Users/me/p', paths: Array.from({ length: 25 }, (_, i) => `f${i}`) }), {
@@ -673,6 +687,7 @@ describe('git, archivos, navegador y Tareas', () => {
     expect(cls(ipc('browser:agent', { owner, action: 'stop' }))).toBe('M')
     expect(cls(ipc('browser:respond', { id: 'ab', decision: 'deny' }))).toBe('M')
     expect(cls(ipc('tasks:hostExec:respond', { id: 'ab', decision: 'deny' }))).toBe('M')
+    expect(cls(ipc('tasks:connector:respond', { id: 'ab', decision: 'deny' }))).toBe('M')
   })
   it('Tareas: iniciar sin control total M, con él D; revocar M', () => {
     expect(cls(ipc('tasks:start', { folder: '/work/tasks/a' }))).toBe('M')

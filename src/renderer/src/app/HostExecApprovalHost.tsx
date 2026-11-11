@@ -30,7 +30,7 @@ export interface ScrollState {
 
 /** Estado visible de la tarjeta en un instante (puro, para pruebas). `shownAt` null = aún no se ve. */
 export function hostApprovalView(
-  req: HostExecApprovalRequest,
+  req: Pick<HostExecApprovalRequest, 'expiresAt'>,
   shownAt: number | null,
   now: number,
   scroll: ScrollState = { overflows: false, reachedEnd: true }

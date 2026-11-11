@@ -188,6 +188,10 @@ export const mainErrors = {
   'merr.hostExec.dialogLongDetail':
     'Tiene {lines} líneas y {chars} caracteres: no cabe aquí. Abre Lazunox para verlo completo antes de decidir.\n\nCarpeta de la tarea: {folder}',
   'merr.hostExec.openApp': 'Abrir Lazunox para verlo',
+  'merr.connector.notif': 'Una tarea quiere usar una herramienta de «{server}». Revísalo en Lazunox.',
+  'merr.connector.dialog': '¿Dejar que la tarea use «{tool}» de «{server}»?',
+  'merr.connector.dialogLong':
+    'Los datos que enviaría tienen {chars} caracteres: no caben aquí. Abre Lazunox para verlos completos antes de decidir.\n\nCarpeta de la tarea: {folder}',
   'merr.hostExec.notif': 'Una tarea pide ejecutar un comando en tu computador. Revísalo en Lazunox.',
   'merr.dialog.attachTitle': 'Adjuntar archivos a la tarea',
   'merr.dialog.attachButton': 'Adjuntar',
