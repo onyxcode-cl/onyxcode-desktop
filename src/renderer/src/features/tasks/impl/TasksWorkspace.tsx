@@ -685,7 +685,11 @@ export function TasksWorkspace(): React.JSX.Element {
   const send = async (text: string): Promise<void> => {
     setSendError(null)
     try {
-      if (!(await ensureFolderForSend())) return
+      if (!(await ensureFolderForSend())) {
+        // Sin carpeta lista (el aviso con el motivo ya está en pantalla): el texto no se pierde.
+        if (!useTasks.getState().draft) useTasks.setState({ draft: text })
+        return
+      }
     } catch (err) {
       // Modo unificado: no se pudo preparar la carpeta del chat; el texto no se pierde.
       setSendError(err)

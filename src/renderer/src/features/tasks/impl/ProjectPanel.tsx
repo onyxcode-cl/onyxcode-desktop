@@ -202,6 +202,10 @@ export function ProjectPanel(): React.JSX.Element | null {
   useEffect(() => {
     if (!open || !folder || tab !== 'agents') return
     let cancelled = false
+    // Nada de lo de otra carpeta se queda a la vista: sin esto, si la carga falla (p. ej. AGENTS.md es un enlace) se verían
+    // la ruta y el texto del proyecto anterior bajo el título del actual, y «Guardar» escribiría ese texto en esta carpeta.
+    setAgentsText('')
+    setAgentsInfo(null)
     setAgentsLoading(true)
     void cw('tasks:agentsMd:get', { folder })
       .then((a) => {
@@ -218,6 +222,7 @@ export function ProjectPanel(): React.JSX.Element | null {
       })
     return () => {
       cancelled = true
+      setAgentsLoading(false)
     }
   }, [open, folder, tab])
 
@@ -288,6 +293,7 @@ export function ProjectPanel(): React.JSX.Element | null {
     setError(null)
     try {
       const a = await cw('tasks:agentsMd:save', { folder, content: agentsText })
+      if (useTasks.getState().folder !== folder) return // se cambió de proyecto mientras guardaba: esa respuesta no es de la carpeta actual
       setAgentsText(a.content)
       setAgentsInfo({ path: a.path, exists: a.exists })
       flashSaved()
@@ -656,7 +662,7 @@ export function ProjectPanel(): React.JSX.Element | null {
             <Button
               variant="primary"
               onClick={() => void (tab === 'project' ? submitProject() : tab === 'agents' ? submitAgents() : submitMemory())}
-              disabled={saving || (tab === 'agents' && agentsLoading)}
+              disabled={saving || (tab === 'agents' && (agentsLoading || !agentsInfo))}
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               {t('tasks.proj.save')}

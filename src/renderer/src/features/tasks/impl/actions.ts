@@ -246,6 +246,13 @@ export async function openChatFolder(): Promise<string> {
  * Con modo unificado se crea la carpeta propia del chat; si falla, lanza un error en español llano (el texto escrito se conserva).
  */
 export async function ensureFolderForSend(): Promise<boolean> {
+  const ok = await prepareFolderForSend()
+  // 1.8.18: si la carpeta no pudo arrancar (p. ej. `.lazunox/trabajo` es un acceso directo), el aviso rojo de la pantalla ya trae el motivo
+  // claro. Seguir con el envío solo añadía un segundo cartel opaco («Algo salió mal / El servidor de las tareas no está listo»).
+  return ok && useTasks.getState().phase !== 'error'
+}
+
+async function prepareFolderForSend(): Promise<boolean> {
   const folder = useTasks.getState().folder
   if (!useUnified.getState().on) {
     if (folder) return true
