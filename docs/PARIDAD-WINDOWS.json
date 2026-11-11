@@ -1026,6 +1026,18 @@
       ],
       "nota": "El aviso solo niega o abre la ventana Navegador de Lazunox con la tarjeta del dueño correcto. macOS cancela si falla osascript, sin Electron sin padre. Plataformas simuladas y DOM en Mac; sin prueba real de ventanas ni en Windows.",
       "comprobacion": null
+    },
+    {
+      "id": "N13",
+      "funcion": "Vista de documentos con diagnóstico y salida al programa del sistema a los ocho segundos",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/ipc/tasks-viewer-handlers.windows.test.ts:1",
+        "src/renderer/src/features/tasks/impl/DocumentViewerPanel.race.test.tsx:1",
+        "src/main/office/craft/web-open.test.ts:1"
+      ],
+      "nota": "Windows simulado en Mac: rutas C: y /win/c, URL por token, .exe, carga de respaldo, superficie antes de wasm, cierre al vencer ocho segundos y registro sin carpetas padre. Falta comprobar pintura, GPU, DPI y programa del sistema en Windows real.",
+      "comprobacion": null
     }
   ]
 }

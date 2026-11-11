@@ -32,7 +32,7 @@ vi.mock('electron', () => ({
     }
   }
 }))
-import { attachWeb, closeWeb, isWebActive, openWebDoc } from './web-view'
+import { attachWeb, closeWeb, isWebActive, openWebDoc, onWebEvent } from './web-view'
 const server = (port: number) => ({ origin: `http://127.0.0.1:${port}`, port, close: vi.fn(async () => undefined) })
 const open = () => openWebDoc('/web', 'docx', 'a.docx', Buffer.from('documento'))
 beforeEach(() => {
@@ -40,6 +40,26 @@ beforeEach(() => {
   mock.views = []
 })
 afterEach(() => closeWeb())
+it('la caída o el error tardío de una vista cerrada no se atribuye a la nueva', async () => {
+  const first = open()
+  mock.servers[0]!(server(1))
+  await Promise.resolve()
+  const old = mock.views[0]
+  old.loaded()
+  await first
+  const events: string[] = []
+  const off = onWebEvent((event) => events.push(event.type))
+  const second = open()
+  mock.servers[1]!(server(2))
+  await Promise.resolve()
+  const callbacks = old.webContents.on.mock.calls as Array<[string, (...args: any[]) => void]>
+  callbacks.find(([name]) => name === 'render-process-gone')![1]()
+  callbacks.find(([name]) => name === 'did-fail-load')![1]({}, -2, 'ERR_FAILED', '', true)
+  expect(events).toEqual([])
+  mock.views[1].loaded()
+  await second
+  off()
+})
 it('cerrar y reabrir durante el arranque: el servidor viejo no reemplaza al vigente', async () => {
   const first = open()
   closeWeb()

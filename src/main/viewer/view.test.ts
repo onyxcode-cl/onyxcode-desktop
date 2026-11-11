@@ -11,7 +11,8 @@ const state = vi.hoisted(() => ({
   handlers: {} as Handlers,
   windowOpenHandler: null as null | (() => { action: string }),
   bounds: null as null | { x: number; y: number; width: number; height: number },
-  loadedUrls: [] as string[]
+  loadedUrls: [] as string[],
+  loadError: false
 }))
 
 vi.mock('electron', () => {
@@ -24,6 +25,7 @@ vi.mock('electron', () => {
       close: () => undefined,
       loadURL: async (url: string) => {
         state.loadedUrls.push(url)
+        if (state.loadError) throw new Error('ERR_FAILED')
       }
     }
     setBounds = (b: { x: number; y: number; width: number; height: number }) => (state.bounds = b)
@@ -55,6 +57,7 @@ describe('view.ts: contención de la WebContentsView del visor', () => {
     state.windowOpenHandler = null
     state.bounds = null
     state.loadedUrls = []
+    state.loadError = false
     closeView()
     void openDoc(`lazunox-viewer://viewer/doc/${'a'.repeat(64)}`)
   })
@@ -83,6 +86,27 @@ describe('view.ts: contención de la WebContentsView del visor', () => {
     state.handlers['before-input-event']({}, { type: 'keyDown', key: 'Escape' })
     state.handlers['before-input-event']({}, { type: 'keyDown', key: 'a' })
     expect(events).toEqual(['escape'])
+    off()
+  })
+
+  it('una carga fallida devuelve false y comunica el error, sin rechazo sin capturar', async () => {
+    const events: string[] = []
+    const off = onViewerEvent((e) => events.push(e.type))
+    state.loadError = true
+    expect(await openDoc('lazunox-viewer://viewer/index.html#t=abc')).toBe(false)
+    expect(events).toEqual(['error'])
+    off()
+  })
+
+  it('los eventos tardíos de una vista destruida no se atribuyen al documento nuevo', () => {
+    const old = { ...state.handlers }
+    const events: string[] = []
+    const off = onViewerEvent((e) => events.push(e.type))
+    closeView()
+    void openDoc('lazunox-viewer://viewer/index.html#t=new')
+    old['render-process-gone']()
+    old['did-fail-load']({}, -2, 'ERR_FAILED', '', true)
+    expect(events).toEqual([])
     off()
   })
 

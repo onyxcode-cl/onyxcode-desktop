@@ -19,7 +19,8 @@ vi.mock('./craft-problems', () => ({ recordCraftProblem: (...a: unknown[]) => re
 vi.mock('../../viewer/view', () => ({ attach: vi.fn(), closeView: vi.fn() }))
 
 import { closeWeb } from './web-view'
-import { WEB_PROGRAM, openInCraftWeb } from './web-open'
+import { WEB_PROGRAM, openInCraftWeb, panelAttach, panelClose } from './web-open'
+import { attachWeb } from './web-view'
 
 let dir: string
 beforeEach(() => {
@@ -37,6 +38,19 @@ const file = (bytes = 10): string => {
 }
 
 describe('web-open (prueba Craft)', () => {
+  it('tras cerrar por cambio de tema restituye la superficie ANTES de arrancar el motor', async () => {
+    const win = {} as never
+    const rect = { x: 12, y: 50, width: 500, height: 700 }
+    panelAttach(win, rect, true)
+    panelClose()
+    vi.mocked(attachWeb).mockClear()
+    webDir.mockReturnValue('/web/wordcraft')
+    openWebDoc.mockImplementation(async () => {
+      expect(attachWeb).toHaveBeenCalledWith(win, rect, true)
+      return true
+    })
+    expect(await openInCraftWeb('docx', file(), 'T')).toBe(true)
+  })
   it('cada tipo de documento va al programa que le corresponde', () => {
     expect(WEB_PROGRAM).toEqual({ xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft', pdf: 'pdfcraft' })
   })

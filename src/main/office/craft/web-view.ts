@@ -89,9 +89,11 @@ function ensureView(): WebContentsView {
   wc.on('will-navigate', (event) => event.preventDefault())
   wc.on('will-redirect', (event) => event.preventDefault())
   wc.on('will-attach-webview', (event) => event.preventDefault())
-  wc.on('render-process-gone', () => emitter.emit('event', { type: 'crashed' } satisfies WebViewEvent))
+  wc.on('render-process-gone', () => {
+    if (state.view === view) emitter.emit('event', { type: 'crashed' } satisfies WebViewEvent)
+  })
   wc.on('did-fail-load', (_e, _c, _d, _u, isMain) => {
-    if (isMain) emitter.emit('event', { type: 'error' } satisfies WebViewEvent)
+    if (isMain && state.view === view) emitter.emit('event', { type: 'error' } satisfies WebViewEvent)
   })
   wc.on('before-input-event', (_e, input) => {
     if (input.type === 'keyDown' && input.key === 'Escape') emitter.emit('event', { type: 'escape' } satisfies WebViewEvent)

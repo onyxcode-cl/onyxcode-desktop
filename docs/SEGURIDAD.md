@@ -1801,6 +1801,13 @@ contenido.
 
 **Archivos clave:** `src/main/viewer/{session,scheme,tokens,doc-kind,view}.ts`, `src/viewer/docx/sanitize.ts`.
 
+Diagnóstico del panel de Tareas (1.8.20, corrección pendiente de comprobar en Windows): la apertura tiene un plazo de ocho segundos en
+main y en el renderer. Al vencer se cierra la vista y se revoca su token; el panel ofrece abrir el archivo con el programa del sistema
+mediante `tasks:openPath`, que conserva la autorización de carpeta y el bloqueo de ejecutables. El cierre acepta solo los motivos
+`timeout`/`error`, sin texto libre. El registro permanente guarda etapa, motivo, plataforma, tamaño/visibilidad de la superficie y
+`…/nombre-del-archivo`, nunca sus carpetas padre ni el texto crudo de un error de disco. Los avisos llevan el identificador de apertura;
+los eventos de una vista destruida se descartan. La sesión y la CSP conservan sus restricciones.
+
 ## 3 quinquagies bis. Cambios de 0.5.29 a 0.5.35: canales nuevos, avisos, pegado y botón Ejecutar (F8-B168 a F8-B173)
 
 Resumen de superficie y límites; el detalle y las pruebas de cada punto están en `CHANGELOG-FASE8.md`. Todo lo de abajo se comprobó leyendo el código.
