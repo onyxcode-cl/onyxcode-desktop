@@ -23,12 +23,27 @@ describe('isForbiddenEgressAddress', () => {
     '::ffff:127.0.0.1',
     '::ffff:7f00:1',
     '[::1]',
-    'no-es-una-ip'
-  ])('prohíbe %s', (ip) => expect(isForbiddenEgressAddress(ip)).toBe(true))
+    'no-es-una-ip',
+    // Desde 1.8.19 también las redes internas (router, NAS, bases de datos de la red) y las IPv4 escondidas en IPv6.
+    '10.0.0.5',
+    '172.16.0.1',
+    '172.31.255.255',
+    '192.168.1.1',
+    '100.64.0.5',
+    '100.100.100.200',
+    '168.63.129.16',
+    'fc00::1',
+    'fd00:ec2::254',
+    '::127.0.0.1',
+    '64:ff9b::7f00:1',
+    '2002:7f00:1::1',
+    '0:0:0:0:0:ffff:127.0.0.1',
+    'fe80::1%en0'
+  ])('prohíbe %s', (ip) => expect(isForbiddenEgressAddress(ip, [])).toBe(true))
 
-  it.each(['8.8.8.8', '93.184.216.34', '2606:4700::1111', '::ffff:8.8.8.8', '10.0.0.5', '172.16.0.1', '192.168.1.20', '100.64.0.5'])(
-    'permite %s (públicas y redes privadas de empresa)',
-    (ip) => expect(isForbiddenEgressAddress(ip)).toBe(false)
+  it.each(['8.8.8.8', '93.184.216.34', '2606:4700::1111', '::ffff:8.8.8.8', '172.32.0.1', '203.0.113.10'])(
+    'permite %s (Internet pública)',
+    (ip) => expect(isForbiddenEgressAddress(ip, [])).toBe(false)
   )
 })
 
@@ -124,13 +139,15 @@ describe('EgressProxy: nombre permitido que resuelve a una dirección local', ()
 
   it('camino permitido: conecta a la IP que devolvió la resolución (no al nombre) y el túnel se establece', async () => {
     const engine = await fakeEngine()
-    // Solo en prueba: la resolución devuelve una IP concreta que sí se puede alcanzar aquí (el servidor local).
-    proxy = new EgressProxy({ token: 'tok', allowlist: () => ['permitido.test'], resolve: async () => '127.0.0.1' })
+    // Solo en prueba: la resolución devuelve una IP concreta y el «marcador» la lleva al servidor local (el puerto real es 443).
+    proxy = new EgressProxy({
+      token: 'tok',
+      allowlist: () => ['permitido.test'],
+      resolve: async () => '127.0.0.1',
+      dial: (_port, ip, cb) => connect(engine.port, ip, cb)
+    })
     const port = await proxy.start()
-    const line = await firstLine(
-      port,
-      `CONNECT permitido.test:${engine.port} HTTP/1.1\r\nHost: permitido.test:${engine.port}\r\n${auth}\r\n`
-    )
+    const line = await firstLine(port, `CONNECT permitido.test:443 HTTP/1.1\r\nHost: permitido.test:443\r\n${auth}\r\n`)
     expect(line).toContain('200')
     expect(engine.seen()).toBe(1)
   })
