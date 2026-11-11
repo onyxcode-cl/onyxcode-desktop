@@ -20,7 +20,7 @@ import { macOnly } from '../../../test/platform'
 
 // Sin Electron: el lanzador «disclaim» se sustituye por el lanzamiento directo y la caché de modelos no se toca.
 vi.mock('../../process/disclaim', () => ({ withDisclaim: (command: string, args: string[]) => ({ command, args, disclaimed: false }) }))
-vi.mock('../models-cache', () => ({ seedModelsCache: () => false }))
+vi.mock('../models-cache', () => ({ seedConfigModels: () => null }))
 
 import { buildSandboxProfile, sandboxDirs } from '../sandbox-profile'
 import { cleanLegacyProfiles, LEGACY_PROFILE_DIR, seatbeltBackend } from './seatbelt'

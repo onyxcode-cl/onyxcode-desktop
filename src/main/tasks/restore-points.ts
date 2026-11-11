@@ -38,8 +38,10 @@ import {
   type Stats
 } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
-import { dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { createTwoFilesPatch } from 'diff'
+import { LinkRefusedError } from './no-follow'
+import { SafeTempFile } from './safe-write'
 import type { TasksRestoreChange, TasksRestorePoint } from '@shared/ipc-tasks'
 
 export interface RestoreLimits {
@@ -744,18 +746,19 @@ export class RestorePoints {
           st = null
         }
         if (st && (st.isSymbolicLink() || st.isDirectory())) throw new Error('el sitio lo ocupa un enlace o una carpeta')
-        const tmp = join(dirname(abs), `.lazunox-restore-${randomBytes(6).toString('hex')}`)
+        // Escritura segura (1.8.18, corrección tras la revisión 1; `safe-write.ts`): antes la copia iba por ruta a un temporal y luego
+        // `rename`; un proceso de la tarea que cambiara una carpeta intermedia por un enlace justo entonces hacía que el contenido
+        // restaurado (que la tarea pudo escribir) y su nombre acabaran en el destino del enlace. Ahora el temporal se verifica después de
+        // abrirlo, la copia va por descriptor y se termina con `rename` en la misma carpeta (sin reemplazar un enlace).
+        const tmp = SafeTempFile.create(real, dirname(abs), { create: false, mode: e.mode & 0o7777 })
         try {
-          await copyFile(obj, tmp, fsc.COPYFILE_FICLONE)
-          try {
-            chmodSync(tmp, e.mode & 0o7777)
-          } catch {
-            // mejor esfuerzo (algunos volúmenes no admiten permisos)
-          }
-          renameSync(tmp, abs)
+          await tmp.copyFrom(obj)
+          tmp.commit(basename(abs), { replace: true, refuseLinkTarget: true })
         } catch (err) {
-          rmSync(tmp, { force: true })
+          if (err instanceof LinkRefusedError) throw new Error('una carpeta intermedia cambió por un enlace mientras se restauraba')
           throw err
+        } finally {
+          tmp.discard()
         }
         restored++
       } catch (err) {

@@ -8,10 +8,13 @@
  * otro nombre).
  */
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { app } from 'electron'
+import { t } from '@shared/i18n'
 import { maskSecretPatterns } from '@shared/redact-patterns'
+import { ensureRealDir, LinkRefusedError } from './no-follow'
+import { safeWriteFile } from './safe-write'
 import { SKILL_NAME_RE, MAX_SKILL_NAME, MAX_SKILL_DESCRIPTION, MAX_SKILL_BODY_CHARS, MAX_SKILL_BODY_LINES } from '@shared/skill-proposal'
 
 export interface SkillToWrite {
@@ -50,6 +53,16 @@ export function skillAlreadyExists(folder: string, name: string): boolean {
   return path !== null && existsSync(path)
 }
 
+/** ¿Hay algo con ese nombre? (`lstat`: un enlace roto también cuenta.) */
+function lexists(p: string): boolean {
+  try {
+    lstatSync(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function frontmatter(name: string, description: string): string {
   // YAML simple: escapa comillas dobles en description, la envuelve en comillas.
   const safeDesc = description.replace(/"/g, '\\"')
@@ -71,12 +84,18 @@ export function writeApprovedSkill(folder: string, skill: SkillToWrite): WriteSk
   if (maskSecretPatterns(description) !== description || maskSecretPatterns(body) !== body) return { ok: false, reason: 'secreto' }
   const dir = skillDir(folder, skill.name)
   const path = join(dir, 'SKILL.md')
-  if (existsSync(path)) return { ok: false, reason: 'ya-existe' }
-  mkdirSync(dir, { recursive: true })
+  if (lexists(path)) return { ok: false, reason: 'ya-existe' }
+  // La carpeta de la tarea la controla la tarea (1.8.18): `.opencode`, `skills` y la carpeta de la skill tienen que ser carpetas reales
+  // (un enlace `.opencode` → `~/.config/opencode` dejaba la skill en la config GLOBAL que carga el motor sin encierro). Escritura segura
+  // (`safe-write.ts`): temporal de nombre al azar (ya no `SKILL.md.tmp`), verificado después de abrir, y `link` sin sobrescribir.
   const content = frontmatter(skill.name, description) + body + '\n'
-  const tmp = `${path}.tmp`
-  writeFileSync(tmp, content, 'utf8')
-  renameSync(tmp, path)
+  try {
+    safeWriteFile(folder, path, content)
+  } catch (e) {
+    if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: join('.opencode', 'skills', skill.name) }))
+    if ((e as NodeJS.ErrnoException).code === 'EEXIST') return { ok: false, reason: 'ya-existe' }
+    throw e
+  }
   recordApproval(folder, skill.name)
   return { ok: true, path }
 }
@@ -152,6 +171,12 @@ export function removeSkill(folder: string, name: string): boolean {
   if (!validName(name)) return false
   const dir = skillDir(folder, name)
   if (!existsSync(dir)) return false
+  // Sin seguir enlaces (1.8.18): si `.opencode`, `skills` o la carpeta de la skill es un enlace, no se borra nada (se borraría su destino).
+  try {
+    ensureRealDir(folder, dir)
+  } catch {
+    return false
+  }
   rmSync(dir, { recursive: true, force: true })
   const reg = readRegistry()
   const key = folderHash(folder)

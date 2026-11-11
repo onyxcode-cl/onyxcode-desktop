@@ -339,6 +339,9 @@
       "darwin": 1,
       "win32": 3
     },
+    "src/main/tasks/safe-write.ts": {
+      "win32": 1
+    },
     "src/main/tasks/sandbox-profile.ts": {
       "usrBin": 8
     },

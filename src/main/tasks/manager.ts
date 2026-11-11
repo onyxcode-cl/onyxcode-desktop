@@ -68,6 +68,7 @@ import { HOST_ROUTE_NAME } from '../host-exec/names'
 import { projectProfiles } from '../project-profile'
 import { killTree } from '../opencode/pids'
 import { sandboxKey, startTasksServer, type TasksServerHandle } from './sandbox'
+import { ensureTaskPrivateDir } from './private-dir'
 import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from './proxy-policy'
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
@@ -99,7 +100,7 @@ import { onlyExperimentalEngineEnv, toolSearchEnvForTasks } from '@shared/engine
 import { onlyEngineLimitEnv } from '@shared/engine-limits'
 import { onlyPermissionPersistEnv } from '@shared/permission-persist'
 import { userHooksEnvForTasksServer } from '@shared/user-hooks'
-import { ensurePermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
+import { ensureSandboxPermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
 import { sandboxCredentialIds } from './sandbox-credentials'
@@ -1567,12 +1568,18 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             })
           )
         : null
-      const permDirOverride = fullAccess
-        ? undefined
-        : this.platform === 'win32'
-          ? null
-          : sandboxPermissionDir(join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)))
-      if (permDirOverride && this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1') ensurePermissionDir(permDirOverride)
+      const privateIso = {
+        privateDir: join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)),
+        userData: app.getPath('userData')
+      }
+      // 1.8.18: antes de escribir NADA en la carpeta privada (permisos guardados, sembrado, perfil), comprobar que es una carpeta real y
+      // no un enlace que dejó la tarea; si no se puede garantizar, no se arranca (error claro). Ver `private-dir.ts`.
+      // (Seatbelt; con WSL la carpeta privada vive en la distro.)
+      const seatbeltIso = fullAccess || this.platform === 'win32' ? undefined : privateIso
+      if (seatbeltIso) ensureTaskPrivateDir(seatbeltIso)
+      const permDirOverride = fullAccess ? undefined : seatbeltIso ? sandboxPermissionDir(seatbeltIso.privateDir) : null
+      // Sin seguir enlaces: vive en la carpeta privada, que la tarea controla (1.8.18).
+      if (seatbeltIso && this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1') ensureSandboxPermissionDir(seatbeltIso.privateDir)
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
@@ -1585,12 +1592,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         // del MCP del navegador integrado YA NO se abre: solo el proxy (con el token real) puede hablarle.
         extraOutboundPorts: mcpProxy ? [mcpProxy.port] : undefined,
         // Estado de OpenCode privado por carpeta (S1): nunca ~/.config|.local/share/opencode.
-        isolation: fullAccess
-          ? undefined
-          : {
-              privateDir: join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)),
-              userData: app.getPath('userData')
-            },
+        isolation: fullAccess ? undefined : privateIso,
         extraEnv: {
           // Solo las dos variables OPENCODE_EXPERIMENTAL_* de `engineFlagEnvFor` (valor 'true', sin secretos). Va PRIMERO para que
           // ninguna clave de abajo (config, puerta del plan, proxys) pueda ser pisada; no toca plan ni permisos ni el perfil Seatbelt.

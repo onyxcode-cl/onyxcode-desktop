@@ -1,7 +1,8 @@
 import { dialog, type IpcMain } from 'electron'
-import { randomBytes } from 'node:crypto'
-import { lstat, mkdir, readdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, readdir, readFile, realpath } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
+import { LinkRefusedError } from '../tasks/no-follow'
+import { safeWriteFile } from '../tasks/safe-write'
 import { t } from '@shared/i18n'
 import {
   buildHelperFile,
@@ -298,20 +299,12 @@ export async function saveHelper(
   if (Buffer.byteLength(text, 'utf8') > HELPER_LIMITS.fileBytes) return { ok: false, reason: 'invalid', field: 'prompt' }
 
   try {
-    if (existing === undefined) {
-      // Creación exclusiva: falla si algo (incluido un enlace) ya ocupa el nombre.
-      await writeFile(file, text, { encoding: 'utf8', flag: 'wx', mode: 0o644 })
-    } else {
-      const tmp = join(a.dir, `.${req.def.name}.${randomBytes(6).toString('hex')}.tmp`)
-      try {
-        await writeFile(tmp, text, { encoding: 'utf8', flag: 'wx', mode: 0o644 })
-        await rename(tmp, file)
-      } catch (e) {
-        await rm(tmp, { force: true }).catch(() => undefined)
-        throw e
-      }
-    }
+    // Escritura segura (1.8.18, `safe-write.ts`): `.opencode/agents` la controla la tarea; entre la comprobación de arriba y la escritura
+    // un proceso suyo podía cambiar la carpeta por un enlace (por ejemplo a la config global del motor). Temporal de nombre al azar
+    // verificado después de abrir; creación sin sobrescribir (`link`, EEXIST si algo ocupa el nombre) o edición con `rename`.
+    safeWriteFile(root, file, text, { create: false, mode: 0o644, replace: existing !== undefined, refuseLinkTarget: true })
   } catch (e) {
+    if (e instanceof LinkRefusedError) return { ok: false, reason: 'link' }
     return { ok: false, reason: (e as NodeJS.ErrnoException).code === 'EEXIST' ? 'exists' : 'io' }
   }
   return { ok: true }

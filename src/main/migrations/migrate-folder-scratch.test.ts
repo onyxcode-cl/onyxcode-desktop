@@ -108,3 +108,32 @@ describe('migrateFolderScratch', () => {
     expect(existsSync(join(f, '.lazunox/trabajo/enlace'))).toBe(false)
   })
 })
+
+describe.skipIf(process.platform === 'win32')('migrateFolderScratch: carpeta cambiada por un enlace (1.8.18, corrección tras la revisión 1)', () => {
+  it('`.cowork` cambiada por un enlace a otra carpeta después de listar: no se mueve nada del destino del enlace', async () => {
+    const { mkdtempSync, renameSync, realpathSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'lzx-migr-')))
+    try {
+      const folder = join(root, 'tarea')
+      const outside = join(root, 'fuera')
+      mkdirSync(join(folder, '.cowork'), { recursive: true })
+      mkdirSync(join(folder, '.lazunox', 'trabajo'), { recursive: true })
+      writeFileSync(join(folder, '.cowork', 'a.txt'), 'a')
+      mkdirSync(outside)
+      writeFileSync(join(outside, 'a.txt'), 'SECRETO')
+      // Simula lo que haría un proceso de la tarea entre el `readdir` y el `rename`.
+      const swap = (): void => {
+        renameSync(join(folder, '.cowork'), join(folder, '.cowork-real'))
+        symlinkSync(outside, join(folder, '.cowork'))
+      }
+      const r = migrateFolderScratch(folder, () => undefined, { afterList: swap })
+      expect(r.status).toBe('skipped')
+      expect(readdirSync(outside)).toEqual(['a.txt'])
+      expect(readFileSync(join(outside, 'a.txt'), 'utf8')).toBe('SECRETO')
+      expect(readdirSync(join(folder, '.lazunox', 'trabajo'))).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})

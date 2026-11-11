@@ -1,18 +1,19 @@
 /**
  * Ruta de salida de la herramienta `documentos`: el agente NUNCA elige dónde se escribe. Solo puede pedir un nombre y, a lo sumo,
  * una subcarpeta RELATIVA dentro de la carpeta de su tarea (la que la atadura del token le concede). Aquí se valida todo eso y se
- * escribe el archivo sin pisar nada: `O_EXCL` + `O_NOFOLLOW`, sufijo « (2)» si el nombre existe, sin enlaces en el camino y con
- * una segunda comprobación del destino real al terminar. Solo builtins de Node (y `segmentProblem`, que ya usan WSL y los visores).
+ * escribe el archivo sin pisar nada: escritura segura (`tasks/safe-write.ts`: temporal verificado después de abrir y `link`), sufijo
+ * « (2)» si el nombre existe y sin enlaces en el camino. Solo builtins de Node, `segmentProblem` (que ya usan WSL y los visores) y las
+ * piezas puras de `tasks/no-follow.ts` y `tasks/safe-write.ts`.
  */
-import { constants } from 'node:fs'
-import { lstat, mkdir, open, realpath, rm } from 'node:fs/promises'
+import { lstat, mkdir, realpath } from 'node:fs/promises'
 import { join, sep } from 'node:path'
 import { segmentProblem } from '@shared/wsl-paths'
+import { LinkRefusedError } from '../tasks/no-follow'
+import { SafeTempFile } from '../tasks/safe-write'
 
 export const MAX_SUBFOLDERS = 4
 export const MAX_NAME_LENGTH = 80
 const MAX_SUFFIX = 20
-const O_NOFOLLOW = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0
 
 export type OutputErrorCode = 'name' | 'subfolder' | 'outside' | 'exists' | 'size' | 'io'
 
@@ -121,34 +122,38 @@ export async function writeNewFile(root: string, req: WriteRequest): Promise<Wri
   }
   if (!isInside(rootReal, dirReal)) throw new OutputPathError('outside', 'El destino queda fuera de la carpeta de la tarea.')
 
-  for (let n = 1; n <= MAX_SUFFIX; n++) {
-    const file = n === 1 ? `${name}.${req.ext}` : `${name} (${n}).${req.ext}`
-    const abs = join(dirReal, file)
-    let fh
+  // Escritura segura (1.8.18, corrección tras la revisión 1; `safe-write.ts`): la carpeta de la tarea la controla la tarea y, entre la
+  // comprobación del camino y la apertura, un proceso suyo podía cambiar una carpeta por un enlace. Ahora el contenido se escribe en un
+  // temporal de nombre al azar verificado DESPUÉS de abrir (mismas carpetas, mismo archivo) y se publica con `link` (sin pisar nada).
+  const outsideErr = (): OutputPathError => new OutputPathError('outside', 'El destino cambió mientras se escribía; no se guardó.')
+  let tmp: SafeTempFile
+  try {
+    tmp = SafeTempFile.create(rootReal, dirReal, { create: false, mode: 0o644 })
+  } catch (err) {
+    if (err instanceof LinkRefusedError) throw outsideErr()
+    throw new OutputPathError('io', 'No se pudo crear el archivo en la carpeta de la tarea.')
+  }
+  try {
     try {
-      fh = await open(abs, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW, 0o644)
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === 'EEXIST') continue
-      throw new OutputPathError('io', 'No se pudo crear el archivo en la carpeta de la tarea.')
-    }
-    try {
-      await fh.writeFile(req.bytes)
+      tmp.writeAll(req.bytes)
     } catch {
-      await fh.close().catch(() => undefined)
-      await rm(abs, { force: true }).catch(() => undefined)
       throw new OutputPathError('io', 'No se pudo escribir el archivo (¿falta espacio?).')
     }
-    await fh.close()
-    // Segunda comprobación con el destino real: si algo cambió el camino mientras tanto, se deshace.
-    try {
-      const real = await realpath(abs)
-      if (!isInside(rootReal, real)) throw new Error('outside')
-    } catch {
-      await rm(abs, { force: true }).catch(() => undefined)
-      throw new OutputPathError('outside', 'El destino cambió mientras se escribía; no se guardó.')
+    for (let n = 1; n <= MAX_SUFFIX; n++) {
+      const file = n === 1 ? `${name}.${req.ext}` : `${name} (${n}).${req.ext}`
+      let out: string | null
+      try {
+        out = tmp.commit(file)
+      } catch (err) {
+        if (err instanceof LinkRefusedError) throw outsideErr()
+        throw new OutputPathError('io', 'No se pudo crear el archivo en la carpeta de la tarea.')
+      }
+      if (!out) continue
+      const rel = [...segs, file].join('/')
+      return { abs: join(dirReal, file), rel, bytes: req.bytes.length }
     }
-    const rel = [...segs, file].join('/')
-    return { abs, rel, bytes: req.bytes.length }
+  } finally {
+    tmp.discard()
   }
   throw new OutputPathError('exists', `Ya hay ${MAX_SUFFIX} archivos con ese nombre; usa otro.`)
 }

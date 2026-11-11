@@ -7,8 +7,10 @@
 import { getLang, t } from '@shared/i18n'
 import { app } from 'electron'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, relative } from 'node:path'
 import { isInside } from '../util/paths'
+import { ensureRealDir, isWriteDenied, LinkRefusedError, readFileNoFollow } from './no-follow'
+import { safeWriteFile } from './safe-write'
 import type { TasksAgentsMd, TasksMemory, TasksProject } from '@shared/ipc-tasks'
 import { TASKS_INSTRUCTIONS_MAX } from '@shared/tasks-prompt'
 
@@ -119,15 +121,26 @@ export function memoryPath(folder: string): string {
   return join(folder, '.lazunox', 'memoria.md')
 }
 
-function readMemoryFileAt(file: string): TasksMemory | null {
+/**
+ * 1.8.18: la memoria vive en la carpeta de la tarea, que la tarea controla desde dentro del encierro. Si `.lazunox` (o `.lapis`) o
+ * `memoria.md` es un enlace (por ejemplo a `~/.ssh/id_rsa`), el proceso principal leía el destino y lo ponía en el prompt (al modelo) y
+ * `saveMemory` escribía a través del enlace. Ahora la carpeta tiene que ser real (sin enlaces) y el archivo se lee y escribe con
+ * `O_NOFOLLOW`: un enlace se trata como «sin memoria» al leer y da un error claro al guardar.
+ */
+function memoryDirOk(folder: string, dirName: string): boolean {
   try {
-    const st = statSync(file)
-    if (!st.isFile()) return null
-    const raw = readFileSync(file, 'utf8')
-    return { content: raw, exists: true, updatedAt: st.mtimeMs }
+    ensureRealDir(folder, join(folder, dirName))
+    return true
   } catch {
-    return null
+    return false
   }
+}
+
+function readMemoryFileAt(folder: string, dirName: string): TasksMemory | null {
+  if (!memoryDirOk(folder, dirName)) return null
+  const r = readFileNoFollow(join(folder, dirName, 'memoria.md'))
+  if (!r) return null
+  return { content: r.content.toString('utf8'), exists: true, updatedAt: r.mtimeMs }
 }
 
 /**
@@ -136,10 +149,10 @@ function readMemoryFileAt(file: string): TasksMemory | null {
  * antes de que el usuario vuelva a guardar (lo que migra la memoria a la carpeta nueva).
  */
 function readMemoryFile(folder: string): TasksMemory {
-  const current = readMemoryFileAt(memoryPath(folder))
+  const current = readMemoryFileAt(folder, '.lazunox')
   if (current) return current
   for (const legacyDir of LEGACY_MEMORY_DIRS) {
-    const legacy = readMemoryFileAt(join(folder, legacyDir, 'memoria.md'))
+    const legacy = readMemoryFileAt(folder, legacyDir)
     if (legacy) return legacy
   }
   return { content: '', exists: false, updatedAt: null }
@@ -151,22 +164,39 @@ export function getMemory(folder: string): TasksMemory {
 
 export function saveMemory(folder: string, content: string): TasksMemory {
   const trimmed = content.slice(0, MEMORY_MAX_BYTES)
-  const file = memoryPath(folder)
-  mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, trimmed, 'utf8')
+  try {
+    // Escritura segura (`safe-write.ts`): carpetas reales comprobadas antes y después de abrir un temporal de nombre al azar, y `rename`.
+    // Si `memoria.md` es un enlace, error claro (no se reemplaza: puede ser de la persona).
+    safeWriteFile(folder, memoryPath(folder), trimmed, { replace: true, refuseLinkTarget: true })
+  } catch (e) {
+    if (e instanceof LinkRefusedError) throw new Error(t('merr.projects.memoryLink'))
+    // Carpeta sin permiso de escritura (la tarea arranca igual; guardar la memoria sí necesita escribir).
+    if (isWriteDenied(e)) throw new Error(t('merr.task.folderReadOnly', { path: '.lazunox' }))
+    throw e
+  }
   return readMemoryFile(folder)
 }
 
 export function deleteMemory(folder: string): TasksMemory {
-  const files = [memoryPath(folder), ...LEGACY_MEMORY_DIRS.map((d) => join(folder, d, 'memoria.md'))]
-  for (const file of files) {
+  // `unlink` de `memoria.md` nunca sigue un enlace; pero si la CARPETA es un enlace se borraría el `memoria.md` de su destino: se salta.
+  const dirs = ['.lazunox', ...LEGACY_MEMORY_DIRS].filter((d) => memoryDirOk(folder, d))
+  for (const file of dirs.map((d) => join(folder, d, 'memoria.md'))) {
     try {
-      if (existsSync(file)) unlinkSync(file)
+      if (lexists(file)) unlinkSync(file)
     } catch (err) {
       console.error('[tasks] no se pudo borrar la memoria:', err)
     }
   }
   return readMemoryFile(folder)
+}
+
+function lexists(p: string): boolean {
+  try {
+    lstatSync(p)
+    return true
+  } catch {
+    return false
+  }
 }
 
 // ── AGENTS.md de la carpeta ────────────────────────────────────────────────────────────
@@ -214,8 +244,16 @@ export function saveAgentsMd(folder: string, content: string): TasksAgentsMd {
     throw new Error(t('merr.projects.overLimit', { max: AGENTS_MD_MAX_CHARS.toLocaleString(getLang() === 'en' ? 'en-US' : 'es-CL') }))
   }
   const r = resolveAgentsMd(folder)
-  const tmp = `${r.real}.lazunox-tmp`
-  writeFileSync(tmp, content, 'utf8')
-  renameSync(tmp, r.real)
+  // 1.8.18: antes, un temporal de nombre fijo (`AGENTS.md.lazunox-tmp`) que la tarea podía dejar como enlace a un archivo de fuera se
+  // escribía SIGUIÉNDOLO. Ahora escritura segura (`safe-write.ts`): temporal de nombre al azar, verificado, y `rename` en la misma
+  // carpeta. Un `AGENTS.md` enlazado dentro de la carpeta se sigue respetando (se escribe su destino real, ya comprobado arriba).
+  const folderReal = realpathSync(folder)
+  const target = r.real === r.path ? join(folderReal, 'AGENTS.md') : r.real
+  try {
+    safeWriteFile(folderReal, target, content, { replace: true })
+  } catch (e) {
+    if (e instanceof LinkRefusedError) throw new Error(t('merr.task.linkInFolder', { path: relative(folderReal, target) }))
+    throw e
+  }
   return getAgentsMd(folder)
 }

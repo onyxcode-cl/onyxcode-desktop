@@ -6,7 +6,7 @@
  */
 import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
-import { existsSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, rmSync } from 'node:fs'
 import { lstat, readdir } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import type { TasksStorageEntry, TasksStorageReport } from '@shared/ipc-tasks'
@@ -180,6 +180,18 @@ export async function storageClean(
   const root = resolve(sandboxRoot(env))
   const dir = resolve(root, key)
   if (!dir.startsWith(root + sep)) throw new Error('Clave de almacenamiento no válida')
+  // La carpeta privada la controla la tarea: si es un enlace (o un archivo), se borra ESE nombre y nunca se entra en su destino
+  // (antes, con «cache», se borraban `<destino>/cache` y `<destino>/tmp`).
+  let st: ReturnType<typeof lstatSync> | null = null
+  try {
+    st = lstatSync(dir)
+  } catch {
+    st = null
+  }
+  if (st && (st.isSymbolicLink() || !st.isDirectory())) {
+    rmSync(dir, { force: true })
+    return storageReport(env, folders, live)
+  }
   if (scope === 'all') {
     rmSync(dir, { recursive: true, force: true })
   } else {

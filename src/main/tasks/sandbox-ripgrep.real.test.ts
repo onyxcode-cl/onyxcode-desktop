@@ -9,12 +9,13 @@
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer as httpServer, type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { macOnly } from '../../test/platform'
+import { seedConfigModels } from './models-cache'
 import { ripgrepPathEnv } from './ripgrep-runtime'
 import { buildSandboxProfile, sandboxDirs, sandboxEnv } from './sandbox-profile'
 
@@ -25,6 +26,10 @@ const ENABLED = macOnly && existsSync('/usr/bin/sandbox-exec') && existsSync(RG)
 
 interface Outcome {
   skills: string[]
+  /** Proveedores que el motor conoce (`GET /provider`, campo `all`) con sus modelos. */
+  providers: Record<string, string[]>
+  /** Lo que quedó en la caché privada de la tarea (`cache/opencode`). */
+  privateCache: string[]
   findStatus: number
   findBody: string
   skillTool: { status?: string; text: string }
@@ -98,7 +103,10 @@ const freePort = (): Promise<number> =>
     })
   })
 
-async function scenario(withRg: boolean): Promise<Outcome> {
+/** Catálogo como lo deja la app desde 1.8.18: `seedConfigModels` a la config + `OPENCODE_MODELS_PATH`; `fetch` = sin `OPENCODE_DISABLE_MODELS_FETCH`. */
+type CatalogMode = 'none' | 'config' | 'config-fetch'
+
+async function scenario(withRg: boolean, catalog: CatalogMode = 'none'): Promise<Outcome> {
   const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'lazunox-rgreal-')))
   temps.push(tmp)
   const home = join(tmp, 'home')
@@ -112,6 +120,39 @@ async function scenario(withRg: boolean): Promise<Outcome> {
   // Copia de las skills y agentes de la app, con el `.gitignore` que la app deja (el perfil solo da lectura a esta carpeta).
   spawnSync('cp', ['-R', CONFIG, configDir])
   writeFileSync(join(configDir, '.gitignore'), 'node_modules\npackage.json\npackage-lock.json\nbun.lock\n.gitignore\n')
+  let modelsPath: string | null = null
+  if (catalog !== 'none') {
+    // Caché del motor PRINCIPAL (fuera del encierro) con un catálogo mínimo; la app lo copia a la config (de solo lectura dentro).
+    const mainCache = join(tmp, 'cache-principal')
+    mkdirSync(mainCache, { recursive: true })
+    writeFileSync(
+      join(mainCache, 'models.json'),
+      JSON.stringify({
+        'catalogo-prueba': {
+          id: 'catalogo-prueba',
+          name: 'Catálogo de prueba',
+          env: ['CATALOGO_PRUEBA_KEY'],
+          npm: '@ai-sdk/openai-compatible',
+          api: 'http://127.0.0.1:9/v1',
+          models: {
+            'modelo-del-catalogo': {
+              id: 'modelo-del-catalogo',
+              name: 'Modelo del catálogo',
+              release_date: '2026-01-01',
+              attachment: false,
+              reasoning: false,
+              temperature: true,
+              tool_call: true,
+              limit: { context: 100000, output: 4000 },
+              cost: { input: 0, output: 0 },
+              options: {}
+            }
+          }
+        }
+      })
+    )
+    modelsPath = seedConfigModels(configDir, mainCache)
+  }
   const fakePort = await fakeModel()
   const port = await freePort()
   const profile = buildSandboxProfile({
@@ -136,6 +177,8 @@ async function scenario(withRg: boolean): Promise<Outcome> {
     OPENCODE_SERVER_USERNAME: user,
     OPENCODE_SERVER_PASSWORD: pass,
     LAZUNOX_TASKS_FOLDER: folder,
+    ...(modelsPath ? { OPENCODE_MODELS_PATH: modelsPath } : {}),
+    ...(catalog === 'config' ? { OPENCODE_DISABLE_MODELS_FETCH: '1' } : {}),
     OPENCODE_CONFIG_CONTENT: JSON.stringify({
       permission: { '*': 'allow' },
       provider: {
@@ -177,6 +220,10 @@ async function scenario(withRg: boolean): Promise<Outcome> {
       await new Promise((r) => setTimeout(r, 300))
     }
     const skills = ((await fetch(url('/skill'), { headers }).then((r) => r.json())) as Array<{ name: string }>).map((s) => s.name)
+    const prov = (await fetch(url('/provider'), { headers })
+      .then((r) => r.json())
+      .catch(() => ({ all: [] }))) as { all?: Array<{ id: string; models?: Record<string, unknown> }> }
+    const providers = Object.fromEntries((prov.all ?? []).map((p) => [p.id, Object.keys(p.models ?? {})]))
     const find = await fetch(url('/find?pattern=palabra-unica-xyz'), { headers })
     const findBody = await find.text()
     const ses = (await fetch(url('/session'), { method: 'POST', headers, body: '{}' }).then((r) => r.json())) as { id: string }
@@ -191,8 +238,16 @@ async function scenario(withRg: boolean): Promise<Outcome> {
     }>
     const part = msgs.flatMap((m) => m.parts ?? []).find((p) => p.type === 'tool' && p.tool === 'skill')
     await new Promise((r) => setTimeout(r, 500))
+    let privateCache: string[] = []
+    try {
+      privateCache = readdirSync(join(dirs.cache, 'opencode'))
+    } catch {
+      privateCache = []
+    }
     return {
       skills,
+      providers,
+      privateCache,
       findStatus: find.status,
       findBody,
       skillTool: { status: part?.state?.status, text: String(part?.state?.output ?? part?.state?.error ?? '') },
@@ -208,7 +263,7 @@ async function scenario(withRg: boolean): Promise<Outcome> {
   }
 }
 
-describe.skipIf(!ENABLED)('Tareas (Seatbelt real): el motor usa el rg incluido y no descarga nada', () => {
+describe.skipIf(!ENABLED)('Tareas (Seatbelt real): el motor usa el rg incluido y el catálogo de la config, y no descarga nada', () => {
   it('CONTROL, sin rg en el PATH: intenta bajarlo, la búsqueda y la carga de la skill fallan', async () => {
     const o = await scenario(false)
     expect(o.log).toContain('downloading ripgrep')
@@ -227,5 +282,24 @@ describe.skipIf(!ENABLED)('Tareas (Seatbelt real): el motor usa el rg incluido y
     expect(o.skillTool.status).toBe('completed')
     expect(o.skillTool.text).toContain('<skill_content name="xlsx">')
     expect(o.skillTool.text).toContain('<skill_files>')
+  }, 180_000)
+
+  it('CONTROL, catálogo en la config SIN OPENCODE_DISABLE_MODELS_FETCH: el motor intenta bajar el catálogo de models.dev', async () => {
+    const o = await scenario(true, 'config-fetch')
+    expect(o.providers['catalogo-prueba']).toContain('modelo-del-catalogo')
+    expect(o.log).toContain('models.dev')
+  }, 180_000)
+
+  it('catálogo en la config como lanza la app (1.8.18): lista sus modelos, busca, carga la skill, no descarga ni escribe su caché', async () => {
+    const o = await scenario(true, 'config')
+    expect(o.providers['catalogo-prueba']).toContain('modelo-del-catalogo')
+    expect(o.log).not.toContain('downloading ripgrep')
+    expect(o.log).not.toContain('models.dev')
+    expect(o.privateCache).not.toContain('models.json')
+    expect(o.findStatus).toBe(200)
+    expect(o.findBody).toContain('hola.txt')
+    expect(o.skills).toContain('xlsx')
+    expect(o.skillTool.status).toBe('completed')
+    expect(o.skillTool.text).toContain('<skill_content name="xlsx">')
   }, 180_000)
 })

@@ -259,6 +259,8 @@ export const mainErrors = {
   'merr.projects.notFile': 'AGENTS.md no es un archivo.',
   'merr.projects.tooBig': 'AGENTS.md es demasiado grande para editarlo aquí.',
   'merr.projects.overLimit': 'AGENTS.md no puede superar {max} caracteres.',
+  'merr.projects.memoryLink':
+    'No se guardó la memoria: .lazunox/memoria.md (o la carpeta .lazunox) es un acceso directo (enlace) a otro lugar. Bórralo y vuelve a intentarlo.',
   'merr.computer.appBlocked': 'Esa app está bloqueada y no se puede conceder.',
   'merr.computer.noConsentWin': 'Control del PC no está activado: actívalo en Ajustes › Control del PC.',
   'merr.computer.notInteractiveWin':
@@ -408,6 +410,16 @@ export const mainErrors = {
   'merr.routine.noText': '(Sin texto de respuesta)',
   'merr.task.onlyFull': 'Solo disponible con Control total.',
   'merr.task.noPrivateDir': 'Falta la carpeta interna donde las tareas guardan su trabajo. Reinicia la app.',
+  'merr.task.appDirUnsafe':
+    'Por seguridad no se inició la tarea: «{path}», dentro de la carpeta de la tarea, es un acceso directo (enlace) o un archivo, y ahí solo puede haber una carpeta. Bórralo o muévelo y vuelve a intentarlo.',
+  'merr.task.privateDirUnsafe':
+    'Por seguridad no se inició la tarea: la carpeta interna donde guarda su trabajo fue cambiada por un acceso directo (enlace) a otro lugar. Avísanos para revisarlo.',
+  'merr.task.folderReadOnly':
+    'No se pudo guardar en la carpeta de la tarea: «{path}» no permite escribir (carpeta de solo lectura o sin permiso). Dale permiso de escritura a la carpeta y vuelve a intentarlo.',
+  'merr.task.fileBusy':
+    'No se pudo guardar «{path}»: otro programa (antivirus, OneDrive u otro) lo tiene abierto o no hay permiso. Ciérralo o espera unos segundos y vuelve a intentarlo.',
+  'merr.task.linkInFolder':
+    'No se pudo guardar en la carpeta de la tarea: «{path}» es (o pasa por) un acceso directo (enlace) a otro lugar. Bórralo y vuelve a intentarlo.',
   'merr.task.winBackendUnavailable':
     'Overdrive en Windows no está disponible en este equipo ({reason}). Por seguridad no se ejecuta sin aislamiento.',
   'merr.task.winBackendUnavailable.elevated':

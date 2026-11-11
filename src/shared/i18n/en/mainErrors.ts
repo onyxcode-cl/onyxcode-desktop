@@ -251,6 +251,8 @@ export const mainErrors = {
   'merr.projects.notFile': 'AGENTS.md isn’t a file.',
   'merr.projects.tooBig': 'AGENTS.md is too large to edit here.',
   'merr.projects.overLimit': 'AGENTS.md can’t exceed {max} characters.',
+  'merr.projects.memoryLink':
+    'The memory wasn’t saved: .lazunox/memoria.md (or the .lazunox folder) is a shortcut (link) to another place. Delete it and try again.',
   'merr.computer.appBlocked': 'That app is blocked and cannot be granted.',
   'merr.computer.noConsentWin': 'PC control is not turned on: turn it on in Settings › PC control.',
   'merr.computer.notInteractiveWin':
@@ -400,6 +402,16 @@ export const mainErrors = {
   'merr.routine.noText': '(No reply text)',
   'merr.task.onlyFull': 'Only available with Full control.',
   'merr.task.noPrivateDir': 'The internal folder where tasks keep their work is missing. Restart the app.',
+  'merr.task.appDirUnsafe':
+    'For your safety the task didn’t start: “{path}”, inside the task folder, is a shortcut (link) or a file, and only a folder can be there. Delete or move it and try again.',
+  'merr.task.privateDirUnsafe':
+    'For your safety the task didn’t start: the internal folder where it keeps its work was replaced by a shortcut (link) to another place. Let us know so we can check it.',
+  'merr.task.folderReadOnly':
+    'Couldn’t save in the task folder: “{path}” doesn’t allow writing (read-only folder or no permission). Give the folder write permission and try again.',
+  'merr.task.fileBusy':
+    'Couldn’t save “{path}”: another program (antivirus, OneDrive or other) has it open, or there’s no permission. Close it or wait a few seconds and try again.',
+  'merr.task.linkInFolder':
+    'Couldn’t save in the task folder: “{path}” is (or goes through) a shortcut (link) to another place. Delete it and try again.',
   'merr.task.winBackendUnavailable':
     'Overdrive on Windows isn’t available on this computer ({reason}). For safety it never runs without isolation.',
   'merr.task.winBackendUnavailable.elevated':

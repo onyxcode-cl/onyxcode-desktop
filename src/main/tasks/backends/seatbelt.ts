@@ -5,12 +5,13 @@
  * 1.8.16: el perfil se pasa como texto (`-p`), ya no en un archivo temporal (`-f`): ver `seatbeltProfileText`.
  */
 import { t } from '@shared/i18n'
-import { existsSync, lstatSync, mkdirSync, readdirSync, rmdirSync, rmSync } from 'node:fs'
+import { existsSync, lstatSync, readdirSync, rmdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { seedModelsCache } from '../models-cache'
+import { seedConfigModels } from '../models-cache'
 import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
-import { buildSandboxProfile, sandboxDirs, sandboxEnv } from '../sandbox-profile'
+import { buildSandboxProfile, sandboxEnv } from '../sandbox-profile'
+import { ensureTaskAppDirs, ensureTaskPrivateDir } from '../private-dir'
 import { bundledRipgrepPathEnv } from '../ripgrep-runtime'
 import { spawnOnHost } from './spawn'
 import type { SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './types'
@@ -80,14 +81,23 @@ export const seatbeltBackend: SandboxBackend = {
     return seatbeltAvailable() ? { state: 'ready' } : { state: 'unsupported', detail: 'sandbox-exec' }
   },
   prepare(isolation) {
-    const dirs = sandboxDirs(isolation.privateDir)
-    for (const d of [dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
-    seedModelsCache(dirs.cache)
+    // 1.8.18: la carpeta privada y sus subcarpetas tienen que ser carpetas REALES (no enlaces que la tarea dejó) ANTES de sembrar nada y
+    // de armar el perfil; si no se puede garantizar, se lanza (no se arranca). Ver `private-dir.ts`.
+    ensureTaskPrivateDir(isolation)
   },
   async launch(spec) {
     if (!spec.isolation) throw new Error(t('merr.task.noPrivateDir'))
-    const dirs = sandboxDirs(spec.isolation.privateDir)
-    seedModelsCache(dirs.cache)
+    // Otra vez justo antes del perfil (por si `prepare` no corrió o algo cambió entre medias).
+    const dirs = ensureTaskPrivateDir(spec.isolation)
+    // Carpetas de la app en la carpeta de la tarea, reales antes del perfil (que niega renombrarlas o borrarlas). Corre después de
+    // `migrateFolderScratch` (en el manager, antes de lanzar). Si alguna es un enlace o un archivo, no se arranca.
+    ensureTaskAppDirs(spec.folder)
+    // Catálogo de modelos (corrección tras la revisión 1): ya NO se escribe nada en la carpeta privada (antes `seedModelsCache` copiaba
+    // `models.json` y `bin/rg` a `cache/opencode`, una carpeta que la tarea puede cambiar por un enlace). Igual que WSL: copia en la
+    // config de la app (`userData`, de solo lectura para la tarea) y `OPENCODE_MODELS_PATH`; `OPENCODE_DISABLE_MODELS_FETCH` evita que
+    // el motor intente refrescarlo (cada 60 min) escribiendo en su caché. El `rg` incluido va en el PATH (1.8.17).
+    const modelsPath = seedConfigModels(spec.configDir)
+    const modelsEnv: Record<string, string> = { OPENCODE_DISABLE_MODELS_FETCH: '1', ...(modelsPath ? { OPENCODE_MODELS_PATH: modelsPath } : {}) }
     if (!legacyCleaned) {
       legacyCleaned = true
       cleanLegacyProfiles()
@@ -100,7 +110,7 @@ export const seatbeltBackend: SandboxBackend = {
     })
     // `rg` incluido al principio del PATH (1.8.17): dentro del encierro el motor no puede bajarlo de internet. El perfil ya deja LEER y
     // EJECUTAR los recursos de la app (`(allow default)`); no se abre nada nuevo.
-    const env = { ...spec.baseEnv, ...bundledRipgrepPathEnv(), ...sandboxEnv(dirs), ...spec.proxyEnv, ...spec.extraEnv }
+    const env = { ...spec.baseEnv, ...bundledRipgrepPathEnv(), ...sandboxEnv(dirs), ...modelsEnv, ...spec.proxyEnv, ...spec.extraEnv }
     // `-p <texto>`: sin archivo de perfil que un proceso encerrado pueda cambiar (ver `seatbeltProfileText`).
     const child = spawnOnHost(SANDBOX_EXEC, ['-p', profile, spec.bin, ...spec.serveArgs], spec.folder, env)
     return {
