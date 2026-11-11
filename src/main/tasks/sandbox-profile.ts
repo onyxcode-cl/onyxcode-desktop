@@ -23,7 +23,7 @@ import { realpathSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { FolderAccessMode } from '@shared/ipc-tasks'
-import { PERMISSION_DIR_NAME } from '@shared/permission-persist'
+import { PERMISSION_DIR_NAME } from '../../shared/permission-persist'
 
 function real(p: string): string {
   try {
