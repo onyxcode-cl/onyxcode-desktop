@@ -262,6 +262,11 @@ async function sandboxed() {
   const privateDir = join(userData, 'tasks-sandbox', 'abc')
   const dirs = sandboxDirs(privateDir)
   for (const d of [home, folder, dirs.config, dirs.data, dirs.cache, dirs.state, dirs.tmp]) mkdirSync(d, { recursive: true })
+  // 1.8.19: el perfil deja la config privada del motor en solo lectura desde dentro; la carpeta y el `.gitignore` que el motor necesita
+  // (sin él no arranca) los prepara la app antes de lanzar (`private-dir.ts`). Aquí se hace lo mismo.
+  const engineConf = join(dirs.config, 'opencode')
+  mkdirSync(engineConf, { recursive: true })
+  writeFileSync(join(engineConf, '.gitignore'), ['node_modules', 'package.json', 'package-lock.json', 'bun.lock', '.gitignore'].join('\n'))
   writeFileSync(join(userData, 'secreto.txt'), 'secreto')
   writeFileSync(join(folder, 'hola.txt'), 'palabra-unica-xyz\n')
   const port = await freePort()
