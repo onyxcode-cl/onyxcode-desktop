@@ -50,6 +50,30 @@ describe('resolveEgressTarget con DNS simulado', () => {
     expect(await resolveEgressTarget('permitido.test', noOwn, fixed('::ffff:203.0.113.10'))).toBe('203.0.113.10')
   })
 
+  it.each(['10.1.2.3', '172.20.0.1', '192.168.0.1', '100.64.0.1', 'fd12:3456::1'])(
+    'la red privada %s solo se acepta con la marca',
+    async (ip) => {
+      expect(await resolveEgressTarget('sitio.test', (a) => isForbiddenEgressAddress(a, [], false), fixed(ip))).toBeNull()
+      expect(await resolveEgressTarget('sitio.test', (a) => isForbiddenEgressAddress(a, [], true), fixed(ip))).toBe(ip)
+    }
+  )
+  it.each([
+    '127.0.0.1',
+    '::1',
+    '0.0.0.0',
+    '169.254.169.254',
+    'fe80::1',
+    '168.63.129.16',
+    '100.100.100.200',
+    'fd00:ec2::254',
+    'fd20:ce::254'
+  ])('ni con la marca se acepta %s', (ip) => expect(isForbiddenEgressAddress(ip, [], true)).toBe(true))
+  it('ni con marca se aceptan IP propias o una mezcla con una dirección prohibida', async () => {
+    expect(isForbiddenEgressAddress('10.0.0.5', ['10.0.0.5'], true)).toBe(true)
+    expect(isForbiddenEgressAddress('fd12::1', ['fd12:0:0:0:0:0:0:1'], true)).toBe(true)
+    expect(await resolveEgressTarget('sitio.test', (a) => isForbiddenEgressAddress(a, [], true), fixed('10.0.0.2', '127.0.0.1'))).toBeNull()
+  })
+
   it('las IP propias del equipo se rechazan aunque sean públicas', () => {
     expect(isForbiddenEgressAddress('203.0.113.77', ['127.0.0.1', '203.0.113.77'])).toBe(true)
     expect(isForbiddenEgressAddress('2001:db8::77', ['2001:DB8::77%en0'])).toBe(true)
@@ -139,6 +163,65 @@ describe('EgressProxy: integración con servidor local y DNS simulado', () => {
     await settle()
     expect(dialed).toEqual([])
     expect(svc.seen()).toBe(0)
+  })
+
+  it('marca y puerto extra valen solo para la entrada exacta', async () => {
+    const svc = await localService()
+    const dialed: Array<[number, string]> = []
+    const logs: Array<{ allowed: boolean; reason?: string }> = []
+    proxy = new EgressProxy({
+      token: 'tok',
+      allowlist: () => ['interno.test', 'otro.test'],
+      lookup: fixed('10.8.7.6'),
+      hostOptions: (host) => (host === 'interno.test' ? { internal: true, ports: [8443] } : undefined),
+      onLog: (e) => logs.push(e),
+      dial: (port, ip, cb) => {
+        dialed.push([port, ip])
+        return connect(svc.port, '127.0.0.1', cb)
+      }
+    })
+    const port = await proxy.start()
+    expect(await firstLine(port, `CONNECT interno.test:8443 HTTP/1.1\r\n${auth}\r\n`)).toContain('200')
+    expect(await firstLine(port, `CONNECT otro.test:8443 HTTP/1.1\r\n${auth}\r\n`)).toContain('403')
+    expect(await firstLine(port, `CONNECT otro.test:443 HTTP/1.1\r\n${auth}\r\n`)).toContain('403')
+    expect(await firstLine(port, `CONNECT sub.interno.test:8443 HTTP/1.1\r\n${auth}\r\n`)).toContain('403')
+    expect(dialed).toEqual([[8443, '10.8.7.6']])
+    expect(logs.some((e) => e.reason === 'port')).toBe(true)
+    expect(logs.some((e) => e.reason === 'address')).toBe(true)
+  })
+
+  it('las respuestas y el registro distinguen dirección interna, puerto y DNS', async () => {
+    const logs: string[] = []
+    proxy = new EgressProxy({
+      token: 'tok',
+      allowlist: () => ['interno.test', 'dns.test'],
+      lookup: async (host) => {
+        if (host === 'dns.test') throw new Error('no DNS')
+        return fixed('10.9.8.7')(host)
+      },
+      onLog: (e) => {
+        if (e.reason) logs.push(e.reason)
+      }
+    })
+    const port = await proxy.start()
+    const reply = (request: string): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const socket = connect(port, '127.0.0.1')
+        let out = ''
+        socket.on('data', (data) => {
+          out += data.toString()
+        })
+        socket.on('end', () => resolve(out))
+        socket.on('error', reject)
+        socket.write(request)
+      })
+    const address = await reply(`GET http://interno.test/ HTTP/1.1\r\nHost: interno.test\r\n${auth}\r\n`)
+    const blockedPort = await reply(`GET http://interno.test:8443/ HTTP/1.1\r\nHost: interno.test:8443\r\n${auth}\r\n`)
+    const dns = await reply(`GET http://dns.test/ HTTP/1.1\r\nHost: dns.test\r\n${auth}\r\n`)
+    expect(address).toContain('dirección interna')
+    expect(blockedPort).toContain('puerto no está permitido')
+    expect(dns).toContain('No se pudo resolver')
+    expect(logs).toEqual(['address', 'port', 'dns'])
   })
 
   it('destino público simulado: pasa, y el proxy marca exactamente la IP validada', async () => {

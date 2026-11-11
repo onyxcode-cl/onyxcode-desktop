@@ -70,3 +70,24 @@ describe('esquemas de red de Tareas', () => {
     expect(() => IPC_SCHEMAS['tasks:network:setHost']({ host: 'a b', decision: 'unset' })).toThrow()
   })
 })
+
+describe('opciones de red en Ajustes', () => {
+  it('acepta nombres internos exactos y puertos válidos', () => {
+    expect(IPC_SCHEMAS['tasks:network:setException']({ host: 'Servidor.local', internal: true, ports: [8443] })).toEqual({
+      host: 'servidor.local',
+      internal: true,
+      ports: [8443]
+    })
+    expect(IPC_SCHEMAS['tasks:network:setException']({ host: '192.168.1.2', internal: true, ports: [] })).toEqual({
+      host: '192.168.1.2',
+      internal: true,
+      ports: []
+    })
+  })
+  it('rechaza comodines, puertos inválidos y campos extra en tarjetas', () => {
+    expect(() => IPC_SCHEMAS['tasks:network:setException']({ host: '*.example.com', internal: true, ports: [] })).toThrow()
+    expect(() => IPC_SCHEMAS['tasks:network:setException']({ host: 'a.test', internal: true, ports: [65536] })).toThrow()
+    expect(() => IPC_SCHEMAS['tasks:network:setHost']({ host: 'a.test', decision: 'allow', internal: true, ports: [8443] })).toThrow()
+    expect(() => IPC_SCHEMAS['tasks:network:allowOnce']({ folder: '/tmp/x', host: 'a.test', internal: true })).toThrow()
+  })
+})

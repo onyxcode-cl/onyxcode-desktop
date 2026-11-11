@@ -404,6 +404,11 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     return this.network.setHostAlways(host, decision)
   }
 
+  networkSetException(entry: import('@shared/ipc-tasks').NetworkHostException): NetworkPolicyState {
+    this.assertCustomHostsAllowed()
+    return this.network.setException(entry)
+  }
+
   networkSetToggle(key: NetworkToggleKey, value: boolean): NetworkPolicyState {
     return this.network.setToggle(key, value)
   }
@@ -1670,6 +1675,12 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
               // Política gestionada: hosts que la organización permite siempre.
               ...(loadManagedPolicy()?.extraAllowedHosts ?? [])
             ],
+        networkHostOptions: fullAccess ? undefined : (host) => this.network.optionsFor(host),
+        onEgressLog: fullAccess
+          ? undefined
+          : (entry) => {
+              if (!entry.allowed && entry.reason) console.warn('[tasks] red bloqueada:', entry.reason, entry.host, entry.port)
+            },
         allowDelete,
         extraFolders: fullAccess ? undefined : extras,
         onEgressBlocked: fullAccess ? undefined : (ev) => this.emit('networkBlocked', { folder, ...ev }),

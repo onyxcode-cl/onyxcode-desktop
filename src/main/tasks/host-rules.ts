@@ -87,5 +87,26 @@ export function parseEgressHost(input: string): string | null {
 
 /** Para retirar (`unset`) o bloquear entradas: forma mínima, sin las reglas de TLD (hay entradas heredadas). */
 export function isPlainHostToken(input: string): boolean {
-  return typeof input === 'string' && /^(?:\*\.)?[a-z0-9._-]{1,253}$/i.test(input)
+  return typeof input === 'string' && (/^(?:\*\.)?[a-z0-9._-]{1,253}$/i.test(input) || isIP(input) === 6)
+}
+
+/** Entrada exacta configurada en Ajustes para una red interna (nunca comodines). */
+export function parseInternalHost(input: string): string | null {
+  if (typeof input !== 'string' || !input || input.length > 253 || input.trim() !== input) return null
+  let h = input
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^\[|\]$/g, '')
+  if (isIP(h) === 6) {
+    try {
+      h = new URL(`http://[${h}]/`).hostname.slice(1, -1)
+    } catch {
+      return null
+    }
+    return h
+  }
+  if (isIP(h) === 4) return h
+  if (/^[0-9.]+$/.test(h) || h === 'localhost' || h.endsWith('.localhost')) return null
+  const labels = h.split('.')
+  return labels.length && labels.every((l) => LABEL.test(l)) ? h : null
 }

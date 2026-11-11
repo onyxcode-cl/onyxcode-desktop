@@ -302,6 +302,10 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   handle('tasks:network:state', () => tasks.networkState())
   handle('tasks:network:setToggle', ({ key, value }) => tasks.networkSetToggle(key, value))
   handle('tasks:network:setHost', ({ host, decision }) => tasks.networkSetHost(host, decision))
+  handle('tasks:network:setException', (entry, event) => {
+    if (!event.senderFrame) throw new Error(t('misc.net.localOnly'))
+    return tasks.networkSetException(entry)
+  })
   handle('tasks:network:allowOnce', ({ folder, host }) => {
     tasks.networkAllowOnce(tasks.assertInsideApproved(folder), host)
   })

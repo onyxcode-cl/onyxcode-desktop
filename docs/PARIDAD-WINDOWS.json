@@ -957,6 +957,18 @@
       ],
       "nota": "Cubierto por pruebas unitarias en Mac. En Windows no se ha probado en una app armada: la ventana al frente (truco de «siempre encima»), el aviso claro con un archivo llamado .lazunox (antes ENOTDIR crudo) y el reintento ante ENOTEMPTY al rechazar una descarga grande están implementados, sin verificar en Windows.",
       "comprobacion": null
+    },
+    {
+      "id": "N08",
+      "funcion": "Red de Tareas: excepciones de red interna y puertos por sitio",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/proxy.ts:1",
+        "src/main/tasks/proxy.resolved-guard.test.ts:1",
+        "src/main/tasks/proxy-policy.ts:1"
+      ],
+      "nota": "Probado con DNS simulado en macOS. No se ha comprobado la enumeración de interfaces ni la salida de Tareas por WSL en Windows.",
+      "comprobacion": null
     }
   ]
 }
