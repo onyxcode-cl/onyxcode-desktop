@@ -62,6 +62,36 @@ export function cleanStagingLeftovers(force = false): void {
   }
 }
 
+const STAGING_RETRY_CODES = new Set(['ENOTEMPTY', 'EBUSY', 'EPERM'])
+const STAGING_RETRY_WAITS_MS = [150, 400, 1000, 2000]
+
+/**
+ * Borra la carpeta de paso. En Windows, justo tras rechazar o cancelar, Chromium aún no soltó (o no terminó de borrar) su temporal
+ * `.crdownload` y el borrado falla con ENOTEMPTY/EBUSY/EPERM: se reintenta unas pocas veces con espera corta, sin bloquear el proceso
+ * principal. Si sigue ocupada se deja para la limpieza de arranque (`cleanStagingLeftovers`) sin ensuciar el registro. Otros errores sí se registran.
+ */
+export async function removeStagingWithRetry(
+  dir: string,
+  opts: { rm?: (p: string) => void; waits?: number[] } = {}
+): Promise<void> {
+  const rm = opts.rm ?? ((p: string) => rmSync(p, { recursive: true, force: true }))
+  const waits = opts.waits ?? STAGING_RETRY_WAITS_MS
+  for (let i = 0; ; i++) {
+    try {
+      rm(dir)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code ?? ''
+      if (!STAGING_RETRY_CODES.has(code)) {
+        console.warn('[embedded-browser] no se pudo borrar la carpeta de paso:', err)
+        return
+      }
+      if (i >= waits.length) return // se queda para la limpieza del siguiente arranque
+      await new Promise<void>((r) => setTimeout(r, waits[i]))
+    }
+  }
+}
+
 function destinationDir(owner: BrowserOwner): string {
   if (owner.kind === 'tasks') return join(owner.folder, '.lazunox', 'trabajo', 'descargas')
   return join(homedir(), 'Downloads', INTERNAL_NAME)
@@ -411,11 +441,7 @@ export function handleWillDownload(event: Electron.Event, item: DownloadItem, wc
   item.pause()
 
   const cleanStaging = (): void => {
-    try {
-      rmSync(staging, { recursive: true, force: true })
-    } catch (err) {
-      console.warn('[embedded-browser] no se pudo borrar la carpeta de paso:', err)
-    }
+    void removeStagingWithRetry(staging)
   }
   let ended = false // `done` ya ocurrió
   let decide: (savePath: string | null) => void = () => {}
