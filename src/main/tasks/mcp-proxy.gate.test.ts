@@ -110,6 +110,47 @@ describe('H1: main y el servidor del conector no pueden leer el JSON de forma di
   })
 })
 
+describe('C3: lecturas y plantillas pasan por la tarjeta; solo el protocolo pasa sin preguntar', () => {
+  it('resources/read y prompts/get son llamadas que se preguntan, mostrando qué se pide', () => {
+    expect(
+      findToolCall(Buffer.from('{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"gmail://inbox/1"}}'))
+    ).toMatchObject({
+      kind: 'call',
+      call: { tool: 'resources/read gmail://inbox/1', args: { uri: 'gmail://inbox/1' } }
+    })
+    expect(
+      findToolCall(Buffer.from('{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"resumen","arguments":{"dia":"hoy"}}}'))
+    ).toMatchObject({ kind: 'call', call: { tool: 'prompts/get resumen', args: { dia: 'hoy' } } })
+  })
+
+  it.each(['initialize', 'ping', 'tools/list', 'resources/list', 'prompts/list', 'notifications/initialized'])(
+    '%s pasa sin preguntar',
+    (m) => {
+      expect(findToolCall(Buffer.from(`{"jsonrpc":"2.0","id":1,"method":"${m}"}`)).kind).toBe('none')
+    }
+  )
+
+  it.each(['completion/complete', 'resources/subscribe', 'logging/setLevel', 'tools/run', 'x'])(
+    '%s (desconocido para la puerta) no se reenvía',
+    (m) => {
+      expect(findToolCall(Buffer.from(`{"jsonrpc":"2.0","id":1,"method":"${m}","params":{}}`)).kind).toBe('bad')
+    }
+  )
+
+  it('una respuesta del cliente (sin method) pasa', () => {
+    expect(findToolCall(Buffer.from('{"jsonrpc":"2.0","id":9,"result":{"roots":[]}}')).kind).toBe('none')
+  })
+
+  it('en el proxy: un resources/read denegado no llega al servicio', async () => {
+    const asked: ToolCall[] = []
+    const { url, token } = await setup(async (c) => (asked.push(c), { ok: false, message: 'No.' }))
+    const r = await post(url, token, '{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"gmail://inbox/1"}}')
+    expect((await r.json()).result.isError).toBe(true)
+    expect(asked.map((c) => c.tool)).toEqual(['resources/read gmail://inbox/1'])
+    expect(seen).toEqual([])
+  })
+})
+
 describe('McpProxy con puerta de main', () => {
   it('«No»: el destino no recibe nada y el cliente recibe un error de herramienta con su id', async () => {
     const asked: ToolCall[] = []

@@ -123,12 +123,29 @@ const PARAM_KEYS: Record<string, ReadonlySet<string>> = {
   'notifications/roots/list_changed': new Set(['_meta'])
 }
 
+/** Métodos de solo protocolo: pasan sin preguntar (no leen ni hacen nada con la cuenta de la persona). */
+const PROTOCOL_METHODS = new Set([
+  'initialize',
+  'ping',
+  'tools/list',
+  'resources/list',
+  'resources/templates/list',
+  'prompts/list',
+  'notifications/initialized',
+  'notifications/cancelled',
+  'notifications/progress',
+  'notifications/roots/list_changed'
+])
+/** Métodos que pasan por la tarjeta de main. */
+const GATED_METHODS = new Set(['tools/call', 'resources/read', 'prompts/get'])
+
 const isPlainObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 
 /**
- * Busca el `tools/call` de un cuerpo JSON-RPC (mensaje o lote) y devuelve lo que se reenviará (`canonical` = `JSON.stringify` de lo
+ * Busca la llamada que necesita a la persona (`tools/call`, `resources/read` o `prompts/get`) en un cuerpo JSON-RPC (mensaje o lote) y devuelve lo que se reenviará (`canonical` = `JSON.stringify` de lo
  * revisado). `bad` (no se reenvía): JSON inválido, claves repetidas o equivalentes en cualquier objeto (`strict-json.ts`), claves que no
- * son las del mensaje JSON-RPC o las de los `params` de un método conocido, o más de una llamada en un lote.
+ * son las del mensaje JSON-RPC o las de los `params` de un método conocido, un método que no es de protocolo ni de la puerta, o más de
+ * una llamada en un lote.
  */
 export function findToolCall(body: Buffer): ParsedBody {
   if (body.length === 0) return { kind: 'none', canonical: body }
@@ -153,13 +170,28 @@ export function findToolCall(body: Buffer): ParsedBody {
     }
     if (allowed && Array.isArray(m.params)) return { kind: 'bad', why: 'params' }
   }
+  // C3: solo pasan sin preguntar los métodos de protocolo y las respuestas del cliente (sin `method`); los que leen o hacen algo con la
+  // identidad de la persona (`tools/call`, `resources/read`, `prompts/get`) pasan por la puerta; cualquier otro método no se reenvía.
+  for (const m of list as Array<Record<string, unknown>>) {
+    if (typeof m.method === 'string' && !PROTOCOL_METHODS.has(m.method) && !GATED_METHODS.has(m.method)) {
+      return { kind: 'bad', why: `method:${m.method}` }
+    }
+  }
   const canonical = Buffer.from(JSON.stringify(parsed), 'utf8')
-  const calls = list.filter((m) => (m as { method?: unknown }).method === 'tools/call') as Array<Record<string, unknown>>
+  const calls = (list as Array<Record<string, unknown>>).filter((m) => typeof m.method === 'string' && GATED_METHODS.has(m.method))
   if (calls.length === 0) return { kind: 'none', canonical }
   if (calls.length > 1) return { kind: 'bad', why: 'batch' }
   const m = calls[0]!
   const params = isPlainObject(m.params) ? m.params : {}
+  if (m.method === 'resources/read') {
+    if (typeof params.uri !== 'string' || !params.uri) return { kind: 'bad', why: 'no-uri' }
+    // Lo que ve la persona: que es una LECTURA y de qué recurso; la memoria de «mientras siga abierta» queda atada a ese recurso exacto.
+    return { kind: 'call', call: { tool: `resources/read ${params.uri}`, args: { uri: params.uri } }, id: m.id ?? null, canonical }
+  }
   if (typeof params.name !== 'string' || !params.name) return { kind: 'bad', why: 'no-name' }
+  if (m.method === 'prompts/get') {
+    return { kind: 'call', call: { tool: `prompts/get ${params.name}`, args: params.arguments ?? {} }, id: m.id ?? null, canonical }
+  }
   return { kind: 'call', call: { tool: params.name, args: params.arguments ?? {} }, id: m.id ?? null, canonical }
 }
 
