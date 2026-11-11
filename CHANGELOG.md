@@ -19,7 +19,9 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Lo que todavía no está cerrado
 
 - **No se midió cuánto mejora la calidad de los documentos con las guías cargadas.** Solo se comprobó que ahora se abren y que la búsqueda funciona.
-- **Lo probado en la app armada se actualizará con el resultado de las pruebas a mano.**
+- **Se probó a mano con la app ya armada, una ronda en Mac y una corta en Windows.** En Mac: dentro de una tarea, el asistente abrió las guías de Excel, Word y PowerPoint y creó los tres documentos, ya sin el aviso de que se bloqueó el acceso a un sitio; la búsqueda funcionó en Tareas y en Code, sin bajar nada. En Windows: el programa de búsqueda viaja dentro de la app y Code lo usa; una tarea con WSL y un Excel con una suma siguieron funcionando. **No se probó**: PDF, el primer arranque de una instalación nueva, el celular, Telegram, la actualización automática hacia esta versión ni el instalador en un equipo limpio.
+- **La herramienta de crear documentos puede fallar con «Error interno» sin decir qué estaba mal.** Pasa cuando el asistente le entrega los datos mal armados; en las pruebas terminó el documento por otro camino. Viene de antes de esta versión.
+- **El panel de vista previa de documentos puede quedar en blanco.** Viene de antes de esta versión.
 - **Los pendientes de la 1.8.16 siguen igual** (el encierro de Tareas sigue con lista de cosas prohibidas, y lo que no se pudo probar a mano).
 
 ## [1.8.16] - 2026-11-10
