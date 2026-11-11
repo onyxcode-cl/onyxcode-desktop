@@ -28,6 +28,8 @@ import { MODES_BY_ID } from './modes'
 import { EngineNotice } from './EngineNotice'
 import { QuickEntryNotice } from './QuickEntryNotice'
 import { RemoteConfirmHost } from './RemoteConfirmHost'
+import { HostExecApprovalHost } from './HostExecApprovalHost'
+import { ConnectorApprovalHost } from './ConnectorApprovalHost'
 import { RemotePairHost } from './RemotePairHost'
 import { useQuickNotice } from '../lib/quick-notice'
 import { UpdateNotice } from './UpdateNotice'
@@ -200,6 +202,8 @@ function DesktopApp(): React.JSX.Element {
       <TranslatePdfHost />
       <RemotePairHost />
       <RemoteConfirmHost />
+      <HostExecApprovalHost />
+      <ConnectorApprovalHost />
       <ErrorBoundary label={t('app.boundary.onboarding')}>
         <FirstRunGate />
       </ErrorBoundary>

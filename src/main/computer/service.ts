@@ -69,6 +69,7 @@ import {
   type TeachStep
 } from '@shared/ipc-tasks'
 import { ComputerGrantsStore } from './grants'
+import { isIsolatedScriptingApp } from './policy/isolated-scripting'
 import { ComputerMcpHost } from './mcp-host'
 import { ComputerPrefsStore } from './prefs'
 import { servicePlatformFor } from './service-platform'
@@ -696,7 +697,7 @@ export class ComputerService extends EventEmitter<ServiceEvents> {
 
   /** Exenta para el servidor aislado: la lista del sistema Y cualquier ayudante de Lazunox (`<APP_ID>.motor`, `.disclaim`, `.helper*`…). */
   private isBridgeExemptApp(bundleId: string): boolean {
-    return this.grants.isExempt(bundleId) || bundleId.startsWith(`${APP_ID}.`)
+    return this.grants.isExempt(bundleId) || bundleId.startsWith(`${APP_ID}.`) || isIsolatedScriptingApp(bundleId)
   }
 
   /**

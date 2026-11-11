@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkHostCommand, MAX_COMMAND_CHARS, MAX_COMMAND_LINES, type HostCommandRejection } from './policy'
+import { checkHostCommand, MAX_COMMAND_CHARS, MAX_COMMAND_LINES, unsafeTextChars, type HostCommandRejection } from './policy'
 
 const code = (c: unknown): HostCommandRejection | 'ok' => {
   const v = checkHostCommand(c)
@@ -99,6 +99,36 @@ describe('checkHostCommand: lo que NUNCA se ejecuta', () => {
     ['x'.repeat(MAX_COMMAND_CHARS + 1), 'too-long'],
     [Array.from({ length: MAX_COMMAND_LINES + 1 }, () => 'ls').join('\n'), 'too-long']
   ] as Array<[string, HostCommandRejection]>)('rechaza %j → %s', (c, expected) => expect(code(c)).toBe(expected))
+
+  // B1: todo lo que la tarjeta no muestra tal cual se ejecuta. Una prueba por familia.
+  it.each([
+    ['bidi de aislamiento (Trojan Source) U+2066-2069', ['⁦', '⁧', '⁨', '⁩'], 'hidden-chars'],
+    ['bidi de incrustación U+202A-202E', ['‪', '‫', '‬', '‭', '‮'], 'hidden-chars'],
+    ['marca árabe y de dirección U+061C, U+200E, U+200F', ['؜', '‎', '‏'], 'hidden-chars'],
+    ['separadores de línea y párrafo U+2028/2029', [' ', ' '], 'hidden-chars'],
+    ['controles C1 U+0080-009F', ['\u0080', '\u0085', '\u009B', '\u009F'], 'control-chars'],
+    ['retorno y otros controles C0', ['\r', '\u000B', '\u000C', '\u001B', '\u007F'], 'control-chars'],
+    ['guion suave y separador mongol', ['­', '᠎'], 'hidden-chars'],
+    ['anchura cero y unión', ['​', '‌', '‍', '⁠', '⁣', '﻿'], 'hidden-chars'],
+    ['rellenos que se ven en blanco', ['ᅟ', 'ᅠ', 'ㅤ', 'ﾠ', '⠀', '͏'], 'hidden-chars'],
+    ['selectores de variante', ['︀', '️', '\u{E0100}'], 'hidden-chars'],
+    ['etiquetas U+E0000-E007F', ['\u{E0001}', '\u{E0041}', '\u{E007F}'], 'hidden-chars'],
+    ['uso privado y sin asignar', ['', '\u{F0000}', '͸'], 'hidden-chars'],
+    ['espacios que no son U+0020', [' ', ' ', ' ', ' ', ' ', '　', ' '], 'hidden-chars']
+  ] as Array<[string, string[], HostCommandRejection]>)('rechaza %s', (_f, chars, expected) => {
+    for (const ch of chars) expect(code(`echo a${ch}b`), JSON.stringify(ch)).toBe(expected)
+  })
+
+  it('tabulador y salto de línea siguen valiendo; también letras con tilde y ñ', () => {
+    expect(code('echo a\tb\nls')).toBe('ok')
+    expect(code('open "/Users/ana/Documentos/Año niño.pdf"')).toBe('ok')
+  })
+
+  it('unsafeTextChars sirve igual para el motivo', () => {
+    expect(unsafeTextChars('Abrir el informe que pediste')).toBeNull()
+    expect(unsafeTextChars('Abrir⁦ el informe')).toBe('hidden')
+    expect(unsafeTextChars('Abrir\r el informe')).toBe('control')
+  })
 
   it('lo que no es texto se rechaza como vacío', () => {
     expect(code(undefined)).toBe('empty')

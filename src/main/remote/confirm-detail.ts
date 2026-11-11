@@ -24,6 +24,24 @@ export function cleanLine(v: unknown, max = DETAIL_MAX_CHARS): string {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 
+/**
+ * Detalle de la confirmación de un comando de `equipo` (lo arma main con el comando REAL, no el celular): una línea por línea del comando,
+ * TAL CUAL (sin juntar espacios ni tapar nada: es lo que se ejecutará), con el tabulador marcado (→) y quitando solo lo que podría falsear
+ * líneas (que la política de `equipo` ya rechaza). Topes: los del propio comando (2000 caracteres, 20 líneas) más motivo y carpeta.
+ */
+export const COMMAND_DETAIL_MAX_LINES = 24
+// Como `CONTROL_RE` pero sin el tabulador (se marca) y carácter a carácter (no se juntan).
+const COMMAND_UNSAFE_RE = /[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g
+export function cleanCommandDetail(lines: readonly unknown[]): string[] {
+  const out = lines.map((l) => {
+    const s = typeof l === 'string' ? l : l === undefined || l === null ? '' : String(l)
+    const v = s.replace(COMMAND_UNSAFE_RE, '�').replace(/\t/g, '→\t')
+    return v.length > 2000 ? `${v.slice(0, 1999)}…` : v
+  })
+  if (out.length <= COMMAND_DETAIL_MAX_LINES) return out
+  return [...out.slice(0, COMMAND_DETAIL_MAX_LINES - 1), `… (+${out.length - (COMMAND_DETAIL_MAX_LINES - 1)})`]
+}
+
 /** Líneas del detalle: limpias, sin vacías y con tope; lo que sobra se resume en «… (+N líneas)». */
 export function cleanDetail(lines: readonly unknown[], maxLines = DETAIL_MAX_LINES, maxChars = DETAIL_MAX_CHARS): string[] {
   const all = lines.map((l) => cleanLine(l, maxChars)).filter((l) => l !== '')

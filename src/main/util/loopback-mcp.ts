@@ -47,7 +47,11 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
   protected abstract readonly serverName: string
   protected abstract readonly instructions: string
   protected abstract listTools(): readonly unknown[]
-  protected abstract callTool(binding: B, name: string, args: Record<string, unknown>): Promise<McpToolResult>
+  /**
+   * `signal` se aborta si la conexión HTTP se corta antes de responder (el cliente se fue o el proxy venció): lo que espere a la persona
+   * debe tratarlo como «sin respuesta».
+   */
+  protected abstract callTool(binding: B, name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpToolResult>
   /** Tiempo máximo (ms) que OpenCode espera una llamada a este servidor. */
   protected configTimeoutMs(): number {
     return 15_000
@@ -183,6 +187,10 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
     if (!binding) return this.reply(res, 401, { error: 'unauthorized' }, { 'www-authenticate': 'Bearer' })
     if (req.method !== 'POST') return this.reply(res, 405, undefined, { allow: 'POST' })
 
+    const aborter = new AbortController()
+    res.once('close', () => {
+      if (!res.writableFinished) aborter.abort()
+    })
     const chunks: Buffer[] = []
     let size = 0
     let tooBig = false
@@ -212,7 +220,8 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
       const batch = Array.isArray(parsed)
       const list: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
       const msgs = list.filter((m): m is RpcRequest => !!m && typeof m === 'object' && typeof (m as RpcRequest).method === 'string')
-      void Promise.all(msgs.map((m) => this.dispatch(m, binding))).then((out) => {
+      void Promise.all(msgs.map((m) => this.dispatch(m, binding, aborter.signal))).then((out) => {
+        if (res.destroyed || res.writableEnded) return
         const responses = out.filter((r): r is RpcResponse => r !== null)
         if (!responses.length) return this.reply(res, 202)
         this.reply(res, 200, batch ? responses : responses[0])
@@ -220,7 +229,7 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
     })
   }
 
-  private async dispatch(req: RpcRequest, binding: B): Promise<RpcResponse | null> {
+  private async dispatch(req: RpcRequest, binding: B, signal?: AbortSignal): Promise<RpcResponse | null> {
     const id = req.id ?? null
     const isNotification = req.id === undefined || req.id === null
     const ok = (result: unknown): RpcResponse => ({ jsonrpc: '2.0', id, result })
@@ -245,7 +254,7 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
           const name = String(req.params?.name ?? '')
           const rawArgs = req.params?.arguments
           const args = rawArgs && typeof rawArgs === 'object' && !Array.isArray(rawArgs) ? (rawArgs as Record<string, unknown>) : {}
-          return ok(await this.callTool(binding, name, args))
+          return ok(await this.callTool(binding, name, args, signal))
         }
         case 'resources/list':
           return ok({ resources: [] })

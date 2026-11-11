@@ -78,6 +78,53 @@ export interface McpRouteSpec {
    * modo unificado). Cualquier otra ruta → 404.
    */
   exactPath?: boolean
+  /**
+   * Espera máxima hasta las cabeceras del destino para ESTA ruta (por defecto, `limits.headersTimeoutMs`). La usa `equipo`, que espera a
+   * que la persona apruebe en main antes de responder.
+   */
+  headersTimeoutMs?: number
+  /**
+   * Puerta de main para las llamadas a herramientas (`tools/call`) de esta ruta (conectores de la persona con «preguntar cada herramienta»).
+   * Con ella, el cuerpo de cada POST se lee ENTERO antes de reenviarlo: si trae un `tools/call`, main decide; lo que se reenvía es
+   * exactamente lo que se revisó. Un cuerpo que no se entiende (no es JSON, o un lote con más de una llamada) se rechaza sin reenviar.
+   */
+  toolCallGate?: ToolCallGate
+}
+
+/** Una llamada a herramienta vista en el cuerpo JSON-RPC. `args` tal cual llegó. */
+export interface ToolCall {
+  tool: string
+  args: unknown
+}
+/** `ok` = se reenvía; si no, `message` vuelve al cliente como resultado de error de la herramienta (sin tocar el servidor de destino). */
+export type ToolCallVerdict = { ok: true } | { ok: false; message: string }
+export type ToolCallGate = (call: ToolCall, signal: AbortSignal) => Promise<ToolCallVerdict>
+
+type ParsedBody = { kind: 'none' } | { kind: 'call'; call: ToolCall; id: unknown } | { kind: 'bad'; why: string }
+
+/** Busca el `tools/call` de un cuerpo JSON-RPC (mensaje o lote). Más de uno en un lote, o un cuerpo ilegible: `bad`. */
+export function findToolCall(body: Buffer): ParsedBody {
+  if (body.length === 0) return { kind: 'none' }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(body.toString('utf8'))
+  } catch {
+    return { kind: 'bad', why: 'not-json' }
+  }
+  const list = Array.isArray(parsed) ? parsed : [parsed]
+  const calls = list.filter(
+    (m): m is { id?: unknown; method: string; params?: unknown } =>
+      !!m && typeof m === 'object' && (m as { method?: unknown }).method === 'tools/call'
+  )
+  if (calls.length === 0) {
+    // Cualquier otro mensaje con un `method` que no sea texto, o algo que no es un objeto, no se entiende: no se reenvía.
+    return list.every((m) => !!m && typeof m === 'object' && !Array.isArray(m)) ? { kind: 'none' } : { kind: 'bad', why: 'shape' }
+  }
+  if (calls.length > 1) return { kind: 'bad', why: 'batch' }
+  const m = calls[0]!
+  const params = m.params && typeof m.params === 'object' ? (m.params as { name?: unknown; arguments?: unknown }) : {}
+  if (typeof params.name !== 'string' || !params.name) return { kind: 'bad', why: 'no-name' }
+  return { kind: 'call', call: { tool: params.name, args: params.arguments ?? {} }, id: m.id ?? null }
 }
 
 /** Lo que recibe el servidor del sandbox: nunca contiene el secreto real. */
@@ -96,6 +143,8 @@ interface Route {
   query: URLSearchParams
   injected: Array<[string, string]>
   exactPath: boolean
+  headersTimeoutMs?: number
+  toolCallGate?: ToolCallGate
   hash: Buffer
   expiresAt: number
   revoked: boolean
@@ -230,6 +279,11 @@ export class McpProxy {
       query: new URLSearchParams(url.search),
       injected,
       exactPath: spec.exactPath === true,
+      headersTimeoutMs:
+        typeof spec.headersTimeoutMs === 'number' && Number.isFinite(spec.headersTimeoutMs) && spec.headersTimeoutMs > 0
+          ? spec.headersTimeoutMs
+          : undefined,
+      toolCallGate: typeof spec.toolCallGate === 'function' ? spec.toolCallGate : undefined,
       hash: sha256(token),
       expiresAt: this.now() + this.limits.ttlMs,
       revoked: false,
@@ -382,6 +436,68 @@ export class McpProxy {
     }
     headers.host = target.host
 
+    const gate = route.toolCallGate
+    if (gate && method === 'POST') {
+      // Se lee entero (con el mismo tope), se revisa y se reenvía ESE mismo cuerpo, o se responde sin tocar el destino.
+      const chunks: Buffer[] = []
+      let size = 0
+      let tooBig = false
+      const aborter = new AbortController()
+      res.once('close', () => {
+        if (!res.writableFinished) aborter.abort()
+        release()
+      })
+      req.on('data', (c: Buffer) => {
+        if (tooBig) return
+        size += c.length
+        if (size > this.limits.maxBodyBytes) {
+          tooBig = true
+          chunks.length = 0
+          this.reply(res, 413, 'too large')
+          req.destroy()
+          return
+        }
+        chunks.push(c)
+      })
+      req.once('error', () => aborter.abort())
+      req.once('end', () => {
+        if (tooBig || res.writableEnded) return
+        const body = Buffer.concat(chunks)
+        const found = findToolCall(body)
+        if (found.kind === 'bad') {
+          log(route.name, 'cuerpo no revisable, no se reenvía', found.why)
+          return this.reply(res, 400, 'request not allowed')
+        }
+        if (found.kind === 'none') return this.forward(req, res, route, target, search, method, headers, release, body)
+        void gate(found.call, aborter.signal)
+          .catch((): ToolCallVerdict => ({ ok: false, message: 'No se pudo pedir la aprobación.' }))
+          .then((v) => {
+            if (res.writableEnded || res.destroyed || aborter.signal.aborted) return
+            if (v.ok) return this.forward(req, res, route, target, search, method, headers, release, body)
+            res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+            res.end(
+              JSON.stringify({ jsonrpc: '2.0', id: found.id, result: { content: [{ type: 'text', text: v.message }], isError: true } })
+            )
+          })
+      })
+      return
+    }
+    this.forward(req, res, route, target, search, method, headers, release)
+  }
+
+  /** Reenvía al destino: el cuerpo ya leído (`body`, ruta con puerta) o el del cliente tal como llega. */
+  private forward(
+    req: IncomingMessage,
+    res: ServerResponse,
+    route: Route,
+    target: URL,
+    search: string,
+    method: string,
+    headers: Record<string, string | string[]>,
+    release: () => void,
+    body?: Buffer
+  ): void {
+    if (body) headers['content-length'] = String(body.length)
     const isHttps = target.protocol === 'https:'
     let upstream: ClientRequest
     try {
@@ -407,7 +523,7 @@ export class McpProxy {
       upstream.destroy()
       done()
     })
-    upstream.setTimeout(this.limits.headersTimeoutMs, () => {
+    upstream.setTimeout(route.headersTimeoutMs ?? this.limits.headersTimeoutMs, () => {
       if (!res.headersSent) this.reply(res, 504, 'upstream timeout')
       upstream.destroy()
     })
@@ -436,6 +552,10 @@ export class McpProxy {
       else res.destroy()
     })
 
+    if (body) {
+      upstream.end(body)
+      return
+    }
     let size = 0
     req.on('data', (c: Buffer) => {
       size += c.length

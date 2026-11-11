@@ -28,7 +28,7 @@ export function remoteEventChannels(channels: Iterable<string>): Set<string> {
 }
 
 /** Canales con prioridad de control (permisos y confirmaciones). */
-const URGENT_CHANNELS = new Set(['computer:accessRequest', 'browser:approval'])
+const URGENT_CHANNELS = new Set(['computer:accessRequest', 'browser:approval', 'tasks:hostExec:approval', 'tasks:connector:approval'])
 export const isUrgentChannel = (ch: string): boolean => URGENT_CHANNELS.has(ch)
 
 /**
@@ -73,6 +73,11 @@ export function trimIpcEvent(channel: string, payload: unknown, d: TrimDeps): un
               )
             }
           : payload
+        break
+      case 'tasks:hostExec:approval':
+      case 'tasks:connector:approval':
+        // Solo tareas cuya carpeta está en el ámbito del celular. El comando va completo: es lo que la persona aprueba.
+        out = d.scope.pathInScope(p.folder, { chat: false }) ? payload : null
         break
       case 'browser:state':
       case 'browser:approval': {

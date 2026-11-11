@@ -89,7 +89,7 @@ describe('configuración MCP del servidor sandboxeado', () => {
     expect(json).not.toContain('?k=q')
   })
 
-  it('los MCP remotos con cabeceras van por el proxy (URL loopback + token de sesión) y conservan «preguntar»', async () => {
+  it('los MCP remotos con cabeceras van por el proxy (URL loopback + token de sesión); «preguntar» lo hace main, no el motor', async () => {
     const { json, contributionMcp } = await sandboxConfig()
     const cfg = JSON.parse(json) as {
       mcp: Record<string, { url: string; headers?: { Authorization: string } }>
@@ -99,8 +99,23 @@ describe('configuración MCP del servidor sandboxeado', () => {
     expect(cfg.mcp.gh.headers?.Authorization).toMatch(/^Bearer [A-Za-z0-9_-]{43}$/)
     expect(cfg.mcp.browser.url).toBe(`http://127.0.0.1:${proxy!.port}/mcp`)
     expect(cfg.mcp.gh.headers?.Authorization).not.toBe(cfg.mcp.browser.headers?.Authorization)
-    expect(cfg.agent.tasks.permission['gh_*']).toBe('ask')
+    // La pregunta la hace la puerta de main en el proxy (`connector-approvals.ts`): el motor no vuelve a preguntar.
+    expect(cfg.agent.tasks.permission['gh_*']).toBe('allow')
     expect(Object.keys(contributionMcp).sort()).toEqual(['gh', 'locsin', 'oa', 'publico'])
+  })
+
+  it('la ruta de un conector con «preguntar cada herramienta» se registra pidiendo la puerta, y el motor espera la aprobación', () => {
+    const seen: Array<{ name: string; ask?: boolean }> = []
+    const c = tasksMcpContribution({
+      sandboxed: true,
+      registerRoute: (spec, o) => {
+        seen.push({ name: spec.name, ask: o?.askEachTool })
+        return { url: 'http://127.0.0.1:1/mcp', headers: { Authorization: 'Bearer x' }, token: 'x' }
+      }
+    })
+    expect(seen).toEqual([{ name: 'gh', ask: true }])
+    expect((c.mcp.gh as { timeout: number }).timeout).toBeGreaterThanOrEqual(5 * 60 * 1000)
+    expect(c.permission['gh_*']).toBe('allow')
   })
 
   it('un MCP local con variables secretas NO entra (falla cerrado) y se informa; el local sin variables sí', async () => {

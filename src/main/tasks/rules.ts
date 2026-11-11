@@ -16,9 +16,16 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 import type { TasksPermissionRule } from '@shared/ipc-tasks'
 import { loadManagedPolicy } from './policy'
+import { emptySavedPermissionDir, readEngineAlwaysRules } from '../opencode/permission-store'
 
 interface Persisted {
   rules: TasksPermissionRule[]
+  /**
+   * Carpetas cuyos «siempre» guardados por el MOTOR (en su carpeta privada, al alcance de la tarea) ya se pasaron UNA vez aquí. Desde la
+   * 1.8.19 el motor aislado no guarda ni carga nada (ver `importEngineAlwaysRulesOnce`); esto evita volver a importar lo que una tarea
+   * escriba después en esa carpeta.
+   */
+  engineImported?: string[]
 }
 
 /** Misma expresión que `DELETE_RE` de `PermissionPrompt.tsx` (renderer): comandos de borrado. */
@@ -66,6 +73,7 @@ export class TasksRulesStore {
     try {
       if (existsSync(this.file)) {
         const raw = JSON.parse(readFileSync(this.file, 'utf8')) as Partial<Persisted>
+        if (Array.isArray(raw.engineImported)) data.engineImported = raw.engineImported.filter((f): f is string => typeof f === 'string')
         if (Array.isArray(raw.rules)) {
           data.rules = raw.rules.filter(
             (r): r is TasksPermissionRule =>
@@ -137,6 +145,37 @@ export class TasksRulesStore {
   }
 
   /** Olvida todas las reglas de una carpeta (al quitarla de Tareas). */
+  /**
+   * Una sola vez por carpeta: pasa a este archivo (fuera del alcance de la tarea) los «siempre» que el motor aislado guardó en su carpeta
+   * privada antes de la 1.8.19, saneados con las dos reglas (`isPersistableRule` de la app y `ruleRejectionReason`). Solo los de esa misma
+   * carpeta; sin seguir enlaces. Después se vacía esa carpeta del motor (ya no se lee). `enabled` = «Recordar mis siempre» encendido: si
+   * está apagado, no se importa nada (el motor tampoco los cargaba) pero la carpeta queda marcada. Devuelve cuántas reglas importó.
+   */
+  importEngineAlwaysRulesOnce(folder: string, engineDir: string, enabled: boolean): number {
+    const data = this.load()
+    if ((data.engineImported ?? []).includes(folder)) return 0
+    let imported = 0
+    if (enabled && !loadManagedPolicy()?.disableAlwaysAllow) {
+      for (const r of readEngineAlwaysRules(engineDir, folder)) {
+        if (ruleRejectionReason(r.permission, r.pattern) !== null) continue
+        if (data.rules.some((x) => x.folder === folder && x.permission === r.permission && x.pattern === r.pattern)) continue
+        if (data.rules.length >= MAX_RULES) break
+        data.rules.push({ id: randomUUID(), folder, permission: r.permission, pattern: r.pattern, createdAt: Date.now() })
+        imported++
+      }
+    }
+    data.engineImported = [...(data.engineImported ?? []), folder]
+    try {
+      this.persist()
+    } catch (err) {
+      console.error('[tasks] no se pudo guardar la migración de permisos «siempre»:', err instanceof Error ? err.message : 'error')
+      return 0
+    }
+    emptySavedPermissionDir(engineDir)
+    if (imported) console.log(`[tasks] se pasaron ${imported} permisos «siempre» del motor a la app`)
+    return imported
+  }
+
   removeFolder(folder: string): void {
     const data = this.load()
     const before = data.rules.length

@@ -111,8 +111,9 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
                 permission: {
                   ...(i.extras.length || allowDirs.length ? { external_directory: externalDirectory } : {}),
                   ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {}),
-                  // Comandos fuera del aislamiento: SIEMPRE preguntan (la persona ve el comando entero). Explícito, porque el agente trae `'*': allow`.
-                  ...(i.hostMcp ? { [`${HOST_ROUTE_NAME}_*`]: 'ask' } : {})
+                  // Comandos fuera del aislamiento: la aprobación la pide y decide MAIN (`host-exec/approvals.ts`), con el comando entero, cada vez.
+                  // La pregunta del motor no protegía nada (el motor vive en la jaula con los programas de la tarea) y duplicaba la tarjeta.
+                  ...(i.hostMcp ? { [`${HOST_ROUTE_NAME}_*`]: 'allow' } : {})
                 }
               }
             }

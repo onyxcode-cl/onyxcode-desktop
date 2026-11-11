@@ -63,4 +63,24 @@ describe('diálogo de botones que no congela la app', () => {
     await askButtons({ ...D, buttons: ['a', 'b', 'c', 'd'] }, { platform: 'darwin', run, electronDialog: electron })
     expect(run).not.toHaveBeenCalled()
   })
+
+  it('tiempo propio y cierre por señal: se pasa a osascript; cerrado a propósito cuenta como cancelar y no abre el de Electron', async () => {
+    const run = vi.fn(async (_a: string[], _s?: AbortSignal) => 'No')
+    const c = new AbortController()
+    await askButtons({ ...D, giveUpSeconds: 42.7, signal: c.signal }, { platform: 'darwin', run, electronDialog: electron })
+    const args = run.mock.calls[0]![0]
+    expect(args[args.indexOf('--') + 4]).toBe('42')
+    expect(run.mock.calls[0]![1]).toBe(c.signal)
+    const e = { showMessageBox: vi.fn(async () => ({ response: 2 })) }
+    const killed = vi.fn(async () => {
+      c.abort()
+      throw new Error('killed')
+    })
+    expect(await askButtons({ ...D, signal: c.signal }, { platform: 'darwin', run: killed, electronDialog: e as never })).toBe(0)
+    expect(e.showMessageBox).not.toHaveBeenCalled()
+    // Ya abortada: ni se abre.
+    const again = vi.fn(async () => 'Permitir siempre')
+    expect(await askButtons({ ...D, signal: c.signal }, { platform: 'darwin', run: again, electronDialog: e as never })).toBe(0)
+    expect(again).not.toHaveBeenCalled()
+  })
 })

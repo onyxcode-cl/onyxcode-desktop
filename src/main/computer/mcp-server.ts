@@ -111,6 +111,7 @@ import {
 } from './window-probe'
 import { recoveryHint, recoverySuffix } from './recovery-hints'
 import { DEDUP_NOTICE, ScreenshotDedup } from './screenshot-dedup'
+import { isIsolatedScriptingApp } from './policy/isolated-scripting'
 import { sanitizeNote, sanitizeTypeText } from './type-text-sanitize'
 
 const HELPER = process.env.CU_HELPER ?? ''
@@ -352,7 +353,7 @@ function ownAppFrontReject(app: AppRef, session: string | undefined): Error | un
  */
 async function ensureTier(app: AppRef, minTier: AppTier, session?: string): Promise<void> {
   // Origen aislado: la propia Lazunox, Electron, Spotlight, Dock… (exentas del sistema) NUNCA se actúan (ni siquiera con tarjeta).
-  if (isolatedCall && app.bundleId && isIsolatedExempt(app.bundleId)) {
+  if (isolatedCall && ((app.bundleId && isIsolatedExempt(app.bundleId)) || isIsolatedScriptingApp(app.bundleId, app.name))) {
     // La propia Lazunox al frente con una captura vigente de la app objetivo: pasa justo después de preguntarle algo a la persona. Se dice qué hacer.
     const own = ownAppFrontReject(app, session)
     if (own) throw own
@@ -424,6 +425,14 @@ async function requireTier(minTier: AppTier, point?: { x: number; y: number }, s
     else if (!at.bundleId && (backend.failClosedOnUnknownApp || isolatedCall)) apps.push(at) // Windows: lo no identificado no se deja pasar
   }
   const known = apps.filter((a) => a.bundleId)
+  // Origen aislado: guiones y ajustes del sistema (incluido el diálogo `osascript` de una aprobación) nunca, aunque no tengan id.
+  if (isolatedCall && apps.some((a) => isIsolatedScriptingApp(a.bundleId, a.name))) {
+    throw reject(
+      'exempt-app',
+      'Esa ventana es de una app de guiones o de ajustes del sistema: desde una tarea no se controla. No insistas; pide a la persona que lo haga ella.',
+      session
+    )
+  }
   // Windows falla cerrado: una ventana que no se identifica puede ser una bloqueada o de administrador. Origen aislado: igual en macOS.
   if ((backend.failClosedOnUnknownApp || isolatedCall) && known.length < apps.length) {
     throw reject(
@@ -955,7 +964,7 @@ const ISOLATED_MASK: ReadonlySet<string> = new Set(
 /** Origen aislado: ¿app exenta? La lista del sistema/Lazunox Y cualquier ayudante de Lazunox (`cl.bentec.lazunox.motor`, `.disclaim`, `.helper*`…). */
 function isIsolatedExempt(bundleId: string): boolean {
   if (backend.id === 'win32') return isWinIsolatedExempt(bundleId) // Windows: claves `exe:…`/`aumid:…`; lista en mcp-platform-win32.ts
-  return ISOLATED_NEVER_ACT.has(bundleId) || bundleId.startsWith('cl.bentec.lazunox.')
+  return ISOLATED_NEVER_ACT.has(bundleId) || bundleId.startsWith('cl.bentec.lazunox.') || isIsolatedScriptingApp(bundleId)
 }
 
 /**

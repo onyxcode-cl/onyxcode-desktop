@@ -87,6 +87,7 @@ import { ChatIndexStore } from './chat-index'
 import type { ChatIndexEntry } from '@shared/ipc-tasks'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from './guard-info'
 import { tasksRules, rulesPermissionConfig } from './rules'
+import { createConnectorGate } from './connector-approvals'
 import { getBundledOpencodeDir, getOpencodeConfigDir, skillsInlineConfig } from './opencode-config'
 import { applyComputerAgent } from './computer-agent'
 import type { EgressBlockedEvent } from './proxy'
@@ -100,7 +101,7 @@ import { onlyExperimentalEngineEnv, toolSearchEnvForTasks } from '@shared/engine
 import { onlyEngineLimitEnv } from '@shared/engine-limits'
 import { onlyPermissionPersistEnv } from '@shared/permission-persist'
 import { userHooksEnvForTasksServer } from '@shared/user-hooks'
-import { ensureSandboxPermissionDir, sandboxPermissionDir } from '../opencode/permission-store'
+import { sandboxPermissionDir } from '../opencode/permission-store'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
 import { sandboxCredentialIds } from './sandbox-credentials'
@@ -1409,7 +1410,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         realDocumentsToken = null
       }
     }
-    // Herramienta `equipo` (nivel 2: UN comando exacto que corre en el equipo, fuera del aislamiento, tras la aprobación visible de la persona): una ruta
+    // Herramienta `equipo` (nivel 2: UN comando exacto que corre en el equipo, fuera del aislamiento, tras la aprobación de la persona EN MAIN): una ruta
     // más del MISMO proxy. Solo en el servidor aislado y solo si la organización no la apagó (`disableHostCommands`, falla cerrado).
     let hostCfg: Record<string, unknown> | null = null
     let realHostToken: string | null = null
@@ -1422,7 +1423,9 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             name: HOST_ROUTE_NAME,
             url: real.url,
             exactPath: true,
-            headers: { Authorization: `Bearer ${realHostToken}` }
+            headers: { Authorization: `Bearer ${realHostToken}` },
+            // `equipo` no responde hasta que la persona decide en main (y luego corre el comando): el proxy espera lo mismo que el motor.
+            headersTimeoutMs: hostExecMcp.responseTimeoutMs()
           })
           hostCfg = { ...real, url: route.url, headers: route.headers }
         }
@@ -1478,13 +1481,30 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       }
     }
     // MCP del usuario disponibles en Tareas (`mcp-tasks.ts`); sus hosts remotos (sin secretos) entran a la red.
-    const c = tasksMcpContribution({ sandboxed: !fullAccess, registerRoute: mcpProxy ? (spec) => mcpProxy.addRoute(spec) : undefined })
+    // Conectores de la persona con «preguntar cada herramienta»: la puerta de main en su ruta (`connector-approvals.ts`), por tarea.
+    const c = tasksMcpContribution({
+      sandboxed: !fullAccess,
+      registerRoute: mcpProxy
+        ? (spec, o) =>
+            mcpProxy.addRoute(o?.askEachTool ? { ...spec, toolCallGate: createConnectorGate({ folder, server: spec.name }) } : spec)
+        : undefined
+    })
     if (c.blocked.length) {
       console.warn(`[tasks] MCP no disponibles en el sandbox (secretos en el entorno): ${c.blocked.join(', ')}`)
     }
     // Con `disableCustomHosts` los hosts de MCP remotos no se suman a la red (política gestionada).
     this.serverHosts.set(key, loadManagedPolicy()?.disableCustomHosts ? [] : c.hosts)
     // Permisos "siempre permitir" recordados para esta carpeta (`rules.ts`).
+    // «Siempre» de una tarea aislada: los guarda y los pasa main (`tasks-rules.json`, fuera del alcance de la tarea), nunca el motor
+    // (su carpeta privada la puede escribir la tarea). Los que el motor guardó antes se pasan una sola vez, saneados.
+    // (Seatbelt: con WSL `this.win` existe y la carpeta privada vive en la distro, donde el motor nunca guardó nada.)
+    if (!fullAccess && !this.win) {
+      tasksRules.importEngineAlwaysRulesOnce(
+        folder,
+        sandboxPermissionDir(join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder))),
+        this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1'
+      )
+    }
     const config = buildInlineConfig({
       fullAccess,
       extras,
@@ -1577,9 +1597,10 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // (Seatbelt; con WSL la carpeta privada vive en la distro.)
       const seatbeltIso = fullAccess || this.platform === 'win32' ? undefined : privateIso
       if (seatbeltIso) ensureTaskPrivateDir(seatbeltIso)
-      const permDirOverride = fullAccess ? undefined : seatbeltIso ? sandboxPermissionDir(seatbeltIso.privateDir) : null
-      // Sin seguir enlaces: vive en la carpeta privada, que la tarea controla (1.8.18).
-      if (seatbeltIso && this.opts.extraEngineEnv?.().LAZUNOX_PERMISSION_PERSIST === '1') ensureSandboxPermissionDir(seatbeltIso.privateDir)
+      // «Recordar mis siempre» solo en Control total (carpeta general, fuera de cualquier jaula). Un servidor aislado NO guarda ni carga
+      // «siempre» en el motor: su carpeta privada la escribe la tarea (podría plantar `{bash, "*a*"}`). Sus «siempre» los guarda main al
+      // pulsar «Siempre» en la tarjeta de la app (`tasks:rules:add`) y llegan con `rulesPermission`.
+      const permDirOverride = fullAccess ? undefined : null
       return startTasksServer(folder, {
         corsOrigins: this.opts.corsOrigins,
         noSandbox: fullAccess,
@@ -1601,8 +1622,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           ...onlyEngineLimitEnv(this.opts.extraEngineEnv?.() ?? {}),
           // Herramientas propias de la app (control de apps, navegador, shell, documentos) siempre con su esquema a la vista: ver `toolSearchEnvForTasks`.
           ...toolSearchEnvForTasks(),
-          // «Recordar mis siempre»: con sandbox el servidor solo escribe en su directorio privado (userData está denegado), así que ahí
-          // guarda; en Windows con WSL esa ruta no existe para él y no se pasa nada. Control total usa la carpeta general.
+          // «Recordar mis siempre»: solo Control total (carpeta general). Aislado (Seatbelt o WSL): nada; ver `permDirOverride`.
           ...onlyPermissionPersistEnv(this.opts.extraEngineEnv?.() ?? {}, permDirOverride),
           // Ganchos de usuario: SOLO Control total (sin sandbox). Con sandbox nunca: un gancho es un comando con los permisos de la persona,
           // fuera de lo que Seatbelt/WSL permiten, y userData ni siquiera es legible allí.
