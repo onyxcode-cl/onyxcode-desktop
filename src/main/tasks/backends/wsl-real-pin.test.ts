@@ -20,8 +20,8 @@ describe('resources/opencode-bin/pin.json (beta de Tareas en Windows, 2026-10-07
     expect(pin!.rootfs.sha256).toBe('8f855de87d073755ff8024eb4fe8f639538dbde7067bc74586e96028263cf39e')
     expect(pin!.rootfs.size).toBe(98919533)
     expect(pin!.rootfs.unpackedMax).toBeGreaterThanOrEqual(274501120)
-    expect(pin!.opencode.sha256).toBe('cf11c816eb7c148c0d1c15aa28c61bec2dbf857840a1a4e49c42ab11c002dbd1')
-    expect(pin!.opencode.size).toBe(50873520)
+    expect(pin!.opencode.sha256).toBe('cd169339e3b90d1cf2040cd6cce33f0a455020a47912553b0ac43c3c23b03eee')
+    expect(pin!.opencode.size).toBe(50880211)
     expect(pin!.opencode.url).toBe(
       'https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.17/opencode-linux-x64.tar.gz'
     )
