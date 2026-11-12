@@ -17,6 +17,9 @@ const REDIR_RE = new RegExp(`(?:\\s>>?|\\s-o|\\s--(?:output|outfile|out|to))[\\s
 const WRITE_TOOLS = new Set(['write', 'edit', 'multiedit'])
 const PATCH_TOOLS = new Set(['patch', 'apply_patch'])
 
+/** Los nombres MCP pueden llevar el prefijo del servidor. */
+export const isDocumentTool = (name: string): boolean => /(?:^|_)documentos_(?:crear|renderizar)$/.test(name)
+
 const isAbs = (p: string): boolean => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p)
 /** Un `.html` solo cuenta como documento si su nombre dice que lo es (el `index.html` de una web no merece tarjeta). */
 const HTML_DOC_NAME = /presenta|slide|deck|diapositiv|keynote|informe|report|propuesta|pitch|resumen|brochure/i
@@ -84,8 +87,8 @@ export interface DocScanInput {
 export function detectDocFiles({ parts, root }: DocScanInput): string[] {
   const found: string[] = []
   const seen = new Set<string>()
-  const add = (raw: string): void => {
-    const abs = resolvePath(raw, root)
+  const add = (raw: string, base = root): void => {
+    const abs = resolvePath(raw, base)
     if (!abs || !isDocPath(abs) || seen.has(abs)) return
     seen.add(abs)
     found.push(abs)
@@ -98,7 +101,17 @@ export function detectDocFiles({ parts, root }: DocScanInput): string[] {
     if (p.type !== 'tool' || p.state.status !== 'completed') continue
     const input = (p.state.input ?? {}) as Record<string, unknown>
     const tool = p.tool
-    if (WRITE_TOOLS.has(tool)) {
+    if (isDocumentTool(tool)) {
+      // MCP también puede terminar con un mensaje de error: exigimos el marcador de éxito de la herramienta.
+      // Crear devuelve la ruta efectiva (incluye subcarpeta y nombre sin colisiones), no se reconstruye desde `nombre`.
+      const output = str(p.state.output)
+      if (tool.endsWith('documentos_crear')) {
+        const created = /(?:^|\n)Documento creado:\s*(.+?)\s*\(\d+(?:[.,]\d+)?\s*KB\)/.exec(output)
+        if (created) add(created[1])
+      } else if (/^Vista previa:\s*\d+\s/.test(output)) {
+        add(str(input.ruta), str(input.carpeta) || root)
+      }
+    } else if (WRITE_TOOLS.has(tool)) {
       const f = str(input.filePath) || str(input.path) || str(input.file_path)
       if (f) add(f)
     } else if (PATCH_TOOLS.has(tool)) {
