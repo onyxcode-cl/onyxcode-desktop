@@ -20,11 +20,13 @@ function hasOverlay(): boolean {
 export interface ViewerViewportState {
   hostRef: React.RefObject<HTMLDivElement | null>
   shouldShowNative: boolean
+  hasViewport: boolean
 }
 
 export function useViewerViewport(panelVisible: boolean): ViewerViewportState {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const [overlayActive, setOverlayActive] = useState(hasOverlay)
+  const [hasViewport, setHasViewport] = useState(false)
 
   useEffect(() => {
     const check = (): void => setOverlayActive(hasOverlay())
@@ -40,12 +42,23 @@ export function useViewerViewport(panelVisible: boolean): ViewerViewportState {
     const el = hostRef.current
     if (!el) return
     let raf = 0
+    let disposed = false
+    let measurement = 0
     const sync = (): void => {
       const r = el.getBoundingClientRect()
+      const seq = ++measurement
+      const usable = r.width > 0 && r.height > 0
       void cw('tasks:viewer:attach', {
         rect: { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) },
         visible: shouldShowNative
-      }).catch(() => undefined)
+      }).then(
+        (attached) => {
+          if (!disposed && seq === measurement) setHasViewport(usable && attached)
+        },
+        () => {
+          if (!disposed && seq === measurement) setHasViewport(false)
+        }
+      )
     }
     const ro = new ResizeObserver(() => {
       cancelAnimationFrame(raf)
@@ -55,11 +68,12 @@ export function useViewerViewport(panelVisible: boolean): ViewerViewportState {
     sync()
     window.addEventListener('resize', sync)
     return () => {
+      disposed = true
       cancelAnimationFrame(raf)
       ro.disconnect()
       window.removeEventListener('resize', sync)
     }
   }, [shouldShowNative])
 
-  return { hostRef, shouldShowNative }
+  return { hostRef, shouldShowNative, hasViewport }
 }

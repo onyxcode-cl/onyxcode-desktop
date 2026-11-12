@@ -989,7 +989,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:learn:pending:ackDropped': none,
   'tasks:viewer:open': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark'), openingId: compareId }),
   'tasks:viewer:attach': obj({ rect: browserRect, visible: bool }),
-  'tasks:viewer:close': obj({ openingId: compareId }),
+  'tasks:viewer:close': obj({ openingId: compareId, reason: optional(literal('timeout', 'error')) }),
   'tasks:network:state': none,
   'tasks:network:setToggle': obj({ key: literal('npmEnabled', 'pypiEnabled', 'webSearchEnabled'), value: bool }),
   'tasks:network:setHost': networkSetHost,

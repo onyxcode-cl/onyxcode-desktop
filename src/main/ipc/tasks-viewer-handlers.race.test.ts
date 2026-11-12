@@ -17,7 +17,10 @@ vi.mock('electron', () => ({ app: { getPath: () => '/nonexistent', isPackaged: f
 vi.mock('../viewer/scheme', () => ({ installViewerScheme: () => undefined, registerViewerPathValidator: () => undefined }))
 vi.mock('../viewer/view', () => ({
   onViewerEvent: () => () => undefined,
-  openDoc: (url: string) => state.calls.push(`openDoc:${url.slice(0, 30)}`),
+  openDoc: async (url: string) => {
+    state.calls.push(`openDoc:${url.slice(0, 30)}`)
+    return true
+  },
   detach: () => undefined
 }))
 vi.mock('../office/craft/web-view', () => ({ onWebEvent: () => () => undefined }))

@@ -669,3 +669,17 @@ describe('tasks:prefs:set avisos de aislamiento', () => {
     expect(() => validate({ sandboxDenialNotices: true, extra: true })).toThrow()
   })
 })
+
+describe('tasks:viewer:close diagnóstico', () => {
+  const validate = IPC_SCHEMAS['tasks:viewer:close']
+  it('acepta cierre normal y motivos cerrados, sin texto libre de rutas o errores', () => {
+    expect(validate({ openingId: '12345678-1234-1234-1234-123456789abc' })).toEqual({ openingId: '12345678-1234-1234-1234-123456789abc' })
+    for (const reason of ['timeout', 'error'])
+      expect(validate({ openingId: '12345678-1234-1234-1234-123456789abc', reason })).toEqual({
+        openingId: '12345678-1234-1234-1234-123456789abc',
+        reason
+      })
+    expect(() => validate({ openingId: '12345678-1234-1234-1234-123456789abc', reason: 'ruta privada' })).toThrow()
+    expect(() => validate({ openingId: '12345678-1234-1234-1234-123456789abc', path: 'C:\\privado\\a.docx' })).toThrow()
+  })
+})

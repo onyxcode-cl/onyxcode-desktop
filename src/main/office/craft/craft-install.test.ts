@@ -397,7 +397,10 @@ describe('instalación de Craft en Windows', () => {
     const log: Call[] = []
     const bins = await installCraft(deps({ ...WIN, run: fakeRun(undefined, undefined, true, log) }))
     expect(Object.keys(bins).sort()).toEqual(TOOLS)
-    for (const b of Object.values(bins)) expect(readFileSync(b, 'utf8')).toBe('bin')
+    for (const b of Object.values(bins)) {
+      expect(readFileSync(b, 'utf8')).toBe('bin')
+      expect(b).toMatch(/-cli\.exe$/)
+    }
     expect(log.filter((c) => c.file.endsWith('tar.exe'))).toHaveLength(TOOLS.length + WEBS.length)
     for (const c of log.filter((c) => c.file.endsWith('tar.exe'))) expect(c.args.slice(0, 3)).toEqual(['-xf', expect.any(String), '-C'])
     expect(log.some((c) => c.file.endsWith('codesign') || c.file.endsWith('ditto'))).toBe(false)

@@ -12,6 +12,7 @@ import { findHardcodedText } from './i18n-detect'
 const ROOT = resolve(__dirname, '../..')
 
 export const MIGRATED: string[] = [
+  'src/renderer/src/features/tasks/impl/DocumentViewerPanel.tsx',
   'src/renderer/src/features/code/impl/GoalDialog.tsx',
   'src/renderer/src/features/code/impl/BudgetDialog.tsx',
   'src/renderer/src/features/code/impl/ReviewDialog.tsx',

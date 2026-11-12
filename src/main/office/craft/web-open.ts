@@ -58,6 +58,9 @@ export function useClassicViewer(): void {
 export async function openInCraftWeb(kind: DocKind, file: string, title: string): Promise<boolean> {
   const generation = ++openGeneration
   const current = (): boolean => generation === openGeneration
+  // Un cierre (p. ej. al cambiar el tema) destruye las vistas y borra su anfitrión/tamaño.
+  // Restituirlos ANTES de arrancar wasm: esperar a su éxito lo arrancaba sin superficie.
+  applyPanel()
   const dir = craftService().webDir(WEB_PROGRAM[kind])
   if (!dir) {
     console.warn(`[craft-web] la versión web de ${WEB_PROGRAM[kind]} no está instalada; se usa el visor de siempre`)

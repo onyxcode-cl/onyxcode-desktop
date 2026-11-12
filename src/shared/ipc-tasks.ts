@@ -508,8 +508,8 @@ export type PendingAcceptSkillResult = LearnedSkillResult | { ok: false; reason:
 // ───────────────────────────── Visor de documentos ─────────────────────────────
 
 /** Por qué `tasks:viewer:open` no abrió nada: no se reconoce el formato, o pesa más que el tope de ese tipo. */
-export type ViewerOpenReject = 'unsupported' | 'too-large'
-export type ViewerOpenResult = { ok: true; token: string; kind: DocKind } | { ok: false; reason: ViewerOpenReject }
+export type ViewerOpenReject = 'unsupported' | 'too-large' | 'load-failed'
+export type ViewerOpenResult = { ok: true; token: string; kind: DocKind; mode: 'web' | 'classic' } | { ok: false; reason: ViewerOpenReject }
 export interface ViewerRect {
   x: number
   y: number
@@ -1238,8 +1238,8 @@ export interface TasksInvokeContract {
    * el hueco del panel «Documento» con la vista nativa (mismo patrón que `browser:attach`).
    */
   'tasks:viewer:open': { req: { path: string; lang: 'es' | 'en'; theme: 'light' | 'dark'; openingId: string }; res: ViewerOpenResult }
-  'tasks:viewer:attach': { req: { rect: ViewerRect; visible: boolean }; res: void }
-  'tasks:viewer:close': { req: { openingId: string }; res: void }
+  'tasks:viewer:attach': { req: { rect: ViewerRect; visible: boolean }; res: boolean }
+  'tasks:viewer:close': { req: { openingId: string; reason?: 'timeout' | 'error' }; res: void }
 
   /** Lista blanca de red efectiva para los servidores Tareas sandboxeados (egress proxy). */
   'tasks:network:state': { req: void; res: NetworkPolicyState }
@@ -1566,7 +1566,7 @@ export interface TasksEventContract {
   /** Cambió la cola de pendientes de Rutinas (se encoló algo nuevo, o el dueño aceptó/descartó). Nunca al celular. */
   'tasks:learn:pending:changed': PendingLearnedState
   /** Aviso de la vista nativa del visor (Escape, se cayó el proceso, terminó de cargar, falló la carga). */
-  'tasks:viewer:event': { type: ViewerEventType }
+  'tasks:viewer:event': { type: ViewerEventType; openingId: string }
 }
 
 export type TasksInvokeChannel = keyof TasksInvokeContract

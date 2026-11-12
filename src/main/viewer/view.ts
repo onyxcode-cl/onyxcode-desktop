@@ -58,10 +58,14 @@ function ensureView(): WebContentsView {
   wc.on('will-navigate', (event) => event.preventDefault())
   wc.on('will-redirect', (event) => event.preventDefault())
   wc.on('will-attach-webview', (event) => event.preventDefault())
-  wc.on('render-process-gone', () => emitter.emit('event', { type: 'crashed' satisfies ViewerEventType }))
-  wc.on('did-finish-load', () => emitter.emit('event', { type: 'loaded' satisfies ViewerEventType }))
+  wc.on('render-process-gone', () => {
+    if (state.view === view) emitter.emit('event', { type: 'crashed' satisfies ViewerEventType })
+  })
+  wc.on('did-finish-load', () => {
+    if (state.view === view) emitter.emit('event', { type: 'loaded' satisfies ViewerEventType })
+  })
   wc.on('did-fail-load', (_e, _code, _desc, _url, isMainFrame) => {
-    if (isMainFrame) emitter.emit('event', { type: 'error' satisfies ViewerEventType })
+    if (isMainFrame && state.view === view) emitter.emit('event', { type: 'error' satisfies ViewerEventType })
   })
   wc.on('before-input-event', (_event, input) => {
     if (input.type !== 'keyDown') return
@@ -108,12 +112,20 @@ let navSeq = 0
  * viejo. Se le agrega un parámetro de consulta que cambia siempre, ANTES del fragmento, para forzar
  * una recarga real cada vez (una diferencia de ruta/query sí fuerza navegación, a diferencia del hash).
  */
-export function openDoc(url: string): void {
+export function openDoc(url: string): Promise<boolean> {
   const hashIndex = url.indexOf('#')
   const base = hashIndex === -1 ? url : url.slice(0, hashIndex)
   const hash = hashIndex === -1 ? '' : url.slice(hashIndex)
   const sep = base.includes('?') ? '&' : '?'
-  void ensureView().webContents.loadURL(`${base}${sep}_r=${++navSeq}${hash}`)
+  const view = ensureView()
+  const seq = ++navSeq
+  return view.webContents.loadURL(`${base}${sep}_r=${seq}${hash}`).then(
+    () => true,
+    () => {
+      if (state.view === view && seq === navSeq) emitter.emit('event', { type: 'error' satisfies ViewerEventType })
+      return false
+    }
+  )
 }
 
 /** Sincroniza el hueco/visibilidad con el host, como `embedded-browser`'s `attachView`. */
