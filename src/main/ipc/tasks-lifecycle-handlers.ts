@@ -42,6 +42,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   const prefs = new TasksPrefsStore(join(userData, 'tasks-prefs.json'), {
     policyMaxAutoArchiveDays: () => loadManagedPolicy()?.maxAutoArchiveDays
   })
+  tasksManager.setDenialNotices(prefs.get().sandboxDenialNotices)
   const tasks = new TasksTasksStore(join(userData, 'tasks-meta.json'))
 
   const windowState = (): MonitorWindowState => {
@@ -132,7 +133,11 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
     await ctx.restore.forget(sessionId)
   })
   handle('tasks:prefs:get', () => prefs.get())
-  handle('tasks:prefs:set', (patch) => prefs.set(patch))
+  handle('tasks:prefs:set', (patch) => {
+    const next = prefs.set(patch)
+    tasksManager.setDenialNotices(next.sandboxDenialNotices)
+    return next
+  })
   handle('tasks:storage:report', () => report())
   handle('tasks:usage:summary', () => tasksUsageSummary({ userData, sandboxKey }, folderPaths()))
   handle('tasks:storage:clean', ({ key, scope }) => storageClean(storageEnv(), folderPaths(), tasksManager.liveServers(), key, scope))

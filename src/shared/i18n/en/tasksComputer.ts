@@ -26,6 +26,15 @@ export const tasksComputer = {
   'tasksComputer.delete.hintTitle': 'The agent tried to delete, move or rename a file and couldn’t',
   'tasksComputer.delete.hintBody':
     'For safety, this folder doesn’t allow deleting, moving or renaming files yet. If you turn it on, the task’s server will restart and you will need to reopen this task and ask the agent to continue. If you’d rather not, ask it for a tidy copy without touching the originals.',
+  'tasksComputer.delete.permissionTitle': 'This folder needs permission to delete, move or rename',
+  'tasksComputer.delete.permissionBody':
+    'Allow once does not change isolation. Turning this permission on lets the agent delete, move and rename throughout this folder until you turn it off. The folder’s server will restart (interrupting its running tasks), this task will reopen and the agent will be asked to retry. Extra folders and protected files keep their restrictions.',
+  'tasksComputer.delete.enableRetry': 'Enable permission and retry',
+  'tasksComputer.delete.retry':
+    'Permission to delete, move and rename is now enabled for the main folder. Resume the task and retry the pending operation; keep asking for confirmation before deleting other files.',
+  'tasksComputer.delete.restartError':
+    'The permission was saved, but the task could not reopen. Open the folder and task again and ask the agent to continue.',
+  'tasksComputer.delete.changed': 'The folder or task changed. Return to the task that requested permission to continue.',
   'tasksComputer.delete.notNow': 'Not now',
   'tasksComputer.consentHint.intro':
     'To use apps on your PC, turn on PC Control once. Read it and turn it on here, then ask again for what you wanted.',

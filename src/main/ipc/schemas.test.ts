@@ -660,3 +660,12 @@ describe('settings:set userHooksEnabled y canales de ganchos', () => {
     expect(() => f(undefined)).toThrow()
   })
 })
+
+describe('tasks:prefs:set avisos de aislamiento', () => {
+  it('solo acepta booleanos y conserva el esquema estricto', () => {
+    const validate = IPC_SCHEMAS['tasks:prefs:set']
+    for (const value of [true, false]) expect(validate({ sandboxDenialNotices: value })).toEqual({ sandboxDenialNotices: value })
+    for (const value of ['false', 0]) expect(() => validate({ sandboxDenialNotices: value })).toThrow()
+    expect(() => validate({ sandboxDenialNotices: true, extra: true })).toThrow()
+  })
+})

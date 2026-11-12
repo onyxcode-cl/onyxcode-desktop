@@ -4,6 +4,8 @@
  * `sandbox.equivalence.test.ts` contra un fixture capturado antes de la extracción.
  * 1.8.16: el perfil se pasa como texto (`-p`), ya no en un archivo temporal (`-f`): ver `seatbeltProfileText`.
  */
+import { randomBytes } from 'node:crypto'
+import { SandboxDenialMonitor } from '../sandbox-denials'
 import { t } from '@shared/i18n'
 import { existsSync, lstatSync, readdirSync, rmdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -14,7 +16,7 @@ import { buildSandboxProfile, sandboxEnv } from '../sandbox-profile'
 import { ensureTaskAppDirs, ensureTaskPrivateDir } from '../private-dir'
 import { bundledRipgrepPathEnv } from '../ripgrep-runtime'
 import { spawnOnHost } from './spawn'
-import type { SandboxBackend, SandboxIsolation, SandboxNetworkOptions } from './types'
+import type { SandboxBackend, SandboxDenialControl, SandboxIsolation, SandboxNetworkOptions } from './types'
 
 export const SANDBOX_EXEC = '/usr/bin/sandbox-exec'
 
@@ -39,6 +41,7 @@ export function seatbeltProfileText(folder: string, iso: SandboxIsolation, confi
     allowedOutboundPorts: network?.allowedOutboundPorts,
     serverPort: network?.serverPort,
     allowDelete: network?.allowDelete,
+    denialTag: network?.denialTag,
     extraFolders: network?.extraFolders,
     isolateChats: isUnifiedAppsEnabled()
   })
@@ -97,27 +100,68 @@ export const seatbeltBackend: SandboxBackend = {
     // config de la app (`userData`, de solo lectura para la tarea) y `OPENCODE_MODELS_PATH`; `OPENCODE_DISABLE_MODELS_FETCH` evita que
     // el motor intente refrescarlo (cada 60 min) escribiendo en su caché. El `rg` incluido va en el PATH (1.8.17).
     const modelsPath = seedConfigModels(spec.configDir)
-    const modelsEnv: Record<string, string> = { OPENCODE_DISABLE_MODELS_FETCH: '1', ...(modelsPath ? { OPENCODE_MODELS_PATH: modelsPath } : {}) }
+    const modelsEnv: Record<string, string> = {
+      OPENCODE_DISABLE_MODELS_FETCH: '1',
+      ...(modelsPath ? { OPENCODE_MODELS_PATH: modelsPath } : {})
+    }
     if (!legacyCleaned) {
       legacyCleaned = true
       cleanLegacyProfiles()
     }
+    const denialTag = `lzx-denial-${randomBytes(16).toString('hex')}`
     const profile = seatbeltProfileText(spec.folder, spec.isolation, spec.configDir, {
       allowedOutboundPorts: spec.outboundPorts,
       serverPort: spec.serverPort,
       allowDelete: spec.allowDelete,
+      denialTag,
       extraFolders: spec.extraFolders
     })
     // `rg` incluido al principio del PATH (1.8.17): dentro del encierro el motor no puede bajarlo de internet. El perfil ya deja LEER y
     // EJECUTAR los recursos de la app (`(allow default)`); no se abre nada nuevo.
     const env = { ...spec.baseEnv, ...bundledRipgrepPathEnv(), ...sandboxEnv(dirs), ...modelsEnv, ...spec.proxyEnv, ...spec.extraEnv }
     // `-p <texto>`: sin archivo de perfil que un proceso encerrado pueda cambiar (ver `seatbeltProfileText`).
-    const child = spawnOnHost(SANDBOX_EXEC, ['-p', profile, spec.bin, ...spec.serveArgs], spec.folder, env)
+    const monitor = spec.onDenials
+      ? new SandboxDenialMonitor(
+          denialTag,
+          spec.folder,
+          spec.onDenials,
+          undefined,
+          { allowDelete: spec.allowDelete, extraFolders: spec.extraFolders },
+          spec.onDenialUnavailable
+        )
+      : undefined
+    if (spec.denialNotices !== false) monitor?.start()
+    let child: ReturnType<typeof spawnOnHost>
+    try {
+      child = spawnOnHost(SANDBOX_EXEC, ['-p', profile, spec.bin, ...spec.serveArgs], spec.folder, env)
+    } catch (err) {
+      await monitor?.stop()
+      throw err
+    }
+    let ended = false
+    const endMonitor = (): void => {
+      ended = true
+      void monitor?.stop()
+    }
+    child.once('exit', endMonitor)
+    child.once('close', endMonitor)
+    child.once('error', endMonitor)
+    const control: SandboxDenialControl = {
+      setEnabled: (enabled) => {
+        if (enabled && !ended && child.exitCode === null && child.signalCode === null) monitor?.start()
+        else void monitor?.stop()
+      },
+      killSync: () => monitor?.killSync()
+    }
+    spec.onDenialControl?.(control)
     return {
       child,
+      setDenialNotices: control.setEnabled,
       toHostPath: (p) => p,
       toSandboxPath: (p) => p,
-      dispose: async () => {}
+      dispose: async () => {
+        await monitor?.stop()
+      }
     }
   }
 }

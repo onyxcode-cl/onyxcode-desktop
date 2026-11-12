@@ -60,6 +60,9 @@
  * Actualización DELIBERADA (1.8.19, contenedores): el fixture se recapturó (y se pasó por Prettier). Diff: en los 11 perfiles, tras
  * `(deny appleevent-send)`, dos líneas de comentario, `(deny process-exec (regex #"/(docker|podman|nerdctl|kubectl)$"))` y `(deny
  * network-outbound (remote unix-socket (path-regex #"/(docker|podman)\.sock$")))`. Nada más cambió.
+ *
+ * Actualización deliberada (tarea 09): caso etiquetado y mensajes opacos en cada deny de los dos lanzamientos Seatbelt.
+ * Al retirar solo `(with message ...)`, todos los perfiles, permisos y filtros conservan su texto anterior.
  */
 import { EventEmitter } from 'node:events'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
@@ -169,6 +172,7 @@ vi.mock('./proxy', () => {
   return { EgressProxy, CredentialProxy, randomToken: () => `tok${++rec.tok}` }
 })
 
+import { seatbeltBackend } from './backends/seatbelt'
 import { appAuthFile } from '../opencode/data-dir'
 import { buildSandboxProfile, seatbeltProfileText, startTasksServer, type StartTasksServerOptions } from './sandbox'
 
@@ -294,6 +298,7 @@ function profiles() {
   }
   const inputs: Array<[string, Parameters<typeof buildSandboxProfile>[0]]> = [
     ['base', base],
+    ['etiquetado', { ...base, denialTag: 'lzx-denial-' + 'a'.repeat(32) }],
     ['red', { ...base, allowedOutboundPorts: [52000, 52001, 52000, 4096], serverPort: 51000 }],
     ['borrar', { ...base, allowDelete: true, allowedOutboundPorts: [52000], serverPort: 51000 }],
     [
@@ -359,6 +364,7 @@ beforeEach(() => {
   mkdirSync(join(rec.userData, 'opencode-config'), { recursive: true })
 })
 afterEach(() => {
+  vi.restoreAllMocks()
   if (prevUnified === undefined) delete process.env.LAZUNOX_UNIFIED_APPS
   else process.env.LAZUNOX_UNIFIED_APPS = prevUnified
   rmSync(root, { recursive: true, force: true })
@@ -390,6 +396,57 @@ describe.skipIf(!macOnly)('lanzamiento Seatbelt: equivalencia byte a byte con el
     const completo = before.launches[1]
     expect(completo.spawns[0].command).toBe('/fixture/launcher/lazunox-disclaim')
     expect(completo.spawns[0].args.slice(0, 3)).toEqual(['/usr/bin/sandbox-exec', '-p', '<PROFILE>'])
-    expect(completo.spawns[0].profileText).toContain('(deny network*)')
+    expect(completo.spawns[0].profileText).toContain('(deny network* (with message "lzx-denial-')
+  })
+  it('stop espera recoger el lector aunque el servidor ya haya salido', async () => {
+    reset()
+    let finish: (() => void) | undefined
+    const original = seatbeltBackend.launch.bind(seatbeltBackend)
+    vi.spyOn(seatbeltBackend, 'launch').mockImplementationOnce(async (spec) => ({
+      ...(await original(spec)),
+      dispose: () =>
+        new Promise<void>((r) => {
+          finish = r
+        })
+    }))
+    const folder = join(root, 'work', 'proyecto')
+    const handle = await startTasksServer(folder, {
+      isolation: { privateDir: join(rec.userData, 'tasks-sandbox', '0123456789abcdef'), userData: rec.userData }
+    })
+    rec.child!.exitCode = 0
+    rec.child!.emit('exit', 0)
+    let stopped = false
+    const stopping = handle.stop().then(() => {
+      stopped = true
+    })
+    await Promise.resolve()
+    expect(stopped).toBe(false)
+    finish?.()
+    await stopping
+    expect(stopped).toBe(true)
+  })
+
+  it('un error al recoger backend o callback no bloquea proxies ni exited', async () => {
+    reset()
+    const original = seatbeltBackend.launch.bind(seatbeltBackend)
+    vi.spyOn(seatbeltBackend, 'launch').mockImplementationOnce(async (spec) => ({
+      ...(await original(spec)),
+      dispose: async () => {
+        throw new Error('cleanup failed')
+      }
+    }))
+    const folder = join(root, 'work', 'proyecto')
+    const onExit = vi.fn(() => {
+      throw new Error('callback failed')
+    })
+    const handle = await startTasksServer(folder, {
+      isolation: { privateDir: join(rec.userData, 'tasks-sandbox', '0123456789abcdef'), userData: rec.userData },
+      onExit
+    })
+    await handle.stop()
+    expect(await handle.exited).toBe(0)
+    expect(onExit).toHaveBeenCalledWith(0)
+    expect(rec.proxies).toContainEqual({ kind: 'egress.stop' })
+    expect(handle.logs()).toContain('backend cleanup failed')
   })
 })

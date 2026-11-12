@@ -14,6 +14,7 @@ export function ProjectCard({
   busy,
   branch,
   folders,
+  folderPermission,
   onAccessSaved
 }: Omit<ProjectDialogProps, 'onClose'> & { branch?: string | null }): React.JSX.Element {
   const t = useT()
@@ -84,6 +85,7 @@ export function ProjectCard({
           onPickFull={onPickFull}
           busy={busy}
           folders={folders}
+          folderPermission={folderPermission}
           onAccessSaved={onAccessSaved}
           onClose={() => setOpen(false)}
         />

@@ -8,6 +8,7 @@ import { cw } from './bridge'
 import { isChatFolderForDisplay, useUnifiedApps } from './unified'
 import { useScope } from './ScopePicker'
 import { useTasks } from './store'
+import { DeleteGrantToggle } from './DeleteGrant'
 
 /** Las carpetas vinculadas del espacio, con las mismas acciones (validar, confirmar si hay tareas en curso, reiniciar) que el menú de carpetas. */
 export function useProjectFolders(folder: string): ProjectFolders {
@@ -41,6 +42,7 @@ export function TasksProjectCard({ busy }: { busy: boolean }): React.JSX.Element
     <ProjectCard
       folder={folder}
       full={scope.full}
+      folderPermission={!scope.full ? <DeleteGrantToggle /> : undefined}
       onPickFull={scope.canFull ? scope.pick : undefined}
       busy={busy}
       folders={folders}
@@ -60,6 +62,7 @@ export function TasksProjectSeal({ busy, iconOnly = false }: { busy: boolean; ic
     <ProjectSeal
       folder={folder}
       full={scope.full}
+      folderPermission={!scope.full ? <DeleteGrantToggle /> : undefined}
       onPickFull={scope.canFull ? scope.pick : undefined}
       busy={busy}
       folders={folders}
@@ -79,6 +82,7 @@ export function TasksFichaDialog({ busy, onClose }: { busy: boolean; onClose: ()
     <ProjectDialog
       folder={folder}
       full={scope.full}
+      folderPermission={!scope.full ? <DeleteGrantToggle /> : undefined}
       onPickFull={scope.canFull ? scope.pick : undefined}
       busy={busy}
       folders={projectFolders}

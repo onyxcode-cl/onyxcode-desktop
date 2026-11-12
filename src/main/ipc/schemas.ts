@@ -1116,6 +1116,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     idleStopMinutes: num({ int: true, min: 0, max: 1440 }),
     stallWarnMinutes: num({ int: true, min: 0, max: 240 }),
     maxServers: num({ int: true, min: 1, max: 12 }),
+    sandboxDenialNotices: bool,
     notify: partial({ enabled: bool, done: bool, approval: bool, question: bool, error: bool })
   }),
   'tasks:storage:report': none,

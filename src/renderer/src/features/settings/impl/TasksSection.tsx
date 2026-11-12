@@ -40,7 +40,7 @@ import { CraftComponentCard } from './CraftComponentCard'
 import { RuntimesCard } from './RuntimesCard'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import { isWindowsPlatform, platformCaps } from '../../../lib/platform'
+import { isMacPlatform, isWindowsPlatform, platformCaps } from '../../../lib/platform'
 import { isSubmitKey } from '../../../lib/textarea'
 
 // ───────────────────────────── Helpers puros ─────────────────────────────
@@ -703,6 +703,16 @@ export function TasksSection(): React.JSX.Element {
               label={t('tasksSettings.notify.master.label')}
             />
           </Row>
+          {isMacPlatform() && (
+            <Row label={t('tasks.denial.setting')} description={t('tasks.denial.settingHint')}>
+              <Toggle
+                checked={prefs?.sandboxDenialNotices ?? true}
+                disabled={!prefs}
+                onChange={(v) => prefs && savePrefs({ sandboxDenialNotices: v }, 'notify')}
+                label={t('tasks.denial.setting')}
+              />
+            </Row>
+          )}
           {NOTIFY_ROWS.map((n) => (
             <Row key={n.key} label={t(n.label)} description={t(n.description)}>
               <Toggle

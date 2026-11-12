@@ -101,32 +101,20 @@ describe('prompts de agente', () => {
     expect(t).toContain('Abrir o mostrar SU carpeta no es una razón para escalar')
   })
 
-  it('tasks.md dice DÓNDE está el permiso de borrar (texto exacto del glosario)', () => {
-    const t = read('tasks')
-    expect(t).toContain('botón **Proyecto e instrucciones**')
-    expect(t).toContain('pestaña **Proyecto** › sección **Carpeta**')
-    expect(t.replace(/\s+/g, ' ')).toContain('interruptor **Permitir borrar, mover y renombrar**')
-    expect(t).toContain('tarjeta amarilla')
-  })
-
-  it('tasks.md: la ruta que cita al permiso de borrar existe en la interfaz (etiquetas exactas, es)', async () => {
+  it('tasks.md explica el bloqueo en dos líneas y cita la Ficha real, sin inventar ajustes', async () => {
     const { DICTIONARIES } = await import('../../shared/i18n')
-    const es = DICTIONARIES.es
-    const t = read('tasks').replace(/\s+/g, ' ')
-    const tasksPanel = readFileSync(join(__dirname, '../../renderer/src/features/tasks/impl/ProjectPanel.tsx'), 'utf8')
-    const deleteGrant = readFileSync(join(__dirname, '../../renderer/src/features/tasks/impl/DeleteGrant.tsx'), 'utf8')
-    const sidebar = readFileSync(join(__dirname, '../../renderer/src/features/tasks/impl/TasksSidebar.tsx'), 'utf8')
-    const label = (k: string): string => es[k] as string
-    // Cada tramo citado es exactamente la etiqueta que ve la persona...
-    expect(t).toContain(`**${label('tasks.sidebar.project')}**`)
-    expect(t).toContain(`pestaña **${label('tasks.proj.tabProject')}**`)
-    expect(t).toContain(`sección **${label('tasks.proj.folder')}**`)
-    expect(t).toContain(`**${label('tasksSettings.glossary.deleteGrant')}**`)
-    // ...y el código los pinta donde dice: botón del libro en la barra, pestaña, sección «Carpeta» con el interruptor.
-    expect(sidebar).toContain("t('tasks.sidebar.project')")
-    expect(tasksPanel).toContain("t('tasks.proj.tabProject')")
-    expect(tasksPanel).toMatch(/t\('tasks\.proj\.folder'\)\}<\/span>\s*<DeleteGrantToggle \/>/)
-    expect(deleteGrant).toContain('TASKS_TERMS.deleteGrant')
+    const t = read('tasks')
+    expect(t).toContain(
+      'Si al borrar, mover o renombrar falla un comando con «Operation not permitted», es por el aislamiento de Lazunox: no lo reintentes ni propongas rutas de ajustes inventadas.\nDile exactamente:'
+    )
+    expect(t).toContain('activa Permitir borrar, mover y renombrar en Overdrive › menú ⋯ de la cabecera › Ficha del proyecto › Carpetas')
+    expect(t).not.toContain('botón **Proyecto e instrucciones**')
+    for (const key of ['labels.mode.tasks', 'project.dialog.title', 'project.dialog.folders', 'tasksSettings.glossary.deleteGrant'])
+      expect(t).toContain(DICTIONARIES.es[key])
+    const src = (path: string): string => readFileSync(join(__dirname, '../../renderer/src/features/', path), 'utf8')
+    expect(src('tasks/impl/TasksWorkspace.tsx')).toContain("label: t('project.card.title'), run: () => setFichaOpen(true)")
+    expect(src('tasks/impl/TasksProjectCard.tsx')).toContain('folderPermission={!scope.full ? <DeleteGrantToggle /> : undefined}')
+    expect(src('project-profile/ProjectDialog.tsx')).toContain('{folderPermission}')
   })
 
   it('tasks.md acota la escalada a una petición explícita', () => {

@@ -18,6 +18,7 @@ import {
   type ComputerStatus,
   type TasksActivitySnapshot,
   type TasksConnection,
+  type SandboxDenial,
   type TasksDeliverable,
   type TasksFolder,
   type TasksFolderSet,
@@ -134,6 +135,9 @@ interface TasksState {
   /** "Permitir borrar" de la carpeta actual (`tasks:deleteGrant:get`; null = aún sin cargar). */
   deleteGrant: boolean | null
   deleteGrantBusy: boolean
+  /** Últimas negaciones del servidor de la carpeta; el registro no identifica sesiones. */
+  sandboxDenials: Record<string, SandboxDenial[]>
+  denialMonitorUnavailable: Record<string, boolean>
   /** Tareas (id de sesión raíz) con el plan aprobado en Control total (`computer:planState`). */
   approvedPlans: Record<string, true>
   /** Tareas activas y servidores de TODAS las carpetas (monitor de main, evento `tasks:activity`). */
@@ -285,6 +289,8 @@ export const useTasks = create<TasksState>((set) => ({
   blockedApps: {},
   deleteGrant: null,
   deleteGrantBusy: false,
+  sandboxDenials: {},
+  denialMonitorUnavailable: {},
   approvedPlans: {},
   activity: null,
   taskMeta: {},

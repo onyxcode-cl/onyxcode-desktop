@@ -10,6 +10,7 @@ export function ProjectSeal({
   onPickFull,
   busy,
   folders,
+  folderPermission,
   onAccessSaved,
   iconOnly = false
 }: Omit<ProjectDialogProps, 'onClose'> & { iconOnly?: boolean }): React.JSX.Element {
@@ -31,6 +32,7 @@ export function ProjectSeal({
           onPickFull={onPickFull}
           busy={busy}
           folders={folders}
+          folderPermission={folderPermission}
           onAccessSaved={onAccessSaved}
           onClose={() => setOpen(false)}
         />
