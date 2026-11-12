@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isXlsxSpec, type XlsxSpec } from '@shared/chat-doc-spec'
+import XLSX from 'xlsx'
 import { chatGridScript, colLetter, gridToPdf, renderChatGrid, sheetName } from './chat-grid'
 
 const SPEC: XlsxSpec = {
@@ -97,6 +98,12 @@ describe('chat-grid (prueba Craft)', () => {
       const buf = await renderChatGrid(real!, SPEC)
       expect(buf.subarray(0, 2).toString()).toBe('PK')
       expect(Date.now() - t).toBeLessThan(3000)
+      // Leer el caché OOXML sin recalcular: `gridcraft cat` recalcula y ocultaría un <v> ausente.
+      const saved = XLSX.read(buf, { type: 'buffer', cellFormula: true }).Sheets.Ventas
+      expect(saved.D4).toMatchObject({ f: 'SUM(D2:D3)', v: 900000 })
+      // El spec trae 0.41: el valor guardado debe proceder del cálculo de GridCraft.
+      expect(saved.E3.f).toBe('D3/B3')
+      expect(saved.E3.v).toBeCloseTo(500000 / 1200000, 12)
       const file = join(dir, 'a.xlsx')
       writeFileSync(file, buf)
       const home = mkdtempSync(join(dir, 'h-'))
