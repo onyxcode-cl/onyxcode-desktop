@@ -13,7 +13,7 @@ import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { setDeleteGrantAllowed } from './actions'
 import { useTasks } from './store'
-import { looksLikeBlockedDelete, deleteAttemptText } from './blocked-delete'
+import { currentBlockedDeletes, deleteAttemptText } from './blocked-delete'
 import { DeletePermissionCard } from './DeletePermissionCard'
 import { sdkDirOf } from './path-map'
 
@@ -82,18 +82,29 @@ export function DeleteGrantHintCard({ entries }: { entries: MessageEntry[] }): R
     folder: sdkDirOf(conn, folder),
     additional: [...(folders?.linked ?? []), ...(folders?.trusted ?? [])].map((f) => f.path)
   }
-  for (const e of entries) {
-    for (const p of e.parts) {
-      if (p.type !== 'tool' || dismissed.has(p.id) || !looksLikeBlockedDelete(p, scope)) continue
-      return (
-        <DeletePermissionCard
-          key={p.id}
-          request={p}
-          command={deleteAttemptText(p)}
-          onDismiss={() => setDismissed((s) => new Set(s).add(p.id))}
-        />
-      )
+  for (const p of currentBlockedDeletes(entries, scope)) {
+    if (dismissed.has(p.id)) continue
+    const dismissKey = `tasks.deleteGrant.dismissed:${JSON.stringify([scope.folder, p.sessionID, p.id])}`
+    try {
+      if (localStorage.getItem(dismissKey) === '1') continue
+    } catch {
+      // Sin almacenamiento, el descarte local sigue funcionando durante este montaje.
     }
+    return (
+      <DeletePermissionCard
+        key={p.id}
+        request={p}
+        command={deleteAttemptText(p)}
+        onDismiss={() => {
+          try {
+            localStorage.setItem(dismissKey, '1')
+          } catch {
+            // Mantener el descarte local aunque el almacenamiento no esté disponible.
+          }
+          setDismissed((s) => new Set(s).add(p.id))
+        }}
+      />
+    )
   }
   return null
 }
