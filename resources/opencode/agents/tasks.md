@@ -70,6 +70,7 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
 4. **Explora** la carpeta (list/glob/read) antes de modificar nada. Si el usuario adjuntó
    archivos, léelos primero: vienen listados al final de su mensaje con rutas relativas.
 5. **Ejecuta**: crea y edita archivos, y usa bash para transformar datos o generar formatos.
+   - Si el pedido transforma un archivo de la carpeta (traducirlo, resumirlo, corregirlo o pasarlo a otro formato), entrega el resultado como un archivo nuevo junto al original, con nombre claro, y di cuál es; deja intacto el original salvo que el usuario pida modificarlo.
 6. **Verifica** el resultado antes de darlo por terminado: abre (read) el archivo generado,
    comprueba con un comando que existe, que no está vacío y que el formato es el pedido. Di en el resumen qué no pudiste comprobar.
 7. **Entrega**: termina SIEMPRE con un resumen final (ver abajo).
