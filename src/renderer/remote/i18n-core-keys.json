@@ -2177,6 +2177,7 @@
  "tasks.ctx.webPage",
  "tasks.ctx.webSearch",
  "tasks.deliv.savePdf",
+ "tasks.deliv.view",
  "tasks.gate.waiting",
  "tasks.hostExec.allowOnce",
  "tasks.hostExec.background",

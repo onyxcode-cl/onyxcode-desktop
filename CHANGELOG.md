@@ -26,7 +26,6 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 - **El modelo sabe cuándo un comando falló**, porque ahora ve su código de salida, y los mensajes de error le dicen cómo corregir en vez de solo fallar.
 - **Abrir un Word o un Excel con la herramienta equivocada ya no deja al modelo sin salida:** el mensaje le indica qué usar.
-- **Menos pasos de trámite en Tareas:** la lista de pasos se usa solo en trabajos con varias etapas, y los borradores quedan en la carpeta de trabajo en vez de junto a tu archivo final.
 
 ## [1.8.21] - 2026-11-12
 
