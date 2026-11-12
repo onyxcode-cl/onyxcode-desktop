@@ -13,7 +13,7 @@ import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-sp
 import type { ImageMap } from '../../documents/image-files'
 import { runCraft } from './craft-run'
 import { ensureTitlePlaceholders } from './pptx-titles'
-import { autoFitSize, createKit, customPalette, fitSize, paletteFor, stripHash } from './deck-kit'
+import { autoFitSize, contrastRatio, createKit, customPalette, fitSize, legibleInk, paletteFor, stripHash } from './deck-kit'
 
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
 
@@ -34,6 +34,10 @@ export function pieCategories(categories: string[], values: number[]): string[] 
 
 export function layoutOf(s: PptxSlideSpec, index: number): NonNullable<PptxSlideSpec['layout']> {
   if (s.layout) return s.layout
+  if (s.chart) return 'chart'
+  if (s.table) return 'table'
+  if (s.kpis?.length) return 'kpis'
+  if (s.columns?.length) return 'two-col'
   if (index === 0) return 'cover'
   if (s.image && index > 0) return 'image'
   if (s.title && !s.bullets?.length) return 'section'
@@ -235,18 +239,22 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         const k = Math.max(ks.length, 1)
         const gap = 20
         const w = Math.floor((840 - gap * (k - 1)) / k)
+        const sparse = ks.length <= 2
+        const baseSize = sparse ? 90 : 54
         // Un solo tamaño para todas las cifras de la fila (la más larga manda), así «$12.480 M» no queda más chico que «31,2%».
-        const kpiSize = Math.min(
-          ...ks.map((kp) => autoFitSize(kp.value, fitSize(kp.value, 54, Math.floor((w - 28) / 29)), w - 28, 110, true)),
-          54
-        )
+        const kpiSize = Math.min(...ks.map((kp) => autoFitSize(kp.value, baseSize, w - 36, sparse ? 150 : 100, true)), baseSize)
         ks.forEach((kp, i) => {
           const x = 60 + i * (w + gap)
           rect(x, 160, w, 4, DOTS[i % DOTS.length])
-          panel(x, 164, w, 250)
-          txt(x + 18, 184, w - 36, 40, kp.label.toUpperCase(), 13, pal.muted, true, 'left', 2)
-          txt(x + 14, 232, w - 28, 110, kp.value, kpiSize, pal.text, true, 'left', -1)
-          if (kp.delta) txt(x + 18, 350, w - 36, 50, kp.delta, 16, /^\s*[-−–]/.test(kp.delta) ? 'EC4899' : '22C55E', true)
+          if (!sparse) panel(x, 164, w, 250)
+          txt(x + 18, 184, w - 36, sparse ? 56 : 40, kp.label.toUpperCase(), sparse ? 18 : 13, pal.muted, true, 'left', sparse ? 0 : 2)
+          txt(x + 18, sparse ? 248 : 232, w - 36, sparse ? 150 : 100, kp.value, kpiSize, sparse ? accent : pal.text, true, 'left', -1)
+          if (kp.delta) {
+            const deltaBg = sparse ? pal.bg : pal.panel
+            const ink = legibleInk(/^\s*[-−–]/.test(kp.delta) ? 'EC4899' : '22C55E', pal.text, deltaBg)
+            const deltaInk = contrastRatio(ink, deltaBg) >= 4.5 ? ink : contrastRatio('FFFFFF', deltaBg) >= 4.5 ? 'FFFFFF' : '111111'
+            txt(x + 18, sparse ? 414 : 350, w - 36, 50, kp.delta, 16, deltaInk, true)
+          }
         })
         break
       }
@@ -309,7 +317,8 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           ...tb.rows.flatMap((row) => row.map((t, i): [string, boolean] => [t, i === 0]))
         ]
         const fit = cells.reduce(
-          (m, [t, bold]) => Math.min(m, fitSize(t, size, Math.floor((colW - 20) / (size * 0.55))), autoFitSize(t, size, colW - 20, rowH, bold)),
+          (m, [t, bold]) =>
+            Math.min(m, fitSize(t, size, Math.floor((colW - 20) / (size * 0.55))), autoFitSize(t, size, colW - 20, rowH, bold)),
           size
         )
         const cell = (t: string, i: number, y: number, color: string, bold: boolean): void =>

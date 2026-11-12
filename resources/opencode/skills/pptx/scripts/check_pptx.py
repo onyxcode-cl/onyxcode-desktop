@@ -13,6 +13,10 @@ import json
 import os
 import subprocess
 import sys
+import zipfile
+import posixpath
+from urllib.parse import unquote
+from xml.etree import ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -21,6 +25,7 @@ from pptx_common import text_height_in  # noqa: E402
 try:
     from pptx import Presentation
     from pptx.util import Emu
+    from pptx.oxml.ns import qn
 except ImportError as e:
     print("Falta python-pptx (%s). Ejecuta _shared/doctor.py." % e)
     sys.exit(2)
@@ -43,25 +48,193 @@ def frame_pt(sh):
     return max(sizes) if sizes else default_pt(sh)
 
 
-def check_overflow(sh, slide_n, problems):
-    tf = sh.text_frame
-    text = tf.text
-    if not text.strip() or not sh.width or not sh.height:
+def check_frame(tf, width, height, slide_n, name, problems, default=18):
+    if not tf.text.strip():
         return
-    w = Emu(sh.width).inches - (Emu(tf.margin_left).inches + Emu(tf.margin_right).inches)
-    h = Emu(sh.height).inches - (Emu(tf.margin_top).inches + Emu(tf.margin_bottom).inches)
+    w = Emu(width).inches - (Emu(tf.margin_left).inches + Emu(tf.margin_right).inches)
+    h = Emu(height).inches - (Emu(tf.margin_top).inches + Emu(tf.margin_bottom).inches)
     total = 0.0
     for p in tf.paragraphs:
-        pt = max([r.font.size.pt for r in p.runs if r.font.size] or [frame_pt(sh)])
+        pt = max([r.font.size.pt for r in p.runs if r.font.size] or [p.font.size.pt if p.font.size else default])
         sa = p.space_after.pt if p.space_after is not None else 0
-        total += text_height_in("".join(r.text for r in p.runs) or " ", pt, w, sa)
+        sb = p.space_before.pt if p.space_before is not None else 0
+        # Sangría real de viñetas; p.text incluye saltos y campos (a:fld).
+        props = p._p.find(qn('a:pPr'))
+        indent = int(props.get('marL', '0'))/914400 if props is not None else 0
+        total += text_height_in(p.text or " ", pt, w-indent, sa+sb)
     if total > h * 1.08 + 0.05:
-        problems.append("Diapositiva %d: el texto de «%s» probablemente desborda su caja (necesita ~%.1f\" y hay %.1f\"): "
-                        "reduce la letra, acorta el texto o divide la diapositiva." % (slide_n, sh.name, total, h))
+        problems.append("Diapositiva %d: el texto de «%s» probablemente desborda su caja (necesita ~%.1f\" y hay %.1f\")." % (slide_n, name, total, h))
+
+
+def package_problems(path):
+    """python-pptx tolera algunos duplicados: revisarlos ANTES de que los oculte."""
+    problems = []
+    with zipfile.ZipFile(path) as z:
+        names = z.namelist()
+        if len(names) != len(set(names)):
+            problems.append("El ZIP contiene partes duplicadas.")
+        known = set(names)
+        for name in names:
+            if not name.endswith('.rels'):
+                continue
+            root = ET.fromstring(z.read(name))
+            ids = [r.get('Id') for r in root]
+            if len(ids) != len(set(ids)):
+                problems.append("Relaciones duplicadas en %s." % name)
+            base = posixpath.dirname(posixpath.dirname(name))
+            for rel in root:
+                if rel.get('TargetMode') == 'External':
+                    continue
+                target = unquote(rel.get('Target', ''))
+                resolved = posixpath.normpath(posixpath.join(base, target)).lstrip('/')
+                if resolved not in known:
+                    problems.append("Relación sin destino en %s: %s." % (name, target))
+    return problems
+
+
+def contrast(a, b):
+    def lum(h):
+        vals = [int(h[i:i+2], 16)/255 for i in (0, 2, 4)]
+        vals = [v/12.92 if v <= .04045 else ((v+.055)/1.055)**2.4 for v in vals]
+        return sum(a*b for a, b in zip(vals, (.2126, .7152, .0722)))
+    x, y = sorted((lum(a), lum(b)))
+    return (y+.05)/(x+.05)
+
+
+def theme_colors(slide):
+    part = next(r.target_part for r in slide.slide_layout.slide_master.part.rels.values() if r.reltype.endswith('/theme'))
+    root = ET.fromstring(part.blob)
+    colors = {}
+    for node in root.find('.//' + qn('a:clrScheme')):
+        c = node[0]
+        colors[node.tag.rsplit('}', 1)[-1]] = c.get('val') if c.tag == qn('a:srgbClr') else c.get('lastClr')
+    cmap = slide.slide_layout.slide_master._element.find(qn('p:clrMap'))
+    if cmap is not None:
+        for key, value in cmap.attrib.items():
+            colors[key] = colors.get(value)
+    return colors
+
+
+def color_value(node, colors):
+    if node is None:
+        return None
+    for c in node:
+        if c.tag == qn('a:srgbClr'):
+            val = c.get('val')
+        elif c.tag == qn('a:schemeClr'):
+            val = colors.get(c.get('val'))
+        elif c.tag == qn('a:sysClr'):
+            val = c.get('lastClr')
+        else:
+            continue
+        if not val:
+            return None
+        rgb = [int(val[i:i+2], 16) for i in (0, 2, 4)]
+        for mod in c:
+            m = int(mod.get('val', '100000'))/100000
+            if mod.tag in (qn('a:tint'), qn('a:lumOff')):
+                rgb = [v+(255-v)*m if mod.tag == qn('a:tint') else v+255*m for v in rgb]
+            elif mod.tag in (qn('a:shade'), qn('a:lumMod')):
+                rgb = [v*m for v in rgb]
+            elif mod.tag == qn('a:alpha') and m < 1:
+                return None
+        return ''.join('%02X' % max(0, min(255, round(v))) for v in rgb)
+    return None
+
+
+def solid_color(element, colors):
+    if element is None:
+        return None
+    return color_value(element.find(qn('a:solidFill')), colors)
+
+
+def background_color(slide, colors):
+    for obj in (slide, slide.slide_layout, slide.slide_layout.slide_master):
+        bg = obj._element.find('.//' + qn('p:bgPr'))
+        col = solid_color(bg, colors)
+        if col:
+            return col
+    return colors.get('bg1', 'FFFFFF')
+
+
+def shape_background(shape, shapes, bg, colors):
+    # Fondo de la propia forma o de la última forma sólida que la contiene.
+    own = solid_color(shape._element.find(qn('p:spPr')), colors)
+    if own:
+        return own
+    for other in reversed(shapes):
+        if other == shape:
+            continue
+        if (other.left <= shape.left and other.top <= shape.top and
+                other.left+other.width >= shape.left+shape.width and
+                other.top+other.height >= shape.top+shape.height):
+            col = solid_color(other._element.find(qn('p:spPr')), colors)
+            if col:
+                return col
+    return bg
+
+
+def check_contrast(frame, bg, colors, slide_n, name, problems, fallback='000000'):
+    for p in frame.paragraphs:
+        for r in p.runs:
+            if not r.text.strip():
+                continue
+            col = solid_color(r._r.find(qn('a:rPr')), colors)
+            if not col:
+                col = solid_color(p._p.find('./' + qn('a:pPr') + '/' + qn('a:defRPr')), colors) or fallback
+            size = r.font.size.pt if r.font.size else (p.font.size.pt if p.font.size else 18)
+            minimum = 3 if size >= 24 or (size >= 18 and r.font.bold) else 4.5
+            ratio = contrast(col, bg)
+            if ratio < minimum:
+                problems.append("Diapositiva %d: contraste insuficiente en «%s» (%.2f:1; mínimo %.1f:1)." % (slide_n, name, ratio, minimum))
+                return
+
+
+def walk_shapes(shapes):
+    for shape in shapes:
+        yield shape
+        if shape.shape_type is not None and 'GROUP' in str(shape.shape_type):
+            yield from walk_shapes(shape.shapes)
+
+
+def check_table(shape, slide_n, problems, colors, bg):
+    table = shape.table
+    for ri, row in enumerate(table.rows):
+        for ci, cell in enumerate(row.cells):
+            if cell.is_spanned:
+                continue
+            w = sum(table.columns[j].width for j in range(ci, ci+cell.span_width))
+            h = sum(table.rows[j].height for j in range(ri, ri+cell.span_height))
+            label = '%s [%d,%d]' % (shape.name, ri+1, ci+1)
+            check_frame(cell.text_frame, w, h, slide_n, label, problems)
+            cbg = solid_color(cell._tc.find(qn('a:tcPr')), colors) or bg
+            check_contrast(cell.text_frame, cbg, colors, slide_n, label, problems, colors.get('tx1', '000000'))
+
+
+def check_chart(shape, slide_n, problems, colors, bg):
+    chart = shape.chart
+    _ = [list(series.values) for series in chart.series]
+    root = chart._chartSpace
+    bg = solid_color(root.find(qn('c:spPr')), colors) or bg
+    for node in root.iter():
+        if node.tag not in (qn('a:rPr'), qn('a:defRPr')):
+            continue
+        col = solid_color(node, colors)
+        if not col:
+            continue
+        size = int(node.get('sz', '1800')) / 100
+        minimum = 3 if size >= 24 or (size >= 18 and node.get('b') == '1') else 4.5
+        ratio = contrast(col, bg)
+        if ratio < minimum:
+            problems.append("Diapositiva %d: contraste insuficiente en el gráfico «%s» (%.2f:1; mínimo %.1f:1)." %
+                            (slide_n, shape.name, ratio, minimum))
+            break
 
 
 def check(path):
-    problems, warns = [], []
+    problems, warns = package_problems(path), []
+    if hasattr(path, "seek"):
+        path.seek(0)
     prs = Presentation(path)
     sw, sh_ = prs.slide_width, prs.slide_height
     n = len(prs.slides)
@@ -70,14 +243,30 @@ def check(path):
     for i, s in enumerate(prs.slides, 1):
         title = s.shapes.title.text_frame.text.strip() if s.shapes.title is not None else ""
         if not title:
-            warns.append("Diapositiva %d: sin título (accesibilidad y navegación)." % i)
-        for sh in s.shapes:
-            if sh.left is not None and sh.width is not None:
+            problems.append("Diapositiva %d: sin título (accesibilidad y navegación)." % i)
+        colors = theme_colors(s)
+        bg = background_color(s, colors)
+        prior = []
+        # Leer notas y diseños también: python-pptx abre algunas partes de forma diferida.
+        if s.has_notes_slide:
+            _ = s.notes_slide.notes_text_frame.text
+        for sh in walk_shapes(s.shapes):
+            relevant = ((sh.has_text_frame and sh.text.strip()) or sh.is_placeholder or sh.has_table or sh.has_chart or 'PICTURE' in str(sh.shape_type))
+            if relevant and sh.left is not None and sh.width is not None:
                 tol = Emu(91440 // 4)
                 if sh.left < -tol or sh.top < -tol or sh.left + sh.width > sw + tol or sh.top + sh.height > sh_ + tol:
                     problems.append("Diapositiva %d: la forma «%s» se sale del lienzo." % (i, sh.name))
             if sh.has_text_frame:
-                check_overflow(sh, i, problems)
+                if sh.is_placeholder and not sh.text.strip():
+                    problems.append("Diapositiva %d: marcador vacío «%s»." % (i, sh.name))
+                check_frame(sh.text_frame, sh.width, sh.height, i, sh.name, problems, default_pt(sh))
+                sbg = shape_background(sh, prior, bg, colors)
+                check_contrast(sh.text_frame, sbg, colors, i, sh.name, problems, colors.get('tx1', '000000'))
+            if sh.has_table:
+                check_table(sh, i, problems, colors, bg)
+            if sh.has_chart:
+                check_chart(sh, i, problems, colors, bg)
+            prior.append(sh)
             if sh.shape_type is not None and "PICTURE" in str(sh.shape_type):
                 wi, hi = Emu(sh.width).inches, Emu(sh.height).inches
                 if wi < 0.4 or hi < 0.4:

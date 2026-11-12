@@ -14,7 +14,7 @@ def lines_needed(text, pt, width_in):
         return 999
     per_line = max(1.0, width_in * 72.0 / (pt * CHAR_W))
     total = 0
-    for para in str(text).split("\n"):
+    for para in str(text).replace("\v", "\n").split("\n"):
         # simula ajuste por palabras
         cur, n = 0, 1
         for w in para.split(" "):
