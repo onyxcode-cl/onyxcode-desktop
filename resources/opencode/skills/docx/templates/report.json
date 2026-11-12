@@ -1,0 +1,15 @@
+{
+  "font": "Arial",
+  "size": 11,
+  "margin_cm": 2.5,
+  "line_spacing": 1.15,
+  "space_after_pt": 6,
+  "title_size": 24,
+  "heading_sizes": [16, 13, 11],
+  "cover_before_pt": 48,
+  "long_units": 1200,
+  "toc_units": 1800,
+  "toc_sections": 5,
+  "table_row_units": 20,
+  "usable_width_cm": 16.59
+}

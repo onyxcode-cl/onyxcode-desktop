@@ -168,7 +168,11 @@ describe('chat-word (prueba Craft)', () => {
 })
 
 describe('189: arreglos de Word', () => {
-  const names = (spec: DocxSpec): string[] => chatDocxScript(spec).map((l) => l.split('=')[0])
+  const names = (spec: DocxSpec): string[] =>
+    chatDocxScript(spec).map((l) => {
+      const p = parse(l)
+      return p.command === 'para.set' && (p.params?.props as { keepNext?: boolean })?.keepNext ? 'para.keepNext' : p.command
+    })
   const seq = (spec: DocxSpec): string[] =>
     chatDocxScript(spec).map((l) => (l.includes('"value":false') ? `${l.split('=')[0]}:off` : l.split('=')[0]))
 
@@ -199,7 +203,7 @@ describe('189: arreglos de Word', () => {
   })
 
   it('el índice se titula «Contenido» (en español)', () => {
-    const c = cmds(chatDocxScript({ toc: true, blocks: [{ type: 'heading', level: 1, text: 'A' }] }))
+    const c = cmds(chatDocxScript(longReport()))
     expect(c.find((x) => x.command === 'references.toc')?.params).toEqual({ levels: 3, title: 'Contenido' })
   })
 
@@ -219,10 +223,10 @@ describe('189: arreglos de Word', () => {
       ]
     }
     expect(names(spec).filter((n) => n === 'table.repeatHeader')).toHaveLength(1)
-    // tabla corta: todas las filas menos la última se pegan a la siguiente (2 celdas × 3 filas)
-    expect(names(spec).filter((n) => n === 'para.keepNext')).toHaveLength(6)
+    // Solo el encabezado se une a la primera fila; el número de filas no predice la altura real.
+    expect(names(spec).filter((n) => n === 'para.keepNext')).toHaveLength(4)
     const sin: DocxSpec = { blocks: [{ type: 'table', columns: ['A'], rows: [['x'], ['y']] }] }
-    expect(names(sin).filter((n) => n === 'para.keepNext')).toHaveLength(2)
+    expect(names(sin).filter((n) => n === 'para.keepNext')).toHaveLength(1)
     const larga: DocxSpec = { blocks: [{ type: 'table', columns: ['A'], rows: Array.from({ length: 20 }, (_, i) => [`f${i}`]) }] }
     expect(names(larga).filter((n) => n === 'para.keepNext')).toHaveLength(1) // solo el encabezado
   })
@@ -230,18 +234,29 @@ describe('189: arreglos de Word', () => {
 
 describe('portada', () => {
   const spec = (extra: object): DocxSpec =>
-    ({ title: 'Propuesta', subtitle: 'Plan 2027', author: 'Ana', date: '1 de enero', blocks: [{ type: 'heading', level: 1, text: 'Uno' }], ...extra }) as DocxSpec
-  const names = (s: DocxSpec): string[] => chatDocxCommands(s).flat().map((l) => l.split('=')[0])
-  it('con cover: salto de página tras los datos y primera página sin encabezado ni pie', () => {
-    const c = names(spec({ cover: true }))
+    ({
+      title: 'Propuesta',
+      subtitle: 'Plan 2027',
+      author: 'Ana',
+      date: '1 de enero',
+      blocks: [{ type: 'heading', level: 1, text: 'Uno' }],
+      ...extra
+    }) as DocxSpec
+  const names = (s: DocxSpec): string[] =>
+    chatDocxCommands(s)
+      .flat()
+      .map((l) => l.split('=')[0])
+  it('con cover y un informe largo: portada compacta y primera página sin pie', () => {
+    const c = names({ ...longReport(), cover: true })
     expect(c).toContain('layout.differentFirstPage')
     expect(c).toContain('text.pageBreak')
     expect(c.indexOf('text.pageBreak')).toBeGreaterThan(c.indexOf('para.borders'))
   })
-  it('sin cover: título centrado de siempre y sin salto', () => {
+  it('sin cover, o con cover en un informe corto: título integrado y sin salto', () => {
     const c = names(spec({}))
     expect(c).not.toContain('text.pageBreak')
     expect(c).not.toContain('layout.differentFirstPage')
+    expect(names(spec({ cover: true }))).not.toContain('text.pageBreak')
   })
   it('cover exige título y ser booleano', () => {
     expect(isDocxSpec(spec({ cover: true }))).toBe(true)
@@ -263,7 +278,7 @@ describe('tabla de Word: filas enteras y sin hoja en blanco', () => {
   const spec = { title: 'T', blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 'y']] }] } as never
   it('mantiene las líneas de cada celda juntas y deja el párrafo final de 1 pt tras una tabla final', () => {
     const flat = chatDocxCommands(spec).flat()
-    expect(flat.filter((c) => c === 'para.keepLines').length).toBe(4)
+    expect(cmds(flat).filter((c) => c.command === 'para.set' && (c.params?.props as { keepLines?: boolean })?.keepLines).length).toBe(4)
     expect(flat.at(-1)).toBe('format.size={"size":1}')
   })
   it('con un párrafo al final no encoge nada', () => {
@@ -274,12 +289,78 @@ describe('tabla de Word: filas enteras y sin hoja en blanco', () => {
 
 describe('tabla de Word: cantSplit por fila e índice con números', () => {
   it('cada fila pide no dividirse entre páginas', () => {
-    const flat = chatDocxCommands({ title: 'T', blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 'y'], ['z', 'w']] }] } as never).flat()
+    const flat = chatDocxCommands({
+      title: 'T',
+      blocks: [
+        {
+          type: 'table',
+          columns: ['A', 'B'],
+          rows: [
+            ['x', 'y'],
+            ['z', 'w']
+          ]
+        }
+      ]
+    } as never).flat()
     expect(flat.filter((c) => c === 'table.properties={"allowBreak":false}').length).toBe(3)
   })
   it('con toc actualiza el índice al final', () => {
-    const flat = chatDocxCommands({ title: 'T', toc: true, blocks: [{ type: 'heading', level: 1, text: 'Uno' }] } as never).flat()
+    const flat = chatDocxCommands(longReport()).flat()
     expect(flat).toContain('references.updateToc')
-    expect(chatDocxCommands({ title: 'T', blocks: [{ type: 'heading', level: 1, text: 'Uno' }] } as never).flat()).not.toContain('references.updateToc')
+    expect(chatDocxCommands({ title: 'T', blocks: [{ type: 'heading', level: 1, text: 'Uno' }] } as never).flat()).not.toContain(
+      'references.updateToc'
+    )
+  })
+})
+
+function longReport(): DocxSpec {
+  return {
+    title: 'Informe ampliado',
+    toc: true,
+    blocks: Array.from({ length: 6 }, (_, i) => [
+      { type: 'heading' as const, level: 1 as const, text: `Sección ${i + 1}` },
+      { type: 'paragraph' as const, text: 'Contenido de ejemplo. '.repeat(110) }
+    ]).flat()
+  }
+}
+
+describe('informe profesional compartido con la skill', () => {
+  it('conserva el pie personalizado y añade PAGE y NUMPAGES; respeta la exclusión explícita', () => {
+    const c = cmds(chatDocxScript({ footer: 'Confidencial', blocks: [{ type: 'paragraph', text: 'Cuerpo' }] }))
+    expect(c.filter((x) => x.command === 'insert.field').map((x) => x.params?.instr)).toEqual(['PAGE', 'NUMPAGES'])
+    expect(c.some((x) => x.command === 'text.insert' && x.params?.text === 'Confidencial')).toBe(true)
+    expect(
+      cmds(chatDocxScript({ footer: 'Texto', page_numbers: false, blocks: [{ type: 'paragraph', text: 'Cuerpo' }] })).some(
+        (x) => x.command === 'insert.field'
+      )
+    ).toBe(false)
+  })
+
+  it('numera títulos mezclados sin duplicarlos, repara el salto de nivel y no muta el JSON', () => {
+    const input: DocxSpec = {
+      blocks: [
+        { type: 'heading', level: 1, text: '7. Resumen' },
+        { type: 'heading', level: 3, text: '3.1 Detalle' },
+        { type: 'heading', level: 1, text: '2027 Proyección' }
+      ]
+    }
+    const c = cmds(chatDocxScript(input))
+    expect(c.filter((x) => x.command === 'text.insert').map((x) => x.params?.text)).toEqual(
+      expect.arrayContaining(['1 Resumen', '1.1 Detalle', '2 2027 Proyección'])
+    )
+    expect(input.blocks[0]).toEqual({ type: 'heading', level: 1, text: '7. Resumen' })
+  })
+
+  it('suprime índices cortos y calcula anchos acotados, con más espacio para descripciones', () => {
+    const c = cmds(
+      chatDocxScript({
+        toc: true,
+        blocks: [{ type: 'table', columns: ['Descripción del resultado', 'Mes'], rows: [['Renovar el equipo completo', 'Enero']] }]
+      })
+    )
+    expect(c.some((x) => x.command === 'references.toc')).toBe(false)
+    const widths = c.filter((x) => x.command === 'table.columnWidth').map((x) => x.params?.width as number)
+    expect(widths[0]).toBeGreaterThan(widths[1])
+    expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(16.59 * 28.35, 0)
   })
 })

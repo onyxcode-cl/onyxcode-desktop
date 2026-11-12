@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import type { DocxSpec } from '@shared/chat-doc-spec'
 import type { ImageMap } from '../../documents/image-files'
 import { runCraft } from './craft-run'
+import { prepareWordReport, WORD_REPORT } from './word-report-layout'
 
 const ACCENT = '1F3864'
 const TH_FG = 'FFFFFF'
@@ -38,6 +39,7 @@ const looksNumeric = (s: string): boolean => NUM_RE.test(s) && /\d/.test(s)
  * Asume `DocxSpec` ya validado (`isDocxSpec`). La agrupación permite partir un documento grande en varias ejecuciones sin cortar un bloque.
  */
 export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] {
+  spec = prepareWordReport(spec)
   const groups: string[][] = [[]]
   const lines = (): string[] => groups[groups.length - 1]
   const cmd = (command: string, params?: Record<string, unknown>): void => {
@@ -70,42 +72,58 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
   }
   const par = (t: string, style?: string, align?: string): void => {
     if (style) cmd('para.style', { style })
+    cmd('para.set', { props: { keepNext: style === 'Title' || style === 'Subtitle', keepLines: false, widowControl: true } })
+    cmd('format.size', { size: style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size })
+    if (style === 'Title') cmd('format.bold', { value: true })
+    cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
+    cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
     cmd('para.align', { value: align ?? 'left' })
     const tail = inline(t)
     cmd('text.newParagraph')
     for (const [c, p] of tail) cmd(c, p)
+    if (style === 'Title') cmd('format.bold', { value: false })
   }
 
   cmd('design.themeFonts', { heading: 'Arial', body: 'Arial' })
+  cmd('layout.size', { name: 'Letter' })
+  const margin = (WORD_REPORT.margin_cm * 72) / 2.54
+  cmd('layout.margins', { top: margin, bottom: margin, left: margin, right: margin })
   // Encabezado y pie: cada comando deja el cursor DENTRO de él (el cuerpo se ve atenuado); `insert.closeHeader` vuelve al cuerpo.
   if (spec.header) {
     cmd('insert.header', { text: spec.header })
     cmd('insert.closeHeader')
   }
-  if (spec.footer) {
-    cmd('insert.footer', { text: spec.footer })
+  if (spec.footer || (spec.page_numbers ?? true)) {
+    cmd('insert.footer', { text: '' })
+    cmd('format.size', { size: 9 })
+    cmd('format.color', { color: '595959' })
+    cmd('para.align', { value: 'center' })
+    if (spec.footer) cmd('text.insert', { text: spec.footer })
+    if (spec.page_numbers ?? true) {
+      cmd('text.insert', { text: spec.footer ? '   |   Página ' : 'Página ' })
+      cmd('insert.field', { instr: 'PAGE', result: '1' })
+      cmd('text.insert', { text: ' de ' })
+      cmd('insert.field', { instr: 'NUMPAGES', result: '1' })
+    }
     cmd('insert.closeHeader')
-  } else if (spec.page_numbers ?? true) {
-    cmd('insert.footer', { preset: 'pageNumber' })
-    cmd('insert.closeHeader')
+    cmd('format.color', { color: 'auto' })
   }
   const meta = [spec.author, spec.date === 'hoy' ? fechaEs() : spec.date].filter((x): x is string => !!x)
   if (spec.cover && spec.title) {
-    // Portada: página propia, título a la izquierda y bajado un tercio de la hoja, línea fina de acento bajo el subtítulo, y salto de
-    // página. Sin encabezado ni pie en esa primera página (la numeración sigue contando: el cuerpo parte en la 2).
+    // Portada solo en informes largos; conserva la primera página sin encabezado ni pie.
     if (spec.header || spec.footer || (spec.page_numbers ?? true)) cmd('layout.differentFirstPage')
-    const cover = (t: string, style: string, before: number, after: number, line = false): void => {
+    const cover = (t: string, style: string, before: number, after: number): void => {
       cmd('para.style', { style })
+      cmd('format.size', { size: style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size })
       cmd('para.align', { value: 'left' })
       cmd('para.spacing', { before, after })
-      cmd('para.borders', line ? { kind: 'bottom', width: 1.5, color: '1F3A5F' } : { kind: 'none' })
+      cmd('para.borders', { kind: 'none' })
       const tail = inline(t)
       cmd('text.newParagraph')
       for (const [c, p] of tail) cmd(c, p)
     }
-    cover(spec.title, 'Title', 200, 12, !spec.subtitle)
-    // La línea fina de acento queda bajo el subtítulo (o bajo el título si no hay subtítulo).
-    if (spec.subtitle) cover(spec.subtitle, 'Subtitle', 0, 18, true)
+    cover(spec.title, 'Title', WORD_REPORT.cover_before_pt, 12)
+    if (spec.subtitle) cover(spec.subtitle, 'Subtitle', 0, 18)
     if (meta.length) cover(meta.join(' · '), 'Normal', 24, 0)
     cmd('text.pageBreak')
     cmd('para.style', { style: 'Normal' })
@@ -128,9 +146,13 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     switch (b.type) {
       case 'heading':
         cmd(`para.heading${b.level}`)
+        cmd('format.size', { size: WORD_REPORT.heading_sizes[b.level - 1] })
+        cmd('format.bold', { value: true })
+        cmd('para.set', { props: { keepNext: true, keepLines: true, spaceBefore: 16, spaceAfter: 6 } })
         cmd('para.align', { value: 'left' })
         cmd('text.insert', { text: b.text })
         cmd('text.newParagraph')
+        cmd('format.bold', { value: false })
         cmd('para.style', { style: 'Normal' })
         break
       case 'paragraph':
@@ -138,9 +160,11 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         break
       case 'bullets':
       case 'numbered': {
+        cmd('format.size', { size: WORD_REPORT.size })
         const flat = b.items.flat()
         if (b.type === 'numbered') cmd('para.numbering', { kind: 'numbered' })
         else cmd('para.bullets')
+        cmd('para.set', { props: { keepNext: false, keepLines: false, widowControl: true } })
         flat.forEach((it, k) => {
           const tail = inline(it)
           // Cada bloque numerado reinicia en 1 (solo se puede con el cursor ya dentro de la lista).
@@ -163,9 +187,12 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         ]
         cmd('insert.table', { rows: cells.length, cols: n })
         cmd('table.cellMargins', { top: 3, bottom: 3, left: 6, right: 6 }) // aire en cada celda: el texto no pega con la línea
+        cmd('table.borders', { kind: 'all', width: 0.5, color: 'BFC4CC' })
         cells.forEach((row, r) => {
           const total = !!b.total_row && r === cells.length - 1
           row.forEach((v, k) => {
+            cmd('format.size', { size: WORD_REPORT.size - 1 })
+            cmd('para.lineSpacing', { value: 1.1 })
             if (r === 0) {
               cmd('table.shading', { color: ACCENT })
               cmd('format.bold', { value: true })
@@ -179,14 +206,13 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
             const al = b.align?.[k] ?? (r > 0 && looksNumeric(v) ? 'right' : 'left')
             cmd('para.align', { value: al })
             cmd('text.insert', { text: v })
-            cmd('para.keepLines') // la fila no se parte entre dos páginas
-            // Tabla de hasta 15 filas: todas las filas (menos la última) se pegan a la siguiente y la tabla entera cabe en una página; en una larga
-            // solo el encabezado va con la fila siguiente (no queda solo al pie). Con título al pie, la última fila se pega a él.
-            if ((r < cells.length - 1 && (cells.length <= 16 || r === 0)) || (b.caption && r === cells.length - 1)) cmd('para.keepNext')
+            // Solo se une el encabezado: una tabla de pocas filas también puede tener celdas largas y ocupar varias páginas.
+            const keepNext =
+              (r === 0 && cells.length > 1) || !!(b.caption && r === cells.length - 1) || !!(b.total_row && r === cells.length - 2)
+            cmd('para.set', { props: { keepLines: true, keepNext } })
             if (k === 0) cmd('table.properties', { allowBreak: false }) // «no dividir fila entre páginas» (cantSplit) de ESTA fila
             // La fila de encabezado se repite en cada página y el penúltimo renglón se queda con el total (no queda solo en la página siguiente).
             if (r === 0 && k === 0) cmd('table.repeatHeader')
-            if (b.total_row && r === cells.length - 2 && cells.length > 16) cmd('para.keepNext')
             if (r === 0) {
               cmd('format.bold', { value: false })
               cmd('format.color', { color: 'auto' })

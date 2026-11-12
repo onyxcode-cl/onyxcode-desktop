@@ -13,6 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _docxlib as L  # noqa: E402
+from _report_layout import prepare, TEMPLATE
 from docx import Document  # noqa: E402
 from docx.enum.text import WD_BREAK, WD_ALIGN_PARAGRAPH  # noqa: E402
 from docx.shared import Pt  # noqa: E402
@@ -68,7 +69,7 @@ def header_footer(doc, spec, theme):
         if foot:
             r = p.add_run(foot + ("   |   " if numbers else ""))
             r.font.size = Pt(9)
-            r.font.color.rgb = L.hex_color("7F7F7F")
+            r.font.color.rgb = L.hex_color("595959")
         if numbers:
             before = len(p.runs)
             p.add_run("Página ")
@@ -77,14 +78,15 @@ def header_footer(doc, spec, theme):
             L.add_field(p, "NUMPAGES", "1")
             for r in p.runs[before:]:
                 r.font.size = Pt(9)
-                r.font.color.rgb = L.hex_color("7F7F7F")
+                r.font.color.rgb = L.hex_color("595959")
 
 
 def build(spec, out_path, base_dir):
+    spec = prepare(spec)
     doc = Document()
     theme = L.apply_theme(doc, spec.get("theme"))
     page = spec.get("page", {})
-    L.set_page(doc, page.get("size", "letter"), page.get("margin_cm", 2.5), page.get("landscape", False))
+    L.set_page(doc, page.get("size", "letter"), page.get("margin_cm", TEMPLATE["margin_cm"]), page.get("landscape", False))
     cp = doc.core_properties
     cp.title = spec.get("title", "") or ""
     cp.author = spec.get("author", "") or ""
@@ -93,7 +95,9 @@ def build(spec, out_path, base_dir):
     usable = (doc.sections[0].page_width - doc.sections[0].left_margin - doc.sections[0].right_margin) / 360000.0
 
     if spec.get("title"):
-        doc.add_paragraph(spec["title"], style="Title")
+        p = doc.add_paragraph(spec["title"], style="Title")
+        if spec["cover"]:
+            p.paragraph_format.space_before = Pt(TEMPLATE["cover_before_pt"])
     if spec.get("subtitle"):
         doc.add_paragraph(spec["subtitle"], style="Subtitle")
     meta = []
@@ -107,10 +111,12 @@ def build(spec, out_path, base_dir):
         r = p.add_run("  ·  ".join(meta))
         r.font.size = Pt(10)
         r.font.color.rgb = L.hex_color("7F7F7F")
+    if spec["cover"]:
+        doc.sections[0].different_first_page_header_footer = True
+        doc.add_page_break()
     if spec.get("toc"):
         L.add_toc(doc, 3, spec.get("toc_title", "Contenido"), collect_headings(blocks), theme)
         L.request_field_update(doc)
-        doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
 
     n_img = 0
     for i, b in enumerate(blocks):
@@ -139,7 +145,9 @@ def build(spec, out_path, base_dir):
                 L.add_rich_text(cp_, b["caption"])
             else:
                 sp = doc.add_paragraph()
-                sp.paragraph_format.space_after = Pt(4)
+                sp.paragraph_format.space_after = Pt(0)
+                sp.paragraph_format.line_spacing = Pt(1)
+                sp.add_run().font.size = Pt(1)
         elif t == "image":
             path = b.get("path", "")
             full = path if os.path.isabs(path) else os.path.join(base_dir, path)
@@ -171,7 +179,10 @@ def main():
             spec = json.load(f)
     except ValueError as e:
         fail("JSON inválido: %s" % e)
-    info = build(spec, a.salida, os.path.dirname(os.path.abspath(a.contenido)))
+    try:
+        info = build(spec, a.salida, os.path.dirname(os.path.abspath(a.contenido)))
+    except ValueError as e:
+        fail(str(e))
     print("Documento creado: %s (%d bloques, %d imágenes)" % (a.salida, info["bloques"], info["imagenes"]))
 
 
