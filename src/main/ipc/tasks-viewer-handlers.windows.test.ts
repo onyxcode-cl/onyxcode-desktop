@@ -23,6 +23,7 @@ vi.mock('node:fs', () => ({
 }))
 vi.mock('../viewer/scheme', () => ({ installViewerScheme: vi.fn(), registerViewerPathValidator: vi.fn() }))
 vi.mock('../viewer/view', () => ({
+  viewerSurfaceState: () => 'simulada',
   onViewerEvent: () => () => undefined,
   openDoc: mock.classic,
   detach: vi.fn(),

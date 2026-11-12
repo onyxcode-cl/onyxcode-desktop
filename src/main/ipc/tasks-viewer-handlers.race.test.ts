@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
 vi.mock('electron', () => ({ app: { getPath: () => '/nonexistent', isPackaged: false }, session: {}, protocol: {} }))
 vi.mock('../viewer/scheme', () => ({ installViewerScheme: () => undefined, registerViewerPathValidator: () => undefined }))
 vi.mock('../viewer/view', () => ({
+  viewerSurfaceState: () => 'simulada',
   onViewerEvent: () => () => undefined,
   openDoc: async (url: string) => {
     state.calls.push(`openDoc:${url.slice(0, 30)}`)

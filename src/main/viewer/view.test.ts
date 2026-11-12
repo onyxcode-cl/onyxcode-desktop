@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   windowOpenHandler: null as null | (() => { action: string }),
   bounds: null as null | { x: number; y: number; width: number; height: number },
   loadedUrls: [] as string[],
+  visible: false,
+  invalidate: vi.fn(),
   loadError: false
 }))
 
@@ -23,18 +25,22 @@ vi.mock('electron', () => {
       getZoomFactor: () => 1,
       isDestroyed: () => false,
       close: () => undefined,
+      invalidate: state.invalidate,
       loadURL: async (url: string) => {
         state.loadedUrls.push(url)
         if (state.loadError) throw new Error('ERR_FAILED')
       }
     }
     setBounds = (b: { x: number; y: number; width: number; height: number }) => (state.bounds = b)
+    setVisible = (visible: boolean) => (state.visible = visible)
+    getVisible = () => state.visible
+    getBounds = () => state.bounds
   }
   return { app: { isPackaged: true }, WebContentsView }
 })
 vi.mock('./session', () => ({ viewerSession: () => ({}) }))
 
-import { attach, closeView, onViewerEvent, openDoc } from './view'
+import { attach, closeView, detach, onViewerEvent, openDoc, viewerSurfaceState } from './view'
 
 function fakeWindow(): any {
   const removed: unknown[] = []
@@ -43,6 +49,7 @@ function fakeWindow(): any {
     isDestroyed: () => false,
     webContents: { getZoomFactor: () => 1 },
     contentView: {
+      children: added,
       addChildView: (v: unknown) => added.push(v),
       removeChildView: (v: unknown) => removed.push(v)
     },
@@ -58,6 +65,7 @@ describe('view.ts: contención de la WebContentsView del visor', () => {
     state.bounds = null
     state.loadedUrls = []
     state.loadError = false
+    state.invalidate.mockClear()
     closeView()
     void openDoc(`lazunox-viewer://viewer/doc/${'a'.repeat(64)}`)
   })
@@ -78,6 +86,37 @@ describe('view.ts: contención de la WebContentsView del visor', () => {
     const win = fakeWindow()
     attach(win, { x: 10, y: 20, width: 300, height: 400 }, true)
     expect(state.bounds).toEqual({ x: 10, y: 20, width: 300, height: 400 })
+  })
+
+  it('carga oculta al tamaño del panel y al adjuntarse marca visible y pide un fotograma', async () => {
+    closeView()
+    const win = fakeWindow()
+    win.webContents.getZoomFactor = () => 1.25
+    attach(win, { x: 10, y: 20, width: 400, height: 600 }, false)
+    await openDoc('lazunox-viewer://viewer/index.html#t=pdf&kind=pdf')
+    expect(state.bounds).toEqual({ x: 13, y: 25, width: 500, height: 750 })
+    expect(state.visible).toBe(false)
+    expect(win._added).toHaveLength(0)
+    attach(win, { x: 10, y: 20, width: 400, height: 600 }, true)
+    expect(win._added).toHaveLength(1)
+    expect(state.visible).toBe(true)
+    expect(state.invalidate).toHaveBeenCalledOnce()
+    expect(viewerSurfaceState()).toContain('adjunta=true, visible=true, bounds=13,25,500x750')
+    detach()
+    expect(state.visible).toBe(false)
+    expect(win._removed).toHaveLength(1)
+    attach(win, { x: 10, y: 20, width: 500, height: 600 }, true)
+    expect(state.visible).toBe(true)
+    expect(state.bounds?.width).toBe(625)
+    expect(state.invalidate).toHaveBeenCalledTimes(2)
+  })
+
+  it('un rectángulo cero no se adjunta ni se marca visible', () => {
+    const win = fakeWindow()
+    attach(win, { x: 0, y: 0, width: 0, height: 400 }, true)
+    expect(win._added).toHaveLength(0)
+    expect(state.visible).toBe(false)
+    expect(state.invalidate).not.toHaveBeenCalled()
   })
 
   it('escape avisa por onViewerEvent', () => {

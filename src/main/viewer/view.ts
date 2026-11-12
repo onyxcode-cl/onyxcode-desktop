@@ -79,8 +79,24 @@ function ensureView(): WebContentsView {
 function layout(): void {
   const win = state.hostWindow
   const view = state.view
-  const shouldShow = !!view && !!win && !win.isDestroyed() && state.visible && !!state.rect
+  const rect = state.rect
+  const sized = !!view && !!win && !win.isDestroyed() && !!rect && rect.width > 0 && rect.height > 0
+  // Tareas mide el panel con visible=false mientras openDoc carga. Dar tamaño también
+  // oculto evita cargar PDF.js con el viewport por defecto de una vista sin anfitrión.
+  if (sized) {
+    const zoom = win.webContents.getZoomFactor() || 1
+    view.setBounds({
+      x: Math.round(rect.x * zoom),
+      y: Math.round(rect.y * zoom),
+      width: Math.round(rect.width * zoom),
+      height: Math.round(rect.height * zoom)
+    })
+  }
+  const shouldShow = sized && state.visible
   if (!shouldShow) {
+    // Quitarla del padre no sustituye la señal de visibilidad de Chromium. El próximo
+    // attach debe pasar de oculta a visible también si la página cargó sin estar adjunta.
+    view?.setVisible(false)
     if (view && state.attachedTo && !state.attachedTo.isDestroyed()) state.attachedTo.contentView.removeChildView(view)
     state.attachedTo = null
     return
@@ -92,14 +108,18 @@ function layout(): void {
     hostWin.contentView.addChildView(v)
     state.attachedTo = hostWin
   }
-  const rect = state.rect as ViewerRect
-  const zoom = hostWin.webContents.getZoomFactor() || 1
-  v.setBounds({
-    x: Math.round(rect.x * zoom),
-    y: Math.round(rect.y * zoom),
-    width: Math.round(rect.width * zoom),
-    height: Math.round(rect.height * zoom)
-  })
+  v.setVisible(true)
+  // El DOM/canvas puede estar listo sin que haya un fotograma en la ventana anfitriona.
+  v.webContents.invalidate()
+}
+
+/** Diagnóstico de la superficie, sin URL, token ni ruta del documento. */
+export function viewerSurfaceState(): string {
+  const view = state.view
+  const host = state.hostWindow
+  const attached = !!view && !!host && !host.isDestroyed() && state.attachedTo === host && host.contentView.children.includes(view)
+  const bounds = view?.getBounds()
+  return `vista=${!!view}, adjunta=${attached}, visible=${view?.getVisible() ?? false}, bounds=${bounds ? `${bounds.x},${bounds.y},${bounds.width}x${bounds.height}` : 'sin vista'}`
 }
 
 let navSeq = 0

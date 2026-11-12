@@ -7,7 +7,7 @@
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
 import { VIEWER_SCHEME } from '../security/app-protocol'
 import { installViewerScheme, registerViewerPathValidator } from '../viewer/scheme'
-import { detach, onViewerEvent, openDoc } from '../viewer/view'
+import { detach, onViewerEvent, openDoc, viewerSurfaceState } from '../viewer/view'
 import { onWebEvent } from '../office/craft/web-view'
 import { openInCraftWeb, panelAttach, panelClose, useClassicViewer } from '../office/craft/web-open'
 import { issueToken, revokeActive } from '../viewer/tokens'
@@ -46,7 +46,7 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
   let viewport = 'sin hueco'
   let pendingTimer: ReturnType<typeof setTimeout> | undefined
   const log = (reason: string, problem = false): void => {
-    const message = `[tasks-viewer] ${reason}; etapa=${phase}; ruta=${logPath}; plataforma=${process.platform}; hueco=${viewport}`
+    const message = `[tasks-viewer] ${reason}; etapa=${phase}; ruta=${logPath}; plataforma=${process.platform}; hueco=${viewport}; superficie=${viewerSurfaceState()}`
     if (problem) {
       console.warn(message)
       recordProblem({ source: 'document', message })
@@ -138,6 +138,7 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
     const win = windowOfSender(event.sender) ?? ctx.getWindow()
     viewport = `${rect.width}x${rect.height}, visible=${visible}, ventana=${!!win}`
     if (win) panelAttach(win, rect, visible)
+    log('attach')
     return !!win && rect.width > 0 && rect.height > 0
   })
 
