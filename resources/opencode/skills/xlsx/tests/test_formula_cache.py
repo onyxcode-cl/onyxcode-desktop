@@ -136,6 +136,7 @@ class CacheTests(unittest.TestCase):
         with self.assertRaisesRegex(build_xlsx.SpecError, 'C8.*filas de datos 5:7'):
             build_xlsx.build(spec)
         wb["Datos d'hoy"]['C8'] = '=SUM(C2:C4)'
+        self.path = self.path.with_name('without-filter.xlsx')
         save_with_cache(wb, self.path)
         self.assertEqual(verify_cache(self.path)['ranges'][0]['celda'], 'C8')
 
@@ -174,6 +175,7 @@ class CacheTests(unittest.TestCase):
         wb.epoch = CALENDAR_MAC_1904
         ws['F1'] = '=DATE(2026,1,1)'
         ws['F1'].number_format = 'yyyy-mm-dd'
+        self.path = self.path.with_name('epoch-1904.xlsx')
         save_with_cache(wb, self.path)
         self.assertFalse(verify_cache(self.path)['differences'])
 

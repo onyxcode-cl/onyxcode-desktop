@@ -11,17 +11,20 @@ Excel:      totales con fórmula (no números pegados) · ninguna celda con erro
 
 `--arreglar SALIDA` (solo .pptx): escribe una COPIA donde el texto más grande de cada diapositiva sin título pasa a ser su marcador de título
 (el aspecto no cambia; sirve al esquema, a la navegación y a los lectores de pantalla). Nunca sobrescribe el original.
-`--en-sitio` (solo .pptx): hace lo mismo pero reemplaza el archivo, para uno que TÚ acabas de crear en esta tarea (nunca un archivo de la persona):
+`--en-sitio` (solo .pptx): hace lo mismo pero reescribe el archivo, para uno que TÚ acabas de crear en esta tarea (nunca un archivo de la persona):
 así no queda una versión rota al lado de la buena.
 """
 from __future__ import annotations
 
 import argparse
+from io import BytesIO
 import json
 import os
 import re
 import sys
 import warnings
+
+from output_file import write_output
 
 warnings.filterwarnings("ignore")
 
@@ -192,12 +195,12 @@ def revisa_pptx(path):
     return r
 
 
-def arregla_pptx(path, salida):
+def arregla_pptx(path, salida, *, en_sitio=False):
     from pptx import Presentation
     from pptx.oxml.ns import qn
     from lxml import etree
 
-    if os.path.exists(salida):
+    if not en_sitio and os.path.lexists(salida):
         raise SystemExit("ERROR: la salida ya existe (no se sobrescribe): " + salida)
     prs = Presentation(path)
     cambios = 0
@@ -215,7 +218,9 @@ def arregla_pptx(path, salida):
         ph.set("type", "title")
         nvpr[0].insert(0, ph)
         cambios += 1
-    prs.save(salida)
+    with BytesIO() as result:
+        prs.save(result)
+        write_output(salida, result.getvalue(), overwrite=en_sitio)
     return cambios
 
 
@@ -298,9 +303,7 @@ def main(argv=None):
                 print("ERROR: --arreglar y --en-sitio solo existen para .pptx", file=sys.stderr)
                 return 2
             if a.en_sitio:
-                tmp = a.archivo + ".arreglando.pptx"
-                n = arregla_pptx(a.archivo, tmp)
-                os.replace(tmp, a.archivo)
+                n = arregla_pptx(a.archivo, a.archivo, en_sitio=True)
                 print("Archivo arreglado en su sitio, %d marcador(es) de título nuevo(s): %s" % (n, a.archivo))
             else:
                 n = arregla_pptx(a.archivo, a.arreglar)

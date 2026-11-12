@@ -405,7 +405,7 @@ def main(argv=None):
     ap.add_argument("spec", nargs="?", help="archivo JSON con la especificación")
     ap.add_argument("-o", "--output", help="archivo .xlsx de salida (sustituye a 'output' del JSON)")
     ap.add_argument("--example", action="store_true", help="imprime un JSON de ejemplo y termina")
-    ap.add_argument("--force", action="store_true", help="permite sobrescribir si el archivo ya existe")
+    ap.add_argument("--force", action="store_true", help="compatibilidad: la salida siempre debe tener un nombre nuevo")
     a = ap.parse_args(argv)
     if a.example:
         print(json.dumps(EXAMPLE, ensure_ascii=False, indent=2))
@@ -419,8 +419,8 @@ def main(argv=None):
             raise SpecError("falta el archivo de salida: usa -o archivo.xlsx o 'output' en el JSON")
         if not out.lower().endswith(".xlsx"):
             raise SpecError("la salida debe terminar en .xlsx: %s" % out)
-        if os.path.exists(out) and not a.force:
-            raise SpecError("ya existe %s; elige un nombre nuevo (p. ej. -v2) o usa --force" % out)
+        if os.path.lexists(out):
+            raise SpecError("ya existe %s; elige un nombre nuevo (p. ej. -v2); no se sobrescribe ni con --force" % out)
         wb = build(spec)
         save_workbook(wb, out)
     except SpecError as e:

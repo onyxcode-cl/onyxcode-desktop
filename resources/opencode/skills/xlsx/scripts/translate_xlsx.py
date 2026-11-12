@@ -16,6 +16,7 @@ la salida debe ser un archivo NUEVO. No usa openpyxl a propósito (al guardar pe
 from __future__ import annotations
 
 import argparse
+from io import BytesIO
 import json
 import os
 import re
@@ -25,6 +26,7 @@ from xml.sax.saxutils import escape
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(AQUI, "..", "..", "_shared"))
+from output_file import write_output
 
 MAX_ENTRADAS = 5000
 MAX_DESCOMPRIMIDO = 300 * 1024 * 1024
@@ -285,11 +287,24 @@ def cmd_aplicar(a):
     extra = sorted(set(tr) - usados - set(informe["sin_traduccion"]))
     if extra:
         informe["ids_desconocidos"] = extra
-    # escribir la copia: mismas partes, mismo orden, bytes idénticos salvo las de texto cambiadas
-    with zipfile.ZipFile(a.xlsx) as zi, zipfile.ZipFile(a.salida, "x", compression=zipfile.ZIP_DEFLATED) as zo:
-        for info in zi.infolist():
-            datos = cambios[info.filename].encode("utf-8") if info.filename in cambios else zi.read(info.filename)
-            zo.writestr(info, datos, compress_type=info.compress_type)
+    # Armar y verificar ANTES de crear la salida: no podemos borrar una copia
+    # inválida en una carpeta de Tareas sin permiso de borrado.
+    import comparar_estructura  # noqa: E402
+    with BytesIO() as result:
+        with zipfile.ZipFile(a.xlsx) as zi, zipfile.ZipFile(result, "w", compression=zipfile.ZIP_DEFLATED) as zo:
+            for info in zi.infolist():
+                datos = cambios[info.filename].encode("utf-8") if info.filename in cambios else zi.read(info.filename)
+                zo.writestr(info, datos, compress_type=info.compress_type)
+        result.seek(0)
+        dif, avisos, resumen = comparar_estructura.comparar_xlsx(a.xlsx, result)
+        for d in dif:
+            print("DIFERENCIA: " + d)
+        if dif:
+            error("ESTRUCTURA: CAMBIÓ: no se creó la copia; revisa la traducción y repite con otro nombre.")
+        try:
+            write_output(a.salida, result.getvalue())
+        except OSError as e:
+            error(str(e))
     if a.informe:
         with open(a.informe, "w", encoding="utf-8") as f:
             json.dump(informe, f, ensure_ascii=False, indent=1)
@@ -303,15 +318,6 @@ def cmd_aplicar(a):
               "Acórtalas o díselo a la persona." % (len(informe["posible_recorte"]), ", ".join(informe["posible_recorte"][:10])))
     if hojas:
         print("AVISO: los nombres de hoja no se traducen: %s." % ", ".join(hojas[:8]))
-    # verificación obligatoria: la estructura debe ser idéntica
-    import comparar_estructura  # noqa: E402
-    dif, avisos, resumen = comparar_estructura.comparar(a.xlsx, a.salida)
-    for d in dif:
-        print("DIFERENCIA: " + d)
-    if dif:
-        os.remove(a.salida)  # la copia que acabamos de crear no sirve: no se entrega un libro con la estructura cambiada
-        print("ESTRUCTURA: CAMBIÓ: se descartó la copia nueva; revisa la traducción y repite con otro nombre.")
-        sys.exit(1)
     print("ESTRUCTURA: idéntica al original (%s)" % resumen)
 
 
