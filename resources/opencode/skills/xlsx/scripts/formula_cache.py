@@ -9,18 +9,22 @@ from __future__ import annotations
 
 import datetime as dt
 from decimal import Decimal, ROUND_HALF_UP, localcontext
+from io import BytesIO
 import math
 import operator
 import os
 import posixpath
 import re
-import tempfile
+import sys
 import zipfile
 from xml.etree import ElementTree as ET
 
 from openpyxl.formula.tokenizer import Tokenizer, TokenizerError
 from openpyxl.utils.cell import range_boundaries
 from openpyxl.utils.datetime import to_excel
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '_shared'))
+from output_file import write_output
 
 NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
 Q = '{%s}' % NS
@@ -523,15 +527,18 @@ def read_cached_values(path):
 
 
 def save_with_cache(wb, path):
-    """Guarda con openpyxl y añade solo <v>/tipo a las celdas con <f>."""
+    """Arma el ZIP completo con sus cachés en memoria y entrega una copia nueva.
+
+    Nunca crea un temporal junto al destino ni necesita borrar o renombrar allí.
+    Los temporales internos de openpyxl usan el directorio temporal del sistema.
+    """
     values, unsupported = calculate(wb)
     from openpyxl.workbook.properties import CalcProperties
     wb.calculation = CalcProperties(calcMode='auto', fullCalcOnLoad=True)
-    wb.save(path)
-    fd, tmp = tempfile.mkstemp(prefix='.xlsx-cache-', dir=os.path.dirname(os.path.abspath(path)))
-    os.close(fd)
-    try:
-        with zipfile.ZipFile(path) as src, zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as dst:
+    with BytesIO() as raw, BytesIO() as result:
+        wb.save(raw)
+        raw.seek(0)
+        with zipfile.ZipFile(raw) as src, zipfile.ZipFile(result, 'w', zipfile.ZIP_DEFLATED) as dst:
             sheets = {p: s for s, p in sheet_paths(src).items()}
             for info in src.infolist():
                 data = src.read(info.filename)
@@ -562,10 +569,7 @@ def save_with_cache(wb, path):
                         return ET.tostring(cell, encoding='unicode')
                     data = re.sub(r'<c\b[^>]*>.*?</c>', patch, data.decode('utf-8'), flags=re.S).encode('utf-8')
                 dst.writestr(info, data)
-        os.replace(tmp, path)
-    finally:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
+        write_output(path, result.getvalue())
     return unsupported
 
 

@@ -1,12 +1,17 @@
 """Pruebas de verificar_office.py (unittest). Ejecutar: python -m unittest tests/test_verificar_office.py"""
 import os
+from contextlib import ExitStack, redirect_stdout
+from io import StringIO
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(os.path.dirname(AQUI), "verificar_office.py")
+sys.path.insert(0, os.path.dirname(AQUI))
+import verificar_office
 
 
 def correr(*args):
@@ -129,6 +134,49 @@ class PruebasVerificar(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertEqual(Presentation(self.p("sitio.pptx")).slides[0].shapes.title.text_frame.text, "Solo yo")
         self.assertFalse([f for f in os.listdir(self.d) if f.endswith(".arreglando.pptx")])
+
+    def test_pptx_copia_y_en_sitio_sin_borrar_ni_renombrar(self):
+        from pptx import Presentation
+        from pptx.util import Inches, Pt
+        with tempfile.TemporaryDirectory() as folder:
+            source = os.path.join(folder, 'nuevo.pptx')
+            copy = os.path.join(folder, 'copia.pptx')
+            prs = Presentation()
+            slide = prs.slides.add_slide(prs.slide_layouts[6])
+            title = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(6), Inches(1))
+            title.text = 'Mi título'
+            title.text_frame.paragraphs[0].runs[0].font.size = Pt(40)
+            prs.save(source)
+            with open(source, 'rb') as f:
+                original = f.read()
+            with ExitStack() as stack, redirect_stdout(StringIO()):
+                guards = [stack.enter_context(patch.object(os, op, side_effect=PermissionError('denegado')))
+                          for op in ('rename', 'replace', 'unlink', 'remove')]
+                self.assertEqual(verificar_office.main([source, '--arreglar', copy]), 0)
+                with open(source, 'rb') as f:
+                    self.assertEqual(f.read(), original)
+                self.assertEqual(verificar_office.main([source, '--en-sitio']), 0)
+                for guard in guards:
+                    guard.assert_not_called()
+            for path in (source, copy):
+                self.assertEqual(Presentation(path).slides[0].shapes.title.text, 'Mi título')
+            self.assertEqual(set(os.listdir(folder)), {'nuevo.pptx', 'copia.pptx'})
+
+    def test_pptx_no_crea_salida_si_falla_la_serializacion(self):
+        from pptx import Presentation
+        with tempfile.TemporaryDirectory() as folder:
+            source = os.path.join(folder, 'original.pptx')
+            copy = os.path.join(folder, 'copia.pptx')
+            Presentation().save(source)
+            with open(source, 'rb') as f:
+                original = f.read()
+            for in_place in (False, True):
+                with patch('pptx.presentation.Presentation.save', side_effect=ValueError('fallo al serializar')):
+                    with self.assertRaisesRegex(ValueError, 'fallo al serializar'):
+                        verificar_office.arregla_pptx(source, source if in_place else copy, en_sitio=in_place)
+                with open(source, 'rb') as f:
+                    self.assertEqual(f.read(), original)
+                self.assertEqual(os.listdir(folder), ['original.pptx'])
 
 
 if __name__ == "__main__":
