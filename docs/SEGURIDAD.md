@@ -1808,6 +1808,17 @@ mediante `tasks:openPath`, que conserva la autorización de carpeta y el bloqueo
 `…/nombre-del-archivo`, nunca sus carpetas padre ni el texto crudo de un error de disco. Los avisos llevan el identificador de apertura;
 los eventos de una vista destruida se descartan. La sesión y la CSP conservan sus restricciones.
 
+**PdfCraft web: preferencias iniciales de lectura (F8-B271, E2).** Solo al abrir PDF, `office/craft/web-server.ts` inserta un script
+clásico al principio de `head`, antes del módulo que arranca el motor. Completa únicamente las claves ausentes de las preferencias
+JSON de PdfCraft en `localStorage`: `default_mode: read`, `default_zoom: fit-width`, `default_layout: continuous`. Respeta las elecciones
+guardadas y el respaldo de preferencias antiguo que admite PdfCraft; ante JSON ilegible o almacenamiento no disponible no sobrescribe
+datos ni interrumpe el arranque. El HTML transformado se mantiene en memoria y se sirve idéntico al usado para calcular los hashes
+SHA-256 con el mecanismo existente. La CSP solo añade el hash exacto de ese inicializador a `script-src`; no añade `unsafe-inline`,
+`unsafe-eval` ni orígenes. El permiso de estilos en línea que ya tenía `style-src` permanece igual. Host exacto, loopback, rutas,
+sesión aislada y bloqueo de red permanecen iguales. No hay recarga ni nuevos permisos o IPC; Word, Excel y PowerPoint reciben su HTML
+original. Se conserva el almacenamiento efímero y por origen del visor; no se añade persistencia entre puertos o sesiones. Las vistas
+iniciales explícitas de un PDF siguen siendo interpretadas por PdfCraft y pueden prevalecer sobre los valores de zoom y layout.
+
 ## 3 quinquagies bis. Cambios de 0.5.29 a 0.5.35: canales nuevos, avisos, pegado y botón Ejecutar (F8-B168 a F8-B173)
 
 Resumen de superficie y límites; el detalle y las pruebas de cada punto están en `CHANGELOG-FASE8.md`. Todo lo de abajo se comprobó leyendo el código.
