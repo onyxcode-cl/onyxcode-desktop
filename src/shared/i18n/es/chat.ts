@@ -100,6 +100,7 @@ export const chat = {
   'chat.composer.attachSoon': 'Adjuntar archivos (próximamente)',
   'chat.overdrive.action': 'Hacer esto en Overdrive',
   'chat.overdrive.note': 'Prepara una tarea nueva con una copia del archivo y tu pedido en borrador. Tú decides cuándo enviarlo.',
+  'chat.overdrive.reattach': 'Selecciona de nuevo los originales indicados para preparar la tarea con copias y tu pedido en borrador.',
   'chat.overdrive.preparing': 'Preparando la tarea…',
   'chat.overdrive.unavailable': 'Overdrive no está disponible. Tu pedido y tus adjuntos siguen en el Chat.',
   'chat.overdrive.invalid': 'No se pudo copiar el adjunto: debe ser un Word, Excel o PowerPoint válido dentro de los límites del Chat.',

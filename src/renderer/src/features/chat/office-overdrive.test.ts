@@ -51,6 +51,17 @@ describe('oferta de edición Office', () => {
     expect(officeEditFiles('edita esto', [])).toBeNull()
     expect(officeEditFiles('traduce y cambia al inglés', [word])).toBeNull()
   })
+  it.each(['cámbiame la fecha al 30 de noviembre', 'corrígeme la fecha', 'actualízame el título', 'añádeme una fila'])(
+    'reconoce el pronombre de la persona en «%s»',
+    (text) => {
+      expect(officeEditFiles(text, [word])).toEqual([{ name: word.name, base64: word.originalDocx }])
+    }
+  )
+  it.each(['seatbelt', 'wsl'])('un perfil nuevo con aislamiento %s listo no necesita carpeta ni modelo elegidos', async (backend) => {
+    env.cw.mockResolvedValueOnce({ state: 'ready', backend, setup: null })
+    expect(await chatOfficeAvailable()).toBe(true)
+    expect(invoke).toHaveBeenCalledExactlyOnceWith('app:info')
+  })
   it('comprueba disponibilidad efectiva y falla cerrado con política, entorno pendiente o error', async () => {
     expect(await chatOfficeAvailable()).toBe(true)
     expect(env.cw).toHaveBeenCalledWith('tasks:sandbox:status', { force: true })

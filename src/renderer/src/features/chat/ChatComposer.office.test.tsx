@@ -59,6 +59,10 @@ async function setup(text = 'cambia el título', attachments = [word]): Promise<
   return send
 }
 describe('Hacer esto en Overdrive', () => {
+  it('ofrece antes de enviar el pedido exacto de la prueba a mano: «cámbiame la fecha al 30 de noviembre»', async () => {
+    await setup('cámbiame la fecha al 30 de noviembre', [{ ...word, name: 'contrato.docx' }])
+    expect(view!.q('[data-testid="office-overdrive-yes"]')?.textContent).toBe('Hacer esto en Overdrive')
+  })
   it.each([
     ['docx', 'originalDocx'],
     ['xlsx', 'originalXlsx'],

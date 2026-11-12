@@ -29,6 +29,7 @@ import { ShellBgWakeNote } from '../../components/conversation/ShellBgWakeNote'
 import { shellBgWakeOf } from '@shared/shell-bg-wake-marker'
 import { ChatToolCall } from './ChatToolCall'
 import { ChatFiles } from './ChatFiles'
+import { SentOfficeAction } from './SentOfficeAction'
 import { ElicitationCard, ElicitationNoticeRow } from '../code/impl/ElicitationCard'
 import type { ElicitationNotice, ElicitationRequest } from '@shared/mcp-elicitation'
 import { rejectChatQuestion, replyChatElicitation, replyChatQuestion } from './actions'
@@ -322,7 +323,8 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   isLast,
   onRetry,
   onCompact,
-  old
+  old,
+  source
 }: {
   entry: { info: AssistantMessage; parts: Part[] }
   live: boolean
@@ -332,6 +334,8 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   onCompact?: ErrorActions['onCompact']
   /** Fila antigua: `content-visibility: auto`. */
   old: boolean
+  /** Mensaje de la persona que inició este turno (después de agrupar las respuestas del motor). */
+  source?: MessageEntry
 }): React.JSX.Element {
   const t = useT()
   const lastTextIdx = live ? entry.parts.map((p) => p.type).lastIndexOf('text') : -1
@@ -391,6 +395,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
             )
           )}
       {!mobile && <ChatFiles parts={entry.parts} done={!live} />}
+      {!mobile && source && <SentOfficeAction source={source} busy={live} />}
       <AssistantError
         info={entry.info}
         abortedLabel={t('chat.msg.stopped')}
@@ -563,6 +568,7 @@ export function ChatMessageList({
                 onRetry={isLast && canRetry ? onRetry : undefined}
                 onCompact={isLast ? onCompact : undefined}
                 old={old}
+                source={rows[i - 1]?.info.role === 'user' ? rows[i - 1] : undefined}
               />
             )
           })}
