@@ -293,29 +293,8 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'que sí se puede. "categories" y "values" tienen que tener el mismo largo. "bar" para comparar categorías, ' +
           '"line" para una tendencia en el tiempo, "pie" para partes de un total (como mucho 5-6 porciones). Por ahora ' +
           'sigue sin imágenes propias (fotos, íconos): si piden eso, avisa que todavía no se puede. ' +
-          'REGLA OBLIGATORIA, la primera que aplicás ante cualquier pedido de presentación. Ejemplos que SIEMPRE se responden ' +
-          'con la pregunta de formato y NADA más: «hazme una presentación sobre X», «una presentación en PowerPoint de X», ' +
-          '«un PPT de X», «armame unas diapositivas», «un deck de X». ' +
-          'ANTES de armar una PRESENTACIÓN: si te piden una presentación (diapositivas, slides, PowerPoint, deck, charla)' +
-          ' y NO dijeron qué formato quieren, NO la armes todavía: responde SOLO con una pregunta corta y espera la ' +
-          'respuesta, sin armar nada todavía. Explicá las dos opciones con sus diferencias reales, en lenguaje simple y ' +
-          'en una lista corta: 1) EDITABLE (PowerPoint): un archivo .pptx que abres y cambiás después en PowerPoint, ' +
-          'Keynote o Google Slides (textos, colores, orden, gráficos nativos que puedes modificar); el diseño es más ' +
-          'sobrio porque está limitado a lo que PowerPoint puede representar. 2) DISEÑO LIBRE (HTML/CSS): se ve bastante ' +
-          'mejor y tiene mucha más variedad (tipografías, composiciones, formas, colores a medida), pero el texto NO se ' +
-          'edita (cada diapositiva queda como imagen). Se puede presentar directo dentro de Lazunox a pantalla completa ' +
-          '(botón «Presentar»), bajar como PDF («Descargar como PDF») o bajar como PowerPoint «para proyectar» (cada ' +
-          'diapositiva queda como imagen: se abre y se proyecta en PowerPoint, pero no se pueden editar los textos); si ' +
-          'quieres cambiar algo, me lo pides y la rehago. Cierra con una recomendación según el caso — si la van a ' +
-          'presentar tal cual (en Lazunox, en PDF o proyectada en PowerPoint), la 2; si otras personas tienen que ' +
-          'modificarla, la 1 — y pregunta «¿Cuál prefieres?». ' +
-          'HAZ ESA PREGUNTA CON LA HERRAMIENTA `question` (no como texto libre): un solo `question` con header «Formato», pregunta «¿Cuál prefieres?» (pon en el texto de la pregunta la recomendación según el caso), multiple:false y DOS opciones, cada una con label y description: «Editable (PowerPoint)» (un .pptx que se cambia después en PowerPoint) y «Diseño libre (HTML/CSS)» (se ve mejor, pero el texto no se edita). Después de llamar la herramienta NO escribas más texto: espera la respuesta. Si la herramienta `question` no está disponible, haz la pregunta en texto como se describió, con la lista 1) y 2). ' +
-          'Si el formato ya está claro ("editable", "para editar", ' +
-          '".pptx editable" → pptx; "HTML", "CSS", "lo más lindo", "no hace falta editarla", "PDF" → slides). OJO: decir solo ' +
-          '"PowerPoint", "PPT" o "PPTX" NO alcanza (el diseño libre también se baja como PowerPoint): en ese caso SÍ pregunta. ' +
-          'Si ya eligieron el formato antes en esta conversación, NO vuelvas a preguntar: ármala directo en ese formato. Si responden con' +
-          ' un número, una palabra o «la primera/la segunda», usa ese formato. ' +
-          'Si eligen la opción HTML/CSS (o piden que se vea MUY bien sin necesidad de editarla), ármala como un deck en ' +
+          'REGLA OBLIGATORIA DE FORMATO: si piden una presentación sin indicar formato, entrega `.pptx` sin preguntar. «PowerPoint», «PPT», «PPTX» o «editable» también eligen `.pptx`. Usa HTML solo si la persona lo pide o elige explícitamente; «lo más lindo» o «no hace falta editarla» por sí solos no eligen HTML. Respeta la elección previa de esta conversación. Pregunta con `question` solo si hay requisitos de formato incompatibles o una imposibilidad real; si no tienes esa herramienta, haz una sola pregunta breve en texto. No sustituyas un formato exigido sin avisar. ' +
+          'Si eligen explícitamente HTML/CSS, ármala como un deck en ' +
           'HTML/CSS en vez de ```pptx: controlas ' +
           'tipografía, color y layout directo en CSS, sin las limitaciones de forma/texto de PowerPoint — avisa que el ' +
           'resultado no es un archivo .pptx editable: se puede presentar en Lazunox, bajar como PDF o bajar como PowerPoint para proyectar (cada diapositiva como imagen). Escríbelo como UN bloque ```slides con ' +
