@@ -58,6 +58,7 @@ import { useChatDocPanel } from './useChatDocPanel'
 import { ProjectChip } from '../projects/ProjectChip'
 import { ProjectView } from '../projects/ProjectView'
 import { useProjects } from '../projects/store'
+import { chatSendFiles } from './office-overdrive'
 
 const EMPTY: MessageEntry[] = []
 
@@ -165,10 +166,7 @@ export function ChatView(): React.JSX.Element {
       return started
     }
     try {
-      const ok = await sendChatMessage(
-        text,
-        files.map((f) => ({ mime: f.mime, filename: f.name, url: f.url }))
-      )
+      const ok = await sendChatMessage(text, chatSendFiles(files))
       if (!ok) setInsert({ text, key: Date.now(), attachments: files })
       return ok
     } catch (err) {

@@ -11,6 +11,8 @@ import { isRemoteSurface } from '../../lib/platform'
 import { useSettings } from '../../stores/settings'
 import { loadPromptMemory } from '../memory/memory-client'
 import { isSafeAttachmentUrl } from '../../lib/attachments'
+import { setDraft } from '../../stores/drafts'
+import { officeOriginalFiles, rememberOfficeOriginal, sentOfficeAttachments, sentOfficeKey, type OfficeOriginal } from './office-overdrive'
 import { pdfRoute } from '@shared/attach-adapt'
 import {
   listElicitations,
@@ -230,7 +232,7 @@ export function newChat(): void {
 }
 
 /** Adjunto de un mensaje de usuario que se vuelve a enviar tal cual (reintento / edición). */
-export interface ResendFile {
+export interface ResendFile extends OfficeOriginal {
   mime: string
   filename?: string
   url: string
@@ -305,6 +307,19 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
   sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
+  // El SDK admite ids de partes del cliente. Permiten recuperar exactamente ese original tras el envío,
+  // aunque dos adjuntos tengan el mismo nombre o texto extraído. Solo el texto adaptado llega al modelo.
+  const fileParts = files.map((f) => {
+    const original = { ...f, id: '', name: f.filename ?? '' }
+    const part = { type: 'file' as const, mime: f.mime, filename: f.filename, url: f.url }
+    if (isRemoteSurface() || !officeOriginalFiles([original])) return part
+    const id = `prt_${crypto.randomUUID().replace(/-/g, '')}`
+    rememberOfficeOriginal(sessionID, id, { ...original, id })
+    return { ...part, id }
+  })
+  const forgetOriginals = (): void => {
+    for (const p of fileParts) if ('id' in p) setDraft(sentOfficeKey(sessionID, p.id), [])
+  }
   let error: unknown
   try {
     const res = await client.session.promptAsync({
@@ -316,18 +331,17 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       // Nunca desde el celular: ver el comentario equivalente en `code/impl/store.ts`.
       system: await chatSystemPrompt(sessionID, text),
       // Un mensaje sin texto es válido si lleva adjuntos (reintento de un mensaje solo con archivos).
-      parts: [
-        ...(text || files.length === 0 ? [{ type: 'text' as const, text }] : []),
-        ...files.map((f) => ({ type: 'file' as const, mime: f.mime, filename: f.filename, url: f.url }))
-      ]
+      parts: [...(text || files.length === 0 ? [{ type: 'text' as const, text }] : []), ...fileParts]
     })
     error = (res as { error?: unknown }).error
   } catch (err) {
+    forgetOriginals()
     // H4: sin respuesta del motor (red caída, excepción) la sesión no puede quedarse «ocupada» para siempre.
     sessions.setStatus(sessionID, 'idle')
     throw err
   }
   if (error) {
+    forgetOriginals()
     sessions.setStatus(sessionID, 'idle')
     sessions.setError(sessionID, error)
     return false
@@ -377,13 +391,24 @@ async function chatSystemPrompt(sessionID: string, text: string): Promise<string
 
 /** Texto (sin partes sintéticas) y adjuntos de un mensaje de usuario. */
 export function userMessageContent(entry: MessageEntry): { text: string; files: ResendFile[] } {
+  const originals = sentOfficeAttachments(entry)
   const text = entry.parts
     .filter((p): p is Extract<Part, { type: 'text' }> => p.type === 'text' && !p.synthetic && !p.ignored)
     .map((p) => p.text)
     .join('\n\n')
   const files = entry.parts
     .filter((p): p is Extract<Part, { type: 'file' }> => p.type === 'file')
-    .map((p) => ({ mime: p.mime, filename: p.filename, url: p.url }))
+    .map((p) => {
+      const original = originals.find((f) => f.id === p.id)
+      return {
+        mime: p.mime,
+        filename: p.filename,
+        url: p.url,
+        ...(original
+          ? { originalDocx: original.originalDocx, originalXlsx: original.originalXlsx, originalPptx: original.originalPptx }
+          : {})
+      }
+    })
   return { text, files }
 }
 
