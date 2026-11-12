@@ -3,8 +3,8 @@ import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isPptxSpec, type PptxSpec } from '@shared/chat-doc-spec'
-import { contrastRatio, customPalette, legibleInk } from './deck-kit'
-import { chatCoverSize, chatDeckCommands, deckToPdf, foldSubtitles, pieCategories, renderChatDeck } from './chat-deck'
+import { contrastRatio, customPalette, legibleInk, paletteFor } from './deck-kit'
+import { chatCoverSize, chatDeckCommands, deckToPdf, foldSubtitles, layoutOf, pieCategories, renderChatDeck } from './chat-deck'
 
 const FULL: PptxSpec = {
   theme: 'warm',
@@ -41,6 +41,30 @@ const FULL: PptxSpec = {
 
 describe('chatDeckCommands (prueba Craft)', () => {
   it('el contenido de ejemplo es un PptxSpec válido', () => expect(isPptxSpec(FULL)).toBe(true))
+
+  it('sin layout explícito los datos eligen gráfico, tabla, cifras o columnas, incluso en la primera lámina', () => {
+    const chart = { type: 'bar' as const, categories: ['Ejecutado', 'Saldo'], values: [31.5, 58.5] }
+    expect(layoutOf({ title: 'Recursos', chart }, 0)).toBe('chart')
+    expect(layoutOf({ title: 'Registro', table: { columns: ['Hito'], rows: [['Simulacro']] } }, 1)).toBe('table')
+    expect(layoutOf({ title: 'Cobertura', kpis: [{ label: 'Oficinas', value: '18' }] }, 1)).toBe('kpis')
+    expect(
+      layoutOf(
+        {
+          title: 'Opciones',
+          columns: [
+            { heading: 'A', bullets: ['Una'] },
+            { heading: 'B', bullets: ['Otra'] }
+          ]
+        },
+        1
+      )
+    ).toBe('two-col')
+    expect(layoutOf({ title: 'Portada', layout: 'cover', chart }, 0)).toBe('cover')
+    const commands = chatDeckCommands({ slides: [{ title: 'Recursos', chart }] })
+    expect(commands).toContain(
+      'insert.chart={"type":"column","rect":[60,140,840,340],"categories":["Ejecutado","Saldo"],"series":[{"name":"Recursos","values":[31.5,58.5]}]}'
+    )
+  })
 
   it('empieza y termina bien y crea una diapositiva por entrada', () => {
     const cmds = chatDeckCommands(FULL)
@@ -221,12 +245,29 @@ describe('tabla: una sola letra para todas las celdas', () => {
   it('una celda larga achica toda la tabla por igual, no solo su celda', () => {
     const long = 'Descripción muy larga de una partida de inversión que no cabe en una celda angosta de la tabla'
     const cmds = chatDeckCommands({
-      slides: [{ title: 'Inversión', layout: 'table', table: { columns: ['Ítem', 'Detalle', 'Monto', 'Plazo', 'Nota'], rows: [['A', long, '$1', '1', 'x'], ['B', 'corto', '$2', '2', 'y']] } }]
+      slides: [
+        {
+          title: 'Inversión',
+          layout: 'table',
+          table: {
+            columns: ['Ítem', 'Detalle', 'Monto', 'Plazo', 'Nota'],
+            rows: [
+              ['A', long, '$1', '1', 'x'],
+              ['B', 'corto', '$2', '2', 'y']
+            ]
+          }
+        }
+      ]
     })
     const idx = cmds.findIndex((c) => c.startsWith('insert.textBox=') && c.includes('Monto'))
     const sizes = new Set<number>()
     cmds.forEach((c, i) => {
-      if (i > idx - 1 && c.startsWith('insert.textBox=') && cmds[i + 1]?.startsWith('format.size=') && /"(Ítem|Detalle|Monto|Plazo|Nota|A|B|\$1|\$2|1|2|x|y|corto)"/.test(c))
+      if (
+        i > idx - 1 &&
+        c.startsWith('insert.textBox=') &&
+        cmds[i + 1]?.startsWith('format.size=') &&
+        /"(Ítem|Detalle|Monto|Plazo|Nota|A|B|\$1|\$2|1|2|x|y|corto)"/.test(c)
+      )
         sizes.add(JSON.parse(cmds[i + 1].slice('format.size='.length)).size)
     })
     expect(sizes.size).toBe(1)
@@ -327,6 +368,51 @@ describe('189: arreglos de PowerPoint medidos', () => {
     })
     const sizes = ['$12.480 M', '31,2%', '412'].map((t) => sizeOf(cmds, t))
     expect(new Set(sizes).size).toBe(1)
+  })
+
+  it('una o dos cifras breves llenan el espacio con tipografía, sin paneles vacíos', () => {
+    const cmds = chatDeckCommands({
+      theme: 'blue',
+      slides: [
+        {
+          title: 'Cobertura',
+          layout: 'kpis',
+          kpis: [
+            { label: 'Oficinas', value: '18' },
+            { label: 'Familias', value: '240' }
+          ]
+        }
+      ]
+    })
+    expect(sizeOf(cmds, '18')).toBeGreaterThanOrEqual(80)
+    expect(sizeOf(cmds, '18')).toBe(sizeOf(cmds, '240'))
+    expect(sizeOf(cmds, 'OFICINAS')).toBeGreaterThanOrEqual(18)
+    const panels = cmds.filter((c) => c.startsWith('shape.insert=') && (j(c).rect as number[])[3] === 250)
+    expect(panels).toHaveLength(0)
+  })
+
+  it('las variaciones de KPI conservan texto y contraste en todos los temas', () => {
+    for (const theme of ['blue', 'green', 'warm', 'dark', 'mono'] as const) {
+      for (const count of [1, 2, 4]) {
+        const delta = count === 1 ? '-35 %' : '+35 %'
+        const cmds = chatDeckCommands({
+          theme,
+          slides: [
+            {
+              title: 'Resumen',
+              layout: 'kpis',
+              speaker_notes: 'Conservar la nota',
+              kpis: Array.from({ length: count }, (_, i) => ({ label: `Indicador ${i}`, value: `${18 + i}`, delta }))
+            }
+          ]
+        })
+        const at = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === delta)
+        const color = j(cmds[at + 2]).color as string
+        const pal = paletteFor(theme)
+        expect(contrastRatio(color.slice(1), count <= 2 ? pal.bg : pal.panel)).toBeGreaterThanOrEqual(4.5)
+        expect(cmds).toContain('slide.notes={"text":"Conservar la nota"}')
+      }
+    }
   })
 
   it('con pocas viñetas la letra es más grande y más separada (la lámina no queda vacía)', () => {

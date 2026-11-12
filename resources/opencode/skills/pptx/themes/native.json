@@ -1,0 +1,62 @@
+{
+  "sobrio": {
+    "bg": "F6F9FE",
+    "fg": "0F172A",
+    "muted": "52627A",
+    "accent": "2563EB",
+    "accent2": "C8963E",
+    "soft": "E5EDFA",
+    "cover_bg": "142D5E",
+    "cover_fg": "FFFFFF",
+    "cover_sub": "C9D6E4",
+    "palette": [
+      "2563EB",
+      "C8963E",
+      "5B8DB8",
+      "7A8B99",
+      "9C6B30",
+      "3E7D6B"
+    ],
+    "font": "Arial"
+  },
+  "oscuro": {
+    "bg": "15181E",
+    "fg": "E8EAED",
+    "muted": "9AA3AF",
+    "accent": "4FC3F7",
+    "accent2": "FFB74D",
+    "soft": "232832",
+    "cover_bg": "0B0D11",
+    "cover_fg": "FFFFFF",
+    "cover_sub": "9AA3AF",
+    "palette": [
+      "4FC3F7",
+      "FFB74D",
+      "81C784",
+      "BA68C8",
+      "F06292",
+      "90A4AE"
+    ],
+    "font": "Arial"
+  },
+  "claro": {
+    "bg": "FAF8F4",
+    "fg": "2B2B2B",
+    "muted": "655F59",
+    "accent": "2E7D6B",
+    "accent2": "D9822B",
+    "soft": "EFEAE1",
+    "cover_bg": "FAF8F4",
+    "cover_fg": "2B2B2B",
+    "cover_sub": "655F59",
+    "palette": [
+      "2E7D6B",
+      "D9822B",
+      "4A90A4",
+      "8E7CC3",
+      "B5534B",
+      "8A9A5B"
+    ],
+    "font": "Arial"
+  }
+}
