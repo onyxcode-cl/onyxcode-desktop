@@ -4,6 +4,7 @@ import type { ChildProcess } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { classifySandboxDenial, MAX_SANDBOX_DENIALS, SandboxDenialMonitor } from './sandbox-denials'
 import type { SandboxDenial } from '@shared/ipc-tasks'
+import type { ReadIntent, ReadIntentSource } from './sandbox-read-intents'
 
 const tag = 'lzx-denial-' + 'a'.repeat(32)
 const message = (op = 'file-write-unlink', path = '/work/tarea/a.txt', label = tag): string =>
@@ -189,5 +190,45 @@ describe('monitor con lector simulado', () => {
     child.emit('close', 0)
     await stopped
     expect(reader).toHaveBeenCalledTimes(1)
+  })
+  it('omite sondas de arranque y de programas, incluso durante una herramienta; conserva una escritura real', async () => {
+    vi.useFakeTimers()
+    const { child, changed, monitor } = setup()
+    child.stdout.write(line(message('file-read-metadata', '/home/.config')))
+    child.stdout.write(line(message('file-read-data', '/home/.config/git/config')))
+    await vi.advanceTimersByTimeAsync(2100)
+    expect(changed).not.toHaveBeenCalled()
+    child.stdout.write(line(message('file-write-create', '/home/Desktop/salida.txt')))
+    expect(changed.mock.lastCall![0]).toEqual([{ kind: 'write', at: expect.any(Number), canAllowDelete: false }])
+    const stopped = monitor.stop()
+    child.emit('close', 0)
+    await stopped
+    expect(vi.getTimerCount()).toBe(0)
+  })
+  it.each([true, false])('lectura explícita con eventos de herramienta antes de la negación: %s', async (intentFirst) => {
+    vi.useFakeTimers()
+    const child = fakeChild()
+    const changed = vi.fn()
+    let receive!: (intent: ReadIntent) => void
+    let signal!: AbortSignal
+    const source: ReadIntentSource = async (callback, abort) => {
+      receive = callback
+      signal = abort
+    }
+    const monitor = new SandboxDenialMonitor(tag, context.folder, changed, () => child, {}, undefined, source)
+    monitor.start()
+    const intent = { id: 'tool-1', input: { command: 'cat /home/.ssh/id' }, start: Date.now() - 100, end: Date.now() }
+    if (intentFirst) receive(intent)
+    child.stdout.write(line(message('file-read-data', '/home/.config/git/config')))
+    child.stdout.write(line(message('file-read-data', '/home/.ssh/id')))
+    if (!intentFirst) receive(intent)
+    expect(changed).toHaveBeenCalledOnce()
+    expect(changed.mock.lastCall![0]).toEqual([{ kind: 'read', at: expect.any(Number), canAllowDelete: false }])
+    expect(JSON.stringify(changed.mock.calls)).not.toContain('/home')
+    const stopped = monitor.stop()
+    expect(signal.aborted).toBe(true)
+    child.emit('close', 0)
+    await stopped
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

@@ -6,8 +6,8 @@ const mock = vi.hoisted(() => ({ cw: vi.fn<(...args: any[]) => Promise<any>>() }
 vi.mock('./bridge', () => ({ cw: mock.cw }))
 import { useViewerViewport } from './useViewerViewport'
 let panel: Mounted | undefined
-function Probe(): React.JSX.Element {
-  const { hostRef, hasViewport } = useViewerViewport(true)
+function Probe({ ready = true }: { ready?: boolean }): React.JSX.Element {
+  const { hostRef, hasViewport } = useViewerViewport(true, ready)
   return createElement('div', { ref: hostRef }, hasViewport ? 'superficie confirmada' : 'sin superficie')
 }
 beforeEach(() => {
@@ -26,6 +26,7 @@ afterEach(() => {
   panel = undefined
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 it.each([true, false])('solo confirma la superficie cuando main confirma la ventana: %s', async (attached) => {
   mock.cw.mockResolvedValue(attached)
@@ -51,4 +52,34 @@ it('un panel oculto de cero píxeles no cuenta como superficie lista', async () 
     await Promise.resolve()
   })
   expect(panel.host.textContent).toBe('sin superficie')
+})
+it('recupera un 0x0 inicial sin depender de otro resize y confirma el attach de tamaño real', async () => {
+  vi.useFakeTimers()
+  const measure = vi.mocked(HTMLElement.prototype.getBoundingClientRect)
+  measure.mockReturnValueOnce({ x: 0, y: 0, width: 0, height: 0 } as DOMRect)
+  mock.cw.mockResolvedValue(true)
+  panel = mount(createElement(Probe))
+  await act(() => vi.advanceTimersByTimeAsync(100))
+  expect(panel.host.textContent).toBe('superficie confirmada')
+  expect(mock.cw).toHaveBeenLastCalledWith('tasks:viewer:attach', {
+    rect: { x: 5, y: 10, width: 600, height: 400 },
+    visible: true
+  })
+  panel.unmount()
+  panel = undefined
+  expect(vi.getTimerCount()).toBe(0)
+})
+it('al recibir listo vuelve a medir y mostrar, aunque no haya evento resize', async () => {
+  mock.cw.mockResolvedValue(true)
+  panel = mount(createElement(Probe, { ready: false }))
+  await act(async () => {
+    await Promise.resolve()
+  })
+  expect(mock.cw.mock.lastCall?.[1].visible).toBe(false)
+  panel.rerender(createElement(Probe, { ready: true }))
+  await act(async () => {
+    await Promise.resolve()
+  })
+  expect(mock.cw.mock.lastCall?.[1].visible).toBe(true)
+  expect(panel.host.textContent).toBe('superficie confirmada')
 })

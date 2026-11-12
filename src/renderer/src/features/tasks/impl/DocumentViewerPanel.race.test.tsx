@@ -5,6 +5,7 @@ import { click, mount, type Mounted } from '../../../../../test/dom-render'
 const mock = vi.hoisted(() => ({
   theme: 'dark',
   viewport: true,
+  overlay: false,
   listener: null as null | ((e: any) => void),
   cw: vi.fn<(...args: any[]) => Promise<any>>(() => new Promise(() => undefined))
 }))
@@ -20,7 +21,9 @@ vi.mock('./bridge', () => ({
 vi.mock('../../../lib/useAppTheme', () => ({ useAppTheme: () => mock.theme }))
 vi.mock('../../../lib/i18n', () => ({ useT: () => (key: string) => key }))
 vi.mock('../../../lib/opencode', () => ({ errorMessage: String }))
-vi.mock('./useViewerViewport', () => ({ useViewerViewport: () => ({ hostRef: null, shouldShowNative: true, hasViewport: mock.viewport }) }))
+vi.mock('./useViewerViewport', () => ({
+  useViewerViewport: (visible: boolean) => ({ hostRef: null, shouldShowNative: visible && !mock.overlay, hasViewport: mock.viewport })
+}))
 import { DocumentViewerPanel } from './DocumentViewerPanel'
 let panel: Mounted | null = null
 afterEach(() => {
@@ -29,6 +32,7 @@ afterEach(() => {
   mock.cw.mockReset()
   mock.cw.mockImplementation(() => new Promise(() => undefined))
   mock.viewport = true
+  mock.overlay = false
   vi.useRealTimers()
   mock.theme = 'dark'
 })
@@ -92,6 +96,34 @@ it('aunque la carga responda, un hueco de tamaño cero termina con aviso', async
   await act(() => vi.advanceTimersByTimeAsync(8000))
   expect(panel.host.textContent).toContain('viewer.timeout')
 })
+it('un 0x0 inicial recuperado después de cargar no cierra Word ni Excel a los 8 s', async () => {
+  vi.useFakeTimers()
+  mock.viewport = false
+  mock.cw.mockResolvedValue({ ok: true, mode: 'web' })
+  panel = mount(element())
+  await act(() => vi.advanceTimersByTimeAsync(1000))
+  mock.viewport = true
+  panel.rerender(element())
+  await act(() => vi.advanceTimersByTimeAsync(10_000))
+  expect(panel.host.textContent).toContain('viewer.ready')
+  expect(mock.cw).not.toHaveBeenCalledWith('tasks:viewer:close', expect.objectContaining({ reason: 'timeout' }))
+})
+it.each(['oculto', 'diálogo'])(
+  'no destruye una vista lista con el panel %s; al mostrarlo conserva la protección contra un blanco real',
+  async (cause) => {
+    vi.useFakeTimers()
+    mock.viewport = false
+    mock.overlay = cause === 'diálogo'
+    mock.cw.mockResolvedValue({ ok: true, mode: 'web' })
+    panel = mount(createElement(DocumentViewerPanel, { path: '/docs/a.docx', visible: cause !== 'oculto', onClose: () => undefined }))
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    expect(panel.host.textContent).not.toContain('viewer.timeout')
+    mock.overlay = false
+    panel.rerender(createElement(DocumentViewerPanel, { path: '/docs/a.docx', visible: true, onClose: () => undefined }))
+    await act(() => vi.advanceTimersByTimeAsync(8000))
+    expect(panel.host.textContent).toContain('viewer.timeout')
+  }
+)
 it('un error IPC muestra aviso y botón', async () => {
   mock.cw.mockRejectedValue(new Error('fallo'))
   panel = mount(element())

@@ -4,9 +4,12 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
 import type { SandboxDenial, SandboxDenialKind } from '@shared/ipc-tasks'
+import { requestsRead, type ReadIntent, type ReadIntentSource } from './sandbox-read-intents'
 
 export const MAX_SANDBOX_DENIALS = 50
 const MAX_RECORD = 32_768
+const READ_EVIDENCE_WAIT_MS = 2_000
+const DENIAL = /Sandbox:\s+[^\n]+?\(\d+\)\s+deny(?:\(\d+\))?\s+([a-z][a-z0-9*-]+)(?:[ \t]+([^\r\n]*))?/
 
 export interface DenialContext {
   folder: string
@@ -19,7 +22,7 @@ export function classifySandboxDenial(message: string, tag: string, context: Den
   if (!/^lzx-denial-[a-f0-9]{32}$/.test(tag)) return null
   // El mensaje del perfil es una línea separada al final; una etiqueta dentro de una ruta no cuenta.
   if (!message.trimEnd().endsWith('\n' + tag)) return null
-  const hit = /Sandbox:\s+[^\n]+?\(\d+\)\s+deny(?:\(\d+\))?\s+([a-z][a-z0-9*-]+)(?:[ \t]+([^\r\n]*))?/.exec(message)
+  const hit = DENIAL.exec(message)
   if (!hit) return null
   const [, operation, raw = ''] = hit
   // En algunas versiones la etiqueta va al final; no conservarla como parte de la ruta.
@@ -57,6 +60,11 @@ export class SandboxDenialMonitor {
   private running = false
   private closing?: Promise<void>
   private finishStop?: () => void
+  private readController?: AbortController
+  private readIntents: ReadIntent[] = []
+  private pendingReads: Array<{ event: SandboxDenial; path: string; expires: number }> = []
+  private readTimer?: ReturnType<typeof setTimeout>
+  private intentTimer?: ReturnType<typeof setTimeout>
 
   constructor(
     private readonly tag: string,
@@ -64,7 +72,8 @@ export class SandboxDenialMonitor {
     private readonly onChange: (events: SandboxDenial[]) => void,
     private readonly reader: SandboxLogReader = readSandboxLog,
     private readonly context: Omit<DenialContext, 'folder'> = {},
-    private readonly onUnavailable: () => void = () => {}
+    private readonly onUnavailable: () => void = () => {},
+    private readonly readSource?: ReadIntentSource
   ) {
     if (!/^lzx-denial-[a-f0-9]{32}$/.test(tag)) throw new Error('Invalid sandbox denial tag')
   }
@@ -81,6 +90,14 @@ export class SandboxDenialMonitor {
       return
     }
     this.child = child
+    const ctl = new AbortController()
+    this.readController = ctl
+    void this.readSource?.((intent) => {
+      if (!this.running || ctl.signal.aborted) return
+      this.readIntents = [...this.readIntents.filter((i) => i.id !== intent.id).slice(-49), intent]
+      this.pruneIntents()
+      this.flushReads()
+    }, ctl.signal).catch(() => undefined)
     const decoder = new StringDecoder('utf8')
     let pending = ''
     let dropping = false
@@ -111,6 +128,7 @@ export class SandboxDenialMonitor {
       clearTimeout(this.killTimer)
       this.killTimer = undefined
       this.child = undefined
+      this.clearReads()
       pending = ''
       const finish = this.finishStop
       this.closing = undefined
@@ -122,7 +140,7 @@ export class SandboxDenialMonitor {
   }
 
   private record(line: string): void {
-    let record: { eventMessage?: unknown; processID?: unknown; processImagePath?: unknown }
+    let record: { eventMessage?: unknown; processID?: unknown; processImagePath?: unknown; timestamp?: unknown }
     try {
       record = JSON.parse(line)
     } catch {
@@ -133,16 +151,64 @@ export class SandboxDenialMonitor {
     if (record.processID !== 0 && record.processImagePath !== '/usr/libexec/sandboxd') return
     const message = record.eventMessage
     if (typeof message !== 'string') return
-    const event = classifySandboxDenial(message, this.tag, { folder: this.folder, ...this.context })
+    const timestamp = typeof record.timestamp === 'string' ? Date.parse(record.timestamp) : NaN
+    const event = classifySandboxDenial(
+      message,
+      this.tag,
+      { folder: this.folder, ...this.context },
+      Number.isFinite(timestamp) ? timestamp : Date.now()
+    )
     if (!event) return
+    if (event.kind === 'read') {
+      // La etiqueta identifica el servidor, no la causa. Sus sondas de arranque y las de git/Python
+      // también la heredan: exigir que el modelo haya pasado ESTA ruta a una herramienta.
+      const path = DENIAL.exec(message)?.[2]?.trim() ?? ''
+      this.pendingReads = [...this.pendingReads.slice(-49), { event, path, expires: Date.now() + READ_EVIDENCE_WAIT_MS }]
+      this.flushReads()
+      return
+    }
+    this.publish(event)
+  }
+
+  private publish(event: SandboxDenial): void {
     this.events = [...this.events.slice(-(MAX_SANDBOX_DENIALS - 1)), event]
     this.onChange(this.events.map((e) => ({ ...e })))
+  }
+
+  private flushReads(): void {
+    clearTimeout(this.readTimer)
+    const pending = this.pendingReads
+    this.pendingReads = []
+    for (const read of pending) {
+      if (this.readIntents.some((intent) => requestsRead(intent, read.path, this.folder, read.event.at))) this.publish(read.event)
+      else if (read.expires > Date.now()) this.pendingReads.push(read)
+    }
+    if (this.pendingReads.length) this.readTimer = setTimeout(() => this.flushReads(), READ_EVIDENCE_WAIT_MS)
+  }
+
+  private clearReads(): void {
+    this.readController?.abort()
+    this.readController = undefined
+    clearTimeout(this.readTimer)
+    clearTimeout(this.intentTimer)
+    this.readIntents = []
+    this.pendingReads = []
+  }
+
+  private pruneIntents(): void {
+    clearTimeout(this.intentTimer)
+    this.readIntents = this.readIntents.filter((i) => i.end + 30_000 > Date.now())
+    if (this.readIntents.length) {
+      const next = Math.min(...this.readIntents.map((i) => i.end + 30_000)) - Date.now()
+      this.intentTimer = setTimeout(() => this.pruneIntents(), Math.max(1, next))
+    }
   }
 
   /** process.on('exit') no espera promesas; mata únicamente nuestro lector, sin buscar procesos ajenos. */
   killSync(): void {
     this.running = false
     this.events = []
+    this.clearReads()
     clearTimeout(this.killTimer)
     this.killTimer = undefined
     this.child?.kill('SIGKILL')
@@ -151,6 +217,7 @@ export class SandboxDenialMonitor {
   stop(): Promise<void> {
     this.running = false
     this.events = []
+    this.clearReads()
     if (this.closing) return this.closing
     const child = this.child
     if (!child) return Promise.resolve()

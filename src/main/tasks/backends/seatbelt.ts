@@ -6,6 +6,7 @@
  */
 import { randomBytes } from 'node:crypto'
 import { SandboxDenialMonitor } from '../sandbox-denials'
+import { sandboxReadIntentSource } from '../sandbox-read-intents'
 import { t } from '@shared/i18n'
 import { existsSync, lstatSync, readdirSync, rmdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -127,7 +128,8 @@ export const seatbeltBackend: SandboxBackend = {
           spec.onDenials,
           undefined,
           { allowDelete: spec.allowDelete, extraFolders: spec.extraFolders },
-          spec.onDenialUnavailable
+          spec.onDenialUnavailable,
+          sandboxReadIntentSource(spec.serverPort, spec.baseEnv)
         )
       : undefined
     if (spec.denialNotices !== false) monitor?.start()

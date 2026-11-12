@@ -26,9 +26,8 @@ export function DocumentViewerPanel({
 }): React.JSX.Element {
   const t = useT()
   const [state, setState] = useState<OpenState>({ kind: 'loading' })
-  const { hostRef, shouldShowNative, hasViewport } = useViewerViewport(visible && state.kind !== 'error')
-  const viewport = useRef(hasViewport && shouldShowNative)
-  viewport.current = hasViewport && shouldShowNative
+  const { hostRef, shouldShowNative, hasViewport } = useViewerViewport(visible && state.kind !== 'error', state.kind === 'ready')
+  const failOpening = useRef<((message: string, reason: 'timeout' | 'error') => void) | undefined>(undefined)
   // El visor lee el tema al abrirse: si la persona cambia el tema con el panel abierto, se vuelve a abrir con el nuevo.
   const theme = useAppTheme()
 
@@ -40,14 +39,11 @@ export function DocumentViewerPanel({
     const fail = (message: string, reason: 'timeout' | 'error'): void => {
       if (cancelled) return
       cancelled = true
-      clearTimeout(timer)
       setState({ kind: 'error', message })
       // Quitar la superficie nativa antes de mostrar el mensaje; de otro modo puede taparlo.
       void cw('tasks:viewer:close', { openingId, reason }).catch(() => undefined)
     }
-    const timer = setTimeout(() => {
-      if (!ready || !viewport.current) fail(t('viewer.timeout'), 'timeout')
-    }, 8_000)
+    failOpening.current = fail
     const off = onTasks('tasks:viewer:event', (event) => {
       if (event.openingId !== openingId || !ready) return
       if (event.type === 'error' || event.type === 'crashed') fail(t('merr.viewer.openFailed'), 'error')
@@ -74,12 +70,22 @@ export function DocumentViewerPanel({
       .catch(() => fail(t('merr.viewer.openFailed'), 'error'))
     return () => {
       cancelled = true
-      clearTimeout(timer)
+      if (failOpening.current === fail) failOpening.current = undefined
       off()
       void cw('tasks:viewer:close', { openingId }).catch(() => undefined)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, theme])
+
+  useEffect(() => {
+    // Un panel oculto o tapado por un diálogo no es una vista en blanco. La respuesta de open y
+    // el attach confirmado son señales distintas: al tener ambas, cancelar el reloj de esta apertura.
+    if (!shouldShowNative || state.kind === 'error' || (state.kind === 'ready' && hasViewport)) return
+    const fail = failOpening.current
+    const timer = setTimeout(() => fail?.(t('viewer.timeout'), 'timeout'), 8_000)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path, theme, state.kind, shouldShowNative, hasViewport])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -112,7 +118,7 @@ export function DocumentViewerPanel({
           <ExternalLink size={14} /> {t('viewer.openSystem')}
         </button>
       </div>
-      <div className="relative min-h-0 flex-1">
+      <div ref={hostRef} className="relative min-h-0 flex-1">
         {state.kind === 'loading' && (
           <div className="flex h-full items-center justify-center text-muted">
             <Loader2 size={18} className="animate-spin" />
@@ -124,11 +130,6 @@ export function DocumentViewerPanel({
             <p>{state.message}</p>
           </div>
         )}
-        <div
-          ref={hostRef}
-          className="absolute inset-0"
-          style={{ visibility: state.kind === 'ready' && shouldShowNative ? 'visible' : 'hidden' }}
-        />
       </div>
     </div>
   )

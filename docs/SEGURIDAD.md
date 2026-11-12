@@ -2913,9 +2913,23 @@ argumento de `sandbox-exec`, nunca un archivo escribible por la tarea.
 El proceso principal abre `log stream` sin shell, con predicado `eventMessage ENDSWITH` para esa etiqueta. El lector acepta
 solo registros estructurados de kernel/sandboxd, exige la etiqueta como última línea y clasifica seis clases de negación.
 Mantiene como máximo 50 entradas **por lanzamiento de carpeta**, solo en memoria. Cada entrada contiene categoría, fecha
-y si el permiso existente de borrado puede resolverla; no conserva texto del registro, comandos, PID, destinos de red ni
-rutas, tampoco relativas. Los registros incompletos o mayores de 32 768 caracteres se descartan. Los avisos son informativos: no
+y si el permiso existente de borrado puede resolverla; la cola publicada no conserva texto del registro, comandos, PID,
+destinos de red ni rutas, tampoco relativas. Los registros incompletos o mayores de 32 768 caracteres se descartan. Los avisos son informativos: no
 conceden permisos ni constituyen una auditoría fiable frente a una tarea hostil.
+
+**Lecturas (tarea 24).** Una negación etiquetada por sí sola no demuestra una acción del modelo: también heredan la jaula
+las sondas de arranque/configuración del motor y de git/Python. Para publicar un aviso de lectura, main exige además una
+parte de herramienta ejecutada (`running/completed/error`) del flujo local autenticado `/global/event`, con la ruta negada
+(o un archivo dentro de ella) explícita en sus argumentos y un intervalo compatible con la fecha del registro del kernel.
+No basta con que haya cualquier herramienta activa. No hay excepciones de acceso: el perfil y las lecturas denegadas siguen
+iguales. Escritura, borrado, ganchos, red y otros bloqueos no dependen de esta atribución.
+
+La correlación es conservadora y solo informativa, por destino y tiempo, **no por PID/callID**: puede omitir rutas construidas
+dinámicamente, enlaces, glob o expansiones de variables; sin el flujo de herramientas no se publican lecturas. No se afirma
+qué sesión causó el bloqueo. Para tolerar el orden entre los dos flujos se retienen hasta 50 lecturas pendientes durante 2 s
+y hasta 50 argumentos de herramientas de ≤32 768 caracteres, solo en memoria; una herramienta terminada caduca a los 30 s y
+una parte `running` sin actualizaciones, a los 60 s. Al apagar los avisos o cerrar el lector se aborta el flujo y se vacían
+estos buffers y sus relojes. Ni rutas ni argumentos se escriben en disco ni se mandan al renderer.
 
 El ajuste «Avisar cuando el aislamiento impida una acción» está encendido por defecto en Ajustes › Tareas › Notificaciones.
 Apagarlo detiene el lector y borra los avisos sin reiniciar el motor. Al cerrar el servidor, o fallar su lanzamiento, se
