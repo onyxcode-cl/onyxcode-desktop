@@ -130,6 +130,8 @@ describe('tabla de paridad: capacidades', () => {
   })
   it('sin Overdrive no hay modo Tareas y sin pythonWin no se traduce (la tabla depende de las banderas)', () => {
     expect(capsFor('win32', {}).tasks).toBe(false)
+    expect(capsFor('win32', {}).docViewer).toBe(true)
+    expect(capsFor('win32', { tasksWin: false }).docViewer).toBe(true)
     expect(capsFor('win32', { tasksWin: true }).translatePdf).toBe(false)
     expect(capsFor('win32', { tasksWin: true, pythonWin: true }).translatePdf).toBe(true)
   })

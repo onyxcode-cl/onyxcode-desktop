@@ -49,10 +49,9 @@ export interface PlatformCaps {
   /** Vista nativa del navegador integrado (`WebContentsView` sobre la ventana). */
   nativeBrowser: boolean
   /**
-   * Visor de documentos de Tareas (PDF/Word/Excel/PowerPoint, `WebContentsView` aislada). Mac y
-   * Windows siempre que haya Tareas (depende de la ventana nativa, igual que `nativeBrowser`); en
-   * el celular no existe. La disponibilidad de ArtCraft se detecta en tiempo de
-   * ejecución, no va acá.
+   * Visor de documentos (PDF/Word/Excel/PowerPoint, `WebContentsView` aislada). macOS y Windows
+   * disponen de ventana nativa; en el celular no existe. La disponibilidad de ArtCraft se detecta en
+   * tiempo de ejecución, no va acá.
    */
   docViewer: boolean
   /**
@@ -128,7 +127,7 @@ export function capsFor(platform: string, flags: CapsFlags = {}): PlatformCaps {
     nativeDialogs: true,
     openExternal: true,
     nativeBrowser: true,
-    docViewer: mac || (win && flags.tasksWin === true),
+    docViewer: mac || win,
     translatePdf: mac || (win && flags.pythonWin === true)
   }
 }

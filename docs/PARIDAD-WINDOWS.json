@@ -128,10 +128,10 @@
       "funcion": "Visor de documentos (panel aislado)",
       "estado": "IGUAL",
       "evidencia": [
-        "src/shared/platform-caps.ts:131",
+        "src/shared/platform-caps.ts:130",
         "src/renderer/src/features/chat/useChatDocPanel.ts:157"
       ],
-      "nota": "docViewer va atado a tasksWin: si una organización apaga Overdrive (disableWslTasks), el visor del Chat también desaparece.",
+      "nota": "docViewer depende de la ventana nativa de Windows, no de tasksWin: sigue disponible en Chat y Código aunque una organización apague Overdrive (disableWslTasks).",
       "comprobacion": {
         "tipo": "cap",
         "clave": "docViewer",
