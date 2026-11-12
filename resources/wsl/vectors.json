@@ -133,7 +133,8 @@
       "HTTP_PROXY": "http://tok@127.0.0.1:52000",
       "OPENCODE_AUTH_CONTENT": "{\"opencode-go\":{\"type\":\"api\",\"key\":\"sandboxed-placeholder-0123456789abcdef\"}}",
       "LAZUNOX_TASKS_FOLDER": "/win/c/lazunox/tareas/a",
-      "OPENCODE_CONFIG_DIR": "/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config"
+      "OPENCODE_CONFIG_DIR": "/win/c/Users/Ben/AppData/Roaming/Lazunox/opencode-config",
+      "LAZUNOX_PYTHON": "/usr/bin/python3"
     },
     "landlock": {
       "minAbi": 2,

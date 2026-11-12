@@ -3015,3 +3015,10 @@ Main valida todo el lote antes de crear una carpeta: 10 MB por archivo y 15 MB p
 La carpeta es siempre nueva, creada/aprobada por `createChatFolder` con sus puertas de plataforma y política actuales (Mac y Windows); se revalida con `assertInsideApproved`. La copia usa `writeNewFile` y su escritura segura sin sobrescritura. Los bytes originales no se modifican ni se envían al modelo. La preparación conecta con `fullAccess: false`, exige conexión lista y aislada, y solo entonces abre el borrador de Tareas. No envía el pedido, no aplica Automático ni hereda Control total. La oferta consulta capacidades, modo unificado efectivo y estado del entorno aislado; se vuelve a comprobar al pulsar. El servidor conserva sus propias puertas de arranque.
 
 Si la copia o conexión falla, el Chat conserva el pedido y los adjuntos y muestra el error. Una copia ya escrita puede quedar en la carpeta nueva si falla un paso posterior; no se borra recursivamente ni se anuncia éxito. La persona puede reintentar, lo que crea otra carpeta. No se modifica el perfil del aislamiento, la aprobación de planes ni las políticas de carpetas o del celular.
+
+
+### Python de oficina: paridad y entorno WSL (F8-B275/F8-B276)
+
+La receta fija PyMuPDF 1.26.7 en Mac arm64, Windows x64 y Linux x86_64 (corrección de CVE-2026-3029), junto con las mismas versiones de todas las bibliotecas de oficina y sus transitivas. Cada wheel tiene SHA-256; la instalación solo admite binarios y exige hashes en los tres destinos. La receta WSL usa el Python 3.13 de Debian y verifica imports, versiones y origen en `/usr/local/lib/python3.13/dist-packages`, sin instalar pip en la imagen.
+
+`buildWslInit` fija `LAZUNOX_PYTHON=/usr/bin/python3` y descarta el valor anfitrión. No añade variables `PYTHON*`, prefijos, montajes, red ni derechos Landlock. Mac y Windows nativo conservan las rutas del bundle. Revisión independiente aprobada el 2026-11-12. El pin de rootfs distribuible no se modifica hasta disponer de dos construcciones coincidentes, tamaños y SHA-256 reales; la receta 2026.11.12 aún no acredita una imagen construida.

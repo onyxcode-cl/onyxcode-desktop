@@ -100,11 +100,16 @@ código abierto (en su mayoría MIT o ISC); sus avisos están en sus paquetes de
 
 ## 5. Python incluido y librerías de oficina
 
-Lazunox incluye su propio Python para que las skills de oficina (Word, Excel, PowerPoint y PDF) no dependan del Python del Mac del usuario.
+Lazunox incluye su propio Python para que las skills de oficina (Word, Excel, PowerPoint y PDF) no dependan del Python del usuario en Mac o Windows.
 Se descarga con `scripts/fetch-python.mjs` (versión y SHA-256 fijados en `resources/python-bin/pin.json`; librerías con versión exacta en
-`resources/python-bin/requirements.txt`), sin modificar salvo por la poda de archivos innecesarios (pruebas, IDLE, tkinter, cabeceras).
+`resources/python-bin/requirements.txt`, wheels con SHA-256 en `requirements-darwin-arm64.txt` y `requirements-win32-x64.txt`; inventario en `wheels.json`), sin modificar salvo por la poda de archivos innecesarios (pruebas, IDLE, tkinter, cabeceras).
 Ubicación en la app: `Contents/Resources/python/`. Las licencias de cada librería viajan en su carpeta `*.dist-info/` dentro de
-`Contents/Resources/python/lib/python3.12/site-packages/`.
+`Contents/Resources/python/lib/python3.12/site-packages/`. En Windows: `resources/python-bin/win-x64/python/Lib/site-packages/`.
+
+La receta de la imagen Linux/WSL instala las mismas versiones (incluidas transitivas) con los hashes de
+`scripts/wsl-rootfs/pip-requirements.txt` en `/usr/local/lib/python3.13/dist-packages/`, conservando las licencias `*.dist-info/`.
+El intérprete de esa imagen es el Python 3.13 de Debian 13 (PSF); los demás paquetes Debian conservan sus avisos en
+`/usr/share/doc/*/copyright` y su inventario se genera en `rootfs-packages-<versión>.txt`. La imagen nueva requiere construcción y pin reales.
 
 - CPython **3.12.15**: PSF License (Python Software Foundation License v2), <https://docs.python.org/3/license.html>. El intérprete enlaza
   además bibliotecas de terceros (OpenSSL, SQLite, zlib, xz, libffi, etc.) con sus propias licencias permisivas.
@@ -120,7 +125,7 @@ Ubicación en la app: `Contents/Resources/python/`. Las licencias de cada librer
   empaquetadas; sus textos están en `pypdfium2-5.14.0.dist-info/licenses/`.
 - `pillow` 12.3.0: MIT-CMU (HPND), <https://github.com/python-pillow/Pillow>. Las bibliotecas nativas que trae la rueda (libjpeg, libpng,
   libtiff, freetype, etc.) conservan sus licencias.
-- `pymupdf` 1.26.5 (PyMuPDF, de Artifex Software; incluye MuPDF): **GNU AGPL-3.0**, <https://github.com/pymupdf/PyMuPDF>. Solo la usa la skill
+- `pymupdf` 1.26.7 (PyMuPDF, de Artifex Software; incluye MuPDF): **GNU AGPL-3.0**, <https://github.com/pymupdf/PyMuPDF>. Solo la usa la skill
   `pdf` para traducir un PDF conservando su diseño (`translate_pdf.py`). Al repartir Lazunox con PyMuPDF dentro, el programa distribuido queda
   bajo la AGPL-3.0 y su código fuente completo es público (repositorio del proyecto en GitHub, enlazado desde la página de descargas). Una versión sin esa
   función no necesita PyMuPDF.

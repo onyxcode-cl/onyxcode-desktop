@@ -277,7 +277,7 @@ export interface WslLaunchInput {
 
 const ENV_ALLOWED = /^(?:OPENCODE_[A-Z0-9_]+|LAZUNOX_[A-Z0-9_]+|(?:HTTPS?|ALL|NO)_PROXY|(?:https?|all|no)_proxy|LANG|LC_ALL|TZ)$/
 /** Se reconstruyen a partir de los montajes: el valor del anfitrión es una ruta de Windows. */
-const ENV_REWRITTEN = new Set(['OPENCODE_CONFIG_DIR', 'LAZUNOX_TASKS_FOLDER', 'OPENCODE_MODELS_PATH'])
+const ENV_REWRITTEN = new Set(['OPENCODE_CONFIG_DIR', 'LAZUNOX_TASKS_FOLDER', 'OPENCODE_MODELS_PATH', 'LAZUNOX_PYTHON'])
 const PLACEHOLDER = /^sandboxed-placeholder-[0-9a-f]{16}$/
 export const MAX_ENV_TOTAL = 32 * 1024
 
@@ -362,6 +362,8 @@ export function buildWslInit(input: WslLaunchInput, forbid: readonly string[] = 
   }
   if (total > MAX_ENV_TOTAL) throw new WslSpecError('env-too-large')
   env.LAZUNOX_TASKS_FOLDER = main.linux
+  // El Python de Windows no existe en la distro. Solo se usa el intérprete de la imagen, de solo lectura.
+  env.LAZUNOX_PYTHON = '/usr/bin/python3'
   const cfgLinux = mountOrThrow(input.configDir, 'configDir').linux.toLowerCase()
   const cfg = mounts.find((m) => m.mode === 'ro' && m.linux.toLowerCase() === cfgLinux)
   if (cfg) env.OPENCODE_CONFIG_DIR = cfg.linux

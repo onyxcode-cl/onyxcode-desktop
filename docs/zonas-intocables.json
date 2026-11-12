@@ -7,7 +7,7 @@
     "resources/wsl/mux.py": "7fd0d4f122a8e4ff1335f49f56da17e2076acabfb0d6b473ed9e7cfdb973aab5",
     "resources/wsl/payload-vectors.json": "21c50b64f58fb4991b0d6afee9fba00de6546df9df4a61c3415d4e7fc90558b1",
     "resources/wsl/protocol.py": "3a5bf4db8c1ebfa16e080afb01b3def5602661dd6610a5a0b6dcbc96ec4af787",
-    "resources/wsl/vectors.json": "cc9f4151168935762ec247ad7b00d9436ca95972360962434045fb12d062d25a",
+    "resources/wsl/vectors.json": "543803a0550e691174584ca24a6822e6c919cb92b3a2dac58435264a65812836",
     "resources/wsl/wsl.conf": "849bedc8babea162419bb16a2fa9b8ae4ef79d0a3334841682b5c34444797539",
     "src/main/remote/remote-win-flag.ts": "be3115fc09c86406dcca0e3e89d4248a7a2878f04e084ad7d35bdc22e14163a3",
     "src/main/security/app-protocol.ts": "187c1e0a47a8a12825ee080921911e20ae2262e5c5d2c551e647429a48187991",
@@ -18,7 +18,7 @@
     "src/main/tasks/backends/wsl-pin.ts": "8c1286980ab18b750f78e2e0f0227c91030e9ce302ff1fbd2cc1b621c23c7f4b",
     "src/main/tasks/backends/wsl-real-deps.ts": "92aacede0d53d2577d4821d639ee59e346b1f6ce77a398d6f41977e6e1123f2b",
     "src/main/tasks/backends/wsl-setup.ts": "a0db831101365ddb022d295542ad3c2b7d38fb3a501c6c66ab0a9edf3eca4dc1",
-    "src/main/tasks/backends/wsl-spec.ts": "52a2d7bbc984d2a657f908749a09b5e06532aad5a6fa070a0afd1658ad1020fb",
+    "src/main/tasks/backends/wsl-spec.ts": "d018d7134432233e2a9cd4c551115a3d8d4827727e0f0613a562cd23d5e3e493",
     "src/main/tasks/backends/wsl-status.ts": "bc00f8de1b51952a7f467cd7bc465f4508b55aa4a070ba450887ae16ffd6c969",
     "src/main/tasks/backends/wsl.ts": "f88cff85590d03109263cddc9fc5002f7660d75220e62dc34c0c01e24fc5e36e",
     "src/main/tasks/folder-policy-win.ts": "5483ac4eedc3a8ac1c38a30b87a936995a8ac85bda6cb6ef4225d1cfabb52f41",
@@ -273,6 +273,16 @@
       "motivo": "Añadir etiquetas informativas sin alterar permisos Seatbelt y cerrar el lector propio incluso al salir; revisión independiente de seguridad",
       "cambiados": [
         "src/main/tasks/sandbox.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-12",
+      "motivo": "F8-B276: Python fijo de la imagen WSL; sin ampliar aislamiento; revisión independiente aprobada review_wsl_python",
+      "cambiados": [
+        "resources/wsl/vectors.json",
+        "src/main/tasks/backends/wsl-spec.ts"
       ],
       "nuevos": [],
       "desaparecidos": []
