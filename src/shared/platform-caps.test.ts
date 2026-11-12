@@ -19,7 +19,7 @@ describe('capsFor', () => {
       translatePdf: true
     })
   })
-  it('win32 no tiene ninguna de las funciones de macOS (Tareas apagada; sandbox previsto: wsl)', () => {
+  it('win32 no tiene funciones exclusivas de macOS, pero sí visor nativo (Tareas apagada; sandbox previsto: wsl)', () => {
     expect(capsFor('win32')).toEqual({
       ...NATIVE,
       tasks: false,
@@ -29,7 +29,7 @@ describe('capsFor', () => {
       updater: true,
       quickLook: false,
       remote: false,
-      docViewer: false,
+      docViewer: true,
       translatePdf: false
     })
   })
@@ -47,11 +47,11 @@ describe('capsFor', () => {
       translatePdf: false
     })
   })
-  it('docViewer sigue exactamente a tasks en Mac/Windows/Linux (misma condición: lo necesita la ventana nativa de Tareas)', () => {
+  it('docViewer depende de la ventana nativa, no de tasksWin: disponible en Mac/Windows y ausente en Linux', () => {
     for (const p of ['darwin', 'win32', 'linux']) {
       for (const tasksWin of [undefined, false, true]) {
         const c = capsFor(p, { tasksWin })
-        expect(c.docViewer).toBe(c.tasks)
+        expect(c.docViewer).toBe(p === 'darwin' || p === 'win32')
       }
     }
   })
@@ -80,10 +80,13 @@ describe('bandera de producto tasksWin (apagada por defecto)', () => {
       expect([platform, tasksWin, caps.tasks, caps.tasksSandbox]).toEqual([platform, tasksWin, tasks, sandbox])
     }
   })
-  it('la bandera solo afecta a Tareas (y docViewer, que la sigue): lo demás de win32 no cambia', () => {
-    const { tasks: _a, docViewer: _c, ...off } = capsFor('win32')
-    const { tasks: _b, docViewer: _d, ...on } = capsFor('win32', { tasksWin: true })
-    expect(on).toEqual(off)
+  it('tasksWin solo afecta a Tareas; el visor de Windows sigue disponible en ambos estados', () => {
+    const off = capsFor('win32')
+    const on = capsFor('win32', { tasksWin: true })
+    expect(off.tasks).toBe(false)
+    expect(on.tasks).toBe(true)
+    expect(off.docViewer).toBe(true)
+    expect(on.docViewer).toBe(true)
   })
   it('un valor no booleano no enciende Tareas (fail closed)', () => {
     expect(capsFor('win32', { tasksWin: 'si' as unknown as boolean }).tasks).toBe(false)
@@ -117,7 +120,7 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       computerBackend: 'none',
       updater: true, // actualizador de Windows (plan win-D): antes apagado
       remote: false,
-      docViewer: false,
+      docViewer: true,
       translatePdf: false
     }
   } as const
@@ -131,11 +134,11 @@ describe('bandera apagada: resultado idéntico al previo en macOS y Windows', ()
       expect(caps).toEqual(capsFor(platform))
     }
   })
-  it('encender tasksWin en darwin no cambia nada; en win32 cambia tasks y docViewer (quickLook sigue apagado)', () => {
+  it('encender tasksWin en darwin no cambia nada; en win32 solo cambia tasks (visor siempre disponible, quickLook sigue apagado)', () => {
     expect(capsFor('darwin', { tasksWin: true })).toEqual(capsFor('darwin'))
     const on = capsFor('win32', { tasksWin: true })
     expect(on.tasks).toBe(true)
-    expect(on.docViewer).toBe(true)
+    expect(on.docViewer).toBe(capsFor('win32').docViewer)
     expect(on.quickLook).toBe(false)
     expect(on.computer).toBe(false)
   })

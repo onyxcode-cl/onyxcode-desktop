@@ -65,6 +65,7 @@ describe.skipIf(!tienePython)('traducir Excel con el script real', () => {
   it('extrae segmentos que el servicio acepta y aplica conservando fórmulas y gráfico', async () => {
     const svc = new PdfTranslateService({
       jobsDir: () => join(dir, 'jobs'),
+      chatDocsDir: () => join(dir, 'chat-docs'),
       python: () => PYTHON,
       script: () => SCRIPT,
       run: runPythonReal,

@@ -148,8 +148,8 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   // panel se muestra (`open`) YA, con un estado de "generando" (`creating`): el texto del chat
   // aparece completo apenas el modelo termina de escribir, pero el archivo todavía tarda un poco en
   // generarse — sin esto, el dueño veía el chat diciendo que ya estaba listo mientras el panel ni
-  // siquiera se había abierto. Mismo cap que Tareas (`platformCaps().docViewer`, atado a `tasksWin`
-  // hasta pasar la batería de seguridad de Windows — ver `shared/platform-caps.ts`): sin esto, en una
+  // siquiera se había abierto. Mismo cap que Tareas (`platformCaps().docViewer`); en Windows sigue
+  // disponible aunque Overdrive esté apagado. En una
   // plataforma donde el visor nativo no está habilitado, no hay que intentar abrirlo — los botones de
   // vista previa/descarga de cada bloque siguen funcionando igual, sin depender de este cap.
   const openDoc = useCallback(

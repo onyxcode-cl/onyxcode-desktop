@@ -81,6 +81,7 @@ import { panelLayout } from './review-logic'
 import { sharedFullDiff } from './full-diff'
 import { Tip } from './ui'
 import { CodeSummary } from './CodeSummary'
+import { CodeDocLayout } from './CodeDocLayout'
 import { hintText, useEffectiveBindings } from '../../../keybindings/bindings'
 
 const PANEL_LABEL: Record<RightPanel, MsgKey> = {
@@ -192,7 +193,15 @@ function useElementWidth(): [(el: HTMLDivElement | null) => void, number] {
   return [setEl, w]
 }
 
-function SidePanels({ directory, containerWidth }: { directory: string; containerWidth: number }): React.JSX.Element | null {
+function SidePanels({
+  directory,
+  containerWidth,
+  obscured = false
+}: {
+  directory: string
+  containerWidth: number
+  obscured?: boolean
+}): React.JSX.Element | null {
   const bindings = useEffectiveBindings()
   const t = useT()
   const panel = useCode((s) => s.panel)
@@ -249,7 +258,7 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
   if (!panel && !terminalMounted && !browserMounted) return null
   return (
     <div
-      className={`${full ? 'absolute inset-0 z-30' : 'relative'} desk:@container flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel ? '' : 'hidden'}`}
+      className={`${full ? 'absolute inset-0 z-30' : 'relative'} desk:@container flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-bg ${panel && !obscured ? '' : 'hidden'}`}
       data-panel-layout={layout?.mode}
       role={panel ? 'complementary' : undefined}
       aria-label={panel ? t(PANEL_LABEL[panel]) : undefined}
@@ -311,7 +320,7 @@ function SidePanels({ directory, containerWidth }: { directory: string; containe
         )}
         {browserMounted && (
           <div className={panel === 'browser' ? 'h-full' : 'hidden'}>
-            <BrowserPanel key={directory} owner={owner} product="code" visible={panel === 'browser'} />
+            <BrowserPanel key={directory} owner={owner} product="code" visible={panel === 'browser' && !obscured} />
           </div>
         )}
       </div>
@@ -979,6 +988,7 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
   const client = useClient()
   const directory = useCode((s) => s.directory)
   const restoredFocus = useCode((s) => s.restoredFocus)
+  const activeSessionID = useCode((s) => s.activeSessionID)
   useEffect(() => ensureCodeSubscription(), [])
   // Memoria aprendida global (decisión del dueño, 2026-10-07): se relee al abrir Code, no en cada envío.
   useEffect(() => {
@@ -1086,10 +1096,16 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
           <SessionList />
         </div>
       )}
-      <ShellRunProvider directory={directory}>
-        <ChatColumn directory={directory} />
-      </ShellRunProvider>
-      <SidePanels directory={directory} containerWidth={containerWidth - (showSessionList ? 240 : 0)} />
+      <CodeDocLayout key={directory} sessionId={activeSessionID} containerWidth={containerWidth - (showSessionList ? 240 : 0)}>
+        {(documentOpen) => (
+          <>
+            <ShellRunProvider directory={directory}>
+              <ChatColumn directory={directory} />
+            </ShellRunProvider>
+            <SidePanels directory={directory} containerWidth={containerWidth - (showSessionList ? 240 : 0)} obscured={documentOpen} />
+          </>
+        )}
+      </CodeDocLayout>
     </div>
   )
 }

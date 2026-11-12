@@ -1,12 +1,16 @@
 /**
  * Tarjetas de traducción dentro de la conversación del Chat: una por trabajo, sobre el cuadro de escribir (como los trabajos en
- * segundo plano). Progreso, «Cancelar», resultado con «Abrir» / «Guardar como…» (y la versión limpia de un escaneo) o el error con
+ * segundo plano). Progreso, «Cancelar», resultado con «Ver» / «Abrir» / «Guardar como…» (y la versión limpia de un escaneo) o el error con
  * «Reintentar». La lógica y el estado viven en `jobs.ts`.
  */
-import { AlertCircle, CheckCircle2, Languages, Loader2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, Eye, Languages, Loader2, X } from 'lucide-react'
 import type { TranslateLangCode } from '@shared/translate-pdf'
 import { useT } from '../../lib/i18n'
 import { call } from '../../lib/api'
+import { getExtras } from '../../lib/extrasApi'
+import { platformCaps } from '../../lib/platform'
+import { viewChatFile } from '../../lib/chatFileView'
 import {
   cancelTranslateJob,
   dismissTranslateJob,
@@ -146,6 +150,29 @@ function Done({
 }): React.JSX.Element {
   const t = useT()
   const { outcome } = state
+  const [viewError, setViewError] = useState(false)
+  const viewRequest = useRef(0)
+  useEffect(
+    () => () => {
+      viewRequest.current++
+    },
+    [outcome.viewPath]
+  )
+  const view = async (): Promise<void> => {
+    setViewError(false)
+    const request = ++viewRequest.current
+    const current = (): boolean => viewRequest.current === request
+    try {
+      const extras = getExtras()
+      if (!extras || !outcome.viewPath || !platformCaps().docViewer) throw new Error('unavailable')
+      const infos = await extras.invoke('extras:chatFile:info', { paths: [outcome.viewPath] })
+      if (!current()) return
+      const info = infos.find((f) => f.path === outcome.viewPath && f.canView)
+      if (!info || !viewChatFile(info)) setViewError(true)
+    } catch {
+      if (current()) setViewError(true)
+    }
+  }
   const r = outcome.report
   const notes: string[] = []
   if (r.shrunk > 0) notes.push(t('translate.pdf.doneShrunk', { n: r.shrunk }))
@@ -175,6 +202,12 @@ function Done({
         </ul>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        {outcome.viewPath && platformCaps().docViewer && (
+          <button type="button" onClick={() => void view()} className={`${btn} inline-flex items-center gap-1.5`}>
+            <Eye size={14} aria-hidden="true" />
+            {t('tasks.deliv.view')}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => void call('translate:pdfOpen', { jobId: outcome.jobId })}
@@ -187,6 +220,11 @@ function Done({
         </button>
         {state.saved && <span className="text-[12px] text-muted">{t('translate.pdf.saved')}</span>}
       </div>
+      {viewError && (
+        <p role="alert" className="mt-1 text-[12.5px] text-danger">
+          {t('chat.file.viewFailed')}
+        </p>
+      )}
       {outcome.cleanOutName && (
         <div className="mt-2 rounded-ctl border border-border px-3 py-2">
           <p className="text-[12.5px] text-muted">{t('translate.pdf.cleanNote', { name: outcome.cleanOutName })}</p>

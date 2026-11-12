@@ -156,7 +156,8 @@ export interface IpcInvokeContract {
   /**
    * Traducir un PDF sin cambiar su diseño (F8-B200). `pdfExtract`: main guarda los bytes en una carpeta propia del trabajo y lista
    * los textos con PyMuPDF; `pdfApply`: escribe las traducciones (que el renderer pidió al modelo) sobre el mismo PDF;
-   * `pdfOpen`/`pdfSave`: lo abre con el visor del sistema o diálogo «Guardar como…»; `pdfDiscard`: borra el trabajo. Nunca rutas.
+   * `pdfOpen`/`pdfSave`: lo abre con el visor del sistema o diálogo «Guardar como…»; `pdfDiscard`: borra el trabajo.
+   * Las peticiones nunca reciben rutas; `pdfApply` puede devolver la ruta de una copia temporal para el visor del Chat.
    */
   'translate:pdfExtract': { req: PdfExtractRequest; res: PdfExtractResult }
   'translate:pdfApply': { req: PdfApplyRequest; res: PdfApplyResult }

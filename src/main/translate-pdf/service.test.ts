@@ -1,4 +1,4 @@
-import { mkdtempSync, existsSync, readFileSync, writeFileSync, rmSync, readdirSync, utimesSync } from 'node:fs'
+import { mkdtempSync, existsSync, readFileSync, writeFileSync, rmSync, readdirSync, utimesSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,9 +9,11 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn(async () => '') }
 }))
 vi.mock('../tasks/python-runtime', () => ({ bundledPythonEnv: () => ({ LAZUNOX_PYTHON: '/fake/python3' }) }))
+vi.mock('../extras/chat-docs', () => ({ chatDocsRoot: () => join(tmpdir(), 'lzx-chat-docs-unused') }))
 
 import { dialog, shell } from 'electron'
 import { PdfTranslateService, type RunResult, type ServiceDeps } from './service'
+import { assertNativeViewable } from '../files/chat-files'
 
 const PDF_B64 = Buffer.from('%PDF-1.7\n%fake\n').toString('base64')
 const ok = (extra: Partial<RunResult> = {}): RunResult => ({ code: 0, stdout: '', stderr: '', timedOut: false, ...extra })
@@ -23,6 +25,7 @@ let now = 1_000_000
 function deps(run: ServiceDeps['run']): ServiceDeps {
   return {
     jobsDir: () => join(root, 'jobs'),
+    chatDocsDir: () => join(root, 'chat-docs'),
     python: () => '/fake/python3',
     script: () => script,
     run,
@@ -268,11 +271,33 @@ describe('apply / open / save / discard', () => {
     expect(r).toEqual({
       ok: true,
       outName: 'Informe (en).pdf',
+      viewPath: join(root, 'chat-docs', `translate-${jobId}`, 'Informe (en).pdf'),
       report: { translated: 2, untranslated: 0, shrunk: 3, overflow: ['p1-1'], linksDropped: 1, formatLost: 0 }
     })
     const sent = JSON.parse(readFileSync(join(root, 'jobs', jobId, 'traduccion.json'), 'utf8'))
     expect(sent).toEqual({ 'p1-0': 'one', 'p1-1': 'two' })
     expect(existsSync(join(root, 'jobs', jobId, 'Informe (en).pdf'))).toBe(true)
+    if (!r.ok || !r.viewPath) throw new Error('Falta la copia para el visor')
+    expect(readFileSync(r.viewPath)).toEqual(readFileSync(join(root, 'jobs', jobId, r.outName)))
+    expect(assertNativeViewable([join(root, 'chat-docs')], r.viewPath)).toBe(realpathSync(r.viewPath))
+    expect(() => assertNativeViewable([join(root, 'chat-docs')], join(root, 'jobs', jobId, r.outName))).toThrow()
+  })
+
+  it('si falla la copia de vista previa, el PDF sigue disponible para abrir y guardar', async () => {
+    const d = deps(runBoth())
+    const blocked = join(root, 'no-es-carpeta')
+    writeFileSync(blocked, 'x')
+    d.chatDocsDir = () => blocked
+    const svc = new PdfTranslateService(d)
+    const jobId = await extracted(svc)
+    const r = await svc.apply({ jobId, target: 'en', translations: { 'p1-0': 'one' } })
+    expect(r.ok).toBe(true)
+    expect(r).not.toHaveProperty('viewPath')
+    expect(await svc.open(jobId)).toEqual({ opened: true })
+    const dest = join(root, 'guardado.pdf')
+    vi.mocked(dialog.showSaveDialog).mockResolvedValueOnce({ canceled: false, filePath: dest })
+    expect(await svc.save(jobId, null)).toEqual({ saved: true })
+    expect(readFileSync(dest, 'utf8')).toBe('%PDF-out')
   })
 
   it('un jobId inventado o con ruta no hace nada', async () => {
@@ -313,12 +338,18 @@ describe('apply / open / save / discard', () => {
     const svc = new PdfTranslateService(deps(runBoth()))
     const a = await extracted(svc)
     const b = await extracted(svc)
+    await svc.apply({ jobId: a, target: 'en', translations: { 'p1-0': 'one' } })
+    await svc.apply({ jobId: b, target: 'en', translations: { 'p1-0': 'one' } })
+    expect(readdirSync(join(root, 'chat-docs'))).toHaveLength(2)
     await svc.discard(a)
+    expect(existsSync(join(root, 'chat-docs', `translate-${a}`))).toBe(false)
+    expect(existsSync(join(root, 'chat-docs', `translate-${b}`))).toBe(true)
     expect(existsSync(join(root, 'jobs', a))).toBe(false)
     expect(existsSync(join(root, 'jobs', b))).toBe(true)
     now += 25 * 60 * 60 * 1000
     await svc.cleanup()
     expect(readdirSync(join(root, 'jobs'))).toEqual([])
+    expect(readdirSync(join(root, 'chat-docs'))).toEqual([])
   })
 
   it('cleanup borra también carpetas ajenas al formato', async () => {
