@@ -130,7 +130,7 @@ describe('las tres skills: camino principal con el motor del Chat, respaldo y tr
       )
       expect(s, k).toMatch(/\*\*3 = /)
       expect(s, k).toContain('MISMO')
-      // Estos formatos no añaden una pregunta de formato.
+      // No se inventan preguntas nuevas: solo la skill pptx pregunta el formato.
       expect(s, k).not.toContain('herramienta `question`')
     }
   })
@@ -167,49 +167,6 @@ describe('las tres skills: camino principal con el motor del Chat, respaldo y tr
     const pyCsp = [...decl.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]).join('')
     expect(pyCsp).toBe(chat)
     expect(pyCsp).toContain("connect-src 'none'")
-  })
-})
-
-describe('encargo 41: instrucciones de oficina sin preparación ni comprobaciones redundantes', () => {
-  const tasks = read('resources/opencode/agents/tasks.md')
-  const route = read('resources/opencode/skills/ruta-rapida/SKILL.md')
-
-  it('reserva la lista para 4 pasos reales y la actualiza por etapas sin dar nada por comprobado', () => {
-    expect(tasks).toContain('solo si el encargo tiene 4 pasos reales o más')
-    expect(tasks).toContain('No dividas una operación sencilla')
-    expect(tasks).toContain('al cambiar de etapa, junto con la siguiente acción')
-    expect(tasks).toContain('Nada se marca `completed` sin comprobar su resultado')
-    expect(tasks).toContain('Si usaste una lista')
-    expect(tasks).not.toMatch(/Planifica SIEMPRE|mínimo 3|no acumules varios pasos/)
-  })
-
-  it('documentos y lotes internos no cargan ruta-rapida como paso previo', () => {
-    expect(tasks).toContain('Para documentos, carga directamente la skill del formato')
-    expect(tasks).toContain('no para crear, leer o editar documentos ni para lotes de archivos dentro de la tarea')
-    expect(route.split('\n')[2]).toContain('Para tareas que requieren manejar el Mac u otras apps')
-    expect(route).toContain('esta skill no es un paso previo')
-    expect(route).not.toMatch(/Úsala SIEMPRE|ANTES de planificar|ANTES del plan/)
-  })
-
-  it('conserva borradores en scratch y solo publica la copia definitiva comprobada', () => {
-    for (const [kind, text] of Object.entries({ tasks, ...skills, pptx: read('resources/opencode/skills/pptx/SKILL.md') })) {
-      expect(text, kind).toContain('subcarpeta: ".lazunox/trabajo"')
-      expect(text, kind).toMatch(/no (?:las )?borres|sin borrarlas|No borres/)
-      expect(text, kind).toContain('sin sobrescribir')
-      expect(text, kind).toMatch(/solo la definitiva comprobada|solo el definitivo comprobado/)
-      expect(text, kind).not.toMatch(/bórral[oa]s|bórralos/)
-    }
-  })
-
-  it('reutiliza lo ya validado sin quitar revisiones de contenido, visuales o de calidad Office', () => {
-    expect(tasks).toContain('Si una herramienta ya abrió y validó el archivo')
-    expect(tasks).toContain('Conserva las revisiones de contenido y visuales')
-    expect(tasks).toContain('verificar_office.py')
-    expect(tasks).toContain('Si algo sale ✘, corrígelo y vuelve a revisar')
-    expect(tasks).not.toContain('comprueba con un comando que existe, que no está vacío')
-    expect(tasks).toContain('el Python de la app no trae `pip` ni `ensurepip`')
-    expect(tasks).toContain('No intentes instalar paquetes en la tarea, aunque PyPI esté permitido')
-    expect(tasks).not.toContain('-m pip install')
   })
 })
 

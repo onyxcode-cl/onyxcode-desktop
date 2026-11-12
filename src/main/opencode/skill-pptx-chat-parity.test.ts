@@ -12,7 +12,7 @@ const chatMd = norm(readFileSync(resolve(ROOT, 'resources/opencode/agents/chat.m
 const skillMd = readFileSync(resolve(ROOT, 'resources/opencode/skills/pptx/SKILL.md'), 'utf8')
 const skill = norm(skillMd)
 
-/** La guía de diseño de presentaciones del Chat: de `theme` hasta el gráfico (antes de la regla de formato). */
+/** La guía de diseño de presentaciones del Chat: de `theme` hasta el gráfico (antes de la regla de preguntar el formato). */
 function chatDesignGuide(): string {
   const raw = readFileSync(resolve(ROOT, 'resources/opencode/agents/chat.md'), 'utf8')
   const a = raw.indexOf('  - `theme` (opcional')
@@ -42,28 +42,17 @@ describe('skill pptx ⇄ Chat: misma guía de diseño', () => {
     }
   })
 
-  it('la misma regla de formato en las tres copias: pptx sin preguntar por defecto y HTML solo por elección explícita', () => {
-    const rule = skillMd.split('\n').find((line) => line.startsWith('REGLA OBLIGATORIA DE FORMATO:'))
-    expect(rule).toBeTruthy()
-    const inline = norm(JSON.stringify(buildInlineConfig()).replace(/\\"/g, '"'))
-    expect(chatMd).toContain(norm(rule!))
-    expect(inline).toContain(norm(rule!))
-    for (const phrase of [
-      'entrega `.pptx` sin preguntar',
-      '«PowerPoint», «PPT», «PPTX» o «editable»',
-      'HTML solo si la persona lo pide o elige explícitamente',
-      'requisitos de formato incompatibles o una imposibilidad real'
-    ])
-      expect(rule).toContain(phrase)
-    for (const text of [skillMd, chatMd, inline]) {
-      expect(text).not.toContain('NO alcanza')
-      expect(text).not.toContain('pregunta el formato (obligatorio)')
-      expect(text).not.toContain('o piden que se vea MUY bien sin necesidad de editarla')
+  it('conserva la pregunta obligatoria de formato, la ruta HTML y «inventa uno distinto cada vez»', () => {
+    for (const k of [
+      'Antes de empezar: pregunta el formato (obligatorio)',
+      'Editable (.pptx)',
+      'Diseño libre (HTML)',
+      'herramienta `question`',
+      'Ruta HTML',
+      'inventa uno distinto cada vez'
+    ]) {
+      expect(skillMd).toContain(k)
     }
-    const tasks = readFileSync(resolve(ROOT, 'resources/opencode/agents/tasks.md'), 'utf8')
-    expect(tasks).toContain('`.pptx` por defecto, HTML solo por elección explícita')
-    expect(skillMd.split('\n')[2]).toContain('o HTML')
-    for (const k of ['Ruta HTML', 'inventa uno distinto cada vez', 'html_a_png.py']) expect(skillMd).toContain(k)
   })
 
   it('el camino principal es build_chat_deck.py y sigue habiendo respaldo (build_pptx, edit, inspect, check, código 3)', () => {
@@ -160,24 +149,20 @@ describe('skill pptx: build_chat_deck.py + .cjs empaquetado, de extremo a extrem
 describe('Chat, Code, Tareas y Overdrive: una sola fuente de diseño de presentaciones (la skill pptx)', () => {
   const agent = (n: string): string => norm(readFileSync(resolve(ROOT, `resources/opencode/agents/${n}.md`), 'utf8'))
 
-  it('tasks.md y computer.md remiten a la skill pptx y conservan la generación principal y el respaldo', () => {
+  it('tasks.md y computer.md remiten a la skill pptx y a su flujo (formato, build_chat_deck, respaldo) sin contradecirla', () => {
     for (const n of ['tasks', 'computer']) {
       const t = agent(n)
       expect(t, n).toContain('`pptx`')
-      if (n === 'tasks') expect(t).toContain('`.pptx` por defecto, HTML solo por elección explícita')
-      else {
-        // Control total queda fuera del encargo 41; conserva su remisión actual a la skill.
-        expect(t).toContain('MANDA el flujo')
-        expect(t).toContain('pregunta de formato')
-      }
+      expect(t, n).toContain('MANDA el flujo')
+      expect(t, n).toContain('pregunta de formato')
       expect(t, n).toContain('build_chat_deck.py')
       expect(t, n).toContain('el mismo resultado que en el Chat')
       expect(t, n).toContain('build_pptx.py')
     }
   })
 
-  it('la skill conserva la regla de formato y la guía de diseño del Chat; el Chat sigue armando con chatDeckCommands', () => {
-    expect(skill).toContain('Antes de empezar: elige el formato')
+  it('la skill conserva la pregunta de formato y la guía de diseño del Chat; el Chat sigue armando con chatDeckCommands', () => {
+    expect(skill).toContain('Antes de empezar: pregunta el formato (obligatorio)')
     expect(skill).toContain(chatDesignGuide())
     // Una sola fuente del motor: la skill y el Chat usan la misma función, no una copia.
     expect(readFileSync(resolve(ROOT, 'src/main/office/craft/chat-deck-cli.ts'), 'utf8')).toContain('renderChatDeck')
