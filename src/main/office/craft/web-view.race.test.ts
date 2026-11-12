@@ -42,17 +42,20 @@ beforeEach(() => {
   vi.mocked(startWebServer).mockClear()
 })
 afterEach(() => closeWeb())
-it.each(['pdf', 'docx', 'xlsx', 'pptx'] as const)('solo PDF solicita preferencias de lectura antes de la única carga: %s', async (ext) => {
-  const opening = openWebDoc('/web', ext, `a.${ext}`, Buffer.from('documento'))
-  expect(startWebServer).toHaveBeenCalledWith('/web', { pdfReadingDefaults: ext === 'pdf' })
-  mock.servers[0]!(server(1))
-  await Promise.resolve()
-  const view = mock.views[0]
-  view.loaded()
-  expect(await opening).toBe(true)
-  expect(view.webContents.loadURL).toHaveBeenCalledTimes(1)
-  expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(1)
-})
+it.each(['pdf', 'docx', 'xlsx', 'pptx'] as const)(
+  'abre el HTML original sin preferencias inyectadas y con una única carga: %s',
+  async (ext) => {
+    const opening = openWebDoc('/web', ext, `a.${ext}`, Buffer.from('documento'))
+    expect(startWebServer).toHaveBeenCalledWith('/web')
+    mock.servers[0]!(server(1))
+    await Promise.resolve()
+    const view = mock.views[0]
+    view.loaded()
+    expect(await opening).toBe(true)
+    expect(view.webContents.loadURL).toHaveBeenCalledTimes(1)
+    expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(1)
+  }
+)
 
 it('la caída o el error tardío de una vista cerrada no se atribuye a la nueva', async () => {
   const first = open()
@@ -120,4 +123,49 @@ it('conserva el hueco del panel durante la carga nueva', async () => {
   expect(mock.views[0].setBounds).toHaveBeenCalledWith({ x: 0, y: 0, width: 600, height: 400 })
   mock.views[0].loaded()
   expect(await opening).toBe(true)
+})
+
+it('PDF carga con el tamaño del panel aunque siga oculto hasta que el motor esté listo', async () => {
+  const win = {
+    isDestroyed: () => false,
+    contentView: { addChildView: vi.fn(), removeChildView: vi.fn() },
+    webContents: { getZoomFactor: () => 1.25 }
+  }
+  attachWeb(win as never, { x: 10, y: 40, width: 392, height: 600 }, false)
+  const opening = openWebDoc('/web', 'pdf', 'a.pdf', Buffer.from('documento'))
+  mock.servers[0]!(server(1))
+  await Promise.resolve()
+  const view = mock.views[0]
+  expect(view.setBounds).toHaveBeenLastCalledWith({ x: 13, y: 50, width: 490, height: 750 })
+  expect(view.setBounds.mock.invocationCallOrder[0]).toBeLessThan(view.webContents.loadURL.mock.invocationCallOrder[0])
+  expect(win.contentView.addChildView).not.toHaveBeenCalled()
+  // Otra medida durante la carga también se aplica sin descubrir el documento bajo el spinner.
+  attachWeb(win as never, { x: 10, y: 40, width: 559, height: 662 }, false)
+  expect(view.setBounds).toHaveBeenLastCalledWith({ x: 13, y: 50, width: 699, height: 828 })
+  expect(win.contentView.addChildView).not.toHaveBeenCalled()
+  view.loaded()
+  expect(await opening).toBe(true)
+  attachWeb(win as never, { x: 10, y: 40, width: 559, height: 662 }, true)
+  expect(win.contentView.addChildView).toHaveBeenCalledOnce()
+})
+
+it('un hueco 0x0 no muestra ni reduce a cero la superficie ya medida', async () => {
+  const win = {
+    isDestroyed: () => false,
+    contentView: { addChildView: vi.fn(), removeChildView: vi.fn() },
+    webContents: { getZoomFactor: () => 1 }
+  }
+  attachWeb(win as never, { x: 0, y: 0, width: 559, height: 662 }, true)
+  const opening = open()
+  mock.servers[0]!(server(1))
+  await Promise.resolve()
+  const view = mock.views[0]
+  view.loaded()
+  await opening
+  view.setBounds.mockClear()
+  win.contentView.addChildView.mockClear()
+  attachWeb(win as never, { x: 0, y: 0, width: 0, height: 0 }, true)
+  expect(view.setBounds).not.toHaveBeenCalled()
+  expect(win.contentView.addChildView).not.toHaveBeenCalled()
+  expect(win.contentView.removeChildView).toHaveBeenCalledWith(view)
 })

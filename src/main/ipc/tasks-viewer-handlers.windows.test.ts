@@ -4,7 +4,8 @@ import { isInside } from '../util/paths'
 import { unpacked } from '../util/asar'
 
 const mock = vi.hoisted(() => ({
-  web: vi.fn(async () => true),
+  web: vi.fn<(_kind: 'pdf' | 'docx' | 'xlsx' | 'pptx', _path: string, _title: string) => Promise<boolean>>(async () => true),
+  header: [0x50, 0x4b, 3, 4],
   classic: vi.fn<(_url: string) => Promise<boolean>>(async () => true),
   problem: vi.fn(),
   close: vi.fn()
@@ -15,14 +16,30 @@ vi.mock('node:fs', () => ({
   openSync: () => 1,
   closeSync: () => undefined,
   readSync: (_fd: number, head: Buffer) => {
-    head.set([0x50, 0x4b, 3, 4])
-    return 4
+    head.set(mock.header)
+    return mock.header.length
   },
   statSync: () => ({ size: 100 })
 }))
 vi.mock('../viewer/scheme', () => ({ installViewerScheme: vi.fn(), registerViewerPathValidator: vi.fn() }))
-vi.mock('../viewer/view', () => ({ onViewerEvent: () => () => undefined, openDoc: mock.classic, detach: vi.fn() }))
-vi.mock('../office/craft/web-view', () => ({ onWebEvent: () => () => undefined }))
+vi.mock('../viewer/view', () => ({
+  onViewerEvent: () => () => undefined,
+  openDoc: mock.classic,
+  detach: vi.fn(),
+  attach: vi.fn(),
+  closeView: vi.fn()
+}))
+vi.mock('../office/craft/web-view', () => ({
+  onWebEvent: () => () => undefined,
+  closeWeb: vi.fn(),
+  attachWeb: vi.fn(),
+  isWebActive: () => false
+}))
+vi.mock('../office/craft/service', () => ({
+  craftService: () => {
+    throw new Error('PDF no necesita Craft')
+  }
+}))
 vi.mock('../office/craft/web-open', () => ({
   openInCraftWeb: mock.web,
   panelAttach: vi.fn(),
@@ -36,6 +53,7 @@ import { registerTasksViewerHandlers, viewerLogPath } from './tasks-viewer-handl
 let handlers: Record<string, (req: any, event?: any) => any>
 beforeEach(() => {
   vi.clearAllMocks()
+  mock.header = [0x50, 0x4b, 3, 4]
   mock.web.mockResolvedValue(true)
   mock.classic.mockResolvedValue(true)
   handlers = {}
@@ -58,6 +76,23 @@ const open = (path = 'C:\\Trabajo\\sub\\Informe #1 ñ.DOCX') =>
   handlers['tasks:viewer:open']({ path, openingId: 'win', lang: 'es', theme: 'light' })
 
 describe('camino del visor con win32 inyectado', () => {
+  it.each([
+    ['C:\\Trabajo\\sub\\Informe #1 ñ.PDF', 'C:\\Trabajo\\sub\\Informe #1 ñ.PDF'],
+    ['c:/Trabajo/sub/Informe #1 ñ.PDF', 'C:\\Trabajo\\sub\\Informe #1 ñ.PDF'],
+    ['/win/c/Trabajo/sub/Informe #1 ñ.PDF', 'C:\\Trabajo\\sub\\Informe #1 ñ.PDF']
+  ])('PDF con %s selecciona PDF.js y conserva la ruta únicamente en el token', async (input, expected) => {
+    mock.header = [0x25, 0x50, 0x44, 0x46, 0x2d]
+    const { openInCraftWeb } = await vi.importActual<typeof import('../office/craft/web-open')>('../office/craft/web-open')
+    mock.web.mockImplementationOnce(openInCraftWeb)
+    expect(await open(input)).toMatchObject({ ok: true, mode: 'classic', kind: 'pdf' })
+    const url = new URL(mock.classic.mock.calls[0][0])
+    expect(url.protocol).toBe('lazunox-viewer:')
+    expect(url.hash).toMatch(/^#t=[0-9a-f]{64}&kind=pdf&lang=es&theme=light$/)
+    expect(url.href).not.toMatch(/Trabajo|Informe|file:/)
+    const { resolveToken } = await import('../viewer/tokens')
+    expect(resolveToken(new URLSearchParams(url.hash.slice(1)).get('t')!)).toEqual({ path: expected, kind: 'pdf' })
+  })
+
   it('el reloj de main cierra una apertura pendiente aunque el renderer no mande cierre', async () => {
     vi.useFakeTimers()
     let done!: (ok: boolean) => void

@@ -26,25 +26,6 @@ const MIME: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8'
 }
 
-// PdfCraft 0.7.1 restaura estas preferencias al construir la app. Script clásico, antes del módulo wasm;
-// completa solo claves ausentes, sin reemplazar elecciones guardadas (ni JSON ilegible). Sin recarga.
-const PDF_READING_DEFAULTS = `(() => {
-  try {
-    const saved = localStorage.getItem('pdfcraft') ?? localStorage.getItem('printcraft');
-    const prefs = saved === null ? {} : JSON.parse(saved);
-    if (!prefs || typeof prefs !== 'object' || Array.isArray(prefs)) return;
-    const defaults = { default_mode: 'read', default_zoom: 'fit-width', default_layout: 'continuous' };
-    let changed = false;
-    for (const [key, value] of Object.entries(defaults)) {
-      if (!Object.prototype.hasOwnProperty.call(prefs, key)) {
-        prefs[key] = value;
-        changed = true;
-      }
-    }
-    if (changed) localStorage.setItem('pdfcraft', JSON.stringify(prefs));
-  } catch {}
-})();`
-
 /** Hashes CSP (`'sha256-…'`) de los scripts en línea de un `index.html`. */
 export function inlineScriptHashes(html: string): string[] {
   return [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)]
@@ -77,17 +58,11 @@ export interface WebServer {
 }
 
 /** Arranca el servidor para `rootDir` (debe contener `index.html`). Escucha en 127.0.0.1 con puerto libre. */
-export async function startWebServer(rootDir: string, options: { pdfReadingDefaults?: boolean } = {}): Promise<WebServer> {
+export async function startWebServer(rootDir: string): Promise<WebServer> {
   const root = realpathSync(resolve(rootDir))
   const indexPath = join(root, 'index.html')
   if (!existsSync(indexPath)) throw new Error('La versión web no tiene index.html')
-  const realIndexPath = realpathSync(indexPath)
-  let indexHtml = readFileSync(indexPath, 'utf8')
-  if (options.pdfReadingDefaults) {
-    if (!/<head\b[^>]*>/i.test(indexHtml)) throw new Error('La versión web no tiene head')
-    indexHtml = indexHtml.replace(/<head\b[^>]*>/i, (head) => `${head}<script>${PDF_READING_DEFAULTS}</script>`)
-  }
-  // Para PDF, la CSP y la respuesta usan el MISMO HTML, incluidos los scripts originales sin modificar.
+  const indexHtml = readFileSync(indexPath, 'utf8')
   const csp = webCsp(inlineScriptHashes(indexHtml))
   let port = 0
   const server: Server = createServer((req, res) => {
@@ -121,7 +96,6 @@ export async function startWebServer(rootDir: string, options: { pdfReadingDefau
       'cache-control': 'no-store'
     })
     if (req.method === 'HEAD') return void res.end()
-    if (options.pdfReadingDefaults && real === realIndexPath) return void res.end(indexHtml)
     createReadStream(real).pipe(res)
   })
   await new Promise<void>((ok, fail) => {

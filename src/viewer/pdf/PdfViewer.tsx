@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { GlobalWorkerOptions, getDocument, type PDFDocumentLoadingTask } from 'pdfjs-dist'
-import { EventBus, PDFFindController, PDFLinkService, PDFViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
+import { EventBus, PDFFindController, PDFLinkService, PDFViewer, ScrollMode } from 'pdfjs-dist/web/pdf_viewer.mjs'
 import 'pdfjs-dist/web/pdf_viewer.css'
 // `?url`: Vite lo trata como referencia a copiar/versionar, no como módulo (el worker nunca se ejecuta en el hilo principal).
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url'
@@ -40,32 +40,41 @@ export function PdfViewer({ token, lang }: { token: string; lang: ViewerLang }):
       findController,
       removePageBorders: false
     })
+    // Todas las páginas en una columna desplazable; no usar PDFSinglePageViewer.
+    viewer.scrollMode = ScrollMode.VERTICAL
     linkService.setViewer(viewer)
     viewerRef.current = viewer
 
-    // El contenedor puede seguir en 0×0 cuando llega `pagesinit` (la vista nativa recién se está
-    // posicionando: `attach()` llega un instante después de `openDoc()`, sobre todo la primera vez
-    // que se abre un documento desde Chat). Si se ajusta "page-width" con ancho 0, pdf.js calcula
-    // una escala absurda (negativa) y no se ve nada. Por eso el ajuste inicial se reintenta por
-    // `ResizeObserver` hasta que el contenedor tenga un tamaño de verdad, UNA sola vez (no en cada
-    // resize después: si la persona ya hizo zoom a mano, no se lo pisa).
-    let committed = false
+    // `pagesinit` puede preceder al attach, y el primer tamaño positivo todavía puede cambiar
+    // al terminar el layout del panel. Mantener page-width mientras sea el modo elegido;
+    // un zoom manual cambia currentScaleValue a un número y deja de seguir el ancho.
+    let initialized = false
+    let pagesReady = false
+    let lastWidth = 0
+    let lastHeight = 0
+    let updateFrame = 0
     const fitToWidthIfSized = (): boolean => {
-      if (committed || container.clientWidth <= 0) return false
+      const { clientWidth: width, clientHeight: height } = container
+      if (!pagesReady || width <= 0 || height <= 0) return false
+      if (initialized && (viewer.currentScaleValue !== 'page-width' || (width === lastWidth && height === lastHeight))) return false
+      lastWidth = width
+      lastHeight = height
       viewer.currentScaleValue = 'page-width'
-      committed = true
+      initialized = true
       // `currentScaleValue` dispara `update()` de pdf.js, pero ese `update()` calcula qué páginas
       // están "visibles" leyendo el layout ACTUAL del DOM — justo después de cambiar `--scale-factor`
       // (que mueve el ancho/alto de `.page` vía `round()` en CSS), el navegador puede no haber
       // repintado todavía, así que `_getVisiblePages()` da 0 páginas y nunca llega a dibujar el
       // canvas. Un `update()` extra en el siguiente frame (ya con el reflow hecho) lo destraba.
-      requestAnimationFrame(() => {
+      cancelAnimationFrame(updateFrame)
+      updateFrame = requestAnimationFrame(() => {
         if (!cancelled) viewer.update()
       })
       return true
     }
     const onPagesInit = (): void => {
       if (cancelled) return
+      pagesReady = true
       fitToWidthIfSized()
     }
     const onScaleChanging = (ev: { scale: number }): void => setZoomPercent(Math.round(ev.scale * 100))
@@ -75,7 +84,7 @@ export function PdfViewer({ token, lang }: { token: string; lang: ViewerLang }):
     eventBus.on('pagechanging', onPageChanging)
 
     const ro = new ResizeObserver(() => {
-      if (!cancelled && viewer.pdfDocument) fitToWidthIfSized()
+      if (!cancelled) fitToWidthIfSized()
     })
     ro.observe(container)
 
@@ -99,6 +108,7 @@ export function PdfViewer({ token, lang }: { token: string; lang: ViewerLang }):
 
     return () => {
       cancelled = true
+      cancelAnimationFrame(updateFrame)
       ro.disconnect()
       eventBus.off('pagesinit', onPagesInit)
       eventBus.off('scalechanging', onScaleChanging)

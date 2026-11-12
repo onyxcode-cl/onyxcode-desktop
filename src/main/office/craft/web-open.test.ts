@@ -21,6 +21,7 @@ vi.mock('../../viewer/view', () => ({ attach: vi.fn(), closeView: vi.fn() }))
 import { closeWeb } from './web-view'
 import { WEB_PROGRAM, openInCraftWeb, panelAttach, panelClose } from './web-open'
 import { attachWeb } from './web-view'
+import { attach as attachViewer } from '../../viewer/view'
 
 let dir: string
 beforeEach(() => {
@@ -52,7 +53,22 @@ describe('web-open (prueba Craft)', () => {
     expect(await openInCraftWeb('docx', file(), 'T')).toBe(true)
   })
   it('cada tipo de documento va al programa que le corresponde', () => {
-    expect(WEB_PROGRAM).toEqual({ xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft', pdf: 'pdfcraft' })
+    expect(WEB_PROGRAM).toEqual({ xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft' })
+  })
+
+  it.each([null, '/web/pdfcraft'])('PDF usa PDF.js aunque PdfCraft esté instalado: %s', async (installed) => {
+    webDir.mockReturnValue(installed)
+    const win = {} as never
+    const rect = { x: 0, y: 0, width: 392, height: 600 }
+    panelAttach(win, rect, true)
+    vi.mocked(closeWeb).mockClear()
+    vi.mocked(attachViewer).mockClear()
+    expect(await openInCraftWeb('pdf', 'C:\\Trabajo\\Informe #1 ñ.pdf', 'Informe')).toBe(false)
+    expect(webDir).not.toHaveBeenCalled()
+    expect(openWebDoc).not.toHaveBeenCalled()
+    expect(recordCraftProblem).not.toHaveBeenCalled()
+    expect(closeWeb).toHaveBeenCalledOnce()
+    expect(attachViewer).toHaveBeenCalledWith(win, rect, true)
   })
 
   it('sin la versión web instalada no hace nada y devuelve false (se usa el visor de siempre)', async () => {
@@ -61,15 +77,33 @@ describe('web-open (prueba Craft)', () => {
     expect(openWebDoc).not.toHaveBeenCalled()
   })
 
-  it('con la versión web abre el archivo con el nombre limpio y la extensión del tipo', async () => {
+  it.each(['docx', 'xlsx', 'pptx'] as const)('Office sigue abriendo %s con nombre limpio y su motor', async (kind) => {
     webDir.mockImplementation((p) => `/web/${p}`)
     openWebDoc.mockResolvedValue(true)
-    expect(await openInCraftWeb('pdf', file(), 'Informe / 2026: "Q3"')).toBe(true)
+    expect(await openInCraftWeb(kind, file(), 'Informe / 2026: "Q3"')).toBe(true)
     const [dirArg, ext, name, bytes] = openWebDoc.mock.calls[0]
-    expect(dirArg).toBe('/web/pdfcraft')
-    expect(ext).toBe('pdf')
-    expect(name).toBe('Informe  2026 Q3.pdf')
+    expect(dirArg).toBe(`/web/${WEB_PROGRAM[kind]}`)
+    expect(ext).toBe(kind)
+    expect(name).toBe(`Informe  2026 Q3.${kind}`)
     expect((bytes as Buffer).length).toBe(10)
+  })
+
+  it('abrir PDF cancela una apertura Office pendiente sin volver a mostrar Craft al terminar', async () => {
+    webDir.mockReturnValue('/web/wordcraft')
+    let finish!: (ok: boolean) => void
+    openWebDoc.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve
+        })
+    )
+    const office = openInCraftWeb('docx', file(), 'Office')
+    await vi.waitFor(() => expect(openWebDoc).toHaveBeenCalledOnce())
+    expect(await openInCraftWeb('pdf', 'informe.pdf', 'PDF')).toBe(false)
+    vi.mocked(attachWeb).mockClear()
+    finish(true)
+    expect(await office).toBe(false)
+    expect(attachWeb).not.toHaveBeenCalled()
   })
 
   it('un título vacío o raro cae a «documento»', async () => {
