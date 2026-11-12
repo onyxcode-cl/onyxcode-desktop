@@ -106,7 +106,21 @@ function ensureView(): WebContentsView {
 function layout(): void {
   const win = state.hostWindow
   const view = state.view
-  const show = !!view && !!win && !win.isDestroyed() && state.visible && state.active && !!state.rect
+  const rect = state.rect
+  const sized = !!view && !!win && !win.isDestroyed() && !!rect && rect.width > 0 && rect.height > 0
+  // El panel comunica su medida mientras carga, con visible=false hasta recibir «listo».
+  // Dar tamaño no exige mostrarlo: wasm debe arrancar con el viewport medido, no con el
+  // tamaño por defecto de una WebContentsView que todavía no se adjuntó.
+  if (sized) {
+    const zoom = win.webContents.getZoomFactor() || 1
+    view.setBounds({
+      x: Math.round(rect.x * zoom),
+      y: Math.round(rect.y * zoom),
+      width: Math.round(rect.width * zoom),
+      height: Math.round(rect.height * zoom)
+    })
+  }
+  const show = sized && state.visible && state.active
   if (!show) {
     if (view && state.attachedTo && !state.attachedTo.isDestroyed()) state.attachedTo.contentView.removeChildView(view)
     state.attachedTo = null
@@ -119,14 +133,6 @@ function layout(): void {
     host.contentView.addChildView(v)
     state.attachedTo = host
   }
-  const rect = state.rect as WebRect
-  const zoom = host.webContents.getZoomFactor() || 1
-  v.setBounds({
-    x: Math.round(rect.x * zoom),
-    y: Math.round(rect.y * zoom),
-    width: Math.round(rect.width * zoom),
-    height: Math.round(rect.height * zoom)
-  })
 }
 
 /** Script que espera a que el motor esté listo y le «suelta» el archivo en el lienzo, como si la persona lo arrastrara. */
@@ -171,7 +177,7 @@ export async function openWebDoc(
   Object.assign(state, { hostWindow, rect, visible })
   const generation = openGeneration
   const current = (): boolean => generation === openGeneration
-  const server = await startWebServer(webDir, { pdfReadingDefaults: ext === 'pdf' })
+  const server = await startWebServer(webDir)
   if (!current()) {
     await server.close().catch(() => undefined)
     return false

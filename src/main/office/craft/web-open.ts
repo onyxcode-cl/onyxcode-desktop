@@ -1,6 +1,6 @@
 /**
  * PRUEBA (rama `exp/craft-office-pruebas`): punto único para abrir un documento en la versión WEB del programa de ArtCraft que le
- * corresponde (Excel → GridCraft, PowerPoint → DeckCraft, Word → WordCraft, PDF → PdfCraft) y coordinar el hueco del panel entre esa vista
+ * corresponde (Excel → GridCraft, PowerPoint → DeckCraft, Word → WordCraft; PDF usa PDF.js) y coordinar el hueco del panel entre esa vista
  * y el visor de siempre. Lo usan el panel de documentos del Chat (`extras:chatDoc:*`) y el visor de archivos de Tareas (`tasks:viewer:*`):
  * un solo modo de la app muestra un documento a la vez, así que comparten estado.
  */
@@ -13,8 +13,8 @@ import { craftService } from './service'
 import { WEB_OPEN_TIMEOUT_MS, withTimeout } from './web-timeout'
 import { MAX_WEB_FILE_BYTES, attachWeb, closeWeb, isWebActive, openWebDoc } from './web-view'
 
-/** Programa de ArtCraft cuya versión web muestra cada tipo de documento. */
-export const WEB_PROGRAM: Record<DocKind, string> = { xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft', pdf: 'pdfcraft' }
+/** Programa de ArtCraft para los formatos Office; PDF se lee en el visor aislado PDF.js. */
+export const WEB_PROGRAM: Record<Exclude<DocKind, 'pdf'>, string> = { xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft' }
 
 interface Last {
   win: BrowserWindow
@@ -52,11 +52,17 @@ export function useClassicViewer(): void {
 }
 
 /**
- * Abre `file` en la versión web de su programa si está instalada. Devuelve `false` (y no hace nada) si no está instalada, si el archivo es
- * demasiado grande o si algo falla: quien llama usa entonces el visor de siempre. `title` solo da nombre al archivo en la pantalla del programa.
+ * PDF devuelve `false` para usar PDF.js. Office abre `file` en la versión web de su programa si está instalada.
+ * Devuelve `false` si falta la instalación, si el archivo es demasiado grande o si algo falla: quien llama usa entonces el visor de siempre. `title` solo da nombre al archivo en la pantalla del programa.
  */
 export async function openInCraftWeb(kind: DocKind, file: string, title: string): Promise<boolean> {
   const generation = ++openGeneration
+  if (kind === 'pdf') {
+    // Compartido por Chat, Tareas y Código. Cancela cualquier apertura Craft anterior.
+    closeWeb()
+    applyPanel()
+    return false
+  }
   const current = (): boolean => generation === openGeneration
   // Un cierre (p. ej. al cambiar el tema) destruye las vistas y borra su anfitrión/tamaño.
   // Restituirlos ANTES de arrancar wasm: esperar a su éxito lo arrancaba sin superficie.
