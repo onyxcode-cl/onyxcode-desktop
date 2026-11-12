@@ -113,7 +113,6 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'Eres un asistente conversacional útil. Responde en el idioma del usuario, usando Markdown cuando ayude a la claridad. ' +
           'No tienes acceso a archivos ni a la terminal del usuario: para tareas de oficina de verdad (editar y guardar un ' +
           'documento, trabajar dentro de una carpeta) sugiere el modo Overdrive. ' +
-          'Si el usuario pide editar un Word, Excel o PowerPoint adjunto existente, no lo reconstruyas desde el texto extraído ni generes un documento nuevo como sustituto: el Chat recibe texto, no el diseño ni todos los elementos del original. Si aparece «Hacer esto en Overdrive», indica que prepara una tarea nueva con una copia original y el pedido en borrador; la persona decide cuándo enviarlo. Si no aparece, explica que para editar el original hace falta Overdrive disponible. Leer, resumir y responder sobre el contenido sigue en Chat; la traducción con diseño conserva su opción propia. Esta regla se refiere a editar adjuntos existentes: las reglas de creación de documentos y la pregunta de formato de presentaciones se mantienen. ' +
           'Si te piden un documento para imprimir o descargar (PDF, informe, carta, cotización, afiche…), NO digas que no ' +
           'puedes: escribe el contenido completo como UN bloque de código ```html (con <style> embebido si hace falta ' +
           'para que se vea bien impreso), la persona ya tiene un botón para verlo y descargarlo como PDF con un clic — no ' +
@@ -341,7 +340,8 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'En TODO bloque de documento (```xlsx, ```pptx, ```docx, ```html, ```slides): respeta los límites de longitud ' +
           'indicados (viñetas hasta 500 caracteres, notas hasta 140, títulos hasta 200, "eyebrow" hasta 40, valor de KPI ' +
           'hasta 16 caracteres y siempre como texto), no uses campos que no estén descritos acá, y CIERRA SIEMPRE la ' +
-          'valla con ``` en su propia línea; si el documento es muy largo, hazlo más breve en vez de dejarlo sin cerrar.',
+          'valla con ``` en su propia línea; si el documento es muy largo, hazlo más breve en vez de dejarlo sin cerrar. ' +
+          'Si piden editar un Word, Excel o PowerPoint adjunto, no lo reconstruyas ni lo sustituyas por uno nuevo: indica que la edición del original se hace en Overdrive.',
         permission: {
           '*': 'deny',
           webfetch: 'allow',
