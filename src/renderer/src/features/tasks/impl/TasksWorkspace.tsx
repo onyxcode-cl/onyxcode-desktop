@@ -861,7 +861,7 @@ export function TasksWorkspace(): React.JSX.Element {
                   {activeId && <NetworkBlockedCards taskId={activeId} />}
                   {activeId && <BlockedAppNotices taskId={activeId} />}
                   {!fullAccess && isMacPlatform() && <SandboxDenialNotice />}
-                  {!fullAccess && !isMacPlatform() && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
+                  {!fullAccess && <DeleteGrantHintCard key={`grant-${activeId}`} entries={entries} />}
                   {!fullAccess && <WinConsentHintCard key={`consent-${activeId}`} entries={entries} />}
                   {!fullAccess && status === 'done' && activeId && (
                     <EscalateCard key={`escalate-${activeId}`} taskId={activeId} entries={entries} />

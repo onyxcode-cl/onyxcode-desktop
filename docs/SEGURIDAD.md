@@ -2977,3 +2977,24 @@ solo amplía la principal y no garantiza acceso a rutas protegidas ni carpetas a
 El agente recibe dos líneas propias en `resources/opencode/agents/tasks.md` sobre «Operation not permitted»,
 no reintentar ni inventar ajustes, y la ruta real de la Ficha (traducida en el contexto del idioma inglés).
 Son instrucciones generales; no se atribuyen al modelo eventos del monitor ni se cambian sus resultados.
+
+### Borrado por parche denegado: oferta posterior y reintento (F8-B265, tarea 26)
+
+La oferta posterior al fallo de una herramienta usa ahora la misma tarjeta «Activar permiso y reintentar» en Mac,
+Windows/WSL y celular. Reconoce un resultado denegado (`Operation not permitted`, `Permission denied`, EPERM,
+EACCES o `PermissionDenied`) junto a un intento de eliminación: Delete File/Move to de un parche, operación
+explícita de borrado o error de eliminación (`FileSystem.remove`, unlink/rmdir/rename), además de los comandos
+habituales. Una escritura/edición denegada sin señal de borrado no basta. Se filtran las rutas reconocibles contra
+la principal, excluyendo `.lazunox`, hooks de git y carpetas adicionales. Es un indicio de interfaz, no una prueba
+de origen Seatbelt/Landlock ni una autorización: la traducción y normalización léxicas no resuelven enlaces.
+El monitor Seatbelt conserva su clasificación fiable y su ámbito de carpeta; no se atribuyen sus eventos a una sesión.
+
+El clic explícito utiliza el flujo ya existente `tasks:deleteGrant:set`: aborta la sesión y su raíz, cambia el permiso
+persistente por carpeta, reconecta y pide al modelo reintentar en la raíz. Para un resultado ya fallido no se fabrica
+ni se aprueba una solicitud del motor; cancelar solo descarta la oferta. Se comprueban carpeta/conexión y tarea
+activa para evitar continuar en otra. Ni mostrar la tarjeta ni recibir un error cambia permisos. El perfil Seatbelt,
+Landlock, IPC, la validación real de carpetas y las restricciones de rutas protegidas permanecen bajo los mismos controles.
+
+Un comando opaco cuyo resultado no identifica la eliminación no se puede clasificar universalmente desde la app.
+Para cubrirlo sin heurísticas el motor tendría que emitir un fallo estructurado con operación, ruta, sesión y llamada;
+confirmar además que procede del aislamiento requiere evidencia de la plataforma. No se modifica el motor en esta tarea.

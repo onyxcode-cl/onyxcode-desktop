@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
+import type { PermissionRequest, ToolPart } from '@opencode-ai/sdk/v2/client'
 interface MockState {
   folder: string
   conn: { fullAccess: boolean }
@@ -41,7 +41,8 @@ beforeEach(() => {
     conn: { fullAccess: false },
     client: { session: { abort: m.abort } },
     permissions: { p: req },
-    phase: 'ready'
+    phase: 'ready',
+    activeTaskId: 'root'
   }
   m.confirm.mockResolvedValue(true)
   m.reply.mockImplementation(async () => {
@@ -76,6 +77,28 @@ describe('activar permiso real y reintentar', () => {
     expect(m.grant).toHaveBeenCalledWith(true)
     expect(m.open).toHaveBeenCalledWith('root')
     expect(m.send).toHaveBeenCalledWith(expect.stringContaining('reintenta'), { providerID: 'fake', modelID: 'fake' })
+  })
+  it('herramienta ya denegada: aborta y reinicia igual, sin responder a un permiso inexistente', async () => {
+    m.state.permissions = {}
+    const attempt = { id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart
+    await enableDeleteAndRetry(attempt)
+    expect(m.log).toEqual(['abort', 'abort', 'grant/restart', 'open', 'retry'])
+    expect(m.reply).not.toHaveBeenCalled()
+    expect(m.grant).toHaveBeenCalledExactlyOnceWith(true)
+  })
+  it('herramienta denegada de una tarea que ya no está activa: no concede', async () => {
+    m.state.activeTaskId = 'otra'
+    await expect(enableDeleteAndRetry({ id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart)).rejects.toThrow('cambió')
+    expect(m.log).toEqual([])
+  })
+  it('cambiar de tarea durante el abort de una herramienta fallida no concede el permiso', async () => {
+    m.abort.mockImplementation(async () => {
+      m.state.activeTaskId = 'otra'
+      return {}
+    })
+    await expect(enableDeleteAndRetry({ id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart)).rejects.toThrow('cambió')
+    expect(m.grant).not.toHaveBeenCalled()
+    expect(m.send).not.toHaveBeenCalled()
   })
   it('cancelar la interrupción de otras tareas no cambia permisos ni responde al motor', async () => {
     m.confirm.mockResolvedValue(false)

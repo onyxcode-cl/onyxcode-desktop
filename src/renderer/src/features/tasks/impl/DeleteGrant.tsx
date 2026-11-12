@@ -1,20 +1,21 @@
 /**
- * "Permitir borrar, mover y renombrar": concede/retira el permiso de Seatbelt `file-write-unlink`
+ * "Permitir borrar, mover y renombrar": concede/retira el permiso de borrado de Seatbelt/WSL
  * para el servidor sandboxeado de la carpeta (`tasks:deleteGrant:*`, ver
  * `src/main/tasks/sandbox-profile.ts`). Como mover o renombrar también es un `unlink` del origen,
  * el mismo permiso cubre las tres cosas. Incluye el interruptor (panel de proyecto) y la tarjeta
- * que aparece cuando el agente lo intenta y falla con "Operation not permitted".
+ * que aparece tras un intento denegado de cualquier herramienta con evidencia de borrado.
  */
 import { useState } from 'react'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
-import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
 import type { MessageEntry } from '../../../stores/sessions'
 import { setDeleteGrantAllowed } from './actions'
 import { useTasks } from './store'
-import { looksLikeBlockedDelete } from './util'
+import { looksLikeBlockedDelete, deleteAttemptText } from './blocked-delete'
+import { DeletePermissionCard } from './DeletePermissionCard'
+import { sdkDirOf } from './path-map'
 
 /** Interruptor «Permitir borrar, mover y renombrar», con la advertencia de que reinicia el servidor de la tarea. */
 export function DeleteGrantToggle(): React.JSX.Element | null {
@@ -69,58 +70,30 @@ export function DeleteGrantToggle(): React.JSX.Element | null {
   )
 }
 
-/** Tarjeta ofreciendo activar «Permitir borrar, mover y renombrar» cuando un intento falló por el sandbox. */
+/** La misma tarjeta después de un fallo, aunque el motor no haya pedido permiso antes. */
 export function DeleteGrantHintCard({ entries }: { entries: MessageEntry[] }): React.JSX.Element | null {
-  const t = useT()
   const deleteGrant = useTasks((s) => s.deleteGrant)
-  const busy = useTasks((s) => s.deleteGrantBusy)
+  const folder = useTasks((s) => s.folder)
+  const conn = useTasks((s) => s.conn)
+  const folders = useTasks((s) => s.folderSet)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
-
-  if (deleteGrant === true) return null
-
-  let hitId: string | null = null
-  outer: for (const e of entries) {
+  if (deleteGrant === true || !folder || !conn || conn.fullAccess) return null
+  const scope = {
+    folder: sdkDirOf(conn, folder),
+    additional: [...(folders?.linked ?? []), ...(folders?.trusted ?? [])].map((f) => f.path)
+  }
+  for (const e of entries) {
     for (const p of e.parts) {
-      if (p.type === 'tool' && looksLikeBlockedDelete(p) && !dismissed.has(p.id)) {
-        hitId = p.id
-        break outer
-      }
+      if (p.type !== 'tool' || dismissed.has(p.id) || !looksLikeBlockedDelete(p, scope)) continue
+      return (
+        <DeletePermissionCard
+          key={p.id}
+          request={p}
+          command={deleteAttemptText(p)}
+          onDismiss={() => setDismissed((s) => new Set(s).add(p.id))}
+        />
+      )
     }
   }
-  if (!hitId) return null
-  const id = hitId
-
-  const enable = async (): Promise<void> => {
-    setError(null)
-    try {
-      await setDeleteGrantAllowed(true)
-      setDismissed((s) => new Set(s).add(id))
-    } catch (err) {
-      setError(errorMessage(err))
-    }
-  }
-
-  return (
-    <div className="rounded-xl border border-warning/40 bg-warning/5 p-3.5 desk:rounded-card">
-      <div className="flex items-start gap-3 desk:gap-3.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning desk:h-9 desk:w-9 desk:rounded-[10px]">
-          <Trash2 size={16} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold desk:text-title-sm">{t('tasksComputer.delete.hintTitle')}</p>
-          <p className="mt-0.5 text-xs text-muted">{t('tasksComputer.delete.hintBody')}</p>
-          {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button variant="primary" disabled={busy} onClick={() => void enable()}>
-              {busy && <Loader2 size={14} className="animate-spin" />} {TASKS_TERMS.deleteGrant}
-            </Button>
-            <Button variant="ghost" disabled={busy} onClick={() => setDismissed((s) => new Set(s).add(id))}>
-              {t('tasksComputer.delete.notNow')}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  return null
 }

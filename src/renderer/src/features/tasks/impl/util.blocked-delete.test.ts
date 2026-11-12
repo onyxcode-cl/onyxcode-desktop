@@ -56,8 +56,78 @@ describe('looksLikeBlockedDelete', () => {
     }
   })
 
-  it('sin «Operation not permitted» o en otra herramienta, nunca', () => {
+  it('sin negación o en lectura sin operación de borrado, nunca', () => {
     expect(looksLikeBlockedDelete(part('rm a', 'ok'))).toBe(false)
     expect(looksLikeBlockedDelete({ ...part('rm a', 'x: Operation not permitted'), tool: 'read' } as ToolPart)).toBe(false)
+  })
+  it.each(['Operation not permitted', 'Permission denied', 'EPERM', 'EACCES', 'PermissionDenied: FileSystem.remove'])(
+    'parche Delete File con %s ofrece permiso',
+    (error) => {
+      const p = { ...part(undefined, error, 'error'), tool: 'apply_patch' } as ToolPart
+      p.state.input = { patchText: '*** Begin Patch\n*** Delete File: temporal.txt\n*** End Patch' }
+      expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(true)
+    }
+  )
+  it('parche que solo edita: ni negación de escritura ni error de sintaxis ofrecen borrar', () => {
+    for (const error of ['PermissionDenied: FileSystem.writeFile', 'Operation not permitted', 'Invalid patch']) {
+      const p = { ...part(undefined, error, 'error'), tool: 'apply_patch' } as ToolPart
+      p.state.input = { patchText: '*** Begin Patch\n*** Update File: a.txt\n@@\n-a\n+b\n*** End Patch' }
+      expect(looksLikeBlockedDelete(p)).toBe(false)
+    }
+  })
+  it.each(['edit', 'write', 'otra_herramienta'])('una operación real remove denegada se reconoce sin depender del nombre: %s', (tool) => {
+    const p = { ...part(undefined, 'PermissionDenied: FileSystem.remove', 'error'), tool } as ToolPart
+    p.state.input = { path: '/work/a.txt' }
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(true)
+    p.state.input = { path: '/fuera/a.txt' }
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(false)
+  })
+  it.each(['mv a .papelera/a', 'find . -delete', 'unlink a', 'rmdir a', `python3 -c 'import os; os.remove("a")'`])(
+    'WSL: %s también con Permission denied',
+    (command) => {
+      expect(looksLikeBlockedDelete(part(command, 'Permission denied'), { folder: '/win/c/work' })).toBe(true)
+    }
+  )
+  it.each(['rm /fuera/a', `python3 -c 'import os; os.remove("/fuera/a")'`, 'rm ../a', 'rm .lazunox/memoria.md'])(
+    'no ofrece el permiso de la carpeta para %s',
+    (command) => {
+      expect(looksLikeBlockedDelete(part(command, 'Permission denied'), { folder: '/work' })).toBe(false)
+    }
+  )
+  it('no confunde texto del asistente, herramientas pendientes ni borrados sin bloqueo con una denegación', () => {
+    const p = { ...part(undefined, 'Success', 'error'), tool: 'apply_patch' } as ToolPart
+    p.state.input = { patchText: '*** Begin Patch\n*** Delete File: a.txt\n*** End Patch' }
+    expect(looksLikeBlockedDelete(p)).toBe(false)
+    p.state = { ...p.state, status: 'running' } as ToolPart['state']
+    expect(looksLikeBlockedDelete(p)).toBe(false)
+  })
+  it('excluye carpetas adicionales Windows aunque el motor nombre rutas Linux', () => {
+    const p = { ...part(undefined, 'PermissionDenied: FileSystem.remove', 'error'), tool: 'apply_patch' } as ToolPart
+    p.state.input = { patchText: '*** Begin Patch\n*** Delete File: /win/c/work/extra/a.txt\n*** End Patch' }
+    expect(looksLikeBlockedDelete(p, { folder: '/win/c/work', additional: ['C:\\work\\extra'] })).toBe(false)
+  })
+  it.each([
+    ["EACCES: permission denied, unlink '/work/a.txt'", {}],
+    ['PermissionDenied: FileSystem.remove (/work/a.txt)', {}],
+    ['EACCES', { path: 'a.txt', operation: 'delete' }]
+  ])('otras herramientas: %s', (error, input) => {
+    const p = { ...part(undefined, error, 'error'), tool: 'otra_herramienta' } as ToolPart
+    p.state.input = input
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(true)
+  })
+  it('mover con un parche requiere el permiso del origen', () => {
+    const p = { ...part(undefined, 'Permission denied', 'error'), tool: 'apply_patch' } as ToolPart
+    p.state.input = { patchText: '*** Begin Patch\n*** Update File: a.txt\n*** Move to: b.txt\n*** End Patch' }
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(true)
+  })
+  it('parche mixto que falla explícitamente en una lectura no ofrece borrar', () => {
+    const p = { ...part(undefined, 'PermissionDenied: FileSystem.readFile', 'error'), tool: 'apply_patch' } as ToolPart
+    p.state.input = { patchText: '*** Begin Patch\n*** Delete File: a.txt\n*** Update File: /fuera/b.txt\n*** End Patch' }
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(false)
+  })
+  it('acepta la ruta Windows o WSL con distinta capitalización', () => {
+    const p = { ...part(undefined, 'PermissionDenied: FileSystem.remove', 'error'), tool: 'write' } as ToolPart
+    p.state.input = { path: 'C:\\work\\A.txt' }
+    expect(looksLikeBlockedDelete(p, { folder: '/win/c/Work' })).toBe(true)
   })
 })

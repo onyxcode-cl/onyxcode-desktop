@@ -1,6 +1,6 @@
 /**
  * Fijación del celular/PWA ANTES de tocar el código de las demás tarjetas de Tareas: FolderRequestCard,
- * NetworkBlocked, QuestionCard, EscalateCard y DeleteGrantHintCard en `remote` se congelan con literales
+ * NetworkBlocked, QuestionCard, EscalateCard en `remote` se congelan con literales
  * inline (nunca `vitest -u`). En escritorio solo se AÑADEN clases `desk:` (que `stripDesk` elimina), así
  * que este marcado no cambia.
  */
@@ -131,11 +131,25 @@ describe('celular/PWA: demás tarjetas de Tareas (sin cambios)', () => {
     )
   })
 
-  it('DeleteGrantHintCard', () => {
+  it('DeleteGrantHintCard comparte la nueva activación y reintento también en el celular (tarea 26)', () => {
     surface('remote')
-    mock.state = { deleteGrant: null, deleteGrantBusy: false }
-    expect(html(<DeleteGrantHintCard entries={blockedDeleteEntries} />)).toMatchInlineSnapshot(
-      `"<div class="rounded-xl border border-warning/40 bg-warning/5 p-3.5"><div class="flex items-start gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning/15 text-warning"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash lucide-trash-2" aria-hidden="true"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></span><div class="min-w-0 flex-1"><p class="text-sm font-semibold">El agente intentó borrar, mover o renombrar un archivo y no pudo</p><p class="mt-0.5 text-xs text-muted">Por seguridad, esta carpeta no permite borrar, mover ni renombrar archivos todavía. Si lo activas, el servidor de la tarea se reiniciará y tendrás que reabrir esta tarea y pedirle al agente que continúe. Si prefieres no hacerlo, pídele una copia ordenada sin tocar los originales.</p><div class="mt-3 flex flex-wrap items-center gap-2"><button type="button" class="no-drag inline-flex items-center justify-center rounded-lg font-medium transition-[background-color,border-color,color,filter,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 px-3 py-1.5 text-sm gap-2 bg-accent text-accent-fg shadow-xs hover:bg-accent-hover "> Permitir borrar, mover y renombrar</button><button type="button" class="no-drag inline-flex items-center justify-center rounded-lg font-medium transition-[background-color,border-color,color,filter,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 px-3 py-1.5 text-sm gap-2 text-muted hover:bg-hover hover:text-fg ">Ahora no</button></div></div></div></div>"`
-    )
+    mock.state = { folder: '/work', conn: { folder: '/work' }, deleteGrant: false, deleteGrantBusy: false }
+    const entries = [
+      {
+        ...blockedDeleteEntries[0],
+        parts: [
+          toolPart('p2', 'm2', 's', 'bash', {
+            status: 'error',
+            input: { command: 'rm temporal.txt' },
+            error: 'rm: Operation not permitted'
+          })
+        ]
+      }
+    ]
+    const markup = html(<DeleteGrantHintCard entries={entries} />)
+    expect(markup).toContain('Activar permiso y reintentar')
+    expect(markup).toContain('role="alertdialog"')
+    expect(markup).toContain('toda esta carpeta')
+    expect(markup).not.toContain('Permitir una vez</button>')
   })
 })

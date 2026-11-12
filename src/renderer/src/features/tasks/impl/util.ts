@@ -1,4 +1,3 @@
-import { needsDeleteGrant } from '@shared/tasks-delete-command'
 /** Utilidades de presentación del modo Tareas (tiempos, tamaños, estado y etiquetas de pasos). */
 import { WIN_CONSENT_MISSING_MARK } from '@shared/unified-bridge'
 import type { Message, Part, PermissionRequest, Session, ToolPart } from '@opencode-ai/sdk/v2/client'
@@ -296,23 +295,7 @@ export function friendlyTool(part: ToolPart, showPath: (path: string) => string 
 
 // ───────────────────────────── Borrado bloqueado por el sandbox ─────────────────────────────
 
-const OPERATION_NOT_PERMITTED_RE = /operation not permitted/i
-/**
- * Palabras de una orden que borra, mueve o renombra (en shell, git, Python, Node, PowerShell). Sin esto, CUALQUIER
- * «Operation not permitted» (p. ej. leer un archivo de claves que el sandbox niega: `head ~/.zshrc`) ofrecía
- * «Permitir borrar, mover y renombrar», que no arregla nada en ese caso.
- */
-/** ¿Esta parte de herramienta parece un `rm`/`unlink` bloqueado por el sandbox (Seatbelt, EPERM)? */
-export function looksLikeBlockedDelete(part: ToolPart): boolean {
-  if (part.tool !== 'bash') return false
-  const text = part.state.status === 'completed' ? part.state.output : part.state.status === 'error' ? part.state.error : ''
-  if (!text || !OPERATION_NOT_PERMITTED_RE.test(text)) return false
-  const input = part.state.input as { command?: unknown } | undefined
-  const command = typeof input?.command === 'string' ? input.command : ''
-  // La orden o la propia línea del error nombra un borrado/movimiento (`rm: x: Operation not permitted`).
-  const errorLines = text.split('\n').filter((l) => OPERATION_NOT_PERMITTED_RE.test(l))
-  return needsDeleteGrant(command) || errorLines.some((l) => needsDeleteGrant(l))
-}
+export { looksLikeBlockedDelete } from './blocked-delete'
 
 /** ¿Esta parte es una herramienta `computer_*` rechazada por falta del consentimiento de Control del PC (Windows)? */
 export function looksLikeMissingWinConsent(part: ToolPart): boolean {

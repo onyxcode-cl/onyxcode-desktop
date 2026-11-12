@@ -1,6 +1,6 @@
 /** La aprobación del motor no puede levantar el aislamiento: primero se cambia el permiso de carpeta. */
 import { useRef, useState } from 'react'
-import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
+import type { PermissionRequest, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { Trash2 } from 'lucide-react'
 import { hasHiddenChars } from '../../../components/permission/PermissionShell'
 import { Button } from '../../../components/Button'
@@ -13,11 +13,13 @@ import { useTasks } from './store'
 export function DeletePermissionCard({
   request,
   command,
-  bar = false
+  bar = false,
+  onDismiss
 }: {
-  request: PermissionRequest
+  request: PermissionRequest | ToolPart
   command: string
   bar?: boolean
+  onDismiss?: () => void
 }): React.JSX.Element {
   const t = useT()
   const grant = useTasks((s) => s.deleteGrant)
@@ -33,6 +35,7 @@ export function DeletePermissionCard({
     setError(null)
     try {
       if (enable) await enableDeleteAndRetry(request)
+      else if ('type' in request) onDismiss?.()
       else await replyPermission(request.id, 'reject')
     } catch (err) {
       const message = errorMessage(err)
