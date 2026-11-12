@@ -77,7 +77,7 @@ export interface PdfApplyReport {
   /** Excel: celdas cuyo texto traducido es más largo que el ancho de su columna (no se cambian los anchos para no alterar el diseño). */
   cutOff?: number
 }
-export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string } | { ok: false; reason: PdfFailReason }
+export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string; viewPath?: string } | { ok: false; reason: PdfFailReason }
 
 /** Versión LIMPIA: un PDF nuevo armado desde cero (HTML) con el texto traducido, para hojas escaneadas. */
 export type PdfCleanRequest = { jobId: string; html: string }

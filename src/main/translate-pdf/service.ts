@@ -5,7 +5,7 @@
  *
  * Seguridad: el PDF llega como bytes (nunca una ruta del renderer); se guarda en una carpeta propia por trabajo
  * (`userData/translate-jobs/<id>/`, id aleatorio validado), Python corre sin red conocida ni variables del usuario, con tope de
- * tiempo y de salida, y el resultado solo sale por «Abrir» (archivo de esa carpeta) o «Guardar como…» (diálogo nativo).
+ * tiempo y de salida. «Ver» usa una copia temporal en la carpeta de documentos del Chat; «Abrir» y «Guardar como…» usan el trabajo.
  */
 import { app, dialog, shell, type BrowserWindow } from 'electron'
 import { execFile } from 'node:child_process'
@@ -36,6 +36,7 @@ import {
   type TranslateKind
 } from '@shared/translate-pdf'
 import { renderHtmlToPdf } from '../extras/artifact-window'
+import { chatDocsRoot } from '../extras/chat-docs'
 import { bundledPythonEnv } from '../tasks/python-runtime'
 import { unpacked } from '../util/asar'
 
@@ -54,6 +55,7 @@ export interface RunResult {
 
 export interface ServiceDeps {
   jobsDir: () => string
+  chatDocsDir: () => string
   python: () => string | null
   script: (kind: TranslateKind) => string
   run: (python: string, args: string[], cwd: string) => Promise<RunResult>
@@ -103,6 +105,7 @@ export function runPythonReal(python: string, args: string[], cwd: string): Prom
 
 const realDeps: ServiceDeps = {
   jobsDir: () => join(app.getPath('userData'), 'translate-jobs'),
+  chatDocsDir: chatDocsRoot,
   python: () => bundledPythonEnv().LAZUNOX_PYTHON ?? null,
   script: defaultScript,
   run: runPythonReal,
@@ -146,7 +149,10 @@ export class PdfTranslateService {
     for (const n of names) {
       const dir = join(root, n)
       const m = PDF_JOB_ID_RE.test(n) ? await this.meta(dir) : null
-      if (!m || this.d.now() - m.createdAt > JOB_TTL_MS) await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+      if (!m || this.d.now() - m.createdAt > JOB_TTL_MS) {
+        await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+        if (PDF_JOB_ID_RE.test(n)) await this.discardPreview(n)
+      }
     }
   }
 
@@ -274,7 +280,21 @@ export class PdfTranslateService {
       const outName = translatedName(meta.name, req.target, kind)
       await copyFile(join(dir, `salida.${kind}`), join(dir, outName))
       await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, outName } satisfies JobMeta), { mode: 0o600 })
-      return { ok: true, report, outName }
+      let viewPath: string | undefined
+      if (kind === 'pdf') {
+        try {
+          // Copia propia de Chat: conserva el ámbito y la revalidación del visor, sin autorizar userData.
+          // Se elimina junto al trabajo al caducar o descartarse.
+          const previewDir = join(this.d.chatDocsDir(), `translate-${req.jobId}`)
+          await mkdir(previewDir, { recursive: true, mode: 0o700 })
+          const previewPath = join(previewDir, outName)
+          await copyFile(join(dir, outName), previewPath)
+          viewPath = previewPath
+        } catch {
+          // Una vista previa fallida no invalida el resultado que aún se puede abrir o guardar.
+        }
+      }
+      return { ok: true, report, outName, ...(viewPath ? { viewPath } : {}) }
     } catch {
       return { ok: false, reason: 'failed' }
     }
@@ -337,7 +357,14 @@ export class PdfTranslateService {
 
   async discard(jobId: string): Promise<void> {
     const dir = this.jobDir(jobId)
-    if (dir) await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+    if (dir) {
+      await rm(dir, { recursive: true, force: true }).catch(() => undefined)
+      await this.discardPreview(jobId)
+    }
+  }
+
+  private async discardPreview(jobId: string): Promise<void> {
+    await rm(join(this.d.chatDocsDir(), `translate-${jobId}`), { recursive: true, force: true }).catch(() => undefined)
   }
 }
 

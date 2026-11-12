@@ -4233,3 +4233,10 @@ Incluye F8-B248 a F8-B260 (revisión en la tarjeta del archivo, vista del docume
 - **Cambio.** `docViewer` queda disponible en macOS y Windows por la presencia de ventana nativa. En Windows no depende de `tasksWin`; Chat y Código pueden mostrar documentos aunque Overdrive esté desactivado. La PWA y plataformas sin visor nativo siguen sin esta capacidad.
 - **Paridad.** P04 documenta la independencia de `tasksWin`. Las pruebas de capacidades y de paridad fijan el visor de Windows encendido con `tasksWin` ausente o apagado.
 - **Pruebas.** `platform-caps.test.ts` y `windows-parity.test.ts`; typecheck. En Windows se comprueba con esas pruebas y manualmente al abrir un documento desde Chat y Código con Overdrive desactivado.
+
+## F8-B269 — «Ver» el PDF traducido dentro del Chat (E1)
+
+- **Cambio.** La tarjeta de resultado de «Traducir un PDF» añade «Ver» y conserva «Abrir» y «Guardar como…». Usa `viewChatFile` y el panel de `useChatDocPanel`; sin `docViewer` conserva las acciones anteriores. Reutiliza los textos de español e inglés existentes.
+- **Archivo.** Main crea una copia del PDF en la carpeta temporal de documentos del Chat y devuelve su ruta en la respuesta existente de `translate:pdfApply`. «Ver» pide `extras:chatFile:info` y el panel usa `extras:chatFile:viewNative`, con las validaciones habituales, sin ampliar carpetas permitidas ni modificar el visor o Tareas. La copia se elimina al descartar o caducar el trabajo; si no se puede crear, abrir y guardar siguen disponibles.
+- **Mac y Windows.** Mismo flujo, probado en el componente con `darwin` y `win32`, rutas de cada plataforma y Tareas apagadas. La comprobación visual con Electron queda pendiente; no se abrió la app.
+- **Pruebas.** `TranslateJobs.render.test.tsx`, `translate.test.ts`, `jobs.test.ts`, `service.test.ts`, `escaneo.python.test.ts` y `xlsx.python.test.ts` (archivos exactos de las carpetas afectadas); `npm run typecheck`. Resultado detallado en el informe E1 solicitado por el dueño.

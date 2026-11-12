@@ -37,6 +37,16 @@ const opts = (signal = new AbortController().signal, onProgress: (p: TranslatePr
 })
 
 describe('translatePdf', () => {
+  it('conserva la ruta de vista previa que entrega main', async () => {
+    const deps = makeDeps()
+    const apply = deps.apply
+    deps.apply = async (req) => {
+      const res = await apply(req)
+      return res.ok ? { ...res, viewPath: '/temp/chat-docs/traducido.pdf' } : res
+    }
+    expect(await translatePdf(deps, opts())).toHaveProperty('viewPath', '/temp/chat-docs/traducido.pdf')
+  })
+
   it('traduce por lotes, aplica y devuelve el resultado con el progreso', async () => {
     const deps = makeDeps()
     const seen: string[] = []

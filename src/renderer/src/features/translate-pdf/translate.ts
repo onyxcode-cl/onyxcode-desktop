@@ -54,6 +54,8 @@ export interface TranslateDeps {
 export interface TranslateOutcome {
   jobId: string
   outName: string
+  /** Copia temporal del PDF para el visor del Chat (main vuelve a validar su ruta). */
+  viewPath?: string
   report: PdfApplyReport
   pages: number
   kind?: TranslateKind
@@ -313,6 +315,7 @@ export async function translatePdf(
     return {
       jobId,
       outName: res.outName,
+      ...(res.viewPath ? { viewPath: res.viewPath } : {}),
       report: res.report,
       pages: ex.pages,
       kind: opts.kind,
