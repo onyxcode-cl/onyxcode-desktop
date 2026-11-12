@@ -4,6 +4,30 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.22] - 2026-11-12
+
+### Documentos en el modo Código
+
+- **Los documentos que crea el modo Código ahora se pueden ver ahí mismo.** La tarjeta del Word, Excel, PowerPoint o PDF tiene «Ver», que lo abre en el mismo panel que usa el Chat, además de «Abrir» y «Mostrar en la carpeta». Aparece apenas el documento está listo, sin esperar a que termine la respuesta.
+- **En Windows, el panel de documentos funciona aunque Overdrive esté apagado.**
+
+### Documentos en el Chat y en Tareas
+
+- **El PDF traducido se puede ver dentro de la app**, sin tener que abrirlo en otro programa.
+- **Las planillas guardan el resultado de cada fórmula.** Así los totales se ven en la vista rápida, en el correo o en el teléfono, y no solo al abrir el archivo en Excel.
+- **Renombrar o mover un archivo ya no cambia su contenido.** Antes, al renombrar se reescribía el archivo y podía quedar distinto del original; ahora es un renombrado real, también con fotos y otros archivos que no son texto.
+- **«Pásame esto a otro idioma» o «resúmeme esto» ya no pisa tu archivo.** El resultado queda en un archivo nuevo junto al original.
+
+### Permisos en Tareas
+
+- **La tarjeta para permitir borrar ya no queda colgada** cuando el trabajo siguió por otro camino y terminó bien, y no aparece por una operación que sí funcionó.
+
+### Otros arreglos
+
+- **El modelo sabe cuándo un comando falló**, porque ahora ve su código de salida, y los mensajes de error le dicen cómo corregir en vez de solo fallar.
+- **Abrir un Word o un Excel con la herramienta equivocada ya no deja al modelo sin salida:** el mensaje le indica qué usar.
+- **Menos pasos de trámite en Tareas:** la lista de pasos se usa solo en trabajos con varias etapas, y los borradores quedan en la carpeta de trabajo en vez de junto a tu archivo final.
+
 ## [1.8.21] - 2026-11-12
 
 ### Entiende mejor lo que le pides
