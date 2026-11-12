@@ -4,6 +4,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.21] - 2026-11-12
+
+### Entiende mejor lo que le pides
+
+- **Cuando dices «esto» sin adjuntar nada, el modelo mira primero la carpeta de la tarea** en vez de preguntarte a qué te refieres o inventar. Ve cuántos archivos hay y sus nombres, y sabe cuándo la lista está incompleta.
+- **Pedidos cortos del día a día salen bien más veces.** En nuestras pruebas con pedidos escritos como los haría cualquier persona («ordéname las notas», «¿cuál de estos archivos es el más pesado?»), los aciertos subieron de 75 % a 88 % con el mismo modelo, gastando menos.
+
+### Permisos en Tareas
+
+- **«Permitir» para borrar ahora sí alcanza.** Cuando una tarea aislada necesita borrar y la carpeta no lo permite, la tarjeta ofrece activar el permiso real de la carpeta y reintentar, en vez de aprobar algo que igual fallaba.
+- **Aviso cuando el aislamiento impide algo.** Si la jaula bloquea una acción, tú y el modelo lo ven con claridad, en vez de un error sin explicación.
+
+### Otros arreglos
+
+- **El panel de vista previa ya no queda en blanco y mudo.** Si un documento no alcanza a mostrarse, a los pocos segundos aparece un aviso con un botón para abrirlo de otra forma. En Windows la causa de fondo sigue en estudio.
+
 ## [1.8.20] - 2026-11-11
 
 ### Corrección de seguridad en Tareas
