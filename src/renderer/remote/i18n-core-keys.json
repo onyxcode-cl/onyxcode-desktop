@@ -2374,6 +2374,7 @@
  "tasksComputer.action.typing",
  "tasksComputer.action.typingText",
  "tasksComputer.action.waiting",
+ "tasksComputer.delete.changed",
  "tasksComputer.dir.down",
  "tasksComputer.dir.left",
  "tasksComputer.dir.right",

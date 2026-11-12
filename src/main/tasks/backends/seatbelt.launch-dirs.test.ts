@@ -19,7 +19,7 @@ vi.mock('./spawn', () => ({
     state.env = env
     state.args = a
     state.spawns++
-    return { pid: 1 }
+    return { pid: 1, once: () => undefined }
   }
 }))
 

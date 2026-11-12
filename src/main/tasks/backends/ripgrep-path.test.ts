@@ -13,7 +13,7 @@ vi.mock('electron', () => ({ app: { isPackaged: false, getAppPath: () => state.a
 vi.mock('./spawn', () => ({
   spawnOnHost: (_c: string, _a: string[], _f: string, env: Record<string, string>) => {
     state.env = env
-    return { pid: 1 }
+    return { pid: 1, once: () => undefined }
   }
 }))
 vi.mock('../models-cache', () => ({ seedConfigModels: () => null }))
