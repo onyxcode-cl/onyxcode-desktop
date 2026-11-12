@@ -70,3 +70,10 @@ describe('adjuntos en borradores (R3-A)', () => {
     expect(getDraft('code:/p:ses_10', '')).toBe('otra')
   })
 })
+
+it('cuenta también el original de PowerPoint en el presupuesto de los borradores', () => {
+  clearDrafts()
+  setDraft('chat-att:pptx', [{ url: 'texto', originalPptx: 'original' }])
+  expect(draftAttachmentBytes()).toBe(13)
+  clearDrafts()
+})

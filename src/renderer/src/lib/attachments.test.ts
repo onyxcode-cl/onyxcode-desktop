@@ -161,3 +161,15 @@ describe('documentos de oficina', () => {
     expect(officeCardLabel({ family: 'document', unit: 'pages', units: null, truncated: false, notes: [] })).toBe('documento de texto')
   })
 })
+
+it.each([
+  ['docx', 'originalDocx'],
+  ['xlsx', 'originalXlsx'],
+  ['pptx', 'originalPptx']
+])('conserva los bytes originales de %s separados del texto y los cuenta para el límite total', async (ext, field) => {
+  callMock.resolve({ ok: true, text: 'Texto', family: 'document', units: 1, unit: 'pages', truncated: false, notes: [] })
+  const att = await toChatAttachment(new File([new Uint8Array([80, 75, 3, 4])], `original.${ext}`))
+  expect(att[field as keyof typeof att]).toBe('UEsDBA==')
+  expect(att.url).toBe(textToDataUrl('Texto'))
+  expect(attachmentBytes(att)).toBe(4)
+})

@@ -101,6 +101,11 @@ export const chat = {
   'chat.newConversation': 'New conversation',
   'chat.composer.attach': 'Attach files',
   'chat.composer.attachSoon': 'Attach files (coming soon)',
+  'chat.overdrive.action': 'Do this in Overdrive',
+  'chat.overdrive.note': 'Prepare a new task with a copy of the file and your request as a draft. You decide when to send it.',
+  'chat.overdrive.preparing': 'Preparing the task…',
+  'chat.overdrive.unavailable': 'Overdrive is unavailable. Your request and attachments are still in Chat.',
+  'chat.overdrive.invalid': 'Could not copy the attachment: it must be a valid Word, Excel or PowerPoint file within the Chat limits.',
   'chat.attach.defaultName': 'file',
   'chat.attach.errType':
     '"{name}" cannot be attached: only images (PNG, JPG, GIF, WebP), PDFs, office documents (Word, Excel, PowerPoint, OpenDocument, RTF) and text files.',
@@ -184,10 +189,12 @@ export const chat = {
   'translate.pdf.doneOverflow': "{n} texts don't fit even with smaller type: check those parts.",
   'translate.pdf.doneUntranslated': '{n} texts stayed in the original language.',
   'translate.pdf.doneNoText': 'Pages without text (they are images) left as they were: {pages}.',
-  'translate.pdf.doneCutOff': '{n} cells now hold text longer than their column (column widths were not changed so the layout stays intact): please review them.',
+  'translate.pdf.doneCutOff':
+    '{n} cells now hold text longer than their column (column widths were not changed so the layout stays intact): please review them.',
   'translate.pdf.doneLinks': '{n} links could not be kept.',
   'translate.pdf.cleaning': 'Building the clean version… page {done} of {total}',
-  'translate.pdf.cleanNote': 'A clean version was also created, “{name}”: a new PDF with the translated text and without the original scan (it used more of the model).',
+  'translate.pdf.cleanNote':
+    'A clean version was also created, “{name}”: a new PDF with the translated text and without the original scan (it used more of the model).',
   'translate.pdf.openClean': 'Open clean version',
   'translate.pdf.saveClean': 'Save clean version…',
   'translate.pdf.job.title': 'Translation of “{name}” into {lang}',

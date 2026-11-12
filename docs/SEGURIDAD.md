@@ -2998,3 +2998,13 @@ Landlock, IPC, la validación real de carpetas y las restricciones de rutas prot
 Un comando opaco cuyo resultado no identifica la eliminación no se puede clasificar universalmente desde la app.
 Para cubrirlo sin heurísticas el motor tendría que emitir un fallo estructurado con operación, ruta, sesión y llamada;
 confirmar además que procede del aislamiento requiere evidencia de la plataforma. No se modifica el motor en esta tarea.
+
+### Adjuntos del Chat preparados en Overdrive (F8-B271)
+
+`tasks:chatOffice:prepare` es un canal exclusivo del escritorio, con contrato tipado, esquema estricto y guard habitual de emisor/rol. Solo la ventana principal lo invoca a través del builder existente de `window.api.tasks`; la política remota le asigna **X** explícitamente. No recibe carpeta ni rutas de origen/destino, ni opciones de permisos: recibe entre 1 y 5 pares nombre/base64 para `.docx`, `.xlsx` o `.pptx`.
+
+Main valida todo el lote antes de crear una carpeta: 10 MB por archivo y 15 MB por lote (límites compartidos con adjuntos del Chat), base64 canónico, firma ZIP local y presencia de `[Content_Types].xml` y de la parte principal correspondiente (`word/document.xml`, `xl/workbook.xml` o `ppt/presentation.xml`). La inspección acota el número de entradas con el lector ZIP existente y no descomprime el contenido para copiarlo. Es una comprobación de formato, no una certificación del contenido ni una revisión exhaustiva de OOXML. Se rechazan separadores de ruta y controles en el nombre; se sanea el nombre para Windows, incluidos nombres de dispositivo y ADS, y se limita su longitud.
+
+La carpeta es siempre nueva, creada/aprobada por `createChatFolder` con sus puertas de plataforma y política actuales (Mac y Windows); se revalida con `assertInsideApproved`. La copia usa `writeNewFile` y su escritura segura sin sobrescritura. Los bytes originales no se modifican ni se envían al modelo. La preparación conecta con `fullAccess: false`, exige conexión lista y aislada, y solo entonces abre el borrador de Tareas. No envía el pedido, no aplica Automático ni hereda Control total. La oferta consulta capacidades, modo unificado efectivo y estado del entorno aislado; se vuelve a comprobar al pulsar. El servidor conserva sus propias puertas de arranque.
+
+Si la copia o conexión falla, el Chat conserva el pedido y los adjuntos y muestra el error. Una copia ya escrita puede quedar en la carpeta nueva si falla un paso posterior; no se borra recursivamente ni se anuncia éxito. La persona puede reintentar, lo que crea otra carpeta. No se modifica el perfil del aislamiento, la aprobación de planes ni las políticas de carpetas o del celular.

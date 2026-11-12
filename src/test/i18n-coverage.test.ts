@@ -100,6 +100,8 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/compare/model.ts',
   'src/renderer/src/features/compare/store.ts',
   'src/renderer/src/features/chat/ChatComposer.tsx',
+  'src/renderer/src/features/chat/office-overdrive.ts',
+  'src/renderer/src/features/tasks/impl/chat-office.ts',
   'src/renderer/src/features/chat/ChatMessageList.tsx',
   'src/renderer/src/features/chat/ChatSessionList.tsx',
   'src/renderer/src/features/chat/ChatSidebar.tsx',

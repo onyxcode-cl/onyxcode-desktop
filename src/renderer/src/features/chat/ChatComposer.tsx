@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { fitTextarea, isSubmitKey, useAutosizeTextarea } from '../../lib/textarea'
 import { ArrowUp, FileText, Languages, Paperclip, Presentation, Sheet, Square, X } from 'lucide-react'
 import { useT } from '../../lib/i18n'
@@ -23,6 +23,7 @@ import {
 import { handlePaste } from '../../lib/paste-attachments'
 import { VoiceDictationButton } from '../../components/VoiceDictationButton'
 import { markFirstStepDone } from '../../stores/first-steps'
+import { chatOfficeAvailable, officeEditFiles } from './office-overdrive'
 
 const NO_ATTACHMENTS: ChatAttachment[] = []
 
@@ -97,6 +98,22 @@ export function ChatComposer({
   // F8-B32: el borrador vive por conversación en un almacén externo; sobrevive a cambiar de modo.
   const [text, setText] = useDraft(`chat:${autoFocusKey ?? 'new'}`, '')
   const [attachments, setAttachments] = useDraft(`chat-att:${autoFocusKey ?? 'new'}`, NO_ATTACHMENTS)
+  const officeFiles = useMemo(() => officeEditFiles(text, attachments), [text, attachments])
+  const [officeReady, setOfficeReady] = useState(false)
+  const [officeBusy, setOfficeBusy] = useState(false)
+  const officeLock = useRef(false)
+  const hasOfficeFiles = officeFiles !== null
+  useEffect(() => {
+    let active = true
+    setOfficeReady(false)
+    if (hasOfficeFiles && !mobile)
+      void chatOfficeAvailable().then((ready) => {
+        if (active) setOfficeReady(ready)
+      })
+    return () => {
+      active = false
+    }
+  }, [hasOfficeFiles, mobile])
   const [attachError, setAttachError] = useState<string | null>(null)
   /** Tarjeta «¿traducir este PDF sin cambiar el diseño?»: aparece al enviar un PDF con una petición de traducir. */
   const [offer, setOffer] = useState<{ intent: TranslateIntent; model: string | null } | null>(null)
@@ -146,7 +163,7 @@ export function ChatComposer({
 
   // Si la persona cambia el mensaje o los adjuntos, la oferta de traducir ya no corresponde.
   useEffect(() => setOffer(null), [text, attachments])
-  const canSend = !disabled && !busy && (text.trim().length > 0 || attachments.length > 0)
+  const canSend = !disabled && !busy && !officeBusy && (text.trim().length > 0 || attachments.length > 0)
 
   /** Inserta el texto dictado en la posición del cursor (o al final si no hay foco en el textarea). */
   const insertDictated = (dictated: string): void => {
@@ -236,6 +253,23 @@ export function ChatComposer({
     setAttachments([])
   }
 
+  const acceptOffice = async (): Promise<void> => {
+    if (!officeFiles || !officeReady || officeLock.current || disabled || busy) return
+    officeLock.current = true
+    setOfficeBusy(true)
+    setAttachError(null)
+    try {
+      const { prepareOfficeTask } = await import('../tasks/impl/chat-office')
+      await prepareOfficeTask(text.trim(), officeFiles)
+      // El borrador del Chat se conserva también al completar: volver atrás nunca pierde el original.
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : t('chat.overdrive.unavailable'))
+    } finally {
+      officeLock.current = false
+      setOfficeBusy(false)
+    }
+  }
+
   return (
     <div
       className={
@@ -274,6 +308,20 @@ export function ChatComposer({
           }
         }}
       >
+        {officeFiles && officeReady && !offer && (
+          <div data-testid="office-overdrive-offer" className="mx-2 mt-2 rounded-ctl border border-border bg-hover/60 p-3">
+            <p className="text-ui text-muted">{t('chat.overdrive.note')}</p>
+            <button
+              type="button"
+              data-testid="office-overdrive-yes"
+              disabled={disabled || busy || officeBusy}
+              onClick={() => void acceptOffice()}
+              className="no-drag mt-2 rounded-ctl bg-accent px-3.5 py-1.5 text-ui font-medium text-accent-fg disabled:opacity-40"
+            >
+              {t(officeBusy ? 'chat.overdrive.preparing' : 'chat.overdrive.action')}
+            </button>
+          </div>
+        )}
         {offer && attachments[offer.intent.fileIndex] && (
           <div
             role="group"

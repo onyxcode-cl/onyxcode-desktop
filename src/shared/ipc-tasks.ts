@@ -1155,6 +1155,11 @@ export interface TasksInvokeContract {
    * .sh, .pkg… o con bit de ejecución): para esos solo `tasks:reveal`.
    */
   'tasks:openPath': { req: { path: string }; res: void }
+  /** Solo escritorio: valida originales Office y crea una carpeta propia NUEVA; no arranca ni envía una tarea. */
+  'tasks:chatOffice:prepare': {
+    req: { files: import('./attach-office').OfficeExtractRequest[] }
+    res: { folder: TasksFolder; files: TasksDeliverable[] }
+  }
   /**
    * Abre un diálogo nativo para elegir archivos y los COPIA a la carpeta autorizada
    * (sin sobrescribir: añade " (2)"…). Devuelve los archivos copiados ([] si se cancela).
@@ -1592,6 +1597,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:deliverables',
   'tasks:reveal',
   'tasks:openPath',
+  'tasks:chatOffice:prepare',
   'tasks:importFiles',
   'tasks:pasteFromClipboard',
   'tasks:previewFile',
