@@ -14,6 +14,9 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Documentos en el Chat y en Tareas
 
 - **El PDF traducido se puede ver dentro de la app**, sin tener que abrirlo en otro programa.
+- **Los PDF se abren a buen tamaño en el panel**, en modo lectura y ajustados al ancho, sin la barra de herramientas tapándolos.
+- **Editar un Word, Excel o PowerPoint adjunto en el Chat ya no lo rehace desde cero.** Aparece el botón «Hacer esto en Overdrive», que prepara una tarea con una copia del archivo y tu pedido listo para enviar; el original no se toca y el formato se conserva.
+- **En Overdrive, traducir o resumir un archivo entrega un archivo nuevo** junto al original, no solo el texto en la conversación.
 - **Las planillas guardan el resultado de cada fórmula.** Así los totales se ven en la vista rápida, en el correo o en el teléfono, y no solo al abrir el archivo en Excel.
 - **Renombrar o mover un archivo ya no cambia su contenido.** Antes, al renombrar se reescribía el archivo y podía quedar distinto del original; ahora es un renombrado real, también con fotos y otros archivos que no son texto.
 - **«Pásame esto a otro idioma» o «resúmeme esto» ya no pisa tu archivo.** El resultado queda en un archivo nuevo junto al original.
