@@ -210,6 +210,7 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect(parsed.relayPorts).toEqual([4096, 52000, 52001])
     expect(parsed.env.OPENCODE_AUTH_CONTENT).toContain('sandboxed-placeholder-')
     expect(parsed.env.XDG_DATA_HOME).toBeUndefined()
+    expect(parsed.env.LAZUNOX_PYTHON).toBe('/usr/bin/python3')
     expect(parsed.cwd).toBe('/win/c/lazunox/tareas/a')
 
     // salida a un puerto permitido y a uno no permitido
@@ -220,6 +221,20 @@ describe('WslBackend con wsl.exe simulado', () => {
     expect(proc.frames.filter((f) => f.type === FrameType.ERROR).map((f) => decodeError(f.data).code)).toEqual(['port_denied'])
     await l.dispose()
   })
+
+  it.each(['baseEnv', 'proxyEnv', 'extraEnv'] as const)(
+    'launch: sustituye el Python anfitrión desde %s en la trama enviada',
+    async (source) => {
+      const t = deps()
+      const spec = launchSpec()
+      spec[source] = { ...spec[source], LAZUNOX_PYTHON: 'C:\\app\\python.exe' }
+      const l = await createWslBackend(t.d).launch(spec)
+      await flush()
+      const init = JSON.parse(t.spawned[0]!.proc.frames[0]!.data.toString('utf8'))
+      expect(init.env.LAZUNOX_PYTHON).toBe('/usr/bin/python3')
+      await l.dispose()
+    }
+  )
 
   it('launch: traducción de rutas con los montajes y rechazo de lo demás', async () => {
     const t = deps()

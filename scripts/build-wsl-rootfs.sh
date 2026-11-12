@@ -17,7 +17,7 @@
 set -euo pipefail
 export LC_ALL=C TZ=UTC
 
-ROOTFS_VERSION="${LAZUNOX_ROOTFS_VERSION:-2026.10.10}"
+ROOTFS_VERSION="${LAZUNOX_ROOTFS_VERSION:-2026.11.12}"
 SNAPSHOT="${LAZUNOX_SNAPSHOT:-20261001T000000Z}"
 SUITE=trixie
 ARCH=amd64
@@ -54,7 +54,7 @@ SOURCE_DATE_EPOCH="$(date -u -d "$SNAP_ISO" +%s)"
 export SOURCE_DATE_EPOCH LAZUNOX_ROOTFS_VERSION="$ROOTFS_VERSION" LAZUNOX_SNAPSHOT="$SNAPSHOT"
 BUILT_AT="$(date -u -d "@$SOURCE_DATE_EPOCH" +%F)"
 
-for f in "$REPO/resources/wsl/wsl.conf" "$REPO/resources/wsl/rootfs/lazunox-install" "$HERE/wsl-rootfs/packages.txt" "$HERE/wsl-rootfs/customize.sh" "$HERE/wsl-rootfs/pip-requirements.txt"; do
+for f in "$REPO/resources/wsl/wsl.conf" "$REPO/resources/wsl/rootfs/lazunox-install" "$HERE/wsl-rootfs/packages.txt" "$HERE/wsl-rootfs/customize.sh" "$HERE/wsl-rootfs/pip-requirements.txt" "$REPO/resources/python-bin/requirements.txt" "$HERE/verify-office-python.py"; do
   [ -f "$f" ] || { echo "falta $f" >&2; exit 1; }
 done
 

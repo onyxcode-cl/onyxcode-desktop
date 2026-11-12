@@ -1,6 +1,7 @@
 """Pruebas de translate_pdf.py (traducir sin cambiar el diseño). Ejecutar: python -m unittest tests/test_translate.py
 Necesita PyMuPDF; si no está instalado se omiten."""
 import json
+import hashlib
 import os
 import subprocess
 import sys
@@ -69,6 +70,46 @@ class TestTraducir(unittest.TestCase):
         p = subprocess.run([sys.executable, os.path.join(SC, "translate_pdf.py"), "aplicar", self.src, "-t", seg, "-o", self.src],
                            capture_output=True, text=True)
         self.assertNotEqual(p.returncode, 0)
+
+    def test_dos_paginas_imagenes_y_original_intacto(self):
+        src = os.path.join(self.d, "diseno.pdf")
+        doc = fitz.open()
+        image = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 4, 4), False)
+        image.clear_with(128)
+        for width, height in [(612, 792), (595, 842)]:
+            page = doc.new_page(width=width, height=height)
+            page.insert_text((87, 100), "Hola mundo", fontsize=12)
+            page.draw_rect(fitz.Rect(87, 200, 200, 240), color=(1, 0, 0))
+            page.insert_image(fitz.Rect(300, 200, 340, 240), pixmap=image)
+        doc.save(src)
+        doc.close()
+        with open(src, "rb") as f:
+            original = hashlib.sha256(f.read()).hexdigest()
+        segments = src + ".json"
+        run("extraer", src, "-o", segments)
+        with open(segments, encoding="utf-8") as f:
+            datos = json.load(f)["segmentos"]
+        translations = src + ".tr.json"
+        with open(translations, "w", encoding="utf-8") as f:
+            json.dump({s["id"]: "Hello world" for s in datos}, f)
+        out = src + ".out.pdf"
+        run("aplicar", src, "-t", translations, "-o", out)
+        with open(src, "rb") as f:
+            self.assertEqual(hashlib.sha256(f.read()).hexdigest(), original)
+        with open(out, "rb") as f:
+            self.assertNotEqual(hashlib.sha256(f.read()).hexdigest(), original)
+        with fitz.open(src) as before, fitz.open(out) as after:
+            self.assertEqual(len(after), len(before))
+            for a, b in zip(before, after):
+                self.assertEqual(a.rect, b.rect)
+                self.assertIn("Hello world", b.get_text())
+                self.assertNotIn("Hola mundo", b.get_text())
+                self.assertAlmostEqual(b.search_for("Hello world")[0].x0, 87, delta=2)
+                self.assertTrue(any(d["rect"] == fitz.Rect(87, 200, 200, 240) and d["color"] == (1, 0, 0)
+                                    for d in b.get_drawings()))
+                self.assertEqual(len(a.get_images()), len(b.get_images()))
+                self.assertEqual(before.extract_image(a.get_images()[0][0])["image"],
+                                 after.extract_image(b.get_images()[0][0])["image"])
 
     def test_pdf_sin_texto_avisa(self):
         vacio = os.path.join(self.d, "vacio.pdf")

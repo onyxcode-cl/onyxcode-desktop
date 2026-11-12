@@ -318,6 +318,7 @@ describe('trama inicial', () => {
     )
     expect(Object.keys(init.env).sort()).toEqual([
       'HTTP_PROXY',
+      'LAZUNOX_PYTHON',
       'LAZUNOX_TASKS_FOLDER',
       'NO_PROXY',
       'OPENCODE_CONFIG_DIR',
@@ -327,6 +328,19 @@ describe('trama inicial', () => {
     ])
     expect(init.env.LAZUNOX_TASKS_FOLDER).toBe('/win/c/lazunox/tareas/a')
     expect(JSON.stringify(init)).not.toContain('C:\\\\Users\\\\Ben\\\\x')
+  })
+  it.each([undefined, 'C:\\app\\python.exe', '/tmp/python3'])('Python de la imagen, incluso con valor anfitrión %s', (python) => {
+    const env = {
+      ...base().env,
+      PYTHONHOME: '/tmp/otro-python',
+      PYTHONPATH: '/tmp/modulos',
+      ...(python === undefined ? {} : { LAZUNOX_PYTHON: python })
+    }
+    const { init, frame } = buildWslInit(base({ env }))
+    expect(init.env.LAZUNOX_PYTHON).toBe('/usr/bin/python3')
+    expect(frame.toString('utf8')).toContain('"LAZUNOX_PYTHON":"/usr/bin/python3"')
+    expect(init.env.PYTHONHOME).toBeUndefined()
+    expect(init.env.PYTHONPATH).toBeUndefined()
   })
 })
 

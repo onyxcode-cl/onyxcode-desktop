@@ -35,6 +35,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export const PY_DIR = join(ROOT, 'resources', 'python-bin')
 export const PIN_PATH = join(PY_DIR, 'pin.json')
 export const REQUIREMENTS_PATH = join(PY_DIR, 'requirements.txt')
+/** Los bundles solicitados usan un wheel exacto por paquete; x64 de Mac conserva su receta existente. */
+export const wheelRequirementsPath = (arch, platform = process.platform) =>
+  platform === 'darwin' && arch === 'x64' ? REQUIREMENTS_PATH : join(PY_DIR, `requirements-${pinKey(arch, platform)}.txt`)
 export const SEAL_NAME = '.lazunox-python'
 export const ARCHS = ['arm64', 'x64']
 export const PLATFORMS = ['darwin', 'win32']
@@ -261,8 +264,16 @@ function readSeal(pyRoot) {
 /** ¿Los requisitos traen hashes (`--hash=sha256:…`)? Entonces pip debe instalar con `--require-hashes`. */
 export const hasHashes = (requirementsText) => /--hash=sha256:[0-9a-f]{64}/.test(requirementsText)
 
-export function expectedSeal(pin, arch, requirementsText) {
-  return { python: pin.python, release: pin.release, arch, requirementsSha256: sha256Text(parseRequirements(requirementsText).join('\n')) }
+export function expectedSeal(pin, arch, requirementsText, wheelRequirementsText = '') {
+  return {
+    python: pin.python,
+    release: pin.release,
+    arch,
+    requirementsSha256: sha256Text(
+      parseRequirements(requirementsText).join('\n') +
+        (wheelRequirementsText ? '\n' + parseRequirements(wheelRequirementsText).join('\n') : '')
+    )
+  }
 }
 
 const sealMatches = (seal, want) => !!seal && ['python', 'release', 'arch', 'requirementsSha256'].every((k) => seal[k] === want[k])
@@ -274,13 +285,15 @@ export async function fetchPython({
   base = PY_DIR,
   ifMissing = false,
   log = console.log,
-  requirementsPath = REQUIREMENTS_PATH,
+  requirementsPath,
   platform = process.platform
 } = {}) {
   pin ??= readPin()
   const asset = assetFor(pin, arch, platform)
+  requirementsPath ??= wheelRequirementsPath(arch, platform)
   const requirementsText = readFileSync(requirementsPath, 'utf8')
-  const want = expectedSeal(pin, arch, requirementsText)
+  const canonicalText = readFileSync(REQUIREMENTS_PATH, 'utf8')
+  const want = expectedSeal(pin, arch, canonicalText, requirementsText)
   const win = platform === 'win32'
   const dest = pythonDir(arch, base, platform)
   if (ifMissing && existsSync(pythonBin(arch, base, platform)) && sealMatches(readSeal(dest), want)) {
@@ -313,8 +326,9 @@ export async function fetchPython({
     mkdirSync(home)
     log('[fetch-python] instalando librerías de oficina…')
     const env = pyEnv(home, platform)
-    const pipArgs = ['-I', '-m', 'pip', 'install', '--no-compile', '--only-binary=:all:', '--no-cache-dir']
-    if (hasHashes(requirementsText)) pipArgs.push('--require-hashes')
+    const pipArgs = ['-I', '-m', 'pip', 'install', '--no-compile', '--only-binary=:all:', '--no-cache-dir', '--no-deps']
+    // Los destinos con lock fallan cerrado aunque se pierdan por error TODOS los hashes del archivo.
+    if (platform === 'win32' || arch === 'arm64' || hasHashes(requirementsText)) pipArgs.push('--require-hashes')
     await run(py, [...pipArgs, '-r', requirementsPath], { cwd: home, env })
     const frozen = (await run(py, ['-I', '-m', 'pip', 'freeze'], { cwd: home, env }))
       .split('\n')
@@ -324,6 +338,17 @@ export async function fetchPython({
     log('[fetch-python] podando lo innecesario…')
     pruneInstall(root, platform)
     const version = await verifyInstall(py, home, platform)
+    await run(
+      py,
+      [
+        '-I',
+        join(ROOT, 'scripts', 'verify-office-python.py'),
+        REQUIREMENTS_PATH,
+        '--site',
+        join(root, win ? 'Lib/site-packages' : 'lib/python3.12/site-packages')
+      ],
+      { cwd: home, env }
+    )
     if (version !== pin.python) throw new Error(`El intérprete dice ser ${version}, el pin es ${pin.python}.`)
     pruneInstall(root, platform) // por si la verificación dejó algún __pycache__
 
