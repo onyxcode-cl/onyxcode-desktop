@@ -98,6 +98,11 @@ export const chat = {
   'chat.newConversation': 'Nueva conversación',
   'chat.composer.attach': 'Adjuntar archivos',
   'chat.composer.attachSoon': 'Adjuntar archivos (próximamente)',
+  'chat.overdrive.action': 'Hacer esto en Overdrive',
+  'chat.overdrive.note': 'Prepara una tarea nueva con una copia del archivo y tu pedido en borrador. Tú decides cuándo enviarlo.',
+  'chat.overdrive.preparing': 'Preparando la tarea…',
+  'chat.overdrive.unavailable': 'Overdrive no está disponible. Tu pedido y tus adjuntos siguen en el Chat.',
+  'chat.overdrive.invalid': 'No se pudo copiar el adjunto: debe ser un Word, Excel o PowerPoint válido dentro de los límites del Chat.',
   'chat.attach.defaultName': 'archivo',
   'chat.attach.errType':
     '«{name}» no se puede adjuntar: solo imágenes (PNG, JPG, GIF, WebP), PDF, documentos de oficina (Word, Excel, PowerPoint, OpenDocument, RTF) y archivos de texto.',
@@ -183,10 +188,12 @@ export const chat = {
   'translate.pdf.doneOverflow': '{n} textos no caben aunque se achicó la letra: revisa esas partes.',
   'translate.pdf.doneUntranslated': '{n} textos quedaron en el idioma original.',
   'translate.pdf.doneNoText': 'Páginas sin texto (son imágenes) que quedan igual: {pages}.',
-  'translate.pdf.doneCutOff': '{n} celdas quedaron con un texto más largo que su columna (no se cambió el ancho para no alterar el diseño): revísalas.',
+  'translate.pdf.doneCutOff':
+    '{n} celdas quedaron con un texto más largo que su columna (no se cambió el ancho para no alterar el diseño): revísalas.',
   'translate.pdf.doneLinks': '{n} enlaces no se pudieron conservar.',
   'translate.pdf.cleaning': 'Armando la versión limpia… página {done} de {total}',
-  'translate.pdf.cleanNote': 'También se creó una versión limpia, «{name}»: un PDF nuevo con el texto traducido y sin la foto del original (gastó más del modelo).',
+  'translate.pdf.cleanNote':
+    'También se creó una versión limpia, «{name}»: un PDF nuevo con el texto traducido y sin la foto del original (gastó más del modelo).',
   'translate.pdf.openClean': 'Abrir versión limpia',
   'translate.pdf.saveClean': 'Guardar versión limpia…',
   'translate.pdf.job.title': 'Traducción de «{name}» a {lang}',

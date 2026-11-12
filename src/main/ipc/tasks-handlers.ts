@@ -17,6 +17,7 @@ import { extrasPrefs } from '../extras/prefs'
 import { settingsStore } from '../store'
 import { TasksManager } from '../tasks/manager'
 import { importFilesInto, previewFile } from '../tasks/files'
+import { prepareChatOffice } from '../tasks/chat-office'
 import { reviewFile } from '../tasks/review-file'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
@@ -182,8 +183,9 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     await tasks.refreshPolicy() // Windows: unidades al día antes de decidir (macOS: sin efecto)
     return tasks.approveFolder(folder)
   })
-  // Modo unificado: carpeta propia del chat cuando la persona no elige una (rechaza sin bandera y en Windows).
+  // Modo unificado: carpeta propia del chat cuando la persona no elige una (ambas plataformas; exige las puertas vigentes).
   handle('tasks:chatFolder:create', () => tasks.createChatFolder())
+  handle('tasks:chatOffice:prepare', (req) => prepareChatOffice(req, tasks))
   // Modo unificado (ola 2b): índice de chats en main (sin bandera: vacío y sin efecto). Clase X: el celular no lo ve.
   handle('tasks:chatIndex:list', () => tasks.listChatIndex())
   handle('tasks:chatIndex:upsert', (req) => tasks.upsertChatIndex(req))

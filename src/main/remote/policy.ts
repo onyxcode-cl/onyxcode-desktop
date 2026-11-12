@@ -362,6 +362,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:deliverables': scoped('R', 'folder'),
   'tasks:reveal': 'X',
   'tasks:openPath': 'X',
+  'tasks:chatOffice:prepare': 'X',
   'tasks:importFiles': 'X',
   'tasks:pasteFromClipboard': 'X',
   'tasks:reviewFile': (p, ctx) => (!inDirs(p.path, scopeIpc(ctx)) ? deny('out-of-scope') : 'R'),

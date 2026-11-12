@@ -15,6 +15,7 @@ import { HELPER_LIMITS, HELPER_NAME_RE } from '@shared/helper-agents'
 import { HOOKS_MAX_FILE_BYTES } from '@shared/user-hooks'
 import { DIAG_SOURCES } from '@shared/diagnostics'
 import { RATING_ID_RE, RATING_LABEL_RE, RATING_VALUES } from '@shared/ratings'
+import { MAX_ATTACHMENTS } from '@shared/attach-classify'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
 import { TRANSLATE_CLEAN_HTML_MAX, TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
 import { PROJECT_LIMITS } from '@shared/project-knowledge'
@@ -934,6 +935,19 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:deliverables': obj({ folder: absPath, since: num({ min: 0 }) }),
   'tasks:reveal': pathReq,
   'tasks:openPath': pathReq,
+  'tasks:chatOffice:prepare': obj({
+    files: (v, path) => {
+      const files = arr(
+        obj({
+          name: str({ min: 1, max: 240, pattern: /^[^\/\\\x00-\x1f]+\.(docx|xlsx|pptx)$/i }),
+          base64: str({ min: 4, max: Math.ceil(OFFICE_MAX_BYTES / 3) * 4, pattern: /^[A-Za-z0-9+/]+={0,2}$/ })
+        }),
+        MAX_ATTACHMENTS
+      )(v, path)
+      if (!files.length) throw new ValidationError('Se necesita al menos un adjunto Office')
+      return files
+    }
+  }),
   'tasks:importFiles': folderReq,
   'tasks:pasteFromClipboard': folderReq,
   'tasks:reviewFile': pathReq,

@@ -37,6 +37,8 @@ export interface ChatAttachment {
   originalDocx?: string
   /** Solo un Excel (.xlsx): sus bytes originales en base64, para ofrecer «traducir sin cambiar el diseño». Nunca se envía al modelo. */
   originalXlsx?: string
+  /** PowerPoint original para preparar una tarea; nunca se envía al modelo. */
+  originalPptx?: string
 }
 
 export {
@@ -79,7 +81,9 @@ export function validateFiles(
 }
 
 /** Tamaño aproximado (bytes) de un adjunto ya leído, a partir de su URL `data:` base64. */
-export function attachmentBytes(a: { url: string }): number {
+export function attachmentBytes(a: Pick<ChatAttachment, 'url' | 'originalDocx' | 'originalXlsx' | 'originalPptx'>): number {
+  const original = a.originalDocx ?? a.originalXlsx ?? a.originalPptx
+  if (original) return Math.floor((original.length * 3) / 4) - (original.endsWith('==') ? 2 : original.endsWith('=') ? 1 : 0)
   const i = a.url.indexOf(',')
   return i < 0 ? 0 : Math.floor(((a.url.length - i - 1) * 3) / 4)
 }
@@ -129,7 +133,8 @@ async function officeToChatAttachment(file: File): Promise<ChatAttachment> {
     url: textToDataUrl(res.text),
     office: { family: res.family, unit: res.unit, units: res.units, truncated: res.truncated, notes: res.notes },
     ...(/\.docx$/i.test(name) ? { originalDocx: base64 } : {}),
-    ...(/\.xlsx$/i.test(name) ? { originalXlsx: base64 } : {})
+    ...(/\.xlsx$/i.test(name) ? { originalXlsx: base64 } : {}),
+    ...(/\.pptx$/i.test(name) ? { originalPptx: base64 } : {})
   }
 }
 
