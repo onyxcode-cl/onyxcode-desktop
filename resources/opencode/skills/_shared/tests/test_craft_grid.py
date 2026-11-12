@@ -274,13 +274,13 @@ class Renderizado(FakeCraft):
 
 
 class RecalcCheck(FakeCraft):
-    def test_recalc_check_usa_gridcraft_y_lo_dice(self):
+    def test_recalc_check_prefiere_calculo_local_para_formulas_soportadas(self):
         valores = libro_json({(0, 2): celda("Error", "Div0", "A1/B1")})
         self.instalar(self.bin, valores=valores)
         cp = subprocess.run([sys.executable, RECALC, self.xlsx, "--json"], capture_output=True, text=True,
                             env=entorno(LAZUNOX_GRIDCRAFT=self.fake))
         res = json.loads(cp.stdout)
-        self.assertEqual(res["motor"], "gridcraft")
+        self.assertEqual(res["motor"], "local")
         self.assertEqual(cp.returncode, 1)
         self.assertTrue(any(e["celda"] == "C1" and e["valor"] == "#DIV/0!" for e in res["errores"]))
 

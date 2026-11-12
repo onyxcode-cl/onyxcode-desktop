@@ -231,3 +231,13 @@ def add_chart(target_ws, spec, data_ws, cat_ref, series_refs, default_anchor="H2
 
 def fill(color):
     return PatternFill("solid", start_color=color, end_color=color)
+
+
+def save_workbook(wb, path):
+    """Guarda fórmulas y sus resultados locales; avisa por celda si no se pueden calcular."""
+    from formula_cache import save_with_cache
+    unsupported = save_with_cache(wb, path)
+    for item in unsupported:
+        print("AVISO: %s!%s: %s; sin valor inventado. Excel recalculará al abrir." %
+              (item["hoja"], item["celda"], item["problema"]))
+    return unsupported

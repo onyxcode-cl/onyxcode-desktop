@@ -76,7 +76,8 @@ class PruebasVerificar(unittest.TestCase):
         wb.save(self.p("sinvalor.xlsx"))
         rc, out = correr(self.p("sinvalor.xlsx"))
         self.assertEqual(rc, 1)
-        self.assertIn("sin valor recalculado", out)
+        self.assertIn("valor guardado distinto o ausente", out)
+        self.assertIn("Sheet!B3", out)
 
     def test_xlsx_media_suelta_no_es_total(self):
         from openpyxl import Workbook

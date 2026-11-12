@@ -73,7 +73,8 @@ class RecalcCheckConoceLasModernas(unittest.TestCase):
         import recalc_check
         for f in ("=_xlfn.STDEV.S(A1:A3)", "=_xlfn.TEXTJOIN(\",\",TRUE,A1:A3)", "=STDEV.S(A1:A3)"):
             self.assertEqual(recalc_check.syntax_issues(f, None), [], f)
-        self.assertTrue(recalc_check.syntax_issues("=FOO.BAR(A1)", None))
+        # Una función externa/desconocida es un aviso del cálculo, no sintaxis inválida.
+        self.assertEqual(recalc_check.syntax_issues("=FOO.BAR(A1)", None), [])
 
 
 class EscrituraEnArchivo(unittest.TestCase):

@@ -46,7 +46,7 @@ class Resultado:
 
     @property
     def fallos(self):
-        return [t for ok, t in self.items if not ok]
+        return [t for ok, t in self.items if ok is False]
 
 
 def _recorta(lista, n=5):
@@ -229,7 +229,7 @@ def revisa_xlsx(path):
     if not wf.worksheets:
         r.falla("El libro no tiene hojas")
         return r
-    errores, sin_valor, pegados, formulas = [], [], [], 0
+    errores, pegados, formulas = [], [], 0
     for ws in wf.worksheets:
         wsv = wv[ws.title]
         for fila in ws.iter_rows():
@@ -241,11 +241,9 @@ def revisa_xlsx(path):
             for c in fila:
                 v = c.value
                 vv = wsv[c.coordinate].value
-                if isinstance(v, str) and v.startswith("="):
+                if c.data_type == "f":
                     formulas += 1
-                    if vv is None:
-                        sin_valor.append("%s!%s" % (ws.title, c.coordinate))
-                    if "#REF!" in v:
+                    if isinstance(v, str) and "#REF!" in v:
                         errores.append("%s!%s (%s)" % (ws.title, c.coordinate, "#REF!"))
                 if isinstance(vv, str) and vv.strip() in ERRORES:
                     errores.append("%s!%s (%s)" % (ws.title, c.coordinate, vv.strip()))
@@ -258,12 +256,24 @@ def revisa_xlsx(path):
     r.check(not errores, "Ninguna celda con error", "Celdas con error: %s" % _recorta(errores))
     r.check(not pegados, "Los totales son fórmulas vivas" if formulas else "Sin filas de total",
             "Fila de total con número pegado, no fórmula: %s" % _recorta(pegados))
-    if formulas:
-        r.check(not sin_valor, "Las %d fórmula(s) tienen valor calculado guardado" % formulas,
-                "%d fórmula(s) sin valor recalculado (se verán vacías en visores que no calculan): %s. Recalcula con recalc_check.py o "
-                "pasa `value` en la spec" % (len(sin_valor), _recorta(sin_valor)))
-    else:
+    # Compartir el mismo cálculo/comparación que recalc_check, también con GridCraft opcional.
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "xlsx", "scripts"))
+    import recalc_check
+    checked = recalc_check.analyse(path, 0)
+    for item in checked["errores"] + checked["sintaxis"] + checked["diferencias"] + checked["rangos"]:
+        detalle = item.get("problema", item.get("valor", "corrige la fórmula"))
+        if "guardado" in item:
+            detalle += " (guardado: %r; calculado: %r)" % (item["guardado"], item["valor"])
+        r.falla("%s!%s: %s" % (item["hoja"], item["celda"], detalle))
+    for aviso in checked["avisos"]:
+        r.items.append((None, aviso))
+    if formulas and not (checked["errores"] or checked["sintaxis"] or checked["diferencias"] or checked["rangos"]):
+        verified = formulas - len(checked["no_soportadas"])
+        r.ok("%d de %d fórmula(s) recalculadas y comparadas con el valor guardado" % (verified, formulas))
+    elif not formulas:
         r.ok("No hay fórmulas que recalcular")
+    wf.close()
+    wv.close()
     return r
 
 
@@ -309,7 +319,7 @@ def main(argv=None):
     else:
         print("Revisión de calidad: " + os.path.basename(a.archivo))
         for ok, t in r.items:
-            print(("  ✔ " if ok else "  ✘ ") + t)
+            print(("  AVISO " if ok is None else ("  ✔ " if ok else "  ✘ ")) + t)
         print("RESULTADO: " + ("OK" if not r.fallos else "%d FALLO(S): corrígelos y vuelve a revisar antes de entregar" % len(r.fallos)))
     return 1 if r.fallos else 0
 

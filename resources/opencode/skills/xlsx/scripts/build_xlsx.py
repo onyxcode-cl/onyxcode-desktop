@@ -7,7 +7,7 @@ Uso:
   python build_xlsx.py spec.json -o informe.xlsx
   python build_xlsx.py --example > spec.json     # imprime un JSON de ejemplo completo
 
-Las fórmulas se guardan como fórmulas reales (openpyxl no las calcula: usa recalc_check.py).
+Las fórmulas se guardan con resultados calculados localmente; recalc_check.py los verifica.
 Códigos de salida: 0 ok, 1 error de ejecución, 2 especificación inválida.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ from openpyxl.worksheet.datavalidation import DataValidation  # noqa: E402
 
 from xlsx_common import (DATE_KINDS, NUMERIC_KINDS, THEME, SpecError, add_chart, add_xlfn_prefix, autosize,  # noqa: E402
                          col_letter, fill, is_formula, number_format, parse_date,
-                         style_header_cell, thin_border)
+                         style_header_cell, thin_border, save_workbook)
 
 EXAMPLE = {
     "output": "ventas-2026.xlsx",
@@ -101,7 +101,7 @@ HELP_SCHEMA = """Esquema (campos opcionales entre []):
       rows:[[...] | {header: valor}], [total_row], [total_label], [freeze], [autofilter], [zebra],
       [conditional], [validations], [charts], [column_widths], [notes]} ] }
 Formatos: text integer number clp usd eur uf percent percent0 date date_long datetime month (o un código Excel).
-Fórmulas: cadena que empieza con '='; {r} = nº de fila. En el resumen: {total:Hoja:COL} y {col:Hoja:COL}."""
+Fórmulas: cadena que empieza con '='; {r} = nº de fila. En cualquier fórmula: {total:Hoja:COL} y {col:Hoja:COL}."""
 
 
 def load_spec(path):
@@ -383,6 +383,15 @@ def build(spec):
         resolve_charts(wb, infos[nm].ws, s.get("charts") or [], infos, infos[nm])
     if spec.get("summary"):
         build_summary(wb, spec["summary"], infos)
+    # Expandir una vez que se conocen todas las tablas, también en columnas y totales.
+    for ws in wb.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                if is_formula(c.value):
+                    c.value = expand_tokens(c.value, infos)
+    from formula_cache import total_range_issues
+    for issue in total_range_issues(wb, {name: (i.first, i.last, i.total_row) for name, i in infos.items()}):
+        raise SpecError("%s!%s: %s" % (issue["hoja"], issue["celda"], issue["problema"]))
     p = spec.get("properties") or {}
     wb.properties.title = p.get("title")
     wb.properties.creator = p.get("author", "Lazunox")
@@ -413,7 +422,7 @@ def main(argv=None):
         if os.path.exists(out) and not a.force:
             raise SpecError("ya existe %s; elige un nombre nuevo (p. ej. -v2) o usa --force" % out)
         wb = build(spec)
-        wb.save(out)
+        save_workbook(wb, out)
     except SpecError as e:
         print("Error en la especificación: %s" % e, file=sys.stderr)
         return 2

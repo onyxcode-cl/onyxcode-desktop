@@ -30,7 +30,7 @@ from openpyxl.styles import Alignment, Border, Font, Side  # noqa: E402
 from openpyxl.utils import column_index_from_string, get_column_letter  # noqa: E402
 
 from xlsx_common import (DATE_KINDS, SpecError, add_chart, add_xlfn_prefix, autosize, col_letter, fill,  # noqa: E402
-                         is_formula, number_format, parse_date, style_header_cell, thin_border)
+                         is_formula, number_format, parse_date, style_header_cell, thin_border, save_workbook)
 
 OPS_HELP = """Operaciones ("op"), todas con "sheet" salvo add_sheet:
  set_cells    {cells:{"B2":100,"C2":"=B2*2"}, [format]}         escribe celdas sueltas
@@ -302,7 +302,7 @@ def main(argv=None):
                 OPS[name](wb, op)
             except KeyError as e:
                 raise SpecError("operación %d (%s): falta el campo %s" % (i, name, e))
-        wb.save(out)
+        save_workbook(wb, out)
     except SpecError as e:
         print("Error: %s" % e, file=sys.stderr)
         return 2
