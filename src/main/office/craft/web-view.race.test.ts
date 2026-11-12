@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 const mock = vi.hoisted(() => ({ servers: [] as Array<(s: unknown) => void>, views: [] as any[] }))
-vi.mock('./web-server', () => ({ startWebServer: () => new Promise((resolve) => mock.servers.push(resolve)) }))
+vi.mock('./web-server', () => ({ startWebServer: vi.fn(() => new Promise((resolve) => mock.servers.push(resolve))) }))
 vi.mock('electron', () => ({
   app: { isPackaged: false },
   session: {
@@ -33,13 +33,27 @@ vi.mock('electron', () => ({
   }
 }))
 import { attachWeb, closeWeb, isWebActive, openWebDoc, onWebEvent } from './web-view'
+import { startWebServer } from './web-server'
 const server = (port: number) => ({ origin: `http://127.0.0.1:${port}`, port, close: vi.fn(async () => undefined) })
 const open = () => openWebDoc('/web', 'docx', 'a.docx', Buffer.from('documento'))
 beforeEach(() => {
   mock.servers = []
   mock.views = []
+  vi.mocked(startWebServer).mockClear()
 })
 afterEach(() => closeWeb())
+it.each(['pdf', 'docx', 'xlsx', 'pptx'] as const)('solo PDF solicita preferencias de lectura antes de la única carga: %s', async (ext) => {
+  const opening = openWebDoc('/web', ext, `a.${ext}`, Buffer.from('documento'))
+  expect(startWebServer).toHaveBeenCalledWith('/web', { pdfReadingDefaults: ext === 'pdf' })
+  mock.servers[0]!(server(1))
+  await Promise.resolve()
+  const view = mock.views[0]
+  view.loaded()
+  expect(await opening).toBe(true)
+  expect(view.webContents.loadURL).toHaveBeenCalledTimes(1)
+  expect(view.webContents.executeJavaScript).toHaveBeenCalledTimes(1)
+})
+
 it('la caída o el error tardío de una vista cerrada no se atribuye a la nueva', async () => {
   const first = open()
   mock.servers[0]!(server(1))

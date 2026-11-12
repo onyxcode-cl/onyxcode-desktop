@@ -171,7 +171,7 @@ export async function openWebDoc(
   Object.assign(state, { hostWindow, rect, visible })
   const generation = openGeneration
   const current = (): boolean => generation === openGeneration
-  const server = await startWebServer(webDir)
+  const server = await startWebServer(webDir, { pdfReadingDefaults: ext === 'pdf' })
   if (!current()) {
     await server.close().catch(() => undefined)
     return false
