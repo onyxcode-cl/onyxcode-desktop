@@ -161,7 +161,7 @@ class TestDocx(unittest.TestCase):
         t.cell(0, 0).text = "x"
         bad = os.path.join(TMP_CWD, "malo.docx")
         d.save(bad)
-        cp = run("check_docx.py", bad, "--no-render")
+        cp = run("check_docx.py", bad, "--no-render", ok=(1,))
         self.assertIn("párrafos vacíos consecutivos", cp.stdout)
         self.assertIn("sin fila de encabezado", cp.stdout)
 

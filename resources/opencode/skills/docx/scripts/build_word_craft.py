@@ -16,6 +16,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _report_layout import prepare, TEMPLATE, column_widths
 
 # Búsqueda del programa y entorno mínimo compartidos con la skill _shared (render.py).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
@@ -93,6 +95,11 @@ def build_commands(spec, base_dir):
         bad("blocks", "debe ser una lista con al menos un bloque")
     if len(blocks) > MAX_BLOCKS:
         bad("blocks", f"demasiados bloques ({len(blocks)} > {MAX_BLOCKS})")
+    try:
+        spec = prepare(spec)
+    except ValueError as e:
+        bad("spec", str(e))
+    blocks = spec["blocks"]
     c = []
 
     def a(i, p=None):
@@ -113,21 +120,36 @@ def build_commands(spec, base_dir):
     def par(t, style=None, align=None):
         if style:
             a("para.style", {"style": style})
+        a("para.set", {"props": {"keepNext": style in ("Title", "Subtitle"), "keepLines": False, "widowControl": True}})
+        a("format.size", {"size": TEMPLATE["title_size"] if style == "Title" else 14 if style == "Subtitle" else TEMPLATE["size"]})
+        a("para.spacing", {"before": 0, "after": TEMPLATE["space_after_pt"]})
+        a("para.lineSpacing", {"value": TEMPLATE["line_spacing"]})
         a("para.align", {"value": align or "left"})
         inline(t)
         a("text.newParagraph")
 
     a("design.themeFonts", {"heading": "Arial", "body": "Arial"})
+    a("layout.size", {"name": "Letter"})
+    margin = TEMPLATE["margin_cm"] * 72 / 2.54
+    a("layout.margins", {k: margin for k in ("top", "bottom", "left", "right")})
     # Encabezado y pie: cada comando deja el cursor DENTRO de él (el cuerpo se ve atenuado); `insert.closeHeader` vuelve al cuerpo.
     if spec.get("header"):
         a("insert.header", {"text": text(spec["header"], "header")})
         a("insert.closeHeader")
-    if spec.get("footer"):
-        a("insert.footer", {"text": text(spec["footer"], "footer")})
+    if spec.get("footer") or spec.get("page_numbers", True):
+        a("insert.footer", {"text": ""})
+        a("format.size", {"size": 9})
+        a("format.color", {"color": "595959"})
+        a("para.align", {"value": "center"})
+        if spec.get("footer"):
+            a("text.insert", {"text": text(spec["footer"], "footer")})
+        if spec.get("page_numbers", True):
+            a("text.insert", {"text": "   |   Página " if spec.get("footer") else "Página "})
+            a("insert.field", {"instr": "PAGE", "result": "1"})
+            a("text.insert", {"text": " de "})
+            a("insert.field", {"instr": "NUMPAGES", "result": "1"})
         a("insert.closeHeader")
-    elif spec.get("page_numbers", True):
-        a("insert.footer", {"preset": "pageNumber"})
-        a("insert.closeHeader")
+        a("format.color", {"color": "auto"})
     if spec.get("title"):
         par(text(spec["title"], "title"), "Title", "center")
     if spec.get("subtitle"):
@@ -136,6 +158,9 @@ def build_commands(spec, base_dir):
                         (fecha_es() if spec.get("date") == "hoy" else text(spec["date"], "date"))) if x]
     if meta:
         par(" · ".join(meta), "Normal", "center")
+    if spec["cover"]:
+        a("layout.differentFirstPage")
+        a("text.pageBreak")
     if spec.get("toc"):
         a("references.toc", {"levels": 3})
         a("caret.docEnd")
@@ -154,6 +179,8 @@ def build_commands(spec, base_dir):
             if lvl not in (1, 2, 3):
                 bad(f"{p}.level", "debe ser 1, 2 o 3")
             a(f"para.heading{lvl}")
+            a("format.size", {"size": TEMPLATE["heading_sizes"][lvl - 1]})
+            a("para.set", {"props": {"keepNext": True, "keepLines": True, "spaceBefore": 16, "spaceAfter": 6}})
             a("para.align", {"value": "left"})
             a("text.insert", {"text": text(b.get("text"), f"{p}.text")})
             a("text.newParagraph")
@@ -176,6 +203,7 @@ def build_commands(spec, base_dir):
                 a("para.numbering", {"kind": "numbered"})
             else:
                 a("para.bullets")
+            a("para.set", {"props": {"keepNext": False, "keepLines": False, "widowControl": True}})
             for k, it in enumerate(flat):
                 inline(it)
                 if t == "numbered" and k == 0 and numbered_seen:
@@ -197,7 +225,7 @@ def build_commands(spec, base_dir):
             n = len(cols)
             dec = b.get("decimals")
             align = b.get("align") or []
-            widths = b.get("widths_cm") or []
+            widths = column_widths(cols, rows, b.get("widths_cm"))
             cells = [[text(x, f"{p}.columns[{k}]") for k, x in enumerate(cols)]]
             for r, row in enumerate(rows):
                 if not isinstance(row, list) or len(row) != n:
@@ -205,9 +233,14 @@ def build_commands(spec, base_dir):
                 cells.append([fmt_num(v, dec) if isinstance(v, (int, float)) and not isinstance(v, bool)
                               else ("" if v is None else text(v, f"{p}.rows[{r}][{k}]", False)) for k, v in enumerate(row)])
             a("insert.table", {"rows": len(cells), "cols": n})
+            a("table.cellMargins", {"top": 3, "bottom": 3, "left": 6, "right": 6})
+            a("table.borders", {"kind": "all", "width": 0.5, "color": "BFC4CC"})
             for r, row in enumerate(cells):
                 total = bool(b.get("total_row")) and r == len(cells) - 1
                 for k, v in enumerate(row):
+                    a("format.size", {"size": TEMPLATE["size"] - 1})
+                    if r == 0 and k == 0:
+                        a("table.repeatHeader")
                     if r == 0:
                         a("table.shading", {"color": ACCENT})
                         a("format.bold", {"value": True}); a("format.color", {"color": TH_FG})

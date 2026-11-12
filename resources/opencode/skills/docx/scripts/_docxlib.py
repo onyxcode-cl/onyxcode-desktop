@@ -11,13 +11,14 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
+from _report_layout import TEMPLATE, column_widths
 
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
          "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
 
 DEFAULT_THEME = {
-    "font": "Calibri",
-    "size": 11,
+    "font": TEMPLATE["font"],
+    "size": TEMPLATE["size"],
     "color": "262626",        # texto
     "accent": "1F3864",       # títulos y encabezado de tabla (azul marino sobrio)
     "table_header_bg": "1F3864",
@@ -25,8 +26,8 @@ DEFAULT_THEME = {
     "total_bg": "E7E9EE",
     "zebra_bg": "F5F6F8",
     "border": "BFC4CC",
-    "line_spacing": 1.15,
-    "space_after_pt": 6,
+    "line_spacing": TEMPLATE["line_spacing"],
+    "space_after_pt": TEMPLATE["space_after_pt"],
 }
 
 ALIGN = {"left": WD_ALIGN_PARAGRAPH.LEFT, "right": WD_ALIGN_PARAGRAPH.RIGHT,
@@ -120,12 +121,13 @@ def apply_theme(doc, theme):
     pf = st["Normal"].paragraph_format
     pf.space_after = Pt(t["space_after_pt"])
     pf.line_spacing = t["line_spacing"]
+    pf.widow_control = True
     spec = {  # estilo: (tamaño, color, negrita, antes, después)
-        "Title": (26, acc, True, 0, 6),
+        "Title": (TEMPLATE["title_size"], acc, True, 0, 6),
         "Subtitle": (14, "595959", False, 0, 14),
-        "Heading 1": (18, acc, True, 18, 6),
-        "Heading 2": (14, acc, True, 14, 4),
-        "Heading 3": (12, "404040", True, 10, 3),
+        "Heading 1": (TEMPLATE["heading_sizes"][0], acc, True, 16, 6),
+        "Heading 2": (TEMPLATE["heading_sizes"][1], acc, True, 12, 4),
+        "Heading 3": (TEMPLATE["heading_sizes"][2], "404040", True, 10, 3),
     }
     for name, (s, c, b, before, after) in spec.items():
         try:
@@ -279,16 +281,12 @@ def _table_borders(table, color, header_color):
     for b in tblPr.findall(qn("w:tblBorders")):
         tblPr.remove(b)
     borders = OxmlElement("w:tblBorders")
-    for edge in ("top", "bottom", "insideH"):
+    for edge in ("top", "bottom", "insideH", "left", "right", "insideV"):
         e = OxmlElement("w:" + edge)
         e.set(qn("w:val"), "single")
         e.set(qn("w:sz"), "4")
         e.set(qn("w:space"), "0")
         e.set(qn("w:color"), color)
-        borders.append(e)
-    for edge in ("left", "right", "insideV"):
-        e = OxmlElement("w:" + edge)
-        e.set(qn("w:val"), "nil")
         borders.append(e)
     tblPr.append(borders)
     mar = OxmlElement("w:tblCellMar")
@@ -324,9 +322,7 @@ def build_table(doc, spec, theme=None, max_width_cm=16.59):
         vals = [r[c] for r in rows if c < len(r) and r[c] not in ("", None)]
         num = vals and all(isinstance(v, (int, float)) or looks_numeric(str(v)) for v in vals)
         aligns.append("right" if num else "left")
-    widths = spec.get("widths_cm")
-    if not widths:
-        widths = [max_width_cm / ncols] * ncols
+    widths = column_widths(cols, rows, spec.get("widths_cm"), max_width_cm)
     size = spec.get("font_size", max(t["size"] - 1, 8))
 
     def fill(row, values, header=False, is_total=False):
@@ -346,7 +342,7 @@ def build_table(doc, spec, theme=None, max_width_cm=16.59):
                 add_rich_text(p, txt, bold=True if is_total else None, size=size)
                 if is_total:
                     _shade(cell, t["total_bg"])
-                elif spec.get("zebra") and (len(table.rows) % 2 == 0):
+                elif spec.get("zebra", True) and (len(table.rows) % 2 == 0):
                     _shade(cell, t["zebra_bg"])
             cell.vertical_alignment = 1  # centrado vertical
 
