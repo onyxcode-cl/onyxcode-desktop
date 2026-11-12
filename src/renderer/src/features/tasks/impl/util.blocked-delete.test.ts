@@ -22,6 +22,19 @@ const part = (command: string | undefined, output: string, status: 'completed' |
   }) as unknown as ToolPart
 
 describe('looksLikeBlockedDelete', () => {
+  it.each(['bash', 'execute'])('un %s que terminó con código 0 no confunde un error recuperado con bloqueo', (tool) => {
+    const p = {
+      ...part(
+        `python3 -c 'import shutil; shutil.move("temporal.xlsx", "ventas-v2.xlsx")'`,
+        "PermissionError: [Errno 13] Permission denied: 'temporal.xlsx'"
+      ),
+      tool
+    } as ToolPart
+    p.state = { ...p.state, metadata: { exit: 0 } } as ToolPart['state']
+    expect(looksLikeBlockedDelete(p, { folder: '/win/c/work' })).toBe(false)
+    p.state = { ...p.state, metadata: { exit: 1 } } as ToolPart['state']
+    expect(looksLikeBlockedDelete(p, { folder: '/win/c/work' })).toBe(true)
+  })
   it('borrar, mover o renombrar denegado SÍ ofrece la tarjeta (cualquier forma)', () => {
     for (const c of [
       'rm -rf viejo',

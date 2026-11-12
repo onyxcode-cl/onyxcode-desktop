@@ -1,5 +1,6 @@
 /** Indicio de borrado denegado en el resultado de una herramienta; nunca autoriza acceso. */
 import type { ToolPart } from '@opencode-ai/sdk/v2/client'
+import type { MessageEntry } from '../../../stores/sessions'
 import { needsDeleteGrant } from '@shared/tasks-delete-command'
 import { normalizeAbs } from '@shared/doc-files'
 import { toSandboxPath } from '@shared/wsl-paths'
@@ -43,6 +44,9 @@ function inScope(paths: string[], scope: DeleteScope, search = false): boolean {
 
 /** Mac: EPERM; WSL/Landlock: EACCES; el motor también los presenta como PermissionDenied: FileSystem.remove. */
 export function looksLikeBlockedDelete(part: ToolPart, scope?: DeleteScope): boolean {
+  // bash puede completar la herramienta aun con salida distinta de cero. Si el proceso
+  // terminó bien, su salida puede contener un error recuperado (p. ej. shutil.move).
+  if (part.state.status === 'completed' && part.state.metadata?.exit === 0) return false
   const text = resultText(part)
   if (!DENIED.test(text)) return false
   const input = part.state.input
@@ -75,4 +79,26 @@ export function looksLikeBlockedDelete(part: ToolPart, scope?: DeleteScope): boo
   const tokens = Array.from(command.matchAll(/"([^"\n]*)"|'([^'\n]*)'|([^\s;|&()]+)/g), (m) => m[1] ?? m[2] ?? m[3])
   const paths = tokens.filter((v, i) => i > 0 && !v.startsWith('-') && !DELETE_ACTION.test(v))
   return inScope(paths, scope, /\bfind\s/.test(command))
+}
+
+/** Oferta del último intento bloqueado: sobrevive a la respuesta final, no a otra tanda o pedido. */
+export function currentBlockedDeletes(entries: MessageEntry[], scope: DeleteScope): ToolPart[] {
+  let attempts: ToolPart[] = []
+  for (const { info, parts } of entries) {
+    if (info.role === 'user') {
+      attempts = []
+      continue
+    }
+    const tools = parts.filter((p): p is ToolPart => p.type === 'tool')
+    // Cancelar retira la oferta. La respuesta final o un error del modelo conservan
+    // el último bloqueo si no hubo otra tanda de herramientas después.
+    if (info.error?.name === 'MessageAbortedError') {
+      attempts = []
+      continue
+    }
+    // Una nueva tanda de herramientas sustituye al intento anterior, incluso mientras
+    // está en curso. No rescatar después un fallo viejo del historial.
+    if (tools.length) attempts = tools.filter((p) => looksLikeBlockedDelete(p, scope))
+  }
+  return attempts
 }
