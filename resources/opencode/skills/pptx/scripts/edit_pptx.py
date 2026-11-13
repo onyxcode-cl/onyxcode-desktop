@@ -19,6 +19,7 @@ import argparse
 import copy
 import json
 import os
+import re
 import sys
 
 try:
@@ -99,12 +100,37 @@ def op_replace(prs, find, replace, slide=None, notes=False):
         raise EditError("falta --find")
     targets = [get_slide(prs, slide)] if slide else list(prs.slides)
     n = 0
+    continuaciones, duplicados = [], []
     for s in targets:
         for p in iter_paragraphs(s, notes):
+            full = "".join(r.text for r in p.runs)
+            cw, dw = _replacement_warnings(full, find, replace)
+            continuaciones.extend(cw)
+            duplicados.extend(dw)
             n += replace_in_paragraph(p, find, replace)
     if n == 0:
         raise EditError("no se encontró el texto «%s»" % find)
+    if continuaciones:
+        print("AVISO: %d reemplazo(s) tenían un carácter pegado después del texto buscado (p. ej., un punto de abreviatura). Ejemplo: «%s». Para conservarlo correctamente, repita el reemplazo incluyendo ese punto en el texto buscado." % (len(continuaciones), continuaciones[0]))
+    if duplicados:
+        print("AVISO: %d reemplazo(s) pueden dejar puntuación duplicada nueva. Ejemplo: «%s». Revise ese contexto y ajuste el texto buscado o el reemplazo." % (len(duplicados), duplicados[0]))
     return "%d reemplazo(s)" % n
+
+
+def _replacement_warnings(text, old, new):
+    continuaciones, duplicados = [], []
+    if not old:
+        return continuaciones, duplicados
+    for match in re.finditer(re.escape(old), text):
+        start, end = match.span()
+        prefix, suffix = text[max(0, start - 2):start], text[end:end + 2]
+        if suffix and re.match(r"[\w.]", suffix[0], re.UNICODE):
+            continuaciones.append(text[max(0, start - 18):end + 18].strip())
+        before, after = prefix + old + suffix, prefix + new + suffix
+        if any(re.search(pattern, after) and not re.search(pattern, before)
+               for pattern in (r"\.\.", r",,", r"\. \.")):
+            duplicados.append(text[max(0, start - 18):end + 18].strip())
+    return continuaciones, duplicados
 
 
 def find_layout(prs, layout):

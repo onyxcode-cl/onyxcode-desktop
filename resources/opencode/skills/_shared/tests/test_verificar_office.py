@@ -59,6 +59,30 @@ class PruebasVerificar(unittest.TestCase):
         rc, out = correr(self.p("bueno.docx"))
         self.assertEqual(rc, 0, out)
 
+    def test_original_suprime_fallos_heredados_y_conserva_nuevos(self):
+        from docx import Document
+        original = Document()
+        original.add_paragraph("Título que ya estaba en Normal")
+        original.add_paragraph("• viñeta ya existente")
+        for i in range(11):
+            original.add_paragraph("Párrafo de contenido %d" % i)
+        original_path, edited_path = self.p("heredado.docx"), self.p("editado.docx")
+        original.save(original_path)
+        edited = Document(original_path)
+        edited.paragraphs[0].text = "Título corregido en Normal"
+        edited.save(edited_path)
+        rc, out = correr(edited_path, "--original", original_path)
+        self.assertEqual(rc, 0, out)
+        self.assertNotIn("✘", out)
+        self.assertIn("ya presente(s) en el original", out)
+        edited = Document(edited_path)
+        edited.add_paragraph("• viñeta nueva")
+        edited.save(edited_path)
+        rc, out = correr(edited_path, "--original", original_path)
+        self.assertEqual(rc, 1)
+        self.assertIn("Hallazgo estructural nuevo respecto al original", out)
+        self.assertIn("viñeta", out)
+
     def test_xlsx_total_pegado_error_y_sin_valor(self):
         from openpyxl import Workbook
         wb = Workbook()

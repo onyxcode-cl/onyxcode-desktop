@@ -106,6 +106,7 @@ Usa SIEMPRE `translate_docx.py` (no escribas tu propio script ni regeneres el do
 
 ## D. Verificar siempre
 **Revisión de calidad (obligatoria, antes de decir «listo»):** `PY S/../../_shared/verificar_office.py archivo.docx` (local y gratis; imprime una lista ✔/✘). **Si creaste el archivo con `documentos_crear`, su respuesta YA trae esta revisión (lista ✔/✘, hecha por la herramienta): no hace falta correr el script, salvo que la respuesta diga «NO corrida».** Comprueba: título con estilo Title/Heading, encabezados reales, viñetas con estilo de lista (no «•» escrito a mano) y tablas sin celdas vacías. Si algo sale ✘, corrígelo (en un archivo NUEVO) y vuelve a correrlo; en el cierre di qué corregiste.
+Si revisas una edición de un DOCX existente, añade `--original original.docx` para omitir hallazgos estructurales que ya estaban en ese archivo; los problemas nuevos siguen apareciendo.
 `PY S/check_docx.py archivo.docx --spec contenido.json` falla si faltan tablas o filas pedidas, hay títulos vacíos, falta el campo PAGE o hay páginas vacías evitables. Indica qué corregir. Con `--no-render` revisa la estructura y los saltos explícitos; detectar huecos de paginación requiere WordCraft. Si no está disponible, declara en «Para revisar» que el aspecto visual no se comprobó.
 
 ## Buenas prácticas

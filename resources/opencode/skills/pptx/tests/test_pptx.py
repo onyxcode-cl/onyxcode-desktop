@@ -112,6 +112,19 @@ class PptxTest(unittest.TestCase):
             json.dump({"slides": [{"type": "volcan"}]}, fo)
         self.assertEqual(run("build_pptx.py", bad, os.path.join(self.d, "y.pptx")).returncode, 1)
 
+    def test_reemplazo_avisa_sufijo_pegado(self):
+        from pptx import Presentation
+        prs = Presentation()
+        slide = prs.slides.add_slide(prs.slide_layouts[5])
+        slide.shapes.title.text = "Comercial Aurora Ltda. y Comercial Aurora Ltda.."
+        source, target = os.path.join(self.d, "aviso.pptx"), os.path.join(self.d, "aviso-v2.pptx")
+        prs.save(source)
+        r = run("edit_pptx.py", source, target, "replace", "--find", "Comercial Aurora Ltda", "--replace", "Servicios Horizonte SpA")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("AVISO:", r.stdout)
+        self.assertIn("incluyendo ese punto", r.stdout)
+        self.assertIn("Servicios Horizonte SpA..", Presentation(target).slides[0].shapes.title.text)
+
     def test_miniaturas_con_deckcraft_falso(self):
         from pptx import Presentation
         from unittest import mock

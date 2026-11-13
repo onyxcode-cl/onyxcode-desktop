@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -80,10 +81,38 @@ def find_paragraph(doc, text):
 
 def op_replace(doc, o):
     n = 0
+    continuaciones = []
+    duplicados = []
     for root in containers(doc):
         for p in root.xpath(".//w:p"):
+            full = "".join(x.text or "" for x in p.xpath(".//w:t[not(ancestor::w:del)]"))
+            cw, dw = _replacement_warnings(full, o["buscar"], o["por"])
+            continuaciones.extend(cw)
+            duplicados.extend(dw)
             n += replace_in_paragraph(p, o["buscar"], o["por"])
+    if continuaciones:
+        print("AVISO: %d reemplazo(s) tenían un carácter pegado después del texto buscado (p. ej., un punto de abreviatura). Ejemplo: «%s». Para conservarlo correctamente, repita el reemplazo incluyendo ese punto en el texto buscado." % (len(continuaciones), continuaciones[0]))
+    if duplicados:
+        print("AVISO: %d reemplazo(s) pueden dejar puntuación duplicada nueva. Ejemplo: «%s». Revise ese contexto y ajuste el texto buscado o el reemplazo." % (len(duplicados), duplicados[0]))
     return n, "reemplazadas %d aparición(es) de «%s»" % (n, o["buscar"])
+
+
+def _replacement_warnings(text, old, new):
+    """Devuelve ejemplos de sufijos pegados y puntuación duplicada creada por el reemplazo."""
+    continuaciones, duplicados = [], []
+    if not old:
+        return continuaciones, duplicados
+    for match in re.finditer(re.escape(old), text):
+        start, end = match.span()
+        prefix, suffix = text[max(0, start - 2):start], text[end:end + 2]
+        if suffix and re.match(r"[\w.]", suffix[0], re.UNICODE):
+            continuaciones.append((text[max(0, start - 18):end + 18]).strip())
+        before = prefix + old + suffix
+        after = prefix + new + suffix
+        patterns = (r"\.\.", r",,", r"\. \." )
+        if any(re.search(pattern, after) and not re.search(pattern, before) for pattern in patterns):
+            duplicados.append(text[max(0, start - 18):end + 18].strip())
+    return continuaciones, duplicados
 
 
 def op_add_paragraph(doc, o):

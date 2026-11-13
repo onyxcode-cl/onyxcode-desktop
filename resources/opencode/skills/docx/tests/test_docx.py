@@ -146,6 +146,17 @@ class TestDocx(unittest.TestCase):
         cp = run("check_docx.py", v4, "--no-render")
         self.assertIn("RESULTADO: OK", cp.stdout)
 
+    def test_reemplazo_avisa_sufijo_puntuacion_y_terminacion(self):
+        source, target = os.path.join(TMP_CWD, "empresa.docx"), os.path.join(TMP_CWD, "empresa-v2.docx")
+        d = Document()
+        d.add_paragraph("Comercial Aurora Ltda. y Comercial Aurora Ltda..")
+        d.save(source)
+        cp = run("edit_docx.py", source, target, "--reemplazar", "Comercial Aurora Ltda", "Servicios Horizonte SpA")
+        self.assertIn("AVISO:", cp.stdout)
+        self.assertIn("incluyendo ese punto", cp.stdout)
+        self.assertIn("2 reemplazo(s)", cp.stdout)
+        self.assertIn("Servicios Horizonte SpA..", Document(target).paragraphs[0].text)
+
     def test_04_check_con_render(self):
         cp = run("check_docx.py", self.out, "--outdir", os.path.join(TMP_CWD, "r"), ok=(0, 1))
         self.assertIn("Estructura:", cp.stdout)

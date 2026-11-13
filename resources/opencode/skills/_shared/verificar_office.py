@@ -119,6 +119,54 @@ def revisa_docx(path):
     return r
 
 
+def _estructura_docx(item):
+    """Clave y cantidad aproximada de cada fallo estructural de Word para comparar originales."""
+    texto = item
+    if texto.startswith("El primer párrafo"):
+        return "primer-parrafo", 1
+    if "sin encabezados Heading" in texto:
+        return "encabezados", 1
+    if texto.startswith("Encabezados hechos a mano"):
+        return "encabezados-falsos", 1
+    m = re.match(r"(\d+) párrafo\(s\) con viñeta", texto)
+    if m:
+        return "viñetas", int(m.group(1))
+    if texto.startswith("Celdas vacías en tablas:"):
+        # El verificador enumera hasta cinco ubicaciones y resume el resto.
+        ubicaciones = re.search(r": (.*) \(pon el dato", texto)
+        cuenta = 0 if not ubicaciones else len(re.findall(r"tabla \d+ fila \d+ col \d+", ubicaciones.group(1)))
+        mas = re.search(r"y (\d+) más", texto)
+        return "celdas-vacias", cuenta + (int(mas.group(1)) if mas else 0)
+    return None, 0
+
+
+def compara_estructura_docx(actual, original):
+    """Quita fallos estructurales ya presentes en el original y conserva los nuevos."""
+    previos = {}
+    for fallo in original.fallos:
+        clave, cantidad = _estructura_docx(fallo)
+        if clave:
+            previos[clave] = previos.get(clave, 0) + cantidad
+    filtrados, omitidos = [], 0
+    for ok, texto in actual.items:
+        if ok is not False:
+            filtrados.append((ok, texto))
+            continue
+        clave, cantidad = _estructura_docx(texto)
+        if not clave or not previos.get(clave):
+            filtrados.append((ok, texto))
+            continue
+        omitidos += min(cantidad, previos[clave])
+        delta = cantidad - min(cantidad, previos[clave])
+        previos[clave] -= min(cantidad, previos[clave])
+        if delta:
+            filtrados.append((False, "Hallazgo estructural nuevo respecto al original (%d): %s" % (delta, texto)))
+    actual.items = filtrados
+    if omitidos:
+        actual.items.append((None, "%d hallazgo(s) estructural(es) ya presente(s) en el original omitido(s)" % omitidos))
+    return actual
+
+
 # ---------------------------------------------------------------- PowerPoint
 def _es_titulo(sh):
     try:
@@ -288,11 +336,15 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--arreglar", metavar="SALIDA", help="solo .pptx: copia con marcadores de título")
     ap.add_argument("--en-sitio", action="store_true", help="solo .pptx: arregla el propio archivo (uno que acabas de crear)")
+    ap.add_argument("--original", metavar="RUTA", help=".docx original: omite fallos estructurales que ya estaban presentes")
     a = ap.parse_args(argv)
     if not os.path.isfile(a.archivo):
         print("ERROR: el archivo no existe: " + a.archivo, file=sys.stderr)
         return 2
     ext = os.path.splitext(a.archivo)[1].lower()
+    if a.original and (ext != ".docx" or not os.path.isfile(a.original) or os.path.abspath(a.original) == os.path.abspath(a.archivo)):
+        print("ERROR: --original requiere un .docx original existente y distinto del archivo editado", file=sys.stderr)
+        return 2
     fn = {".docx": revisa_docx, ".xlsx": revisa_xlsx, ".xlsm": revisa_xlsx, ".pptx": revisa_pptx}.get(ext)
     if fn is None:
         print("ERROR: solo .docx, .xlsx y .pptx", file=sys.stderr)
@@ -310,6 +362,8 @@ def main(argv=None):
                 print("Copia con %d marcador(es) de título nuevo(s): %s" % (n, a.arreglar))
                 a.archivo = a.arreglar
         r = fn(a.archivo)
+        if a.original:
+            r = compara_estructura_docx(r, revisa_docx(a.original))
     except ImportError as e:
         print("ERROR: falta una librería (%s). Ejecuta _shared/doctor.py." % e, file=sys.stderr)
         return 2
