@@ -13,6 +13,8 @@ import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-sp
 import type { ImageMap } from '../../documents/image-files'
 import { runCraft } from './craft-run'
 import { ensureTitlePlaceholders } from './pptx-titles'
+import { chartNumber, formatChartNumbers } from './pptx-chart-format'
+import { chartCategory, prepareSlide } from './deck-data'
 import { autoFitSize, contrastRatio, createKit, customPalette, fitSize, legibleInk, paletteFor, stripHash } from './deck-kit'
 
 const CHART_TYPE: Record<PptxChartType, string> = { bar: 'column', line: 'line', pie: 'pie' }
@@ -56,8 +58,8 @@ export function foldSubtitles(spec: PptxSpec): PptxSpec {
     // Solo la portada: en otra diapositiva `{title, subtitle}` es un separador de sección y no debe volverse una de viñetas.
     if (i !== 0) return sl
     const sub = text(sl.subtitle) ?? text(raw.subtitle)
-    if (!sub || (sl.bullets && sl.bullets.length > 0)) return sl
-    return { ...sl, bullets: [sub] }
+    if (!sub || sl.bullets?.includes(sub)) return sl
+    return { ...sl, bullets: [sub, ...(sl.bullets ?? [])] }
   })
   return { ...spec, slides }
 }
@@ -68,7 +70,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   // `theme` elige la paleta (colores) y `style` la decoración, como pide el agente de Chat: no es siempre el mismo diseño.
   const pal = spec.palette ? customPalette(spec.palette) : paletteFor(spec.theme)
   const look = spec.style ?? 'classic'
-  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg, footInk } = createKit(
+  const { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, header, titleFont, setBg, footInk } = createKit(
     pal,
     look,
     pal.accent,
@@ -113,7 +115,61 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
     })
   }
 
-  spec.slides.forEach((s, idx) => {
+  // El cuerpo siempre reparte su altura útil; el tamaño crece cuando hay menos contenido.
+  const adaptiveList = (items: string[], x = 60, y = 150, w = 840, h = 330, cols = 1, maxSize = 72): void => {
+    const rows = Math.ceil(items.length / cols)
+    if (!rows) return
+    const gap = 24
+    const cw = (w - gap * (cols - 1)) / cols
+    const rh = h / rows
+    const base = Math.min(
+      maxSize,
+      rows === 1 ? (cols === 1 ? 72 : 38) : rows === 2 ? (cols === 1 ? 48 : 38) : rows === 3 ? (cols === 1 ? 40 : 28) : 24
+    )
+    items.forEach((text, i) => {
+      const cx = x + Math.floor(i / rows) * (cw + gap)
+      const cy = y + (i % rows) * rh
+      const size = autoFitSize(text, base, cw - 28, rh - 14, false)
+      dot(cx, cy + rh / 2 - 5, 10, accent)
+      txt(cx + 28, cy + 4, cw - 28, rh - 12, text, size, pal.text)
+      a('format.anchor', { anchor: 'middle' })
+    })
+  }
+
+  const nativeTable = (cells: string[][], box: number[], base = 24, headerRow = true): void => {
+    const cols = cells[0].length
+    const rowH = box[3] / cells.length
+    const colW = box[2] / cols
+    const headerH = headerRow ? Math.min(64, rowH) : rowH
+    const bodyH = cells.length > 1 ? (box[3] - headerH) / (cells.length - 1) : rowH
+    const size = Math.min(
+      ...cells.flatMap((row, r) => row.map((t) => autoFitSize(t, base, colW - 20, (r === 0 ? headerH : bodyH) - 12, false)))
+    )
+    a('insert.table', { rows: cells.length, cols, rect: box })
+    cells.forEach((row, r) => row.forEach((text, c) => a('text.set', { cell: [r, c], text })))
+    // DeckCraft conserva la selección de celdas de otra lámina: reanclarla antes de cualquier opción de tabla.
+    a('table.selectCells', { from: [0, 0], to: [cells.length - 1, cols - 1] })
+    a('table.options', { headerRow, bandedRows: false })
+    if (headerRow) cells.forEach((_, row) => a('table.rowHeight', { row, height: row === 0 ? headerH : bodyH }))
+    a('format.size', { size })
+    a('format.color', { color: '#' + pal.text })
+    a('format.bold', { on: false })
+    a('table.cellFill', { color: '#' + pal.bg, cells: cells.flatMap((row, r) => row.map((_, c) => [r, c])) })
+    if (headerRow) {
+      a('table.cellFill', { color: '#' + accent, cells: cells[0].map((_, c) => [0, c]) })
+      // La selección rectangular no limita format.* en DeckCraft: editar el texto de cada celda sí.
+      cells[0].forEach((_, c) => {
+        a('text.edit', { cell: [0, c] })
+        a('text.selectAll')
+        a('format.color', { color: contrastRatio('FFFFFF', accent) >= 4.5 ? '#FFFFFF' : '#111111' })
+        a('format.bold', { on: true })
+        a('text.exit')
+      })
+    }
+  }
+
+  spec.slides.forEach((raw, idx) => {
+    const s = prepareSlide(raw, idx, spec.slides.length)
     const n = idx + 1
     setBg(s.background ? stripHash(s.background) : undefined)
     const title = s.title ?? ''
@@ -126,8 +182,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         ])
         dotrow(60, 88, 34, 20)
         txt(44, 146, 860, 230, title, chatCoverSize(title), pal.text, true, 'left', chatCoverSize(title) >= 110 ? -8 : -2, titleFont)
-        if (bullets[0]) txt(64, 384, 760, 50, bullets[0], fitSize(bullets[0], 28, 60))
-        if (bullets[1]) txt(64, 430, 760, 30, bullets[1], 18, pal.muted)
+        if (bullets.length) txt(64, 384, 760, 88, bullets.join('\n'), 28)
         if (s.eyebrow) pill(64, 476, Math.min(420, 40 + s.eyebrow.length * 9), 36, s.eyebrow, 14)
         break
       case 'section': {
@@ -147,23 +202,24 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           [120, -40, 720, pal.dark ? '2E1D66' : pal.glow],
           [-200, 380, 420, pal.glow2]
         ])
-        dotrow(364, 116, 32, 22)
-        txt(60, 184, 840, 100, title, fitSize(title, 62, 26), pal.text, true, 'center', -2, titleFont)
+        if (s.eyebrow) txt(60, 54, 840, 30, s.eyebrow.toUpperCase(), 16, accent, true, 'center')
+        dotrow(364, 106, 20, 16)
+        txt(60, 150, 840, 146, title, fitSize(title, 68, 34), pal.text, true, 'center', -2, titleFont)
         // Hasta 3 líneas (la primera más grande): el contacto o la despedida de verdad no se pierden.
-        bullets
-          .slice(0, 3)
-          .forEach((line, k) =>
-            txt(120, k === 0 ? 298 : 338 + (k - 1) * 34, 720, k === 0 ? 60 : 34, line, k === 0 ? 22 : 18, pal.muted, false, 'center')
-          )
+        bullets.slice(0, 3).forEach((line, k, lines) => {
+          const height = 156 / lines.length
+          txt(90, 304 + k * height, 780, height - 6, line, lines.length === 1 ? 36 : 26, pal.text, false, 'center')
+          a('format.anchor', { anchor: 'middle' })
+        })
         if (s.note ?? footer) txt(60, 468, 840, 30, s.note ?? footer, 14, footInk(), false, 'center')
         break
       case 'stat': {
         head(n, { ...s, title: '' })
         txt(52, 130, 600, 200, title, fitSize(title, 150, 5), accent, true, 'left', -4)
-        if (bullets[0]) txt(64, 330, 560, 120, bullets[0], fitSize(bullets[0], 24, 70), pal.text)
+        if (bullets[0]) txt(64, 320, 560, 160, bullets[0], 36, pal.text)
         if (bullets.length > 1) {
           rect(660, 150, 1, 300, pal.edge)
-          list(bullets.slice(1), 690, 160, 230, 5, 62, 17)
+          adaptiveList(bullets.slice(1), 690, 150, 230, 330, 1, 30)
         }
         break
       }
@@ -194,7 +250,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           const x = 60 + i * 440
           rect(x, 146, 400, 1, pal.edge)
           if (col.heading) txt(x, 158, 400, 40, col.heading, fitSize(col.heading, 26, 24), i === 0 ? pal.text : pal.accent2, true)
-          list(col.bullets, x, col.heading ? 212 : 170, 400, 6, 48, 18)
+          adaptiveList(col.bullets, x, col.heading ? 210 : 158, 400, col.heading ? 270 : 322, 1, 38)
         })
         rect(480, 150, 1, 320, pal.edge)
         break
@@ -236,26 +292,46 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
       case 'kpis': {
         head(n, s)
         const ks = (s.kpis ?? []).slice(0, 4)
-        const k = Math.max(ks.length, 1)
-        const gap = 20
-        const w = Math.floor((840 - gap * (k - 1)) / k)
-        const sparse = ks.length <= 2
-        const baseSize = sparse ? 90 : 54
-        // Un solo tamaño para todas las cifras de la fila (la más larga manda), así «$12.480 M» no queda más chico que «31,2%».
-        const kpiSize = Math.min(...ks.map((kp) => autoFitSize(kp.value, baseSize, w - 36, sparse ? 150 : 100, true)), baseSize)
-        ks.forEach((kp, i) => {
-          const x = 60 + i * (w + gap)
-          rect(x, 160, w, 4, DOTS[i % DOTS.length])
-          if (!sparse) panel(x, 164, w, 250)
-          txt(x + 18, 184, w - 36, sparse ? 56 : 40, kp.label.toUpperCase(), sparse ? 18 : 13, pal.muted, true, 'left', sparse ? 0 : 2)
-          txt(x + 18, sparse ? 248 : 232, w - 36, sparse ? 150 : 100, kp.value, kpiSize, sparse ? accent : pal.text, true, 'left', -1)
-          if (kp.delta) {
-            const deltaBg = sparse ? pal.bg : pal.panel
-            const ink = legibleInk(/^\s*[-−–]/.test(kp.delta) ? 'EC4899' : '22C55E', pal.text, deltaBg)
-            const deltaInk = contrastRatio(ink, deltaBg) >= 4.5 ? ink : contrastRatio('FFFFFF', deltaBg) >= 4.5 ? 'FFFFFF' : '111111'
-            txt(x + 18, sparse ? 414 : 350, w - 36, 50, kp.delta, 16, deltaInk, true)
-          }
-        })
+        if (!ks.length) break
+        const height = bullets.length ? 240 : 330
+        const stacked = ks.length >= 3 && ks.some((kp) => kp.value.length > 7)
+        if (stacked) {
+          const cardH = (height - 12 * (ks.length - 1)) / ks.length
+          const size = Math.min(...ks.map((kp) => autoFitSize(kp.value, 68, 360, cardH - 20, true)))
+          ks.forEach((kp, i) => {
+            const y = 150 + i * (cardH + 12)
+            rect(60, y, 840, cardH, pal.panel)
+            rect(60, y, 4, cardH, accent)
+            txt(76, y + 10, 210, cardH - 20, kp.label, 25, pal.text, true)
+            a('format.anchor', { anchor: 'middle' })
+            txt(306, y + 10, 360, cardH - 20, kp.value, size, legibleInk(accent, pal.text, pal.panel), true)
+            a('format.anchor', { anchor: 'middle' })
+            if (kp.delta) {
+              txt(690, y + 10, 194, cardH - 20, kp.delta, 20, pal.text)
+              a('format.anchor', { anchor: 'middle' })
+            }
+          })
+        } else {
+          const gap = 24
+          const w = (840 - gap * (ks.length - 1)) / ks.length
+          const hasDelta = ks.some((kp) => kp.delta)
+          const valueH = height * (hasDelta ? 0.52 : 0.62)
+          const labelH = height * 0.25
+          // Una sola línea en las cifras: el monto largo determina un tamaño común, sin partirlo.
+          const base = ks.length <= 2 ? 104 : 64
+          const valueSize = Math.min(...ks.map((kp) => Math.min(base, (w - 36) / Math.max(1, kp.value.length * 0.56))))
+          const labelSize = Math.min(...ks.map((kp) => autoFitSize(kp.label, ks.length <= 2 ? 28 : 23, w - 32, labelH, true)))
+          ks.forEach((kp, i) => {
+            const x = 60 + i * (w + gap)
+            rect(x, 150, w, height, pal.panel)
+            rect(x, 150, w, 4, accent)
+            txt(x + 16, 166, w - 32, labelH - 12, kp.label, labelSize, pal.text, true)
+            txt(x + 16, 150 + labelH, w - 32, valueH, kp.value, Math.floor(valueSize), legibleInk(accent, pal.text, pal.panel), true)
+            a('format.anchor', { anchor: 'middle' })
+            if (kp.delta) txt(x + 16, 150 + labelH + valueH, w - 32, height - labelH - valueH - 12, kp.delta, 20, pal.text)
+          })
+        }
+        if (bullets.length) adaptiveList(bullets, 60, 400, 840, 84, bullets.length > 1 ? 2 : 1, 20)
         break
       }
       case 'timeline': {
@@ -307,30 +383,39 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         head(n, s)
         const tb = s.table
         if (!tb) break
-        const k = tb.columns.length
-        const colW = Math.floor(840 / k)
-        const rowH = Math.min(48, Math.floor(330 / (tb.rows.length + 1)))
-        const size = k > 4 ? 14 : 16
-        // Un solo tamaño para toda la tabla: el menor que necesita alguna celda. Achicar celda por celda dejaba letras desiguales en la misma fila.
-        const cells: Array<[string, boolean]> = [
-          ...tb.columns.map((t): [string, boolean] => [t, true]),
-          ...tb.rows.flatMap((row) => row.map((t, i): [string, boolean] => [t, i === 0]))
-        ]
-        const fit = cells.reduce(
-          (m, [t, bold]) =>
-            Math.min(m, fitSize(t, size, Math.floor((colW - 20) / (size * 0.55))), autoFitSize(t, size, colW - 20, rowH, bold)),
-          size
+        const available = bullets.length ? 250 : 330
+        const width = s.chart ? 400 : 840
+        const base = tb.rows.length <= 2 ? 32 : 22
+        const colW = width / tb.columns.length
+        // Alto natural según las líneas a tamaño legible. Nunca inflar una fila para cubrir la lámina.
+        const cells = [tb.columns, ...tb.rows]
+        const rowHeight = Math.max(
+          54,
+          ...cells.flatMap((row) => row.map((text) => Math.ceil((text.length * base * 0.5) / (colW - 34)) * base * 1.2 + 24))
         )
-        const cell = (t: string, i: number, y: number, color: string, bold: boolean): void =>
-          txt(60 + i * colW + 12, y + Math.max(0, (rowH - fit * 1.4) / 2), colW - 20, rowH, t, fit, color, bold)
-        rect(60, 146, 840, rowH, accent)
-        tb.columns.forEach((t, i) => cell(t, i, 146, pal.dark ? pal.bg : 'FFFFFF', true))
-        tb.rows.forEach((row, r) => {
-          const y = 146 + rowH * (r + 1)
-          if (r % 2 === 1) rect(60, y, 840, rowH, pal.panel)
-          rect(60, y + rowH - 1, 840, 1, pal.edge)
-          row.forEach((t, i) => cell(t, i, y, pal.text, i === 0))
-        })
+        const height = Math.min(available, 64 + rowHeight * tb.rows.length)
+        const y = 150 + (available - height) / 2
+        nativeTable(cells, [60, y, width, height], base)
+        if (s.chart) {
+          const horizontal = s.chart.type === 'bar'
+          a('insert.chart', {
+            type: s.chart.type === 'bar' ? 'bar' : CHART_TYPE[s.chart.type],
+            rect: [484, 150, horizontal ? 318 : 416, available],
+            categories: s.chart.categories.map((label) => chartCategory(label, 12)),
+            series: [{ name: tb.columns[1], values: s.chart.values }]
+          })
+          a('chart.options', { title: null, legend: null, dataLabels: !horizontal, gridlines: false, palette: chartColors })
+          if (horizontal) {
+            // Rótulos editables junto a cada barra. El render de DeckCraft ignora numFmt y tickLblPos del eje;
+            // se reserva una columna para cifras locales y se cubre solo la banda de marcas numéricas.
+            rect(484, 150 + available - 32, 416, 32, s.background ? stripHash(s.background) : pal.bg)
+            s.chart.values.forEach((value, i) => {
+              const y = 150 + 13 + ((i + 0.5) * (available - 50)) / s.chart!.values.length - 12
+              txt(806, y, 94, 24, chartNumber(value), 14, pal.text, false, 'right')
+            })
+          }
+        }
+        if (bullets.length) adaptiveList(bullets, 60, 414, 840, 70, bullets.length > 1 ? 2 : 1, 24)
         break
       }
       case 'image': {
@@ -408,11 +493,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
       default: {
         // bullets (el normal)
         head(n, s)
-        const many = bullets.length > 6
-        // Con pocas viñetas la lámina no queda con dos tercios vacíos: letra y separación crecen cuando hay 4 o menos.
-        const few = bullets.length <= 3 ? { y: 172, gap: 96, size: 28 } : bullets.length === 4 ? { y: 164, gap: 80, size: 26 } : null
-        if (few) list(bullets, 60, few.y, 840, 9, few.gap, few.size)
-        else list(bullets, 60, many ? 148 : 156, 840, 9, many ? 38 : 52, many ? 18 : 22)
+        adaptiveList(bullets, 60, 150, 840, 330, bullets.length >= 4 ? 2 : 1)
       }
     }
     // Notas del orador: texto que solo ve quien presenta (DeckCraft: `slide.notes` sobre la diapositiva recién armada).
@@ -440,7 +521,7 @@ export async function renderChatDeck(
     const args = ['run', '--save', out]
     for (const cmd of chatDeckCommands(spec, images)) args.push('--cmd', cmd)
     await run(binary, args, timeoutMs)
-    return await ensureTitlePlaceholders(await readFile(out))
+    return await formatChartNumbers(await ensureTitlePlaceholders(await readFile(out)))
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

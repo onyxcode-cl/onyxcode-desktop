@@ -82,6 +82,110 @@ class NativeDesign(unittest.TestCase):
         self.assertTrue(any(s.has_chart for s in prs.slides[7].shapes))
         self.assertTrue(any(s.has_table for s in prs.slides[6].shapes))
 
+    def test_existing_numeric_bullets_create_table_and_comparable_chart(self):
+        spec = {'slides': [{'type': 'bullets', 'title': 'Ventas', 'bullets': [
+            'Enero: $4.074.900', 'Febrero: $3.524.150', 'Marzo: $3.570.525'],
+            'notes': 'Cifras proporcionadas'}]}
+        prs = self.assertClean(self.save(Builder(spec, str(self.base), None).build()))
+        slide = prs.slides[0]
+        table = next(sh.table for sh in slide.shapes if sh.has_table)
+        chart = next(sh.chart for sh in slide.shapes if sh.has_chart)
+        self.assertEqual(table.cell(2, 1).text, '$3.524.150')
+        self.assertEqual(list(chart.series[0].values), [4074900, 3524150, 3570525])
+        self.assertEqual(slide.notes_slide.notes_text_frame.text, 'Cifras proporcionadas')
+        self.assertTrue(chart.part.chart_workbook.xlsx_part.blob.startswith(b'PK'))
+        self.assertEqual(str(slide.background.fill.fore_color.rgb), THEMES['sobrio']['bg'])
+
+    def test_numeric_table_and_mixed_units_are_not_misrepresented(self):
+        cases = [
+            ({'type': 'table', 'columns': ['Zona', 'Ventas'], 'rows': [['Norte', '1.234,5'], ['Sur', '2.345,6']]}, True),
+            ({'type': 'bullets', 'bullets': ['Presupuesto: $90.000.000', 'Ejecución: 35 %']}, False),
+            ({'type': 'bullets', 'bullets': ['Plazo: 30 de noviembre de 2026', 'Responsable: Elena Soto']}, False),
+            ({'type': 'bullets', 'bullets': ['Reserva de 72 horas', '18 oficinas cubiertas']}, False),
+        ]
+        for data, expected_chart in cases:
+            with self.subTest(data=data):
+                slide_spec = dict(data, title='Datos')
+                prs = self.assertClean(self.save(Builder({'slides': [slide_spec]}, str(self.base), 'sobrio').build()))
+                shapes = prs.slides[0].shapes
+                self.assertEqual(any(sh.has_chart for sh in shapes), expected_chart)
+                if data.get('bullets', [''])[0].startswith('Presupuesto:'):
+                    self.assertFalse(any(sh.has_table for sh in shapes))
+                if expected_chart:
+                    chart = next(sh.chart for sh in shapes if sh.has_chart)
+                    self.assertEqual(list(chart.series[0].values), [1234.5, 2345.6])
+
+    def test_sparse_body_occupies_at_least_half_the_slide(self):
+        # Union of nonempty body boxes/native objects, excluding decoration and
+        # title/footer. This checks layout allocation; it is not glyph ink area.
+        specs = [
+            {'type': 'bullets', 'bullets': ['Confirmar los responsables', 'Actualizar el calendario', 'Revisar la reserva de agua']},
+            {'type': 'content', 'text': 'Mantener la atención durante una interrupción del suministro.'},
+        ]
+        for data in specs:
+            with self.subTest(type=data['type']):
+                prs = self.assertClean(self.save(Builder({'slides': [dict(data, title='Plan de continuidad')]}, str(self.base), 'sobrio').build()))
+                slide = prs.slides[0]
+                body = [sh for sh in slide.shapes if sh.top >= Inches(1.7) and sh.top < Inches(6.8)
+                        and (sh.has_table or sh.has_chart or (sh.has_text_frame and sh.text.strip()))]
+                # These fixture boxes do not overlap.
+                occupied = sum(sh.width * sh.height for sh in body) / (prs.slide_width * prs.slide_height)
+                self.assertGreaterEqual(occupied, .50)
+                if data['type'] == 'bullets':
+                    fonts = [run.font.size.pt for sh in body for para in sh.text_frame.paragraphs for run in para.runs]
+                    self.assertGreaterEqual(min(fonts), 40)
+
+    def test_sparse_table_has_natural_height_centered_and_unfilled_body(self):
+        spec = {'slides': [{'type': 'table', 'title': 'Calendario', 'columns': ['Hito', 'Fecha', 'Responsable'],
+                           'rows': [['Simulacro de continuidad', '15 de diciembre de 2026', 'Elena Soto']]}]}
+        prs = self.assertClean(self.save(Builder(spec, str(self.base), 'sobrio').build()))
+        shape = next(sh for sh in prs.slides[0].shapes if sh.has_table)
+        self.assertEqual(len(shape.table.rows), 2)
+        self.assertLess(shape.height, Inches(2.5))
+        self.assertAlmostEqual((shape.top + shape.height / 2) / Inches(1), 4.25, places=4)
+        self.assertEqual(str(shape.table.cell(1, 0).fill.fore_color.rgb), THEMES['sobrio']['bg'])
+
+    def test_independent_amounts_do_not_create_tables_or_charts(self):
+        bullets = ['Ventas netas de febrero en Norte: $1.188.200', 'Devoluciones totales del trimestre: $116.525']
+        for explicit_table in (False, True):
+            data = {'title': 'Resultados'}
+            if explicit_table:
+                data.update(type='table', columns=['Concepto', 'Valor'], rows=[text.split(': ') for text in bullets])
+            else:
+                data.update(type='bullets', bullets=bullets)
+            prs = self.assertClean(self.save(Builder({'slides': [data]}, str(self.base), 'sobrio').build()))
+            slide = prs.slides[0]
+            self.assertFalse(any(sh.has_chart for sh in slide.shapes))
+            self.assertEqual(any(sh.has_table for sh in slide.shapes), explicit_table)
+            if not explicit_table:
+                text = ' '.join(sh.text for sh in slide.shapes if sh.has_text_frame)
+                for bullet in bullets:
+                    for part in bullet.split(': '):
+                        self.assertIn(part, text)
+
+    def test_long_independent_amounts_use_large_stacked_cards_in_all_themes(self):
+        values = ['$90.000.000', '35 %', '$31.500.000']
+        bullets = ['Presupuesto aprobado: '+values[0], 'Ejecución actual: '+values[1], 'Monto ejecutado: '+values[2]]
+        for theme in THEMES:
+            with self.subTest(theme=theme):
+                prs = self.assertClean(self.save(Builder({'slides': [{'title': 'Presupuesto', 'bullets': bullets}]}, str(self.base), theme).build()))
+                shapes = prs.slides[0].shapes
+                self.assertFalse(any(sh.has_table or sh.has_chart for sh in shapes))
+                numbers = [next(sh for sh in shapes if sh.has_text_frame and sh.text == value) for value in values]
+                self.assertEqual(len({sh.top for sh in numbers}), 3)
+                for sh in numbers:
+                    self.assertGreater(sh.text_frame.paragraphs[0].runs[0].font.size.pt, 40)
+
+    def test_chart_values_and_axis_have_grouped_number_formats(self):
+        spec = {'slides': [{'title': 'Ventas', 'bullets': ['Enero: $4.074.900', 'Febrero: $3.524.150']}]}
+        prs = self.assertClean(self.save(Builder(spec, str(self.base), 'sobrio').build()))
+        chart = next(sh.chart for sh in prs.slides[0].shapes if sh.has_chart)
+        self.assertEqual(chart.plots[0].data_labels.number_format, '#,##0.########')
+        self.assertEqual(chart.value_axis.tick_labels.number_format, '#,##0.########')
+        self.assertEqual([cat.label for cat in chart.plots[0].categories], ['Enero', 'Febrero'])
+        for labels in [['2026-02', 'T1 2026'], ['Ventas de febrero', 'Devoluciones del trimestre']]:
+            self.assertFalse(Builder.comparable_categories(['Mes', 'Ventas'], labels))
+
     def test_split_preserves_notes_on_every_page(self):
         slides = [{"type": "bullets", "title": "Lista", "bullets": ['Punto con suficiente texto para repartir la lista en varias láminas %d' % i for i in range(25)], "notes": "Conservar esta nota"},
                   {"type": "table", "title": "Registro", "columns": ["Nombre", "Valor"], "rows": [['Fila %d' % i, str(i)] for i in range(20)], "notes": "Conservar tabla"}]

@@ -293,6 +293,11 @@ export function createKit(
     a('format.align', { align })
     if (spacing !== undefined) a('format.spacing', { pt: spacing })
     if (font) a('format.font', { family: font })
+    if (autoFit) {
+      // DeckCraft recalcula la altura al cambiar la letra: conservar la caja que acabamos de ajustar.
+      a('format.autofit', { mode: 'none' })
+      a('shape.resize', { w, h })
+    }
   }
   const pill = (x: number, y: number, w: number, h: number, t: string, size: number, fill?: string): void => {
     a('shape.insert', { preset: look === 'editorial' || look === 'minimal' ? 'rect' : 'roundRect', rect: [x, y, w, h], text: t })

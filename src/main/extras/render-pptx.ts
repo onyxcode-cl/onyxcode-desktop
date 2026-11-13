@@ -11,6 +11,7 @@
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
 import { protectSlide } from './pptx-guards'
+import { chartCategory, numericSeries, prepareSlide } from '../office/craft/deck-data'
 import type { ImageMap } from '../documents/image-files'
 import PptxGenJS from 'pptxgenjs'
 import type { PptxChartSpec, PptxColumnSpec, PptxLayout, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
@@ -30,8 +31,12 @@ const FOOTER_Y = 5.1
 
 function inferLayout(slide: PptxSlideSpec, index: number): PptxLayout {
   if (slide.layout) return slide.layout
+  if (slide.chart) return 'chart'
+  if (slide.table) return 'table'
+  if (slide.kpis?.length) return 'kpis'
+  if (slide.columns?.length) return 'two-col'
   if (index === 0) return 'cover'
-  if (slide.image && index > 0) return 'image'
+  if (slide.image) return 'image'
   if (slide.title && !slide.bullets?.length) return 'section'
   return 'bullets'
 }
@@ -311,22 +316,23 @@ function bulletRuns(text: string, labelColor: string, bodyColor: string): { text
 function addBulletsSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
   slide.background = { color: p.bg }
   const top = addContentHeader(slide, spec, p, s)
-  if (spec.bullets?.length) {
-    slide.addText(
-      spec.bullets.flatMap((text) => bulletRuns(text, p.ink, p.body)),
-      {
-        x: MARGIN_X,
-        y: top,
-        w: CONTENT_W,
-        h: CONTENT_BOTTOM - top,
-        fontSize: 16,
-        color: p.body,
-        fontFace: BODY_FONT,
-        valign: 'top',
-        margin: 0
-      }
-    )
-  }
+  const items = spec.bullets ?? []
+  const rowH = (CONTENT_BOTTOM - top) / Math.max(items.length, 1)
+  items.forEach((text, i) => {
+    const height = rowH - 0.08
+    const sizes = items.length <= 2 ? [32, 30, 28, 24, 20, 16] : items.length <= 4 ? [26, 24, 22, 20, 16] : [20, 18, 16, 14]
+    slide.addText(bulletRuns(text, p.ink, p.body), {
+      x: MARGIN_X,
+      y: top + i * rowH,
+      w: CONTENT_W,
+      h: height,
+      fontSize: fitText(text, CONTENT_W, height, sizes, BODY_FONT),
+      color: p.body,
+      fontFace: BODY_FONT,
+      valign: 'middle',
+      margin: 0
+    })
+  })
   addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
 }
 
@@ -438,6 +444,17 @@ function addTwoColSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette,
   const panelY = top
   if (spec.columns) {
     const [left, right] = spec.columns
+    const columnSize = Math.min(
+      ...[left, right].map((col) =>
+        fitText(
+          [col.heading ?? '', ...col.bullets].join('\n'),
+          panelW - 0.6,
+          panelH - 0.5,
+          col.bullets.length <= 2 ? [26, 24, 22, 20, 18, 16, 14] : [20, 18, 16, 14],
+          BODY_FONT
+        )
+      )
+    )
     slide.addShape('roundRect', {
       x: MARGIN_X,
       y: panelY,
@@ -461,7 +478,7 @@ function addTwoColSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette,
       y: panelY + 0.25,
       w: panelW - 0.6,
       h: panelH - 0.5,
-      fontSize: 13.5,
+      fontSize: columnSize,
       fontFace: BODY_FONT,
       valign: 'top',
       margin: 0
@@ -471,7 +488,7 @@ function addTwoColSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette,
       y: panelY + 0.25,
       w: panelW - 0.6,
       h: panelH - 0.5,
-      fontSize: 13.5,
+      fontSize: columnSize,
       fontFace: BODY_FONT,
       valign: 'top',
       margin: 0
@@ -487,7 +504,23 @@ function addTwoColSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette,
       if (!items.length) continue
       slide.addText(
         items.map((text) => ({ text, options: { bullet: { code: '2022' }, breakLine: true, paraSpaceAfter: 12 } })),
-        { x, y: panelY, w: panelW, h: panelH, fontSize: 15, color: p.body, fontFace: BODY_FONT, valign: 'top', margin: 0 }
+        {
+          x,
+          y: panelY,
+          w: panelW,
+          h: panelH,
+          fontSize: fitText(
+            items.join('\n'),
+            panelW,
+            panelH,
+            items.length <= 2 ? [28, 26, 24, 22, 20, 18, 16] : [20, 18, 16, 14],
+            BODY_FONT
+          ),
+          color: p.body,
+          fontFace: BODY_FONT,
+          valign: 'middle',
+          margin: 0
+        }
       )
     }
   }
@@ -580,7 +613,7 @@ function addCardsSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
 }
 
 /**
- * De 2 a 4 métricas EN FILA (etiqueta chica arriba, número grande al medio, variación chica abajo),
+ * De 2 a 4 métricas en tarjetas (en fila o apiladas para montos largos),
  * para un resumen tipo tablero — DISTINTO de "stat": "stat" es UNA cifra como foco de toda la
  * diapositiva; acá son VARIAS métricas juntas, más chicas cada una. Mismo patrón de tarjeta que
  * "cards" (fondo `surface`, borde `border`), sin círculo numerado — acá el número grande ES el foco.
@@ -589,59 +622,207 @@ function addKpisSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s
   slide.background = { color: p.bg }
   const top = addContentHeader(slide, spec, p, s)
   const kpis = spec.kpis ?? []
-  const cols = kpis.length
-  const gap = 0.3
-  const cardW = (CONTENT_W - gap * (cols - 1)) / Math.max(cols, 1)
-  const cardH = Math.min(2.2, CONTENT_BOTTOM - top)
-  kpis.forEach((kpi, i) => {
-    const x = MARGIN_X + i * (cardW + gap)
-    slide.addShape(cardShape(s), {
-      x,
-      y: top,
-      w: cardW,
-      h: cardH,
-      rectRadius: s.cardRadius,
-      fill: s.cardFill ? { color: p.surface } : { type: 'none' },
-      line: s.cardBorder ? { color: p.border, width: 0.75 } : { type: 'none' }
+  const hasBullets = !!spec.bullets?.length
+  const height = CONTENT_BOTTOM - top - (hasBullets ? 0.65 : 0)
+  if (kpis.length >= 3 && kpis.some((kpi) => kpi.value.length > 7)) {
+    const gap = 0.12
+    const cardH = (height - gap * (kpis.length - 1)) / kpis.length
+    const size = Math.min(
+      ...kpis.map((kpi) => fitText(kpi.value, 3.9, cardH - 0.12, [56, 52, 48, 44, 40, 36, 32], BODY_FONT, { bold: true }))
+    )
+    kpis.forEach((kpi, i) => {
+      const y = top + i * (cardH + gap)
+      slide.addShape(cardShape(s), {
+        x: MARGIN_X,
+        y,
+        w: CONTENT_W,
+        h: cardH,
+        fill: s.cardFill ? { color: p.surface } : { type: 'none' },
+        line: s.cardBorder ? { color: p.border, width: 0.75 } : { type: 'none' }
+      })
+      slide.addText(kpi.label, {
+        x: MARGIN_X + 0.15,
+        y: y + 0.06,
+        w: 2.15,
+        h: cardH - 0.12,
+        fontFace: BODY_FONT,
+        fontSize: fitText(kpi.label, 2.15, cardH - 0.12, [20, 18, 16, 14], BODY_FONT),
+        color: p.body,
+        margin: 0,
+        valign: 'middle'
+      })
+      slide.addText(kpi.value, {
+        x: MARGIN_X + 2.55,
+        y: y + 0.06,
+        w: 3.9,
+        h: cardH - 0.12,
+        fontFace: BODY_FONT,
+        fontSize: size,
+        bold: true,
+        color: p.ink,
+        margin: 0,
+        valign: 'middle'
+      })
+      if (kpi.delta)
+        slide.addText(kpi.delta, {
+          x: MARGIN_X + 6.55,
+          y: y + 0.06,
+          w: 2.1,
+          h: cardH - 0.12,
+          fontFace: BODY_FONT,
+          fontSize: fitText(kpi.delta, 2.1, cardH - 0.12, [16, 14, 12], BODY_FONT),
+          color: p.accent,
+          margin: 0,
+          valign: 'middle'
+        })
     })
-    slide.addText(kpi.label, {
-      x: x + 0.22,
-      y: top + 0.22,
-      w: cardW - 0.44,
-      h: 0.4,
-      fontSize: 13,
+  } else {
+    const gap = 0.25
+    const cardW = (CONTENT_W - gap * (kpis.length - 1)) / kpis.length
+    const valueHeight = height * 0.5
+    const labelHeight = height * 0.27
+    const valueSize = Math.min(
+      ...kpis.map((kpi) => Math.min(kpis.length <= 2 ? 76 : 44, ((cardW - 0.4) * 72) / Math.max(1, kpi.value.length * 0.56)))
+    )
+    kpis.forEach((kpi, i) => {
+      const x = MARGIN_X + i * (cardW + gap)
+      slide.addShape(cardShape(s), {
+        x,
+        y: top,
+        w: cardW,
+        h: height,
+        rectRadius: s.cardRadius,
+        fill: s.cardFill ? { color: p.surface } : { type: 'none' },
+        line: s.cardBorder ? { color: p.border, width: 0.75 } : { type: 'none' }
+      })
+      slide.addText(kpi.label, {
+        x: x + 0.2,
+        y: top + 0.12,
+        w: cardW - 0.4,
+        h: labelHeight - 0.12,
+        fontFace: BODY_FONT,
+        color: p.body,
+        margin: 0,
+        fontSize: fitText(kpi.label, cardW - 0.4, labelHeight - 0.12, [22, 20, 18, 16, 14, 12], BODY_FONT)
+      })
+      slide.addText(kpi.value, {
+        x: x + 0.2,
+        y: top + labelHeight,
+        w: cardW - 0.4,
+        h: valueHeight,
+        fontFace: BODY_FONT,
+        fontSize: Math.floor(valueSize),
+        color: p.ink,
+        bold: true,
+        margin: 0,
+        valign: 'middle'
+      })
+      if (kpi.delta)
+        slide.addText(kpi.delta, {
+          x: x + 0.2,
+          y: top + labelHeight + valueHeight,
+          w: cardW - 0.4,
+          h: height - labelHeight - valueHeight - 0.08,
+          fontFace: BODY_FONT,
+          color: p.accent,
+          margin: 0,
+          fontSize: fitText(kpi.delta, cardW - 0.4, height - labelHeight - valueHeight - 0.08, [16, 14, 12, 10], BODY_FONT)
+        })
+    })
+  }
+  if (hasBullets)
+    slide.addText(spec.bullets!.join(' · '), {
+      x: MARGIN_X,
+      y: CONTENT_BOTTOM - 0.55,
+      w: CONTENT_W,
+      h: 0.55,
+      fontSize: fitText(spec.bullets!.join(' · '), CONTENT_W, 0.55, [18, 16, 14, 12], BODY_FONT),
       color: p.body,
       fontFace: BODY_FONT,
-      valign: 'top',
       margin: 0
     })
-    slide.addText(kpi.value, {
-      x: x + 0.22,
-      y: top + 0.68,
-      w: cardW - 0.44,
-      h: 0.8,
-      fontSize: 32,
-      bold: true,
-      color: p.ink,
-      fontFace: p.headFont,
-      valign: 'top',
-      margin: 0
-    })
-    if (kpi.delta) {
-      slide.addText(kpi.delta, {
-        x: x + 0.22,
-        y: top + cardH - 0.5,
-        w: cardW - 0.44,
-        h: 0.4,
-        fontSize: 12,
-        bold: true,
-        color: p.accent,
-        fontFace: BODY_FONT,
-        valign: 'bottom',
-        margin: 0
-      })
+  addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
+}
+
+/** Tabla editable; las series con la misma unidad se comparan al lado sin perder las celdas originales. */
+function addTableSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
+  slide.background = { color: p.bg }
+  const top = addContentHeader(slide, spec, p, s)
+  const table = spec.table!
+  const chart = spec.chart ?? numericSeries(table)
+  const tableW = chart ? 4.1 : CONTENT_W
+  const hasBullets = !!spec.bullets?.length
+  const available = CONTENT_BOTTOM - top - (hasBullets ? 0.65 : 0)
+  const rowH = Math.min(available / (table.rows.length + 1), table.rows.length <= 2 ? 0.85 : 0.6)
+  const height = rowH * (table.rows.length + 1)
+  const y = top + (available - height) / 2
+  const colW = tableW / table.columns.length
+  const texts = [table.columns, ...table.rows]
+  const sizes = chart ? [20, 18, 16, 14, 12, 10] : [26, 24, 22, 20, 18, 16, 14, 12, 10]
+  const fontSize = Math.min(...texts.flatMap((row) => row.map((text) => fitText(text, colW - 0.12, rowH - 0.08, sizes, BODY_FONT))))
+  slide.addTable(
+    texts.map((row, r) =>
+      row.map((text) => ({
+        text,
+        options: { bold: r === 0, color: r === 0 ? p.onDark : p.ink, fill: { color: r === 0 ? p.primary : p.bg } }
+      }))
+    ),
+    {
+      x: MARGIN_X,
+      y,
+      w: tableW,
+      h: height,
+      rowH,
+      colW,
+      fontFace: BODY_FONT,
+      fontSize,
+      margin: 0.04,
+      valign: 'middle',
+      border: { type: 'solid', color: p.border, pt: 0.5 },
+      autoPage: false
     }
-  })
+  )
+  if (chart)
+    slide.addChart(
+      chart.type,
+      [
+        {
+          name: table.columns[1] ?? spec.title ?? 'Datos',
+          labels: chart.categories.map((label) => chartCategory(label)),
+          values: chart.values
+        }
+      ],
+      {
+        x: 4.95,
+        y: top,
+        w: 4.45,
+        h: available,
+        chartColors: [...p.chart],
+        showTitle: false,
+        showLegend: false,
+        showValue: true,
+        catAxisLabelColor: p.body,
+        catAxisLabelFontSize: 11,
+        valAxisLabelColor: p.body,
+        dataLabelColor: p.ink,
+        dataLabelFontSize: 11,
+        dataLabelFormatCode: '#,##0.########',
+        valAxisLabelFormatCode: '#,##0.########',
+        catGridLine: { style: 'none' },
+        valGridLine: { style: 'none' }
+      }
+    )
+  if (hasBullets)
+    slide.addText(spec.bullets!.join(' · '), {
+      x: MARGIN_X,
+      y: CONTENT_BOTTOM - 0.55,
+      w: CONTENT_W,
+      h: 0.55,
+      fontSize: fitText(spec.bullets!.join(' · '), CONTENT_W, 0.55, [18, 16, 14, 12], BODY_FONT),
+      color: p.body,
+      fontFace: BODY_FONT,
+      margin: 0
+    })
   addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
 }
 
@@ -670,6 +851,8 @@ function addChartSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
     catGridLine: { style: 'none' },
     dataLabelColor: p.ink,
     dataLabelFontSize: 11,
+    dataLabelFormatCode: '#,##0.########',
+    valAxisLabelFormatCode: '#,##0.########',
     showValue: true,
     showPercent: chart.type === 'pie',
     barGapWidthPct: 40,
@@ -727,7 +910,8 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
   const total = data.slides.length
 
   let sectionCount = 0
-  data.slides.forEach((spec, i) => {
+  data.slides.forEach((input, i) => {
+    const spec = prepareSlide(input, i, total)
     const slide = protectSlide(pres.addSlide())
     const layout = inferLayout(spec, i)
     if (layout === 'section') sectionCount += 1
@@ -740,6 +924,7 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
     else if (layout === 'two-col') addTwoColSlide(slide, spec, palette, style, ctx)
     else if (layout === 'cards') addCardsSlide(slide, spec, palette, style, ctx)
     else if (layout === 'image') addImageSlide(slide, spec, palette, style, ctx, images)
+    else if (layout === 'table' && spec.table) addTableSlide(slide, spec, palette, style, ctx)
     else if (layout === 'chart' && spec.chart) addChartSlide(slide, spec, palette, style, ctx)
     else if (layout === 'kpis' && spec.kpis && spec.kpis.length >= 2) addKpisSlide(slide, spec, palette, style, ctx)
     else addBulletsSlide(slide, spec, palette, style, ctx)
