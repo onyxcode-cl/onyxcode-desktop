@@ -157,7 +157,7 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
 
   it('numera las páginas en las diapositivas de contenido ("2 / 3", etc.)', async () => {
     const spec: PptxSpec = {
-      slides: [{ title: 'Portada' }, { title: 'A', bullets: ['x'] }, { title: 'B', bullets: ['y'] }]
+      slides: [{ title: 'Portada' }, { title: 'A', bullets: ['x'] }, { title: 'B', layout: 'bullets', bullets: ['y'] }]
     }
     const buf = await renderPptx(spec)
     const texts = await slideTexts(buf)
@@ -287,7 +287,7 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     for (const b of ['Rápido', 'Seguro', 'Simple']) expect(text).toContain(b)
   })
 
-  it('layout "kpis": de 2 a 4 métricas en fila (una tarjeta roundRect por métrica, con su etiqueta/número/variación) — DISTINTO de "cards" (sin círculo numerado) y de "stat" (acá son varias, no una sola como foco)', async () => {
+  it('layout "kpis": tarjetas de métricas independientes, con su etiqueta/número/variación', async () => {
     const spec: PptxSpec = {
       slides: [
         {
@@ -303,7 +303,7 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     }
     const buf = await renderPptx(spec)
     const [text] = await slideTexts(buf)
-    expect((text.match(/prst="roundRect"/g) ?? []).length).toBe(3) // una tarjeta por KPI
+    expect(text).not.toContain('<a:tbl>') // cifras independientes: tarjetas con texto editable
     expect((text.match(/prst="ellipse"/g) ?? []).length).toBe(0) // sin círculo numerado — no es "cards"
     for (const t of ['Ventas totales', '$433 M', '+18% vs. trimestre anterior', 'Clientes nuevos', '1.240', 'Retención', '94%']) {
       expect(text).toContain(t)
@@ -460,4 +460,125 @@ describe('189: notas del orador en el respaldo (pptxgenjs)', () => {
     const texts = await Promise.all(notes.map((n) => zip.file(n)!.async('string')))
     expect(texts.filter((t) => t.includes('Notas con ñ'))).toHaveLength(1)
   })
+})
+
+describe('V23B: respaldo sin DeckCraft conserva datos y aprovecha la lámina', () => {
+  it('una tabla sin layout sale como tabla nativa y gráfico comparable, con libro de datos editable', async () => {
+    const buf = await renderPptx({
+      slides: [
+        {
+          title: 'Recursos',
+          table: {
+            columns: ['Estado', 'Millones'],
+            rows: [
+              ['Ejecutado', '31,5'],
+              ['Disponible', '58,5']
+            ]
+          }
+        }
+      ]
+    })
+    const [xml] = await slideTexts(buf)
+    expect(xml).toContain('<a:tbl>')
+    expect(xml).toContain('Ejecutado')
+    expect(xml).toContain('31,5')
+    const charts = await chartTexts(buf)
+    expect(charts).toHaveLength(1)
+    expect(charts[0]).toContain('<c:v>31.5</c:v>')
+    expect(charts[0]).toContain('<c:v>58.5</c:v>')
+    const zip = await JSZip.loadAsync(buf)
+    expect(Object.keys(zip.files).some((name) => /^ppt\/embeddings\/.*\.xlsx$/.test(name))).toBe(true)
+  })
+
+  it('una lista etiqueta-número ya usada por el modelo se convierte sin opciones especiales', async () => {
+    const buf = await renderPptx({
+      slides: [{ title: 'Informe' }, { title: 'Ventas', bullets: ['Enero: $4.074.900', 'Febrero: $3.524.150'] }]
+    })
+    const xml = (await slideTexts(buf))[1]
+    expect(xml).toContain('<a:tbl>')
+    expect(xml).toContain('Enero')
+    expect(await chartTexts(buf)).toHaveLength(1)
+  })
+
+  it('una tabla de fechas conserva las celdas sin inventar una serie numérica', async () => {
+    const buf = await renderPptx({
+      slides: [
+        {
+          title: 'Calendario',
+          table: {
+            columns: ['Hito', 'Fecha'],
+            rows: [
+              ['Simulacro', '2026-06-03'],
+              ['Entrega', '2026-06-15']
+            ]
+          }
+        }
+      ]
+    })
+    const [xml] = await slideTexts(buf)
+    expect(xml).toContain('<a:tbl>')
+    expect(xml).toContain('2026-06-03')
+    expect(await chartTexts(buf)).toHaveLength(0)
+  })
+
+  it('dos viñetas breves crecen a 32 puntos y se distribuyen hasta la zona inferior', async () => {
+    const buf = await renderPptx({
+      slides: [{ title: 'Plan', layout: 'bullets', bullets: ['Revisar cobertura', 'Aprobar el siguiente paso'] }]
+    })
+    const [xml] = await slideTexts(buf)
+    const points = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].filter(
+      (m) => m[0].includes('Revisar cobertura') || m[0].includes('Aprobar el siguiente paso')
+    )
+    expect(points).toHaveLength(2)
+    expect(points.every((m) => m[0].includes('sz="3200"'))).toBe(true)
+    const secondY = Number(/<a:off x="\d+" y="(\d+)"/.exec(points[1][0])?.[1])
+    expect(secondY / 914400).toBeGreaterThan(3)
+  })
+})
+
+it('V23B: KPI mixtos son tarjetas editables y conservan variaciones y texto de apoyo sin inventar comparaciones', async () => {
+  const buf = await renderPptx({
+    slides: [
+      {
+        title: 'Cobertura',
+        layout: 'kpis',
+        bullets: ['Corte al cierre del semestre'],
+        kpis: [
+          { label: 'Oficinas', value: '18', delta: '+2' },
+          { label: 'Familias', value: '240' }
+        ]
+      }
+    ]
+  })
+  const [xml] = await slideTexts(buf)
+  expect(xml).not.toContain('<a:tbl>')
+  for (const text of ['Oficinas', '18', '+2', 'Familias', '240', 'Corte al cierre del semestre']) expect(xml).toContain(text)
+  expect(await chartTexts(buf)).toHaveLength(0)
+})
+
+it('V23B corrección: dos importes de medidas y períodos distintos conservan tarjetas sin gráfico', async () => {
+  const buf = await renderPptx({
+    slides: [
+      { title: 'Resultados', bullets: ['Ventas netas de febrero en Norte: $1.188.200', 'Devoluciones totales del trimestre: $116.525'] }
+    ]
+  })
+  const [xml] = await slideTexts(buf)
+  expect(xml).not.toContain('<a:tbl>')
+  expect(xml).toContain('$1.188.200')
+  expect(xml).toContain('Devoluciones totales del trimestre')
+  expect(await chartTexts(buf)).toHaveLength(0)
+})
+
+it('V23B corrección: el respaldo apila montos largos en tarjetas con cifras mayores de 40 pt', async () => {
+  const values = ['$90.000.000', '35 %', '$31.500.000']
+  const buf = await renderPptx({
+    slides: [{ title: 'Presupuesto', kpis: values.map((value, i) => ({ label: `Indicador ${i}`, value, delta: 'Nota del importe' })) }]
+  })
+  const [xml] = await slideTexts(buf)
+  expect(xml).not.toContain('<a:tbl>')
+  const shapes = [...xml.matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].map((match) => match[0])
+  const numbers = values.map((value) => shapes.find((shape) => shape.includes(`<a:t>${value}</a:t>`))!)
+  expect(numbers.every(Boolean)).toBe(true)
+  for (const number of numbers) expect(Number(/sz="(\d+)"/.exec(number)?.[1])).toBeGreaterThan(4000)
+  expect(new Set(numbers.map((shape) => /<a:off x="\d+" y="(\d+)"/.exec(shape)?.[1])).size).toBe(3)
 })

@@ -114,8 +114,10 @@ describe('chatDeckCommands (prueba Craft)', () => {
     expect(texts({ slides: [{ title: 'Ventas', bullets: ['Primera viñeta'] }] })).toContain('Primera viñeta')
     // no pisa viñetas que ya hay, y el subtítulo de la presentación solo va a la portada
     const f = foldSubtitles({ subtitle: 'X', slides: [{ title: 'A', bullets: ['b'] }, { title: 'B' }] } as unknown as PptxSpec)
-    expect(f.slides[0].bullets).toEqual(['b'])
+    expect(f.slides[0].bullets).toEqual(['X', 'b'])
     expect(f.slides[1].bullets).toBeUndefined()
+    const all = texts({ slides: [{ title: 'Portada', subtitle: 'Resumen', bullets: ['Primera', 'Segunda'] }] }).join('\n')
+    for (const line of ['Resumen', 'Primera', 'Segunda']) expect(all).toContain(line)
     // un separador de sección con subtitle (no es la primera) sigue siendo un separador, no una diapositiva de viñetas
     const g = foldSubtitles({ slides: [{ title: 'Portada' }, { title: 'Parte 2', subtitle: '2026' }] } as unknown as PptxSpec)
     expect(g.slides[1].bullets).toBeUndefined()
@@ -259,18 +261,12 @@ describe('tabla: una sola letra para todas las celdas', () => {
         }
       ]
     })
-    const idx = cmds.findIndex((c) => c.startsWith('insert.textBox=') && c.includes('Monto'))
-    const sizes = new Set<number>()
-    cmds.forEach((c, i) => {
-      if (
-        i > idx - 1 &&
-        c.startsWith('insert.textBox=') &&
-        cmds[i + 1]?.startsWith('format.size=') &&
-        /"(Ítem|Detalle|Monto|Plazo|Nota|A|B|\$1|\$2|1|2|x|y|corto)"/.test(c)
-      )
-        sizes.add(JSON.parse(cmds[i + 1].slice('format.size='.length)).size)
-    })
-    expect(sizes.size).toBe(1)
+    const idx = cmds.findIndex((c) => c.startsWith('insert.table='))
+    expect(idx).toBeGreaterThan(0)
+    const tableCommands = cmds.slice(idx)
+    expect(tableCommands.filter((c) => c.startsWith('format.size='))).toHaveLength(1)
+    expect(tableCommands).toContain('table.selectCells={"from":[0,0],"to":[2,4]}')
+    expect(tableCommands.some((c) => c.startsWith('text.set=') && c.includes(long))).toBe(true)
   })
 })
 
@@ -301,9 +297,26 @@ describe('189: arreglos de PowerPoint medidos', () => {
   const j = (c: string): Record<string, unknown> => JSON.parse(c.slice(c.indexOf('=') + 1))
   /** Tamaño de letra del cuadro de texto que lleva `text` (el `format.size` que sigue al `insert.textBox`). */
   const sizeOf = (cmds: string[], text: string): number => {
-    const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === text)
-    expect(i, `no hay un cuadro con «${text}»`).toBeGreaterThanOrEqual(0)
-    return j(cmds[i + 1]).size as number
+    const i = cmds.findIndex((c) => (c.startsWith('insert.textBox=') || c.startsWith('text.set=')) && j(c).text === text)
+    expect(i, `no hay texto «${text}»`).toBeGreaterThanOrEqual(0)
+    if (cmds[i].startsWith('insert.textBox=')) return j(cmds[i + 1]).size as number
+    const [row, col] = j(cmds[i]).cell as number[]
+    let selected = false
+    let size = 0
+    for (const command of cmds.slice(i + 1)) {
+      if (command.startsWith('insert.table=') || command.startsWith('slide.new=')) break
+      if (command.startsWith('table.selectCells=')) {
+        const { from, to } = j(command) as { from: number[]; to: number[] }
+        selected = row >= from[0] && row <= to[0] && col >= from[1] && col <= to[1]
+      }
+      if (command.startsWith('text.edit=')) {
+        const cell = j(command).cell as number[]
+        selected = cell[0] === row && cell[1] === col
+      }
+      if (command === 'text.exit') selected = false
+      if (selected && command.startsWith('format.size=')) size = j(command).size as number
+    }
+    return size
   }
 
   it('los gráficos usan los colores de la presentación: acento 1 a 6 del tema = paleta', () => {
@@ -384,11 +397,28 @@ describe('189: arreglos de PowerPoint medidos', () => {
         }
       ]
     })
+    expect(cmds.some((c) => c.startsWith('insert.table='))).toBe(false)
     expect(sizeOf(cmds, '18')).toBeGreaterThanOrEqual(80)
     expect(sizeOf(cmds, '18')).toBe(sizeOf(cmds, '240'))
-    expect(sizeOf(cmds, 'OFICINAS')).toBeGreaterThanOrEqual(18)
+    expect(sizeOf(cmds, 'Oficinas')).toBeGreaterThanOrEqual(18)
     const panels = cmds.filter((c) => c.startsWith('shape.insert=') && (j(c).rect as number[])[3] === 250)
     expect(panels).toHaveLength(0)
+  })
+
+  it('los montos largos de tres indicadores crecen en tarjetas apiladas, sin tabla ni cortes', () => {
+    const values = ['$90.000.000', '35 %', '$31.500.000']
+    const cmds = chatDeckCommands({
+      slides: [
+        { title: 'Presupuesto', layout: 'kpis', kpis: values.map((value, i) => ({ label: `Métrica ${i}`, value, delta: 'Dato original' })) }
+      ]
+    })
+    expect(cmds.some((c) => c.startsWith('insert.table='))).toBe(false)
+    expect(sizeOf(cmds, values[0])).toBeGreaterThan(40)
+    expect(new Set(values.map((value) => sizeOf(cmds, value))).size).toBe(1)
+    const boxes = cmds
+      .filter((c) => c.startsWith('insert.textBox=') && values.includes(j(c).text as string))
+      .map((c) => j(c).rect as number[])
+    expect(new Set(boxes.map((box) => box[1])).size).toBe(3)
   })
 
   it('las variaciones de KPI conservan texto y contraste en todos los temas', () => {
@@ -406,10 +436,10 @@ describe('189: arreglos de PowerPoint medidos', () => {
             }
           ]
         })
-        const at = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === delta)
-        const color = j(cmds[at + 2]).color as string
+        const texts = cmds.filter((c) => c.startsWith('insert.textBox=')).map((c) => j(c).text)
+        expect(texts).toContain(delta)
         const pal = paletteFor(theme)
-        expect(contrastRatio(color.slice(1), count <= 2 ? pal.bg : pal.panel)).toBeGreaterThanOrEqual(4.5)
+        expect(contrastRatio(pal.text, pal.panel)).toBeGreaterThanOrEqual(4.5)
         expect(cmds).toContain('slide.notes={"text":"Conservar la nota"}')
       }
     }

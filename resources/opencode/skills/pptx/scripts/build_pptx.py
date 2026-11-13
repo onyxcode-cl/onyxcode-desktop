@@ -12,6 +12,8 @@ import io
 import datetime
 import json
 import os
+import re
+import math
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -55,8 +57,8 @@ class Builder:
     def __init__(self, spec, base_dir, theme_name):
         self.spec = spec
         self.base = base_dir
-        self.t = dict(THEMES[theme_name])
-        self.theme_name = theme_name
+        self.t = dict(THEMES[theme_name or "sobrio"])
+        self.theme_name = theme_name or "sobrio"
         self.prs = Presentation()
         self.prs.slide_width = Inches(SW)
         self.prs.slide_height = Inches(SH)
@@ -168,17 +170,22 @@ class Builder:
         s.shadow.inherit = False
         return s
 
-    def bullets_frame(self, slide, l, t, w, h, items, pt):
+    def bullets_frame(self, slide, l, t, w, h, items, pt, spread=False):
         """items: lista de (texto, nivel). Escribe viñetas reales con sangría."""
         tb = self.content_box(slide, l, t, w, h)
         tf = tb.text_frame
         tf.clear()
         tf.word_wrap = True
         tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+        if len(items) == 1:
+            tf.vertical_anchor = MSO_ANCHOR.MIDDLE
         for i, (text, lvl) in enumerate(items):
             p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
             size = pt if lvl == 0 else max(18, round(pt * 0.85))
             p.space_after = Pt(round(pt * 0.5))
+            if spread and i < len(items) - 1:
+                extra = max(0, h - self.total_height(items, pt, w)) / max(1, len(items) - 1)
+                p.space_after = Pt(round(pt * 0.5) + extra * 72)
             p.line_spacing = 1.2
             pPr = p._p.get_or_add_pPr()
             pPr.set("marL", str(int(Inches(0.32 + 0.35 * lvl))))
@@ -299,12 +306,16 @@ class Builder:
     def s_closing(self, d):
         s = self.new_slide(d.get("notes"), dark_cover=True, layout=0)
         t = self.t
-        self.rect(s, 0, 0, 0.35, SH, t["accent2"])
-        self.set_title(s, d.get("title", "Gracias"), l=1.0, t=2.4, w=SW - 2.0, h=1.6, max_pt=54, min_pt=30,
-                       color=t["cover_fg"], anchor=MSO_ANCHOR.BOTTOM)
-        self.rect(s, 1.0, 4.2, 1.2, 0.07, t["accent2"])
-        if d.get("subtitle"):
-            self.textbox(s, 1.0, 4.45, SW - 2.0, 1.5, d["subtitle"], 22, t["cover_sub"], content=True)
+        self.rect(s, 0, 6.85, SW, 0.15, t["accent2"])
+        self.set_title(s, d.get("title", "Gracias"), l=1.0, t=1.7, w=SW - 2.0, h=2.0, max_pt=58, min_pt=30,
+                       color=t["cover_fg"], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        lines = d.get("subtitle") or "\n".join(tx for tx, _ in self.flatten(d.get("bullets")))
+        if lines:
+            pt, ok = fit_font(lines, SW - 2.0, 2.3, 30, 18)
+            if not ok:
+                raise ValueError("el cierre no cabe a 18 pt; divide su contenido")
+            self.textbox(s, 1.0, 4.0, SW - 2.0, 2.3, lines, pt, t["cover_sub"], content=True,
+                         align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         return s
 
     def s_bullets(self, d):
@@ -318,12 +329,10 @@ class Builder:
             s = self.new_slide(d.get("notes"), layout=1)
             self.chrome(s, title)
             if ch:
-                pt, ok = self.fit_items(ch, w, h, 34 if len(ch) <= 4 else 28, 18)
+                pt, ok = self.fit_items(ch, w, h, 48 if len(ch) == 1 else 40 if len(ch) <= 3 else 34 if len(ch) <= 4 else 28, 18)
                 if not ok:
                     self.warnings.append("Viñetas muy largas en «%s»: divide el texto" % base[:50])
-                used = self.total_height(ch, pt, w)
-                top = BODY_TOP + max(0, (h - used) * .35)
-                self.bullets_frame(s, M, top, w, BODY_BOTTOM-top, ch, pt)
+                self.bullets_frame(s, M, BODY_TOP, w, h, ch, pt, spread=True)
             out = out or s
         return out
 
@@ -346,13 +355,13 @@ class Builder:
                 items = [(col["text"], -1)]
             h = BODY_BOTTOM - top
             if items:
-                pt, ok = self.fit_items([(a, max(b, 0)) for a, b in items], cw, h, 30 if len(items) <= 3 else 26, 18)
+                pt, ok = self.fit_items([(a, max(b, 0)) for a, b in items], cw, h, 36 if len(items) <= 3 else 26, 18)
                 if not ok:
                     self.warnings.append("Columna «%s» muy larga en «%s»" % (key, d.get("title", "")[:40]))
                 if items[0][1] == -1:
                     self.textbox(s, x, top, cw, h, items[0][0], pt, content=True)
                 else:
-                    self.bullets_frame(s, x, top, cw, h, items, pt)
+                    self.bullets_frame(s, x, top, cw, h, items, pt, spread=True)
         return s
 
     def _picture(self, slide, path, l, t, w, h):
@@ -411,9 +420,9 @@ class Builder:
             title = d.get("title", "") if len(pages) == 1 else "%s (%d/%d)" % (d.get("title", ""), pi + 1, len(pages))
             s = self.new_slide(d.get("notes"))
             self.chrome(s, title)
-            w = SW - 2 * M
+            w = d.get("_table_width", SW - 2 * M)
             n = len(page) + 1
-            rh = min(1.15, (BODY_BOTTOM - BODY_TOP) / n)
+            rh = (BODY_BOTTOM - BODY_TOP) / n
             pt = 24 if n <= 4 and len(cols) <= 4 else 20 if n <= 7 else 18
             gf = s.shapes.add_table(n, len(cols), Inches(M), Inches(BODY_TOP), Inches(w), Inches(rh * n))
             tbl = gf.table
@@ -429,9 +438,9 @@ class Builder:
                 heights.append(max(.8 if n <= 4 else .55, need))
             if sum(heights) > BODY_BOTTOM - BODY_TOP:
                 raise ValueError("la tabla no cabe a 18 pt; reduce rows_per_slide o divide sus columnas")
-            scale = max(1, min(1.6, (BODY_BOTTOM-BODY_TOP)/sum(heights)))
+            gf.top = Inches(BODY_TOP + (BODY_BOTTOM - BODY_TOP - sum(heights)) / 2)
             for r, height in zip(tbl.rows, heights):
-                r.height = Inches(height * scale)
+                r.height = Inches(height)
             for ri in range(n):
                 for ci in range(len(cols)):
                     cell = tbl.cell(ri, ci)
@@ -440,7 +449,7 @@ class Builder:
                     if ri == 0:
                         cell.fill.fore_color.rgb = rgb(self.t["cover_bg"])
                     else:
-                        cell.fill.fore_color.rgb = rgb(self.t["soft"] if ri % 2 == 0 else self.t["bg"])
+                        cell.fill.fore_color.rgb = rgb(self.t["bg"])
                     cell.margin_left = cell.margin_right = Inches(0.12)
                     cell.vertical_anchor = MSO_ANCHOR.MIDDLE
                     tf = cell.text_frame
@@ -451,6 +460,8 @@ class Builder:
                     p.alignment = PP_ALIGN.RIGHT if numeric or (ri == 0 and self._col_numeric(page, ci)) else PP_ALIGN.LEFT
                     if p.runs:
                         self._style_run(p.runs[0], pt, self.t["cover_fg"] if ri == 0 else self.t["fg"], bold=(ri == 0))
+            if d.get("_comparison"):
+                self._chart_on(s, d["_comparison"], M + w + .35, BODY_TOP, SW - 2*M - w - .35, BODY_BOTTOM-BODY_TOP)
             first = first or s
         return first
 
@@ -461,13 +472,16 @@ class Builder:
     def s_chart(self, d):
         s = self.new_slide(d.get("notes"))
         self.chrome(s, d.get("title", ""))
+        return self._chart_on(s, d, M, BODY_TOP, SW - 2*M, BODY_BOTTOM-BODY_TOP - (0.4 if d.get("caption") else 0))
+
+    def _chart_on(self, s, d, l, t, w, h):
         kind = d.get("chart_type", "bar")
         types = {"bar": XL_CHART_TYPE.COLUMN_CLUSTERED, "column": XL_CHART_TYPE.COLUMN_CLUSTERED,
                  "hbar": XL_CHART_TYPE.BAR_CLUSTERED, "line": XL_CHART_TYPE.LINE_MARKERS,
                  "pie": XL_CHART_TYPE.PIE}
         if kind not in types:
             raise ValueError("chart_type debe ser bar, hbar, line o pie (recibí «%s»)" % kind)
-        cd = CategoryChartData()
+        cd = CategoryChartData(number_format=d.get("number_format", "#,##0.########"))
         cd.categories = [str(c) for c in d.get("categories", [])]
         series = d.get("series", [])
         if not series:
@@ -477,8 +491,7 @@ class Builder:
             if len(vals) != len(cd.categories):
                 raise ValueError("la serie «%s» tiene %d valores y hay %d categorías" % (se.get("name"), len(vals), len(cd.categories)))
             cd.add_series(se.get("name", "Serie"), vals)
-        h = BODY_BOTTOM - BODY_TOP - (0.4 if d.get("caption") else 0)
-        gf = s.shapes.add_chart(types[kind], Inches(M), Inches(BODY_TOP), Inches(SW - 2 * M), Inches(h), cd)
+        gf = s.shapes.add_chart(types[kind], Inches(l), Inches(t), Inches(w), Inches(h), cd)
         ch = gf.chart
         ch.font.size = Pt(16)
         ch.font.name = self.t["font"]
@@ -526,10 +539,11 @@ class Builder:
                 plot.has_data_labels = True
                 plot.data_labels.font.size = Pt(14)
                 plot.data_labels.font.color.rgb = rgb(self.t["fg"])
-                if "number_format" in d:
-                    plot.data_labels.number_format = d["number_format"]
-                    plot.data_labels.number_format_is_linked = False
+                plot.data_labels.number_format = d.get("number_format", "#,##0.########")
+                plot.data_labels.number_format_is_linked = False
             va = ch.value_axis
+            va.tick_labels.number_format = d.get("number_format", "#,##0.########")
+            va.tick_labels.number_format_is_linked = False
             va.major_gridlines.format.line.color.rgb = rgb(self.t["soft"] if self.theme_name != "oscuro" else "3A4150")
             va.format.line.fill.background()
             if d.get("y_title"):
@@ -575,7 +589,7 @@ class Builder:
         self.chrome(s, d["title"])
         text = d.get("text", "")
         w, h = SW-2*M, BODY_BOTTOM-BODY_TOP
-        pt, ok = fit_font(text, w, h, 32, 18)
+        pt, ok = fit_font(text, w, h, 48 if len(text) <= 160 else 38, 18)
         if not ok:
             raise ValueError("el contenido no cabe a 18 pt; divide la diapositiva")
         self.textbox(s, M, BODY_TOP, w, h, text, pt, content=True)
@@ -591,14 +605,129 @@ class Builder:
             self.textbox(s, 1, 4.7, 11.3, 1.1, d["subtitle"], 24, self.t["cover_sub"], content=True)
         return s
 
+    @staticmethod
+    def numeric_value(value):
+        """Número y unidad explícitos; no extrae cifras de frases o fechas."""
+        raw = str(value).strip()
+        m = re.fullmatch(r"([+$€£−-]?)\s*(\d[\d., ]*)(?:\s*(%|[A-Za-z]{1,12}))?", raw)
+        if not m:
+            return None
+        sign, digits, unit = m.groups()
+        digits = digits.strip().replace(" ", "")
+        if "," in digits and "." in digits:
+            decimal = "," if digits.rfind(",") > digits.rfind(".") else "."
+            digits = digits.replace("." if decimal == "," else ",", "").replace(decimal, ".")
+        elif "," in digits:
+            digits = digits.replace(",", ".") if digits.count(",") == 1 else digits.replace(",", "")
+        elif "." in digits and (digits.count(".") > 1 or re.fullmatch(r"\d{1,3}(?:\.\d{3})+", digits)):
+            digits = digits.replace(".", "")
+        try:
+            number = float(digits) * (-1 if sign in ("-", "−") else 1)
+        except ValueError:
+            return None
+        if not math.isfinite(number):
+            return None
+        unit = (unit or "").upper()
+        if sign in ("$", "€", "£"):
+            unit = sign + unit
+        return number, unit
+
+    @staticmethod
+    def comparable_categories(columns, categories):
+        import unicodedata
+        def norm(text):
+            return ''.join(c for c in unicodedata.normalize('NFD', str(text).lower().strip()) if not unicodedata.combining(c))
+        labels = [norm(c) for c in categories]
+        if not labels or len(set(labels)) != len(labels):
+            return False
+        periods = [r"\d{4}-\d{2}", r"\d{4}-\d{2}-\d{2}", r"\d{4}",
+                   r"(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?: \d{4})?",
+                   r"(?:t[1-4]|q[1-4]|trimestre [1-4])(?: \d{4})?"]
+        if any(all(re.fullmatch(pattern, label) for label in labels) for pattern in periods):
+            return True
+        if any(re.fullmatch(pattern, label) for pattern in periods for label in labels):
+            return False
+        dimension = norm(columns[0])
+        return bool(re.match(r"^(clientes?|productos?|regiones?|zonas?|mes(?:es)?|anos?|trimestres?|paises?|sucursales?|canales?|categorias?|estado)\b", dimension)
+                    and not any(re.search(r"\b(total|subtotal|trimestre|trimestral|mensual|anual|ventas?|devoluciones?|costos?|presupuesto|ingresos?|gastos?)\b", label) for label in labels))
+
+    def s_kpis(self, d):
+        s = self.new_slide(d.get("notes"))
+        self.chrome(s, d.get("title", ""))
+        indicators = d["_indicators"]
+        if len(indicators) >= 3 and any(len(value) > 7 for _, value in indicators):
+            h = (BODY_BOTTOM - BODY_TOP - .16*(len(indicators)-1)) / len(indicators)
+            size = min(fit_font(value, 6.5, h-.2, 68, 32)[0] for _, value in indicators)
+            for i, (label, value) in enumerate(indicators):
+                y = BODY_TOP + i*(h+.16)
+                panel = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(M), Inches(y), Inches(SW-2*M), Inches(h))
+                panel.fill.solid()
+                panel.fill.fore_color.rgb = rgb(self.t["soft"])
+                panel.line.fill.background()
+                pt, _ = fit_font(label, 4.1, h-.2, 26, 16)
+                self.textbox(s, M+.2, y+.1, 4.1, h-.2, label, pt, bold=True, anchor=MSO_ANCHOR.MIDDLE)
+                self.textbox(s, M+4.6, y+.1, 6.5, h-.2, value, size, self.t["accent"], bold=True, anchor=MSO_ANCHOR.MIDDLE)
+            return s
+        gap = .3
+        w = (SW - 2*M - gap*(len(indicators)-1)) / len(indicators)
+        h = BODY_BOTTOM - BODY_TOP
+        max_pt = 100 if len(indicators) <= 2 else 64
+        value_pt = min(max_pt, min((w-.4)*72/max(1, len(value)*.56) for _, value in indicators))
+        for i, (label, value) in enumerate(indicators):
+            x = M + i*(w+gap)
+            panel = s.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(x), Inches(BODY_TOP), Inches(w), Inches(h))
+            panel.fill.solid()
+            panel.fill.fore_color.rgb = rgb(self.t["soft"])
+            panel.line.fill.background()
+            pt, _ = fit_font(label, w-.4, h*.25-.2, 28, 16)
+            self.textbox(s, x+.2, BODY_TOP+.2, w-.4, h*.25-.2, label, pt, bold=True)
+            self.textbox(s, x+.2, BODY_TOP+h*.25, w-.4, h*.6, value, int(value_pt), self.t["accent"], bold=True, anchor=MSO_ANCHOR.MIDDLE)
+        return s
+
+    def native_data(self, d):
+        """Series con medida común → tabla/gráfico; cifras independientes → tarjetas."""
+        result = dict(d)
+        columns, rows = d.get("columns"), d.get("rows")
+        from_bullets = not columns and d.get("bullets")
+        if from_bullets:
+            pairs = []
+            for text, level in self.flatten(d["bullets"]):
+                match = re.fullmatch(r"(.+?)\s*(?::|[—–]|\s-\s)\s*(.+)", text)
+                if level or not match or self.numeric_value(match[2]) is None:
+                    return result
+                pairs.append([match[1].strip(), match[2].strip()])
+            if len(pairs) < 2:
+                return result
+            columns, rows = ["Concepto", "Valor"], pairs
+        if not columns or not rows:
+            return result
+        comparison = None
+        if len(columns) == 2 and 2 <= len(rows) <= 7 and all(len(row) == 2 for row in rows):
+            parsed = [self.numeric_value(row[1]) for row in rows]
+            if all(parsed) and len({p[1] for p in parsed}) == 1 and not re.match(r"^(fecha|año|ano|id|c[oó]digo)\b", str(columns[1]), re.I) and self.comparable_categories(columns, [row[0] for row in rows]):
+                comparison = {
+                    "categories": [str(row[0]) for row in rows],
+                    "series": [{"name": str(columns[1]), "values": [p[0] for p in parsed]}],
+                    "chart_type": "hbar", "number_format": "#,##0.########"
+                }
+        if from_bullets and not comparison:
+            if len(rows) <= 4:
+                result.update(type="kpis", _indicators=rows)
+            return result
+        result.update(type="table", columns=columns, rows=rows)
+        if comparison:
+            result.update(_table_width=5.2, _comparison=comparison)
+        return result
+
     def build(self):
         kinds = {"cover": self.s_cover, "section": self.s_section, "content": self.s_content, "bullets": self.s_bullets, "two_col": self.s_two_col,
                  "image_text": self.s_image_text, "table": self.s_table, "chart": self.s_chart,
-                 "quote": self.s_quote, "stat": self.s_stat, "closing": self.s_closing}
+                 "quote": self.s_quote, "stat": self.s_stat, "closing": self.s_closing, "kpis": self.s_kpis}
         slides = self.spec.get("slides")
         if not slides:
             raise ValueError("el JSON necesita una lista 'slides' con al menos una diapositiva")
-        for i, d in enumerate(slides, 1):
+        for i, source in enumerate(slides, 1):
+            d = self.native_data(source) if source.get("type") in (None, "bullets", "table") else dict(source)
             k = d.get("type")
             if k is None:
                 k = ("chart" if d.get("series") and d.get("categories") else
