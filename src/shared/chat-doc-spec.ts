@@ -360,7 +360,7 @@ export interface PptxSlideSpec {
   note?: string
   /** Notas del orador (lo que se dice al presentar; no se ve en la lámina): hasta 2.000 caracteres. */
   speaker_notes?: string
-  /** Imagen de la carpeta de la tarea — solo para `layout: "image"` (las `bullets`, si hay, van como texto al lado). */
+  /** Imagen de la carpeta de la tarea — para portada (`cover`) o `image`; se conserva completa y el texto va al lado. */
   image?: DocImageRef
   /** Dos columnas con su propio encabezado — solo para `layout: "two-col"`; si no viene, se usan `bullets` repartidas mitad y mitad. */
   columns?: [PptxColumnSpec, PptxColumnSpec]

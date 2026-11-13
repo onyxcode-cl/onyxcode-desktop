@@ -103,6 +103,9 @@ describe('sidecar principal: documentos en Code', () => {
     expect(cfg.instructions).toEqual(['/cfg/code-documentos.md'])
     expect(cfg.permission.documentos_crear).toBe('ask')
     expect(cfg.permission.documentos_renderizar).toBe('allow')
+    expect(cfg.permission.documentos_imagenes_buscar).toBe('ask')
+    expect(cfg.permission.documentos_imagenes_ver).toBe('ask')
+    expect(cfg.permission.documentos_imagenes_usar).toBe('ask')
     // No hay regla general `documentos_*` (el servidor es de reglas fijas, no un conector configurable).
     expect(cfg.permission['documentos_*']).toBeUndefined()
     // El agente chat sigue sin poder usarla.

@@ -175,7 +175,22 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
     const title = s.title ?? ''
     const bullets = s.bullets ?? []
     switch (layoutOf(s, idx)) {
-      case 'cover':
+      case 'cover': {
+        const img = s.image ? images?.get(s.image.path) : undefined
+        if (img) {
+          // Foto completa a la derecha y texto sobre fondo sólido a la izquierda: sin recortes ni texto sobre la foto.
+          bgslide()
+          const k = Math.min(400 / img.width, 386 / img.height)
+          const w = Math.round(img.width * k)
+          const h = Math.round(img.height * k)
+          a('insert.picture', { path: img.file, rect: [500 + Math.round((400 - w) / 2), 72 + Math.round((386 - h) / 2), w, h] })
+          if (s.image?.alt) a('shape.altText', { text: s.image.alt })
+          if (s.eyebrow) txt(60, 72, 400, 36, s.eyebrow, 16, accent, true)
+          txt(60, 130, 400, 220, title, autoFitSize(title, 60, 400, 220, true), pal.text, true, 'left', 0, titleFont)
+          if (bullets.length) txt(60, 370, 400, 100, bullets.join('\n'), 24)
+          foot(s)
+          break
+        }
         bgslide([
           [380, -300, 900, g1],
           [-220, 300, 560, g2]
@@ -185,6 +200,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         if (bullets.length) txt(64, 384, 760, 88, bullets.join('\n'), 28)
         if (s.eyebrow) pill(64, 476, Math.min(420, 40 + s.eyebrow.length * 9), 36, s.eyebrow, 14)
         break
+      }
       case 'section': {
         sectionN += 1
         if (!s.eyebrow && !bullets.length) {

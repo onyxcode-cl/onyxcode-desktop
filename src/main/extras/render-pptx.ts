@@ -139,9 +139,15 @@ interface SlideCtx {
   footer?: string
 }
 
-function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
+function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx, images?: ImageMap): void {
+  const img = spec.image ? images?.get(spec.image.path) : undefined
   slide.background = { color: p.primary }
-  addBleedDecoration(slide, p, s, 'tr')
+  if (img) {
+    const k = Math.min(4.1 / img.width, 4.1 / img.height)
+    const w = img.width * k
+    const h = img.height * k
+    slide.addImage({ path: img.file, x: 5.3 + (4.1 - w) / 2, y: 0.65 + (4.1 - h) / 2, w, h, altText: spec.image?.alt })
+  } else addBleedDecoration(slide, p, s, 'tr')
   if (spec.eyebrow) addEyebrow(slide, spec.eyebrow, 0.6, p.accentOnDark, { charSpacing: 3, tick: s.ruleUnderEyebrow })
   if (spec.title) {
     // El ancho de `fitText` tiene que ser EXACTAMENTE el mismo que el de la caja real de `addText`
@@ -149,7 +155,7 @@ function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
     // real: con `CONTENT_W` `fitText` subestimaba cuántas líneas iba a necesitar, elegía una letra
     // más grande de la que entraba, el título pasaba a 2 líneas y (con `anchor:"b"`/altura fija) la
     // primera quedaba cortada arriba de la caja.
-    const titleW = 7.6
+    const titleW = img ? 4.2 : 7.6
     const size = fitText(spec.title, titleW, 2.1, [44, 40, 36, 32], p.headFont, { bold: p.titleBold, lineMult: 1.08 })
     slide.addText(spec.title, {
       x: MARGIN_X,
@@ -168,8 +174,8 @@ function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
     slide.addText(spec.bullets.join('   ·   '), {
       x: MARGIN_X,
       y: 3.45,
-      w: 7.2,
-      h: 0.7,
+      w: img ? 4.2 : 7.2,
+      h: img ? 1.2 : 0.7,
       fontSize: 16,
       color: p.onDarkBody,
       fontFace: BODY_FONT,
@@ -938,7 +944,7 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
     const layout = inferLayout(spec, i)
     if (layout === 'section') sectionCount += 1
     const ctx: SlideCtx = { page: i + 1, total, sectionNumber: sectionCount, footer: data.footer }
-    if (layout === 'cover') addCoverSlide(slide, spec, palette, style, ctx)
+    if (layout === 'cover') addCoverSlide(slide, spec, palette, style, ctx, images)
     else if (layout === 'section') addSectionSlide(slide, spec, palette, style, ctx)
     else if (layout === 'closing') addClosingSlide(slide, spec, palette, style, ctx)
     else if (layout === 'stat') addStatSlide(slide, spec, palette, style, ctx)

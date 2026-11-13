@@ -63,6 +63,9 @@ describe('modo de permisos → sesión del motor', () => {
     expect(asked).toEqual([
       'bgshell_start',
       'documentos_crear',
+      'documentos_imagenes_buscar',
+      'documentos_imagenes_ver',
+      'documentos_imagenes_usar',
       'edit',
       'write',
       'bash',
@@ -87,7 +90,14 @@ describe('modo de permisos → sesión del motor', () => {
       expect(rules.slice(5, 7).map((r) => r.permission)).toEqual(['documentos_crear', 'documentos_renderizar'])
       expect(rules[5]!.action).toBe(mode === 'manual' || mode === 'plan' ? 'ask' : 'allow')
       expect(rules[6]!.action).toBe('allow')
-      expect(rules.slice(7)).toEqual(rulesetForMode(mode))
+      expect(rules.slice(7, 10).map((r) => r.permission)).toEqual([
+        'documentos_imagenes_buscar',
+        'documentos_imagenes_ver',
+        'documentos_imagenes_usar'
+      ])
+      expect(rules[8]!.action).toBe(rules[7]!.action)
+      expect(rules[9]!.action).toBe(rules[5]!.action)
+      expect(rules.slice(10)).toEqual(rulesetForMode(mode))
       expect(rules[0]!.action).toBe(mode === 'bypass' ? 'allow' : 'ask')
     }
     expect(approvalKindOf(rulesetFor('auto'))).toBe('auto')

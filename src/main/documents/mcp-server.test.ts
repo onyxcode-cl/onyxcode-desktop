@@ -111,7 +111,12 @@ describe('transporte y autenticación', () => {
     const init = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } })
     expect(init.body.result.serverInfo.name).toBe('lazunox-documentos')
     const list = await post(port, token, { jsonrpc: '2.0', id: 2, method: 'tools/list' })
-    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(['crear'])
+    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual([
+      'crear',
+      'imagenes_buscar',
+      'imagenes_ver',
+      'imagenes_usar'
+    ])
   })
 
   it('el config remoto lleva el token y la URL del servidor', async () => {
@@ -384,7 +389,12 @@ describe('renderizar', () => {
   it('sin motor de vista previa, la herramienta ni se anuncia', async () => {
     const { token, port } = await server.clientFor({ folder })
     const list = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
-    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(['crear'])
+    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual([
+      'crear',
+      'imagenes_buscar',
+      'imagenes_ver',
+      'imagenes_usar'
+    ])
     const r = await call(port, token, { ruta: 'x' }, 'renderizar')
     expect(r.body.result.isError).toBe(true)
   })
@@ -392,7 +402,13 @@ describe('renderizar', () => {
   it('con motor, se anuncia y devuelve texto + imágenes base64 de lo creado', async () => {
     const { token, port } = await s2.clientFor({ folder })
     const list = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
-    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(['crear', 'renderizar'])
+    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual([
+      'crear',
+      'renderizar',
+      'imagenes_buscar',
+      'imagenes_ver',
+      'imagenes_usar'
+    ])
     const created = await call(port, token, { tipo: 'pptx', nombre: 'deck', spec: PPTX })
     const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
     const r = await call(port, token, { ruta }, 'renderizar')

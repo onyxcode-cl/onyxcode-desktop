@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   DOCUMENTS_CREATE_TOOL,
   DOCUMENTS_RENDER_TOOL,
+  DOCUMENTS_IMAGE_SEARCH_TOOL,
+  DOCUMENTS_IMAGE_USE_TOOL,
+  DOCUMENTS_IMAGE_VIEW_TOOL,
   DOCUMENTS_SERVER,
   documentsConfigPermission,
   documentsCreateAction,
@@ -16,6 +19,9 @@ describe('documents-permissions', () => {
     expect(DOCUMENTS_SERVER).toBe('documentos')
     expect(DOCUMENTS_CREATE_TOOL).toBe('documentos_crear')
     expect(DOCUMENTS_RENDER_TOOL).toBe('documentos_renderizar')
+    expect(DOCUMENTS_IMAGE_SEARCH_TOOL).toBe('documentos_imagenes_buscar')
+    expect(DOCUMENTS_IMAGE_VIEW_TOOL).toBe('documentos_imagenes_ver')
+    expect(DOCUMENTS_IMAGE_USE_TOOL).toBe('documentos_imagenes_usar')
   })
 
   it('tabla de los cinco modos (agente de construcción)', () => {
@@ -38,11 +44,23 @@ describe('documents-permissions', () => {
         const rules = documentsSessionRules(mode, agent)
         expect(rules[0]).toEqual({ permission: 'documentos_crear', pattern: '*', action: write?.action ?? 'ask' })
         expect(rules[1]).toEqual({ permission: 'documentos_renderizar', pattern: '*', action: 'allow' })
+        const search = [...rulesetForMode(effectiveModeFor(mode, agent))]
+          .reverse()
+          .find((r) => r.permission === 'websearch' && r.pattern === '*')
+        expect(rules[2]).toEqual({ permission: 'documentos_imagenes_buscar', pattern: '*', action: search?.action ?? 'ask' })
+        expect(rules[3]).toEqual({ permission: 'documentos_imagenes_ver', pattern: '*', action: search?.action ?? 'ask' })
+        expect(rules[4]).toEqual({ permission: 'documentos_imagenes_usar', pattern: '*', action: write?.action ?? 'ask' })
       }
     }
   })
 
   it('el suelo de la config pregunta al crear y deja mirar', () => {
-    expect(documentsConfigPermission()).toEqual({ documentos_crear: 'ask', documentos_renderizar: 'allow' })
+    expect(documentsConfigPermission()).toEqual({
+      documentos_crear: 'ask',
+      documentos_renderizar: 'allow',
+      documentos_imagenes_buscar: 'ask',
+      documentos_imagenes_ver: 'ask',
+      documentos_imagenes_usar: 'ask'
+    })
   })
 })

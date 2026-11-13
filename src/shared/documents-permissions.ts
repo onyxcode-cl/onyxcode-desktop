@@ -12,6 +12,9 @@ export const DOCUMENTS_SERVER = 'documentos'
 export const CODE_BINDING_FOLDER = '<code>'
 export const DOCUMENTS_CREATE_TOOL = `${DOCUMENTS_SERVER}_crear`
 export const DOCUMENTS_RENDER_TOOL = `${DOCUMENTS_SERVER}_renderizar`
+export const DOCUMENTS_IMAGE_SEARCH_TOOL = `${DOCUMENTS_SERVER}_imagenes_buscar`
+export const DOCUMENTS_IMAGE_VIEW_TOOL = `${DOCUMENTS_SERVER}_imagenes_ver`
+export const DOCUMENTS_IMAGE_USE_TOOL = `${DOCUMENTS_SERVER}_imagenes_usar`
 
 /**
  * Acción de `documentos_crear` en un modo/agente: LA MISMA que la regla efectiva de `write` con patrón `*` del bloque del modo
@@ -19,10 +22,19 @@ export const DOCUMENTS_RENDER_TOOL = `${DOCUMENTS_SERVER}_renderizar`
  * nuevo en el proyecto: no puede ser más permisivo que `write`. Si no hubiera regla se devuelve `ask` (lo más restrictivo que deja trabajar).
  */
 export function documentsCreateAction(mode: PermissionModeId, agent?: string): RuleAction {
+  return documentsModeAction('write', mode, agent)
+}
+
+/** Buscar fotos conserva el permiso de búsqueda web; descargarlas conserva el de escritura. */
+export function documentsSearchAction(mode: PermissionModeId, agent?: string): RuleAction {
+  return documentsModeAction('websearch', mode, agent)
+}
+
+function documentsModeAction(permission: string, mode: PermissionModeId, agent?: string): RuleAction {
   const block = rulesetForMode(effectiveModeFor(mode, agent))
   for (let i = block.length - 1; i >= 0; i--) {
     const r = block[i]!
-    if (r.permission === 'write' && r.pattern === '*') return r.action
+    if (r.permission === permission && r.pattern === '*') return r.action
   }
   return 'ask'
 }
@@ -35,7 +47,10 @@ export function documentsCreateAction(mode: PermissionModeId, agent?: string): R
 export function documentsSessionRules(mode: PermissionModeId, agent?: string): PermissionRuleLike[] {
   return [
     { permission: DOCUMENTS_CREATE_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) },
-    { permission: DOCUMENTS_RENDER_TOOL, pattern: '*', action: 'allow' }
+    { permission: DOCUMENTS_RENDER_TOOL, pattern: '*', action: 'allow' },
+    { permission: DOCUMENTS_IMAGE_SEARCH_TOOL, pattern: '*', action: documentsSearchAction(mode, agent) },
+    { permission: DOCUMENTS_IMAGE_VIEW_TOOL, pattern: '*', action: documentsSearchAction(mode, agent) },
+    { permission: DOCUMENTS_IMAGE_USE_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) }
   ]
 }
 
@@ -44,5 +59,11 @@ export function documentsSessionRules(mode: PermissionModeId, agent?: string): P
  * `documentos_renderizar` pasa. El bloque de sesión lo ajusta después según el modo.
  */
 export function documentsConfigPermission(): Record<string, RuleAction> {
-  return { [DOCUMENTS_CREATE_TOOL]: 'ask', [DOCUMENTS_RENDER_TOOL]: 'allow' }
+  return {
+    [DOCUMENTS_CREATE_TOOL]: 'ask',
+    [DOCUMENTS_RENDER_TOOL]: 'allow',
+    [DOCUMENTS_IMAGE_SEARCH_TOOL]: 'ask',
+    [DOCUMENTS_IMAGE_VIEW_TOOL]: 'ask',
+    [DOCUMENTS_IMAGE_USE_TOOL]: 'ask'
+  }
 }

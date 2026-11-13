@@ -112,6 +112,7 @@ La app incluye su propio Python con las librerías necesarias (variable `LAZUNOX
 `python3`): no instales nada.
 
 - **Crear un documento NUEVO (pptx, docx, xlsx o pdf): si tienes la herramienta `documentos_crear`, úsala** (después de cargar la skill, que te da el esquema y la guía de diseño) y mira las imágenes de su respuesta (usa `documentos_renderizar` solo si faltan): es el mismo motor del Chat y funciona igual en macOS y en Windows. Los scripts `build_chat_*` son solo el respaldo cuando esa herramienta no existe.
+- **Fotos libres:** si el pedido las pide o el tema las necesita (no decoración financiera), sigue la sección «Fotos libres en Tareas y Código» de la skill: ficha de requisitos y 2–3 consultas → `documentos_imagenes_buscar` (compara la hoja, admite «ninguna») → `documentos_imagenes_ver` (1–2 finalistas) → `documentos_imagenes_usar` (licencia comprobada aparte, ruta y crédito). No inventes identidad ni licencia; sin visión no declares revisión visual. Máximo dos rondas de búsqueda; sin red o candidata válida entrega sin esa foto y explica la ausencia. Revisa sujeto, encuadre y crédito en las páginas terminadas.
 - **Flujo de toda skill: crear o editar → verificar → entregar.** Verifica SIEMPRE con el script `check_*` de la
   skill. Si genera imágenes de página o miniaturas, **míralas** (herramienta `read` sobre el PNG, si tu modelo ve
   imágenes) antes de entregar: títulos, tablas, cifras, gráficos, nada cortado ni páginas vacías. Si tienes

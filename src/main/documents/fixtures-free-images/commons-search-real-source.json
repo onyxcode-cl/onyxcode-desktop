@@ -1,0 +1,5 @@
+{
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&generator=search&gsrsearch=coffee+cup+filetype%3Abitmap&gsrnamespace=6&gsrlimit=6&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata&iiurlwidth=1600&iiextmetadatalanguage=en",
+  "retrievedAt": "2026-11-13",
+  "description": "Single real search response, unchanged metadata"
+}
