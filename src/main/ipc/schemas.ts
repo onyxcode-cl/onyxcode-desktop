@@ -1003,6 +1003,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:learn:pending:discardAll': none,
   'tasks:learn:pending:ackDropped': none,
   'tasks:viewer:open': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark'), openingId: compareId }),
+  'tasks:presentPptx': pathReq,
   'tasks:viewer:attach': obj({ rect: browserRect, visible: bool }),
   'tasks:viewer:close': obj({ openingId: compareId, reason: optional(literal('timeout', 'error')) }),
   'tasks:network:state': none,
@@ -1289,6 +1290,11 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
     docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
+  }),
+  'extras:presentPptx': pathReq,
+  'extras:importPptx': obj({
+    name: str({ min: 1, max: 255, pattern: /\.pptx$/i }),
+    base64: str({ min: 4, max: Math.ceil(OFFICE_MAX_BYTES / 3) * 4, pattern: /^[A-Za-z0-9+/]+={0,2}$/ })
   }),
   'extras:chatFile:info': obj({ paths: arr(str({ max: 4096, min: 1 }), 40) }),
   'extras:chatFile:read': pathReq,

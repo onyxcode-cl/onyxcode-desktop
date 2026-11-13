@@ -8,7 +8,7 @@ export const common = {
   'labels.ui.htmlPreview': 'Vista previa',
   'labels.ui.openHtmlPreview': 'Abrir vista previa',
   'labels.ui.downloadPdf': 'Descargar como PDF',
-  'labels.ui.downloadSlidesPptx': 'Descargar como PowerPoint (para proyectar)',
+  'labels.ui.downloadSlidesPptx': 'Descargar PowerPoint (imagen 4K)',
   'labels.ui.presentSlides': 'Presentar',
   'labels.ui.voiceStart': 'Dictar por voz',
   'labels.ui.voiceStop': 'Detener y transcribir',

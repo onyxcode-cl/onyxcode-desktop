@@ -427,6 +427,8 @@ export interface IpcExtrasInvokeContract {
   'extras:chatDoc:close': { req: { sessionId: string }; res: void }
   /** El documento se abre en el programa de ArtCraft de escritorio (o, si no está, en el del sistema): `via` dice cuál. */
   /** Archivos del Chat: solo dentro de las carpetas del chat y de los proyectos (`files/chat-files.ts`); cada acción revalida la ruta. */
+  'extras:presentPptx': { req: { path: string }; res: void }
+  'extras:importPptx': { req: { name: string; base64: string }; res: ChatFileInfo }
   'extras:chatFile:info': { req: { paths: string[] }; res: ChatFileInfo[] }
   'extras:chatFile:read': { req: { path: string }; res: ChatFileReadResult }
   /** PDF/Word/Excel/PowerPoint en el visor nativo del panel lateral del Chat. */
@@ -559,6 +561,8 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatDoc:attach',
   'extras:chatDoc:close',
   'extras:chatDoc:openExternal',
+  'extras:presentPptx',
+  'extras:importPptx',
   'extras:chatFile:info',
   'extras:chatFile:read',
   'extras:chatFile:viewNative',

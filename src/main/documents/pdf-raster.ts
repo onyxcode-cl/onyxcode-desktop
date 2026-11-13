@@ -13,7 +13,11 @@ export const MAX_RASTER_PDF_BYTES = 20 * 1024 * 1024
 const MAX_SIDE = 1100
 const TIMEOUT_MS = 60_000
 
-export async function rasterizePdf(pdf: Buffer, maxPages = MAX_PREVIEW_PAGES): Promise<{ images: Buffer[]; pages: number } | null> {
+export async function rasterizePdf(
+  pdf: Buffer,
+  maxPages = MAX_PREVIEW_PAGES,
+  maxSide = MAX_SIDE
+): Promise<{ images: Buffer[]; pages: number } | null> {
   if (pdf.length === 0 || pdf.length > MAX_RASTER_PDF_BYTES) return null
   // El esquema del visor se instala la primera vez que alguien lo usa (perezoso): aquí también hace falta antes de cargar `raster.html`.
   installViewerScheme()
@@ -50,10 +54,10 @@ export async function rasterizePdf(pdf: Buffer, maxPages = MAX_PREVIEW_PAGES): P
         true
       )
       const res = (await wc.executeJavaScript(
-        `window.lzxRaster(${JSON.stringify(pdf.toString('base64'))}, ${Math.floor(maxPages)}, ${MAX_SIDE})`,
+        `window.lzxRaster(${JSON.stringify(pdf.toString('base64'))}, ${Math.floor(maxPages)}, ${Math.min(3840, Math.max(640, Math.floor(maxSide)))}, ${24 * 1024 * 1024})`,
         true
       )) as { pages: number; images: string[] }
-      return { pages: res.pages, images: res.images.filter(Boolean).map((b) => Buffer.from(b, 'base64')) }
+      return { pages: res.pages, images: res.images.map((b) => Buffer.from(b, 'base64')) }
     })()
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)

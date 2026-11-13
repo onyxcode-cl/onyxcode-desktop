@@ -1,3 +1,4 @@
+import { presentPptxFile } from '../viewer/present-pptx'
 /**
  * Handlers del visor de documentos (`tasks:viewer:*`, Fase 0 del plan del visor). La ruta se
  * revalida con `tasks.assertInsideApproved` al abrir Y OTRA VEZ al servir los bytes (ver
@@ -132,6 +133,10 @@ export function registerTasksViewerHandlers(ctx: TasksIpcContext): TasksSubmodul
       clearTimeout(watchdog)
       if (pendingTimer === watchdog) pendingTimer = undefined
     }
+  })
+
+  handle('tasks:presentPptx', async ({ path }) => {
+    await presentPptxFile(tasks.assertInsideApproved(path), (candidate) => tasks.assertInsideApproved(candidate))
   })
 
   handle('tasks:viewer:attach', ({ rect, visible }, event) => {

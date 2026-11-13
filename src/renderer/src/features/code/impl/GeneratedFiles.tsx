@@ -17,6 +17,7 @@ import { getExtras } from '../../../lib/extrasApi'
 import { viewChatFile } from '../../../lib/chatFileView'
 import { nativeCode } from './client'
 import { detectDocFiles, isDocumentTool } from './doc-files'
+import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
 
 /** Tipo de tarjeta según la extensión (las páginas HTML usan la miniatura de presentación). */
 export function fileCardType(name: string): DocCardType {
@@ -128,6 +129,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
               {t('tasks.deliv.view')}
             </button>
           )}
+          {type === 'pptx' && <PptxFileActions source={{ kind: 'chat', path: file.path }} />}
           <button
             type="button"
             onClick={() => {

@@ -1,3 +1,4 @@
+import { PptxFileActions } from '../../components/artifacts/PptxFileActions'
 /**
  * Tarjetas de los archivos que la IA creó o mencionó en una respuesta del Chat (documentos, hojas, presentaciones, PDF, imágenes,
  * páginas, texto, código…). «Ver aquí» los muestra en el panel lateral (solo tipos que se pueden mostrar sin riesgo), «Abrir con tu
@@ -66,6 +67,7 @@ export function ChatFileButtons({ info, compact = false }: { info: ChatFileInfo;
   const size = compact ? 'h-6 w-6 shrink-0 justify-center !px-0' : 'whitespace-nowrap'
   return (
     <>
+      {/\.pptx$/i.test(info.name) && <PptxFileActions source={{ kind: 'chat', path: info.path }} compact={compact} />}
       {info.canOpen && (
         <button
           type="button"

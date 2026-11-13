@@ -1243,6 +1243,7 @@ export interface TasksInvokeContract {
    * el hueco del panel «Documento» con la vista nativa (mismo patrón que `browser:attach`).
    */
   'tasks:viewer:open': { req: { path: string; lang: 'es' | 'en'; theme: 'light' | 'dark'; openingId: string }; res: ViewerOpenResult }
+  'tasks:presentPptx': { req: { path: string }; res: void }
   'tasks:viewer:attach': { req: { rect: ViewerRect; visible: boolean }; res: boolean }
   'tasks:viewer:close': { req: { openingId: string; reason?: 'timeout' | 'error' }; res: void }
 
@@ -1630,6 +1631,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:learn:pending:discardAll',
   'tasks:learn:pending:ackDropped',
   'tasks:viewer:open',
+  'tasks:presentPptx',
   'tasks:viewer:attach',
   'tasks:viewer:close',
   'tasks:network:state',

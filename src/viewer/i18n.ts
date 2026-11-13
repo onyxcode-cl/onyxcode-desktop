@@ -7,6 +7,8 @@ export type ViewerLang = 'es' | 'en'
 
 const ES_STRINGS = {
   loading: 'Cargando…',
+  slideIncomplete:
+    'Esta lámina contiene elementos que el visor simplificado no puede representar. Ábrela con su programa original para revisarla.',
   errorTitle: 'No se pudo mostrar el documento',
   errorBody: 'Puedes abrirlo con la aplicación del sistema desde el panel.'
 } as const
@@ -15,6 +17,7 @@ const STRINGS: Record<ViewerLang, Record<keyof typeof ES_STRINGS, string>> = {
   es: ES_STRINGS,
   en: {
     loading: 'Loading…',
+    slideIncomplete: 'This slide contains elements the simplified viewer cannot render. Open it with its original program to review it.',
     errorTitle: 'Couldn’t show the document',
     errorBody: 'You can open it with the system app from the panel.'
   }

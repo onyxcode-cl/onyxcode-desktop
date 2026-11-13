@@ -1,3 +1,5 @@
+import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
+import { requestViewerOpen } from './store'
 /**
  * Compositor propio de Tareas: texto controlado por el store (para rellenarlo desde
  * sugerencias/seguimientos), adjuntos copiados a la carpeta, chip de carpeta, chips de carpetas
@@ -165,6 +167,9 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
                 >
                   <Icon size={13} className="shrink-0 text-muted" />
                   <span className="truncate">{a.relPath}</span>
+                  {/\.pptx$/i.test(a.path) && (
+                    <PptxFileActions source={{ kind: 'tasks', path: a.path }} onView={() => requestViewerOpen(a.path)} compact />
+                  )}
                   <button
                     type="button"
                     title={t('tasks.comp.removeAttachment')}

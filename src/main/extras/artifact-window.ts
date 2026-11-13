@@ -34,6 +34,8 @@ import { extrasWindows } from './windows'
 import { inlineRemoteImages } from './remote-images'
 import { presentWindow } from '../e2e-headless'
 import { showExportSaveDialog } from './export-dialog'
+import { bindPresentationDisplay, choosePresentationDisplay } from './presentation-display'
+import { presentationScript } from './presentation-script'
 
 const PARTITION = 'artifact'
 const SCHEME = `${APP_SLUG}-artifact`
@@ -500,10 +502,34 @@ export async function captureSlidesAsPngs(
  * Flecha derecha/espacio/clic avanza, flecha izquierda retrocede — como una presentación de verdad.
  * Escape (o salir de pantalla completa a mano, con los controles del propio sistema) la cierra.
  */
-export async function presentSlides(payload: ArtifactPayload): Promise<BrowserWindow> {
+/**
+ * En macOS, `close()` sobre una ventana a pantalla completa (o en plena animación hacia ella) se ignora
+ * o queda colgado. Se sale primero de pantalla completa y se destruye al terminar, con un respaldo por
+ * tiempo para que Esc cierre siempre.
+ */
+function closePresentation(win: BrowserWindow): void {
+  if (win.isDestroyed()) return
+  let done = false
+  const finish = (): void => {
+    if (done) return
+    done = true
+    if (!win.isDestroyed()) win.destroy()
+  }
+  if (win.isFullScreen()) {
+    win.once('leave-full-screen', finish)
+    win.setFullScreen(false)
+    setTimeout(finish, 1500)
+  } else {
+    finish()
+  }
+}
+
+export async function presentSlides(payload: ArtifactPayload): Promise<BrowserWindow | null> {
   const html = String(payload.html ?? '')
   if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 24 MiB.')
   const title = (payload.title ?? '').trim() || 'Presentación'
+  const display = await choosePresentationDisplay()
+  if (!display) return null
   const id = randomUUID()
   artifacts.set(id, { title, html, noRemoteImages: hasHtmlSlides(html) })
 
@@ -537,49 +563,24 @@ export async function presentSlides(payload: ArtifactPayload): Promise<BrowserWi
     artifacts.delete(id)
     inlined.delete(id)
   })
-  // Si la persona sale de pantalla completa con los controles propios del sistema (no con Escape),
-  // cerrar igual: esta ventana no tiene ningún sentido fuera de pantalla completa (sin marco, sin
-  // controles propios).
-  win.on('leave-full-screen', () => {
-    if (!win.isDestroyed()) win.close()
+  // Esc llega por la página (window.close()) o por el teclado del sistema; en ambos casos se cierra
+  // saliendo antes de pantalla completa, que en macOS ignora o cuelga un cierre directo.
+  win.on('close', (event) => {
+    if (win.isDestroyed() || !win.isFullScreen()) return
+    event.preventDefault()
+    closePresentation(win)
   })
-  wc.on('before-input-event', (_event, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape' && !win.isDestroyed()) win.close()
+  wc.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape' && !win.isDestroyed()) {
+      event.preventDefault()
+      closePresentation(win)
+    }
   })
 
-  // Escala cada diapositiva (`zoom` SOLO en la `.slide`, nunca en `body`) para que llene la pantalla
-  // real manteniendo proporción — con barras negras si la pantalla no es exactamente 16:9. `body`
-  // queda SIN zoom, a tamaño real de viewport (`100vw`/`100vh`), y centra con flexbox a la
-  // diapositiva (zoomeada) adentro — mezclar `zoom` con el `vw`/`vh`/centrado del propio `body` es lo
-  // que lo descuadraba antes (el `body` nunca llegaba a medir el ancho completo de la pantalla, así
-  // que no había nada que centrar). Recalcula si la pantalla cambia (p.ej. al terminar la animación
-  // de pantalla completa, que puede disparar un resize). Muestra UNA diapositiva por vez (oculta el
-  // resto con `display:none`, mismo truco que `captureSlidesAsPngs`), con flecha derecha/espacio/clic
-  // para avanzar e izquierda para retroceder — como una presentación de verdad, no una página larga
-  // para scrollear hacia abajo.
-  const fitScript = `(function() {
-    var slides = document.querySelectorAll('.slide')
-    var i = 0
-    document.documentElement.style.cssText = 'margin:0;height:100%;background:#000'
-    document.body.style.cssText = 'margin:0;min-height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;background:#000;box-sizing:border-box'
-    function show(idx) {
-      if (!slides.length) return
-      i = Math.max(0, Math.min(idx, slides.length - 1))
-      slides.forEach(function (el, n) { el.style.setProperty('display', n === i ? (el.dataset.lzxExportDisplay || 'block') : 'none', 'important') })
-    }
-    function fit() {
-      var s = Math.min(window.innerWidth / 960, window.innerHeight / 540)
-      slides.forEach(function (el) { el.style.setProperty('zoom', String(s * Number(el.dataset.lzxExportScale || 1)), 'important') })
-    }
-    fit()
-    show(0)
-    window.addEventListener('resize', fit)
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { show(i + 1); e.preventDefault() }
-      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault() }
-    })
-    document.addEventListener('click', function () { show(i + 1) })
-  })()`
+  const fitScript = presentationScript({
+    counter: t('presentation.counter', { current: '{current}', total: '{total}' }),
+    controls: t('presentation.controls')
+  })
   let timer: NodeJS.Timeout | undefined
   try {
     const timeout = new Promise<never>((_, reject) => {
@@ -593,7 +594,8 @@ export async function presentSlides(payload: ArtifactPayload): Promise<BrowserWi
       await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride')
       await wc.executeJavaScript(fitScript, true)
       wc.debugger.detach()
-      win.show()
+      bindPresentationDisplay(win, display)
+      presentWindow(win)
       win.setFullScreen(true)
     }
     await Promise.race([load(), timeout])

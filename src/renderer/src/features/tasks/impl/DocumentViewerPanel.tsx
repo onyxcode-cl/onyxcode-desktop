@@ -1,3 +1,4 @@
+import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
 /**
  * Panel del visor de documentos (Fase 0 del plan del visor): abre `path` con `tasks:viewer:open`,
  * sincroniza la vista nativa con `useViewerViewport` y cierra con `tasks:viewer:close` al
@@ -93,6 +94,7 @@ export function DocumentViewerPanel({
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium" title={path}>
           {baseName(path)}
         </span>
+        {/\.pptx$/i.test(path) && <PptxFileActions source={{ kind: 'tasks', path }} />}
         <button
           type="button"
           onClick={onClose}

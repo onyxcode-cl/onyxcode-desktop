@@ -22,16 +22,17 @@ function b64ToBytes(b64: string): Uint8Array {
   return out
 }
 
-async function rasterize(b64: string, maxPages: number, maxSide: number): Promise<RasterResult> {
+async function rasterize(b64: string, maxPages: number, maxSide: number, maxOutputBytes = 24 * 1024 * 1024): Promise<RasterResult> {
   const task = pdfjs.getDocument({ data: b64ToBytes(b64), enableXfa: false, verbosity: 0 })
   const doc = await task.promise
   try {
     const total = doc.numPages
     const images: string[] = []
+    let outputBytes = 0
     for (let n = 1; n <= Math.min(total, maxPages); n++) {
       const page = await doc.getPage(n)
       const base = page.getViewport({ scale: 1 })
-      const scale = Math.min(3, maxSide / Math.max(base.width, base.height))
+      const scale = Math.min(8, maxSide / Math.max(base.width, base.height))
       const viewport = page.getViewport({ scale })
       const canvas = document.createElement('canvas')
       canvas.width = Math.ceil(viewport.width)
@@ -41,7 +42,12 @@ async function rasterize(b64: string, maxPages: number, maxSide: number): Promis
       ctx.fillStyle = '#fff'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       await page.render({ canvas, canvasContext: ctx, viewport }).promise
-      images.push(canvas.toDataURL('image/png').split(',')[1] ?? '')
+      const png = canvas.toDataURL('image/png').split(',')[1] ?? ''
+      outputBytes += png.length
+      if (outputBytes > maxOutputBytes) throw new Error('presentation image budget exceeded')
+      images.push(png)
+      canvas.width = 0
+      canvas.height = 0
       page.cleanup()
     }
     return { pages: total, images }

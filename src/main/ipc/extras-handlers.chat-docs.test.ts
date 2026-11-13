@@ -18,8 +18,11 @@ const mock = vi.hoisted(() => ({
   openDoc: vi.fn(),
   classic: vi.fn(),
   gallery: vi.fn(),
-  photos: vi.fn()
+  photos: vi.fn(),
+  allowed: vi.fn(),
+  present: vi.fn()
 }))
+vi.mock('../viewer/present-pptx', () => ({ presentPptxFile: mock.present }))
 vi.mock('../documents', () => ({ documentsMcp: {}, resolveChatHtmlPhotos: mock.photos }))
 vi.mock('electron', () => ({ app: { getPath: () => mock.temp, on: vi.fn() }, dialog: { showSaveDialog: mock.save }, shell: {} }))
 vi.mock('./handle', () => ({
@@ -41,7 +44,11 @@ vi.mock('../office/craft/web-view', () => ({ onWebEvent: vi.fn() }))
 vi.mock('../viewer/scheme', () => ({ registerViewerPathValidator: vi.fn(), installViewerScheme: vi.fn() }))
 vi.mock('../viewer/view', () => ({ onViewerEvent: vi.fn(), openDoc: mock.openDoc }))
 vi.mock('../security/app-protocol', () => ({ VIEWER_SCHEME: 'lazunox-viewer' }))
-vi.mock('../files/gallery-runtime', () => ({ galleryRecordChat: mock.gallery, configureGalleryChat: vi.fn() }))
+vi.mock('../files/gallery-runtime', () => ({
+  galleryRecordChat: mock.gallery,
+  configureGalleryChat: vi.fn(),
+  getGallery: () => ({ extraRoots: () => [] })
+}))
 vi.mock('../extras', () => ({ initExtras: vi.fn() }))
 vi.mock('../extras/voice-worker-host', () => ({
   voiceWorkerScriptPath: 'unused',
@@ -69,9 +76,9 @@ vi.mock('../tasks/opencode-config', () => ({}))
 vi.mock('./tasks-memory-handlers', () => ({}))
 vi.mock('../tasks/projects', () => ({}))
 vi.mock('../extras/quick-entry', () => ({}))
-vi.mock('../store', () => ({}))
+vi.mock('../store', () => ({ settingsStore: { get: () => ({ recentFolders: [] }) } }))
 vi.mock('../files/gallery-index', () => ({}))
-vi.mock('../files/chat-files', () => ({}))
+vi.mock('../files/chat-files', () => ({ assertNativeViewable: mock.allowed }))
 
 const invoke = <C extends keyof IpcExtrasInvokeContract>(channel: C, request: IpcExtrasInvokeContract[C]['req']) =>
   mock.handlers.get(channel)!(request as never, { sender: {} } as IpcMainInvokeEvent)
@@ -181,4 +188,16 @@ describe('guardar HTML autónomo por IPC', () => {
     expect(mock.save).not.toHaveBeenCalled()
     expect(mock.gallery).not.toHaveBeenCalled()
   })
+})
+
+it('Presentar PPTX de Chat revalida rutas antes del motor y no admite un archivo fuera del ámbito', async () => {
+  mock.allowed.mockReturnValueOnce('/permitida/real.pptx')
+  await invoke('extras:presentPptx', { path: '/visible/enlace.pptx' })
+  expect(mock.present).toHaveBeenCalledWith('/permitida/real.pptx', expect.any(Function))
+  mock.present.mockClear()
+  mock.allowed.mockImplementationOnce(() => {
+    throw new Error('fuera de ámbito')
+  })
+  await expect(invoke('extras:presentPptx', { path: '/fuera/archivo.pptx' })).rejects.toThrow('fuera de ámbito')
+  expect(mock.present).not.toHaveBeenCalled()
 })

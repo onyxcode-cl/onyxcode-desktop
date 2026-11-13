@@ -23,6 +23,78 @@ afterAll(async () => {
   if (!suppliedOutput && output) await rm(output, { recursive: true, force: true })
 })
 
+it('presenta con contador, flechas, espacio y clic, y Esc cierra solo la presentación', async () => {
+  const baseline = await app.electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
+  const originalPages = new Set(app.electronApp.windows())
+  // En máquinas con varias pantallas se elige la primera en el diálogo real del main.
+  // El reemplazo vive solo en este proceso de pruebas y se restaura incluso al fallar.
+  await app.electronApp.evaluate(({ dialog }) => {
+    const state = globalThis as typeof globalThis & { __slidesDialog?: typeof dialog.showMessageBox }
+    state.__slidesDialog = dialog.showMessageBox
+    dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false })
+  })
+  let presentation: import('playwright-core').Page | undefined
+  try {
+    const [opened] = await Promise.all([
+      app.electronApp.waitForEvent('window', {
+        timeout: 30_000,
+        predicate: async (candidate) => {
+          try {
+            await candidate.waitForURL(/^lazunox-artifact:\/\//, { waitUntil: 'commit', timeout: 30_000 })
+            return true
+          } catch {
+            return false
+          }
+        }
+      }),
+      app.page.evaluate(() =>
+        window.api.extras.presentSlides({
+          title: 'Navegación de prueba',
+          html: '<!doctype html><style>.slide{width:960px;height:540px;background:#17324d;color:white;font:48px sans-serif}</style><section class="slide">Uno</section><section class="slide">Dos</section><section class="slide">Tres</section>'
+        })
+      )
+    ])
+    presentation = opened
+    const counter = presentation.locator('[data-lzx-slide-counter]')
+    const expectSlide = async (number: number): Promise<void> => {
+      await presentation!.waitForFunction(
+        (expected) => document.querySelector('[data-lzx-slide-counter]')?.textContent?.trim() === `${expected} / 3`,
+        number
+      )
+      expect(await counter.textContent()).toBe(`${number} / 3`)
+      expect(await presentation!.locator('.slide:visible').count()).toBe(1)
+    }
+    await expectSlide(1)
+    await presentation.keyboard.press('ArrowRight')
+    await expectSlide(2)
+    await presentation.keyboard.press('Space')
+    await expectSlide(3)
+    await presentation.keyboard.press('ArrowLeft')
+    await expectSlide(2)
+    await presentation.locator('.slide:visible').click()
+    await expectSlide(3)
+    const closed = presentation.waitForEvent('close')
+    // La ventana se cierra en el keydown: el keyup que sigue ya no tiene destino, y eso es lo esperado.
+    await presentation.keyboard.press('Escape').catch(() => undefined)
+    await closed
+    expect(app.page.isClosed()).toBe(false)
+    expect(await app.electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(baseline)
+    await app.assertClean('navegación de presentación')
+  } finally {
+    // También limpia si la ventana abrió pero el IPC terminó en error antes de asignar presentation.
+    for (const candidate of app.electronApp.windows()) {
+      if (!originalPages.has(candidate) && !candidate.isClosed() && candidate.url().startsWith('lazunox-artifact://')) {
+        await candidate.close()
+      }
+    }
+    await app.electronApp.evaluate(({ dialog }) => {
+      const state = globalThis as typeof globalThis & { __slidesDialog?: typeof dialog.showMessageBox }
+      if (state.__slidesDialog) dialog.showMessageBox = state.__slidesDialog
+      delete state.__slidesDialog
+    })
+  }
+}, 60_000)
+
 it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas', async () => {
   const photo = (await readFile(join(ROOT, 'src/main/documents/fixtures-free-images/synthetic-exif-6.jpg'))).toString('base64')
   const photoTag = `<img src="data:image/jpeg;base64,${photo}" style="width:220px;height:150px;object-fit:cover" alt="Foto de prueba"><p class="credit">Foto de prueba · CC0</p>`

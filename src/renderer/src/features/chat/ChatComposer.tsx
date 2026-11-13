@@ -1,3 +1,4 @@
+import { PptxFileActions } from '../../components/artifacts/PptxFileActions'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { fitTextarea, isSubmitKey, useAutosizeTextarea } from '../../lib/textarea'
 import { ArrowUp, FileText, Languages, Paperclip, Presentation, Sheet, Square, X } from 'lucide-react'
@@ -368,7 +369,7 @@ export function ChatComposer({
               <li
                 key={a.id}
                 data-testid={a.office ? 'chat-office-card' : undefined}
-                className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${a.office ? (mobile ? 'h-16 max-w-[17rem]' : 'h-14 max-w-[17rem] overflow-hidden') : mobile ? 'h-16 max-w-[9rem] min-w-16' : 'h-14 max-w-[9rem] min-w-14 overflow-hidden desk:max-w-full'}`}
+                className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${a.office ? (a.originalPptx ? 'min-h-14 max-w-[25rem] flex-wrap py-1' : mobile ? 'h-16 max-w-[17rem]' : 'h-14 max-w-[17rem] overflow-hidden') : mobile ? 'h-16 max-w-[9rem] min-w-16' : 'h-14 max-w-[9rem] min-w-14 overflow-hidden desk:max-w-full'}`}
               >
                 {a.office ? (
                   <span className="flex min-w-0 items-center gap-2 pr-6 pl-2.5 text-left">
@@ -390,6 +391,7 @@ export function ChatComposer({
                     <span className="max-w-full truncate">{a.name}</span>
                   </span>
                 )}
+                {a.originalPptx && <PptxFileActions source={{ kind: 'attachment', name: a.name, base64: a.originalPptx }} compact />}
                 <button
                   type="button"
                   title={t('chat.attach.remove', { name: a.name })}

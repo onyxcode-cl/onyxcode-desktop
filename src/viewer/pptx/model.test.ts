@@ -460,3 +460,14 @@ describe('parseDeck con el .pptx real de la skill (3 diapositivas: portada + 2 d
     expect(t1.wPct).toBeCloseTo(t2.wPct, 5)
   })
 })
+
+it('no oculta ni renumera una lámina cuya relación falta', async () => {
+  const zip = new JSZip()
+  zip.file(
+    'ppt/presentation.xml',
+    '<p:presentation xmlns:p="p" xmlns:r="r"><p:sldIdLst><p:sldId r:id="missing"/><p:sldId r:id="second"/></p:sldIdLst></p:presentation>'
+  )
+  zip.file('ppt/_rels/presentation.xml.rels', '<Relationships><Relationship Id="second" Target="slides/slide2.xml"/></Relationships>')
+  zip.file('ppt/slides/slide2.xml', '<p:sld xmlns:p="p"><p:cSld><p:spTree/></p:cSld></p:sld>')
+  await expect(parseDeck(zip)).rejects.toMatchObject({ slide: 1 })
+})

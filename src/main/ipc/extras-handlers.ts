@@ -1,3 +1,4 @@
+import { importPptxAttachment, presentPptxFile } from '../viewer/present-pptx'
 import { showExportSaveDialog } from '../extras/export-dialog'
 import { SlidesHtmlError } from '@shared/slides-html'
 import { OutputPathError } from '../documents/output-path'
@@ -309,6 +310,13 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   })
   const allFileRoots = (): string[] => [...chatFileRoots(), ...getGallery().extraRoots()]
   let chatFileValidatorRegistered = false
+  handle(ipcMain, 'extras:presentPptx', async ({ path }) => {
+    await presentPptxFile(assertNativeViewable(allFileRoots(), path), (candidate) => assertNativeViewable(allFileRoots(), candidate))
+  })
+  handle(ipcMain, 'extras:importPptx', async ({ name, base64 }) => {
+    const path = await importPptxAttachment(chatDocsRoot(), name, base64)
+    return chatFilesInfo(allFileRoots(), [path])[0]!
+  })
   handle(ipcMain, 'extras:chatFile:info', ({ paths }) => chatFilesInfo(allFileRoots(), paths))
   handle(ipcMain, 'extras:chatFile:read', ({ path }) => readChatFile(allFileRoots(), path))
   handle(ipcMain, 'extras:chatFile:viewNative', async ({ path, lang, theme }) => {

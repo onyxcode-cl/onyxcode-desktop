@@ -51,6 +51,7 @@ import { validatePhoneAttachments } from './mobile-logic'
 import { SheetAction } from './SheetAction'
 import { CodeBackgroundJobs } from './BackgroundJobsConnectors'
 import { CodeHelpersBoard } from './HelpersBoardConnector'
+import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
 
 /** Lee un `File`/`Blob` como `data:` URL (imágenes pegadas/arrastradas o adjuntos por botón). */
 function readAsDataURL(file: File): Promise<string> {
@@ -690,12 +691,21 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                 {fileAtts.map((a) => (
                   <span
                     key={a.id}
-                    className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${mobile ? 'h-16 w-16' : 'h-14 w-14 overflow-hidden'}`}
+                    className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${!mobile && /\.pptx$/i.test(a.name) ? 'min-h-14 max-w-full gap-2 px-3 py-2 pr-6' : mobile ? 'h-16 w-16' : 'h-14 w-14 overflow-hidden'}`}
                   >
                     {a.mime.startsWith('image/') ? (
                       <img src={a.url} alt={a.name} className={`h-full w-full object-cover ${mobile ? 'rounded-lg' : ''}`} />
                     ) : (
                       <FileImage size={18} className="text-subtle" />
+                    )}
+                    {!mobile && /\.pptx$/i.test(a.name) && /^data:[^,]*;base64,/.test(a.url) && (
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs text-fg">{a.name}</span>
+                        <PptxFileActions
+                          source={{ kind: 'attachment', name: a.name, base64: a.url.slice(a.url.indexOf(',') + 1) }}
+                          compact
+                        />
+                      </span>
                     )}
                     <button
                       type="button"

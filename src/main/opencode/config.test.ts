@@ -83,6 +83,9 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
       expect(text).toContain('Presentar')
       expect(text).toContain('para proyectar')
       expect(text).toContain('¿Cuál prefieres?')
+      expect(text).toContain('se presenta dentro de Lazunox')
+      expect(text).toContain('Descargar PowerPoint (imagen 4K)')
+      expect(text).toContain('3840×2160 por lámina')
     }
   })
 

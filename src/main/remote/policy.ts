@@ -406,6 +406,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:learn:pending:ackDropped': 'X',
   'tasks:viewer:open': 'X', // lee bytes de cualquier archivo aprobado de Tareas: la vista es nativa de la ventana del Mac/PC
   'tasks:viewer:attach': 'X',
+  'tasks:presentPptx': 'X',
   'tasks:viewer:close': 'X',
   'tasks:network:state': 'R',
   'tasks:network:setToggle': 'D',
@@ -564,6 +565,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:chatFile:info': 'X',
   'extras:chatFile:read': 'X',
   'extras:chatFile:viewNative': 'X',
+  'extras:presentPptx': 'X',
+  'extras:importPptx': 'X',
   'extras:chatFile:open': 'X',
   'extras:chatFile:reveal': 'X',
   'extras:gallery:list': 'X',
