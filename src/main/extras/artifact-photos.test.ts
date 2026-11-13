@@ -28,7 +28,14 @@ describe('contexto autorizado para fotos HTML', () => {
   })
   it('resuelve solo dentro de la carpeta autorizada que contiene el HTML', async () => {
     await prepareArtifactPhotos('html', { kind: 'file', path, root }, [root], resolvers)
-    expect(resolvers.file).toHaveBeenCalledWith('html', { root, agentRoots: [root] })
+    expect(resolvers.file).toHaveBeenCalledWith('html', { root, agentRoots: [root], baseDir: '' })
+  })
+  it('ancla las rutas relativas al directorio del HTML sin cambiar el ámbito del registro', async () => {
+    await mkdir(join(root, 'decks'))
+    const nested = join(root, 'decks', 'cafe.html')
+    await writeFile(nested, '<section class="slide"></section>')
+    await prepareArtifactPhotos('html', { kind: 'file', path: nested, root }, [root], resolvers)
+    expect(resolvers.file).toHaveBeenCalledWith('html', { root, agentRoots: [root], baseDir: 'decks' })
   })
   it('no transforma permiso sobre un archivo exacto en permiso de carpeta', async () => {
     await prepareArtifactPhotos('html', { kind: 'file', path }, [path], resolvers)

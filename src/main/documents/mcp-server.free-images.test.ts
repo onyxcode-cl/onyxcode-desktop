@@ -129,6 +129,21 @@ afterEach(async () => {
 })
 
 describe('fotos libres por MCP', () => {
+  it('normaliza doubts como lista antes de preparar la foto y publica ambas variantes', async () => {
+    const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
+    const id = JSON.parse(text(found)).candidates[0].id
+    await server.invoke(binding, 'imagenes_ver', { ids: [id] })
+    const saved = await server.invoke(binding, 'imagenes_usar', {
+      id,
+      evaluation: { ...evaluation, doubts: ['Lugar sin confirmar', 'Fecha desconocida'] }
+    })
+    expect(saved.isError).not.toBe(true)
+    expect(services[0].use).toHaveBeenCalledWith(id, { ...evaluation, doubts: 'Lugar sin confirmar\nFecha desconocida' })
+    const invalid = await server.invoke(binding, 'imagenes_usar', { id, evaluation: { ...evaluation, meets: 'foto' } })
+    expect(invalid.isError).toBe(true)
+    expect(text(invalid)).toContain('evaluation.meets: usa una lista')
+  })
+
   it('no acepta selección visual si falla la preparación del bloque image del transporte', async () => {
     const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
     const id = JSON.parse(text(found)).candidates[0].id

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SlidesHtmlError } from '@shared/slides-html'
 import { testSlidePng } from './slides-png-fixture'
 
 const state = vi.hoisted(() => ({
@@ -9,6 +10,9 @@ const state = vi.hoisted(() => ({
   count: 2,
   validationError: '',
   hangCapture: false,
+  hangEmulation: false,
+  hangLoad: false,
+  loaded: false,
   callbacks: [] as number[]
 }))
 vi.mock('electron', () => ({
@@ -34,11 +38,13 @@ vi.mock('electron', () => ({
         isAttached: () => state.attached,
         sendCommand: async (name: string, args?: unknown) => {
           state.commands.push({ name, args })
+          if (name.startsWith('Emulation.') && (!state.loaded || state.hangEmulation)) return new Promise(() => undefined)
           if (name === 'Page.captureScreenshot' && state.hangCapture) return new Promise(() => undefined)
           if (name === 'Page.captureScreenshot') return { data: state.png.toString('base64') }
           return {}
         }
       },
+      printToPDF: async () => Buffer.from('%PDF-1.4 /Type /Pages /Count 2'),
       isDestroyed: () => state.destroyed,
       setWindowOpenHandler: vi.fn(),
       on: vi.fn(),
@@ -54,15 +60,17 @@ vi.mock('electron', () => ({
     destroy = () => {
       state.destroyed = true
     }
-    loadURL = async () => {
-      state.commands.push({ name: 'load' })
+    loadURL = async (url: string) => {
+      state.commands.push({ name: url === 'about:blank' ? 'bootstrap' : 'load' })
+      if (state.hangLoad) return new Promise<void>(() => undefined)
+      state.loaded = true
     }
     setOpacity = vi.fn()
     setIgnoreMouseEvents = vi.fn()
     showInactive = vi.fn()
   }
 }))
-const { captureSlidesAsPngs } = await import('./artifact-window')
+const { captureSlidesAsPngs, renderHtmlToPdf } = await import('./artifact-window')
 
 beforeEach(() => {
   state.commands = []
@@ -72,6 +80,9 @@ beforeEach(() => {
   state.count = 2
   state.validationError = ''
   state.hangCapture = false
+  state.hangEmulation = false
+  state.hangLoad = false
+  state.loaded = false
   state.callbacks = []
 })
 
@@ -84,12 +95,13 @@ describe('captura HTML 4K', () => {
     })
     expect(count).toBe(2)
     expect(state.callbacks).toEqual([0, 1])
-    expect(state.commands.slice(0, 3)).toEqual([
+    expect(state.commands.slice(0, 4)).toEqual([
+      { name: 'bootstrap' },
       {
         name: 'Emulation.setDeviceMetricsOverride',
         args: { width: 960, height: 540, deviceScaleFactor: 4, mobile: false, screenWidth: 960, screenHeight: 540 }
       },
-      { name: 'Emulation.setEmulatedMedia', args: { media: 'print' } },
+      { name: 'Emulation.setEmulatedMedia', args: { media: 'screen' } },
       { name: 'load' }
     ])
     expect(state.destroyed).toBe(true)
@@ -131,6 +143,42 @@ describe('captura HTML 4K', () => {
       await pending
       expect(state.destroyed).toBe(true)
       expect(state.attached).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it('PDF inicia navegación antes de esperar Emulation y libera la ventana', async () => {
+    const pdf = await renderHtmlToPdf('<section class="slide"></section>')
+    expect(pdf.toString()).toContain('%PDF')
+    expect(state.commands[0].name).toBe('bootstrap')
+    expect(state.destroyed).toBe(true)
+    expect(state.attached).toBe(false)
+  })
+  it.each(['PDF', 'PPTX'])('%s limpia incluso si no contesta Emulation', async (format) => {
+    vi.useFakeTimers()
+    try {
+      state.hangEmulation = true
+      const operation =
+        format === 'PDF'
+          ? renderHtmlToPdf('<section class="slide"></section>')
+          : captureSlidesAsPngs('<section class="slide"></section>', 'Deck', vi.fn())
+      const pending = expect(operation).rejects.toBeInstanceOf(SlidesHtmlError)
+      await vi.advanceTimersByTimeAsync(30_000)
+      await pending
+      expect(state.destroyed).toBe(true)
+      expect(state.attached).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it('PDF limpia si se bloquea la primera navegación, antes de adjuntar CDP', async () => {
+    vi.useFakeTimers()
+    try {
+      state.hangLoad = true
+      const pending = expect(renderHtmlToPdf('<section class="slide"></section>')).rejects.toThrow(/tardó demasiado/)
+      await vi.advanceTimersByTimeAsync(30_000)
+      await pending
+      expect(state.destroyed).toBe(true)
     } finally {
       vi.useRealTimers()
     }

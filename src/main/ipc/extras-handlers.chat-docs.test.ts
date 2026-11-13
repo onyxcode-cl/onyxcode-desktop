@@ -36,7 +36,7 @@ vi.mock('../documents/engine', () => ({
 vi.mock('../office/craft/chat-word', () => ({ docxToPdf: mock.pdf }))
 vi.mock('../office/craft/chat-grid', () => ({ gridToPdf: mock.pdf }))
 vi.mock('../office/craft/chat-deck', () => ({ deckToPdf: mock.pdf }))
-vi.mock('../office/craft/web-open', () => ({ openInCraftWeb: mock.web, useClassicViewer: mock.classic }))
+vi.mock('../office/craft/web-open', () => ({ openInCraftWeb: mock.web, useClassicViewer: mock.classic, panelClose: vi.fn() }))
 vi.mock('../office/craft/web-view', () => ({ onWebEvent: vi.fn() }))
 vi.mock('../viewer/scheme', () => ({ registerViewerPathValidator: vi.fn(), installViewerScheme: vi.fn() }))
 vi.mock('../viewer/view', () => ({ onViewerEvent: vi.fn(), openDoc: mock.openDoc }))
@@ -101,6 +101,24 @@ beforeEach(async () => {
 afterEach(() => rmSync(mock.temp, { recursive: true, force: true }))
 
 describe('documentos de Chat: ruta real del handler', () => {
+  it('cerrar durante la conversión HTML impide que el PDF abra un visor tardío', async () => {
+    let finish!: (bytes: Buffer) => void
+    mock.render.mockImplementationOnce(
+      () =>
+        new Promise<Buffer>((resolve) => {
+          finish = resolve
+        })
+    )
+    const opening = invoke('extras:chatDoc:open', { ...common, kind: 'pdf', html: '<p>Conversión lenta</p>' })
+    await vi.waitFor(() => expect(mock.render).toHaveBeenCalledOnce())
+    await invoke('extras:chatDoc:close', { sessionId: common.sessionId })
+    finish(Buffer.from('%PDF-tardío'))
+    expect(await opening).toEqual({ ok: false, reason: 'failed' })
+    expect(mock.web).not.toHaveBeenCalled()
+    expect(mock.openDoc).not.toHaveBeenCalled()
+    expect(mock.gallery).not.toHaveBeenCalled()
+  })
+
   it.each(office)('$kind: vista web correcta evita el PDF de respaldo', async (input) => {
     const result = await invoke('extras:chatDoc:open', { ...common, ...input })
     expect(result).toEqual({ ok: true, bytes: 13 })

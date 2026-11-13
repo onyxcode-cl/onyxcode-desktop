@@ -502,6 +502,29 @@ describe('V26 identidad aplicada PPTX', () => {
 })
 
 describe('V26 dirección visual y fotos', () => {
+  it('infantil: portada tipográfica y listas alineadas sin bandas alternadas', () => {
+    const bullets = ['Observa las huellas', 'Compara los fósiles', 'Dibuja lo que aprendiste']
+    const commands = parse(
+      chatDeckCommands({
+        theme: 'green',
+        style: 'geometric',
+        slides: [
+          { layout: 'cover', title: 'Los dinosaurios', bullets: ['Gigantes que vivieron hace millones de años'] },
+          { layout: 'bullets', title: 'Explora el pasado', bullets }
+        ]
+      })
+    )
+    expect(commands.some((c) => c.id === 'shape.insert' && c.p.rect[0] === 0 && c.p.rect[2] === 960 && c.p.rect[3] > 100)).toBe(false)
+    const boxes = bullets.map((text) => commands.find((c) => c.id === 'insert.textBox' && c.p.text === text)!.p.rect)
+    expect(new Set(boxes.map((box) => box[0])).size).toBe(1)
+    expect(new Set(boxes.map((box) => box[2])).size).toBe(1)
+    const inks = bullets.map((text) => {
+      const at = commands.findIndex((c) => c.id === 'insert.textBox' && c.p.text === text)
+      return commands[at + 2].p.color
+    })
+    expect(new Set(inks).size).toBe(1)
+  })
+
   it('una cifra infantil no conserva una franja de título vacía', () => {
     const commands = parse(
       chatDeckCommands({

@@ -1,4 +1,5 @@
-import { app, type BrowserWindow, dialog } from 'electron'
+import { showExportSaveDialog } from './export-dialog'
+import { app, type BrowserWindow } from 'electron'
 import { copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -41,7 +42,7 @@ export async function downloadSlidesAsPptx(payload: ArtifactPayload, win: Browse
     defaultPath: join(app.getPath('downloads'), `${safe}.pptx`),
     filters: [{ name: 'PowerPoint', extensions: ['pptx'] }]
   }
-  const res = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+  const res = await showExportSaveDialog(win, options)
   if (res.canceled || !res.filePath) return null
   await exportSlidesToPptxFile(payload.html, payload.title || 'Presentación', res.filePath)
   return res.filePath

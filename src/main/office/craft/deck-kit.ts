@@ -366,7 +366,6 @@ export function createKit(
       const editorial = identity.tone === 'luxury' || identity.tone === 'editorial'
       const playful = identity.tone === 'playful'
       const rock = identity.tone === 'rock'
-      if (playful && title.trim()) rect(0, 0, 960, 132, pal.accent)
       if (rock && title.trim()) rect(0, 0, 18, 480, pal.accent)
       const y = kicker ? (editorial ? 42 : 54) : 40
       txt(
@@ -376,7 +375,7 @@ export function createKit(
         72,
         title,
         editorial ? 38 : rock ? 46 : 40,
-        pal.text,
+        playful ? accent : pal.text,
         identity.titles === 'bold' || rock,
         'left',
         editorial ? 0 : -1,

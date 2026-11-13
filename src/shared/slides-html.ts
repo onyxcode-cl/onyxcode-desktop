@@ -38,24 +38,65 @@ export function hasHtmlSlides(html: string): boolean {
   return false
 }
 
-/** Se ejecuta con medio `print`: la vista de lectura puede añadir separación entre láminas. */
+/** Normaliza decks comunes en un viewport 16:9; conserva su lienzo y escala el conjunto.
+ * Debe ejecutarse con medio screen y viewport 960×540 antes de imprimir/capturar.
+ * La app añade paginación, márgenes y visibilidad: no se exige que el modelo los acierte.
+ */
 export const VALIDATE_SLIDES_SCRIPT = `(() => {
+  const freeze = document.createElement('style');
+  freeze.textContent = '*,:before,:after{animation:none!important;transition:none!important;caret-color:transparent!important}';
+  document.head.appendChild(freeze);
   const slides = [...document.querySelectorAll('.slide')];
   const fail = detail => { throw new Error('Presentación HTML inválida: ' + detail); };
   if (document.documentElement.dataset.lzxPhotoError) fail(document.documentElement.dataset.lzxPhotoError);
   if (!slides.length) fail('falta al menos un elemento .slide.');
   if (slides.length > ${MAX_SLIDES}) fail('supera el máximo de ${MAX_SLIDES} láminas; no se recortará la presentación.');
+  const preferredDisplay = slides.map(el => getComputedStyle(el).display).find(value => value && value !== 'none') || 'block';
+  const px = (value, axis) => value.endsWith('vw') ? parseFloat(value) * innerWidth / 100 : value.endsWith('vh') ? parseFloat(value) * innerHeight / 100 : value.endsWith('%') ? parseFloat(value) * axis / 100 : parseFloat(value);
   for (const [i, slide] of slides.entries()) {
-    const css = getComputedStyle(slide);
     const label = 'lámina ' + (i + 1) + ': ';
     if (slide.parentElement.closest('.slide')) fail(label + 'no se permiten láminas anidadas.');
-    if (css.width !== '${SLIDE_CSS_WIDTH}px' || css.height !== '${SLIDE_CSS_HEIGHT}px') fail(label + 'debe medir 960×540 CSS; mide ' + css.width + ' × ' + css.height + '.');
-    if (css.display === 'none') fail(label + 'está oculta al imprimir.');
-    if (css.boxSizing !== 'border-box') fail(label + 'requiere box-sizing: border-box.');
-    if (['marginTop','marginRight','marginBottom','marginLeft'].some(k => parseFloat(css[k]) !== 0)) fail(label + 'requiere márgenes cero al imprimir.');
-    if (i < slides.length - 1 && !['page','always'].includes(css.breakAfter) && css.pageBreakAfter !== 'always') fail(label + 'requiere break-after: page para imprimir una lámina por página.');
+    if (getComputedStyle(slide).display === 'none') slide.style.setProperty('display', preferredDisplay, 'important');
+    slide.style.setProperty('zoom','1','important');
+    slide.style.setProperty('transform','none','important');
+    const css = getComputedStyle(slide);
+    let width = px(css.width, innerWidth), height = px(css.height, innerHeight);
+    const bounds = slide.getBoundingClientRect();
+    if (!Number.isFinite(width)) width = bounds.width;
+    if (!Number.isFinite(height)) height = bounds.height;
+    if (css.boxSizing !== 'border-box' && Number.isFinite(px(css.width, innerWidth)) && Number.isFinite(px(css.height, innerHeight))) {
+      width += ['paddingLeft','paddingRight','borderLeftWidth','borderRightWidth'].reduce((sum, key) => sum + (parseFloat(css[key]) || 0), 0);
+      height += ['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'].reduce((sum, key) => sum + (parseFloat(css[key]) || 0), 0);
+    }
+    if (!(width > 0 && height > 0 && Number.isFinite(width) && Number.isFinite(height))) fail(label + 'no se pudo determinar un tamaño positivo; use dimensiones CSS o aspect-ratio:16/9.');
+    if (Math.abs(width / height - 16 / 9) > .03) fail(label + 'debe tener proporción 16:9; mide ' + width + ' × ' + height + '.');
+    // Redondeos de píxeles son comunes con aspect-ratio y porcentajes.
+    const scale = ${SLIDE_CSS_WIDTH} / width;
+    slide.dataset.lzxExportDisplay = css.display;
+    slide.dataset.lzxExportScale = String(scale);
+    slide.style.setProperty('box-sizing','border-box','important');
+    slide.style.setProperty('width', width + 'px','important');
+    slide.style.setProperty('height', (width * 9 / 16) + 'px','important');
+    slide.style.setProperty('min-width','0','important'); slide.style.setProperty('min-height','0','important');
+    slide.style.setProperty('max-width','none','important'); slide.style.setProperty('max-height','none','important');
+    slide.style.setProperty('margin','0','important'); slide.style.setProperty('zoom',String(scale),'important');
+    slide.style.setProperty('position','relative','important');
+    slide.style.setProperty('inset','auto','important');
+    slide.style.setProperty('visibility','visible','important'); slide.style.setProperty('opacity','1','important');
+    slide.style.setProperty('flex-shrink','0','important');
   }
-  if (['marginTop','marginRight','marginBottom','marginLeft'].some(k => parseFloat(getComputedStyle(document.body)[k]) !== 0)) fail('el body requiere márgenes cero.');
+  // Los ancestros pueden ser un carrusel flex con transform o un contenedor a pantalla completa.
+  for (const el of document.body.querySelectorAll('*')) {
+    if (el.closest('.slide')) continue;
+    if (!el.querySelector('.slide')) el.style.setProperty('display','none','important');
+    else for (const [key,value] of Object.entries({display:'block',position:'static',transform:'none',zoom:'1',width:'auto',height:'auto','min-height':'0','max-height':'none',overflow:'visible',margin:'0',padding:'0',gap:'0'})) el.style.setProperty(key,value,'important');
+  }
+  document.documentElement.style.cssText += ';margin:0!important;padding:0!important;overflow:visible!important';
+  document.body.style.cssText += ';margin:0!important;padding:0!important;display:block!important;overflow:visible!important;width:960px!important;height:auto!important;transform:none!important;zoom:1!important';
+  const style = document.createElement('style');
+  style.textContent = '@page{size:960px 540px;margin:0}.slide{break-inside:avoid!important;page-break-inside:avoid!important;break-after:page!important;page-break-after:always!important}.slide[data-lzx-last-slide]{break-after:auto!important;page-break-after:auto!important}';
+  document.head.appendChild(style);
+  slides[slides.length - 1].setAttribute('data-lzx-last-slide','');
   return slides.length;
 })()`
 

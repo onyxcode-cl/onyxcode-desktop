@@ -156,3 +156,90 @@ it('rejects the final embedded budget before constructing oversized data URIs', 
   const html = '<section class="slide">' + [...byId.keys()].map((id) => '<img src="imagen:' + id + '">').join('') + '</section>'
   await expect(resolvePreparedHtml(html, { root }, registry)).rejects.toThrow('presupuesto de 24 MiB')
 })
+
+it('resolves img paths relative to the HTML directory within the registered scope', async () => {
+  const asset = photo('nested')
+  await mkdir(join(root, 'decks/img'), { recursive: true })
+  await writeFile(join(root, 'decks/img/free-12345678901234567890.jpg'), asset.bytes)
+  await registry.remember(join(root, 'decks'), 'nested', rel, asset)
+  const html = await resolvePreparedHtml(
+    '<section class="slide"><img src="img/free-12345678901234567890.jpg"></section>',
+    { root, baseDir: 'decks' },
+    registry
+  )
+  expect(html).toContain(asset.bytes.toString('base64'))
+  expect(html).not.toContain('src="img/')
+  const byId = await resolvePreparedHtml('<section class="slide"><img src="imagen:nested"></section>', { root, baseDir: 'decks' }, registry)
+  expect(byId).toContain(asset.bytes.toString('base64'))
+  await expect(
+    resolvePreparedHtml('<section class="slide"><img src="../img/free-nested.jpg"></section>', { root, baseDir: 'decks' }, registry)
+  ).rejects.toThrow('subir')
+})
+
+it('keeps an existing verified author/license credit instead of drawing a second bar', async () => {
+  const html = await resolvePreparedHtml(
+    '<section class="slide"><img src="imagen:p1"><small>Photo: Author · CC BY 4.0</small><button>Next</button></section>',
+    { root },
+    registry
+  )
+  document.body.innerHTML = html
+  new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
+    document,
+    (el: Element) => window.getComputedStyle(el)
+  )
+  expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(1)
+  expect(document.querySelector('[data-lzx-photo-credit]')?.tagName).toBe('SMALL')
+  expect(document.querySelector('aside')).toBeNull()
+  expect(document.querySelectorAll('small a')).toHaveLength(2)
+})
+
+it('places generated credits above navigation controls, without stealing clicks', async () => {
+  const html = await resolvePreparedHtml(
+    '<section class="slide"><img src="imagen:p1"></section><nav><button>Next</button></nav>',
+    { root },
+    registry
+  )
+  document.body.innerHTML = html
+  vi.spyOn(document.querySelector('.slide')!, 'getBoundingClientRect').mockReturnValue({
+    left: 0,
+    right: 960,
+    top: 0,
+    bottom: 540,
+    width: 960,
+    height: 540
+  } as DOMRect)
+  vi.spyOn(document.querySelector('button')!, 'getBoundingClientRect').mockReturnValue({
+    left: 400,
+    right: 560,
+    top: 490,
+    bottom: 535,
+    width: 160,
+    height: 45
+  } as DOMRect)
+  new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
+    document,
+    (el: Element) => window.getComputedStyle(el)
+  )
+  const credit = document.querySelector('[data-lzx-photo-credit]') as HTMLElement
+  expect(credit.parentElement).toBe(document.querySelector('.slide'))
+  expect(credit.style.bottom).toBe('58px')
+  expect(credit.style.pointerEvents).toBe('none')
+})
+
+it('recognizes copied credits on initially hidden slides and preserves their links', async () => {
+  const html = await resolvePreparedHtml(
+    '<section class="slide" style="display:none"><img src="imagen:p1"><div class="credito">Foto: Author · CC BY 4.0 · Wikimedia Commons <a href="https://commons.wikimedia.org/wiki/File:Photo.jpg">Fuente</a></div></section>',
+    { root },
+    registry
+  )
+  document.body.innerHTML = html
+  new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
+    document,
+    (el: Element) => window.getComputedStyle(el)
+  )
+  expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(1)
+  expect(document.querySelectorAll('.credito a')).toHaveLength(2)
+  expect((document.querySelector('.credito') as HTMLElement).style.background).toBe('rgb(17, 17, 17)')
+  expect((document.querySelector('.credito') as HTMLElement).style.color).toBe('rgb(255, 255, 255)')
+  expect(document.querySelector('aside')).toBeNull()
+})

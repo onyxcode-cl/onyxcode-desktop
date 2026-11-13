@@ -37,6 +37,7 @@ import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
 import { FileReview } from './FileReview'
+import { HtmlPreviewDialog } from './HtmlPreviewDialog'
 import { cw } from './bridge'
 import { requestViewerOpen, useTasks } from './store'
 import { baseName, extOf, formatSize, isViewerExt, relTime } from './util'
@@ -48,7 +49,7 @@ const TEXT = new Set(['txt', 'json', 'html', 'htm', 'xml', 'yaml', 'yml', 'log',
 /** Documentos que main convierte a texto con `textutil` para la vista previa. */
 const DOCUMENT = new Set(['docx', 'doc', 'odt'])
 const HTML = new Set(['html', 'htm'])
-/** Un HTML mayor que esto no se ofrece como artifact (límite de la ventana de artifacts: 5 MB). */
+/** Un HTML mayor que esto no se ofrece como artifact (presupuesto de HTML y fotos: 24 MiB). */
 const ARTIFACT_MAX_BYTES = MAX_ARTIFACT_HTML_BYTES
 
 export function canPreview(path: string): boolean {
@@ -453,7 +454,12 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
           </ul>
         </div>
       ))}
-      {preview && <PreviewDialog file={preview} onClose={() => setPreview(null)} />}
+      {preview &&
+        (isHtmlFile(preview.path) ? (
+          <HtmlPreviewDialog key={preview.path} file={preview} onClose={() => setPreview(null)} />
+        ) : (
+          <PreviewDialog file={preview} onClose={() => setPreview(null)} />
+        ))}
     </>
   )
 }

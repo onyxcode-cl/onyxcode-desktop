@@ -1,3 +1,4 @@
+import { showExportSaveDialog } from '../extras/export-dialog'
 import { SlidesHtmlError } from '@shared/slides-html'
 import { OutputPathError } from '../documents/output-path'
 import { prepareArtifactPhotos } from '../extras/artifact-photos'
@@ -11,7 +12,7 @@ import type { ArtifactContext } from '@shared/ipc-extras'
  */
 import { app, dialog, shell, type IpcMain } from 'electron'
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
-import { stat, writeFile } from 'node:fs/promises'
+import { rm, stat, writeFile } from 'node:fs/promises'
 import { release } from 'node:os'
 import { basename, join } from 'node:path'
 import { t } from '@shared/i18n'
@@ -164,7 +165,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       filters: [{ name: 'HTML', extensions: ['html'] }]
     }
     const win = windowOfSender(event.sender)
-    const saved = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+    const saved = await showExportSaveDialog(win, options)
     if (saved.canceled || !saved.filePath) return null
     await writeFile(saved.filePath, html, 'utf8')
     return recordSaved(saved.filePath, payload.title)
@@ -193,7 +194,13 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   // Panel de documento de Chat: MISMA vista nativa que Tareas (un solo modo visible a la vez, sin conflicto).
   onViewerEvent((event) => broadcastExtras('extras:chatDoc:event', event))
   onWebEvent((event) => broadcastExtras('extras:chatDoc:event', event))
+  let documentRequest = 0
+  let documentSession: string | undefined
   handle(ipcMain, 'extras:chatDoc:open', async (req) => {
+    const request = ++documentRequest
+    documentSession = req.sessionId
+    const cancelled = (): boolean => request !== documentRequest
+    const closed = { ok: false as const, reason: 'failed' as const }
     try {
       const { title, sessionId, lang, theme } = req
       let input: ChatDocInput
@@ -204,7 +211,13 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       } else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
       else if (req.kind === 'docx') input = { kind: 'docx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
+      if (cancelled()) return closed
       const doc = await generateChatDoc(input, title, sessionId)
+      if (cancelled()) {
+        // La limpieza al cerrar pudo ocurrir antes de terminar la conversión. Solo quita esta copia.
+        await rm(doc.file, { force: true }).catch(() => undefined)
+        return closed
+      }
       galleryRecordChat(doc.file, { session: sessionId, title: title.trim() || undefined })
       // Con el programa de ArtCraft instalado, el panel muestra su versión WEB (misma pantalla y motor que el programa de escritorio);
       // si no está o falla, el visor de siempre.
@@ -212,8 +225,12 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       const bytes = await stat(doc.file)
         .then((s) => s.size)
         .catch(() => undefined)
-      if (await openInCraftWeb(input.kind, doc.file, title)) return { ok: true, bytes }
+      if (cancelled()) return closed
+      // Un PDF no usa la vista Office. El cierre durante su generación invalida la apertura pendiente.
+      if (input.kind !== 'pdf' && (await openInCraftWeb(input.kind, doc.file, title))) return { ok: true, bytes }
+      if (cancelled()) return closed
       const preview = await prepareChatDocPreview(doc)
+      if (cancelled()) return closed
       installViewerScheme()
       openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${preview.token}&kind=${preview.kind}&lang=${lang}&theme=${theme}`)
       useClassicViewer()
@@ -245,6 +262,9 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     if (win) panelAttach(win, rect, visible)
   })
   handle(ipcMain, 'extras:chatDoc:close', ({ sessionId }) => {
+    if (documentSession !== undefined && documentSession !== sessionId) return
+    documentRequest++
+    documentSession = undefined
     panelClose()
     void cleanChatDocuments(sessionId)
   })

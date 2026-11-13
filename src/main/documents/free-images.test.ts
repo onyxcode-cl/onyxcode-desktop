@@ -3,7 +3,14 @@ import { createServer, type Server } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { commonsLicense } from './free-images-license'
-import { allowedCommonsFile, FreeImagesService, FREE_IMAGE_MAX_BYTES, parseCommonsImages, type FreeImageSearch } from './free-images'
+import {
+  allowedCommonsFile,
+  FreeImagesService,
+  FREE_IMAGE_MAX_BYTES,
+  parseCommonsImages,
+  normalizeImageEvaluation,
+  type FreeImageSearch
+} from './free-images'
 import type { FreeImageProcessor } from './free-images-visual'
 import { sniffImage } from './image-files'
 import { INTERNAL_NAME, RELEASES_ORIGIN, RELEASES_REPO } from '@shared/brand'
@@ -163,6 +170,60 @@ describe('licencias de archivos Commons', () => {
 })
 
 describe('servicio de fotos sin rutas ni URLs del modelo', () => {
+  it('acepta cuatro consultas de la prueba Mac en primera y segunda ronda sin reintento del modelo', async () => {
+    const service = new FreeImagesService({ fetch: fakeFetch(), processor })
+    const queries = ['dinosaur skeleton museum', 'tyrannosaurus rex fossil', 'dinosaur footprints fossil', 'stegosaurus dinosaur']
+    const first = await service.search({ queries, requirements: { subject: 'dinosaurios para niños', usage: 'presentación infantil' } })
+    expect(first.round).toBe(1)
+    expect(first.candidates).toHaveLength(1)
+    const second = await service.search({ queries, searchId: first.searchId })
+    expect(second.round).toBe(2)
+    expect(second.candidates).toHaveLength(1)
+    await expect(service.search({ queries, searchId: first.searchId })).rejects.toThrow('dos rondas')
+  })
+  it.each([
+    [{ queries: ['ok', 2] }, 'queries[1]'],
+    [{ requirements: [] }, 'requirements'],
+    [{ requirements: { subject: 2, usage: 'Portada' } }, 'requirements.subject'],
+    [{ requirements: { subject: 'Café', usage: 2 } }, 'requirements.usage'],
+    [{ requirements: { ...input.requirements, required: 'mesas' } }, 'requirements.required'],
+    [{ requirements: { ...input.requirements, excluded: [2] } }, 'requirements.excluded[0]'],
+    [{ requirements: { ...input.requirements, realPhoto: 'true' } }, 'requirements.realPhoto'],
+    [{ requirements: { ...input.requirements, place: false } }, 'requirements.place'],
+    [{ requirements: { ...input.requirements, action: [] } }, 'requirements.action'],
+    [{ minWidth: '1000' }, 'minWidth'],
+    [{ minHeight: 99 }, 'minHeight'],
+    [{ searchId: 2 }, 'searchId']
+  ])('indica el campo incorrecto y no consume una ronda ni consulta la red: %s', async (patch, field) => {
+    const fetch = fakeFetch()
+    const service = new FreeImagesService({ fetch, processor })
+    await expect(service.search({ ...input, ...patch } as FreeImageSearch)).rejects.toThrow(`${field}:`)
+    expect(fetch).not.toHaveBeenCalled()
+    expect((await service.search(input)).round).toBe(1)
+  })
+  it.each([{ doubts: [] }, { doubts: ['No se confirma el lugar', 'No se confirma la fecha'] }, { doubts: 'Lugar no confirmado' }])(
+    'prepara doubts=%j y conserva texto normalizado en procedencia',
+    async ({ doubts }) => {
+      const service = new FreeImagesService({ fetch: fakeFetch(), processor })
+      const id = (await service.search(input)).candidates[0].id
+      await service.view([id])
+      const asset = await service.use(id, { ...evaluation, doubts })
+      expect(asset.provenance.evaluation.doubts).toBe(Array.isArray(doubts) ? doubts.join('\n') : doubts)
+    }
+  )
+  it.each([
+    [{ mode: 'guess' }, 'evaluation.mode'],
+    [{ observed: [] }, 'evaluation.observed'],
+    [{ meets: 'mesas' }, 'evaluation.meets'],
+    [{ meets: [4] }, 'evaluation.meets[0]'],
+    [{ doubts: false }, 'evaluation.doubts'],
+    [{ doubts: ['bien', 2] }, 'evaluation.doubts[1]'],
+    [{ doubts: ['x'.repeat(700), 'y'.repeat(700)] }, 'evaluation.doubts'],
+    [{ doubts: Array(13).fill('duda') }, 'evaluation.doubts']
+  ])('explica el campo de evaluación incorrecto: %s', (patch, field) => {
+    expect(() => normalizeImageEvaluation({ ...evaluation, ...patch })).toThrow(`${field}:`)
+  })
+
   it.each([
     'http://upload.wikimedia.org/wikipedia/commons/x.jpg',
     'https://upload.wikimedia.org.evil.test/wikipedia/commons/x.jpg',
@@ -447,7 +508,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     expect(parseCommonsImages(raw)).toEqual([])
     const service = new FreeImagesService({ fetch: fakeFetch(), processor })
     expect((await service.search({ ...input, orientation: 'portrait' })).candidates).toHaveLength(0)
-    await expect(service.search({ ...input, queries: ['single'] })).rejects.toThrow('dos o tres')
+    await expect(service.search({ ...input, queries: ['single'] })).rejects.toThrow('queries: usa de dos a cuatro')
   })
 })
 
@@ -486,7 +547,7 @@ describe('tercera ronda: orientación, cobertura y verificación de origen', () 
   it('rechaza orientación desconocida y dos orientaciones contradictorias antes de red', async () => {
     const fetch = fakeFetch(),
       service = new FreeImagesService({ fetch, processor })
-    await expect(service.search({ ...input, orientation: 'diagonal' as 'any' })).rejects.toThrow('Orientación inválida')
+    await expect(service.search({ ...input, orientation: 'diagonal' as 'any' })).rejects.toThrow('orientation: usa')
     await expect(
       service.search({ ...input, orientation: 'portrait', requirements: { ...input.requirements!, orientation: 'horizontal' } })
     ).rejects.toThrow('contradice')

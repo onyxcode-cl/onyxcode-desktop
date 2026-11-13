@@ -37,13 +37,50 @@ describe('contrato común de presentación HTML', () => {
     expect(validate).toThrow('máximo de 40')
   })
   it.each([
-    ['width:1000px', '960×540 CSS'],
-    ['box-sizing:content-box', 'box-sizing: border-box'],
-    ['margin:12px', 'márgenes cero'],
-    ['break-after:auto', 'break-after: page']
-  ])('explica el incumplimiento %s', (style, error) => {
+    'width:1280px;height:720px',
+    'width:1920px;height:1080px',
+    'width:100vw;height:100vh',
+    'margin:12px;break-after:auto',
+    'display:none'
+  ])('normaliza el deck común %s', (style) => {
+    Object.defineProperty(dom.window, 'innerWidth', { value: 960 })
+    Object.defineProperty(dom.window, 'innerHeight', { value: 540 })
+    document.querySelector('.slide')!.setAttribute('style', style)
+    expect(validate()).toBe(2)
+    const slide = document.querySelector<HTMLElement>('.slide')!
+    expect(slide.style.margin).toBe('0px')
+    expect(slide.style.display).not.toBe('none')
+    expect(Number(slide.dataset.lzxExportScale) * parseFloat(slide.style.width)).toBe(960)
+  })
+  it.each([
+    ['width:1000px', 'proporción 16:9'],
+    ['width:0;height:0', 'tamaño positivo']
+  ])('explica por qué no puede exportar %s', (style, error) => {
     document.querySelector('.slide')!.setAttribute('style', style)
     expect(validate).toThrow(error)
+  })
+  it('admite el carrusel del café: inset:0, sin dimensiones explícitas y láminas ocultas', () => {
+    document.head.innerHTML =
+      '<style>*{box-sizing:border-box}.deck{position:relative;width:100vw;height:100vh}.slide{position:absolute;inset:0;display:none}.slide.active{display:flex}</style>'
+    document.body.innerHTML =
+      '<main class="deck"><section class="slide active"></section><section class="slide"></section></main><nav>Controles</nav>'
+    for (const el of document.querySelectorAll<HTMLElement>('.slide')) {
+      // jsdom no dispone de layout: Chromium da este rectángulo al resolver inset:0.
+      el.getBoundingClientRect = () => ({
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 540,
+        top: 0,
+        left: 0,
+        right: 960,
+        bottom: 540,
+        toJSON: () => ({})
+      })
+    }
+    expect(validate()).toBe(2)
+    expect(document.querySelector<HTMLElement>('.slide')!.dataset.lzxExportDisplay).toBe('flex')
+    expect(document.querySelector<HTMLElement>('nav')!.style.display).toBe('none')
   })
   it('rechaza láminas anidadas', () => {
     document.querySelector('.slide')!.innerHTML = '<section class="slide"></section>'

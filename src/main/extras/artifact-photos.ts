@@ -1,6 +1,6 @@
 /** Contexto de fotos elegido por la interfaz; toda autorización de carpetas se repite en main. */
 import { realpath, stat } from 'node:fs/promises'
-import { relative, isAbsolute, sep } from 'node:path'
+import { dirname, relative, isAbsolute, sep } from 'node:path'
 import type { ArtifactContext } from '@shared/ipc-extras'
 import { OutputPathError } from '../documents/output-path'
 import { resolveChatFile } from '../files/chat-files'
@@ -8,7 +8,7 @@ import { resolveChatFile } from '../files/chat-files'
 export interface ArtifactPhotoResolvers {
   standalone(html: string): Promise<string>
   chat(html: string, sessionId: string): Promise<string>
-  file(html: string, scope: { root: string; agentRoots: string[] }): Promise<string>
+  file(html: string, scope: { root: string; agentRoots: string[]; baseDir: string }): Promise<string>
 }
 
 const contains = (root: string, path: string): boolean => {
@@ -59,5 +59,5 @@ export async function prepareArtifactPhotos(
   }
   // Un archivo exacto autorizado al guardar NO autoriza su carpeta vecina ni sus fotos.
   if (!root) return resolvers.standalone(html)
-  return resolvers.file(html, { root, agentRoots: [root] })
+  return resolvers.file(html, { root, agentRoots: [root], baseDir: relative(root, dirname(info.path)).split(sep).join('/') })
 }

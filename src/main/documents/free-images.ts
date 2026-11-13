@@ -128,6 +128,46 @@ interface StoredCandidate {
   viewed: boolean
 }
 export class FreeImageError extends Error {}
+/** A safe field name for audit; never log the model's query or provider payload. */
+export class FreeImageInputError extends FreeImageError {
+  constructor(
+    readonly field: string,
+    expected: string
+  ) {
+    super(`${field}: ${expected}`)
+  }
+}
+export type FreeImageEvaluationInput = Omit<FreeImageEvaluation, 'doubts'> & { doubts: string | string[] }
+
+export function normalizeImageEvaluation(raw: unknown): FreeImageEvaluation {
+  const value = record(raw)
+  if (!value) throw new FreeImageInputError('evaluation', 'usa un objeto con mode, observed, meets y doubts.')
+  const unknown = Object.keys(value).find((key) => !['mode', 'observed', 'meets', 'doubts'].includes(key))
+  if (unknown) throw new FreeImageInputError('evaluation', 'solo admite mode, observed, meets y doubts.')
+  if (value.mode !== 'visual' && value.mode !== 'manual')
+    throw new FreeImageInputError('evaluation.mode', 'usa "visual" o "manual"; manual solo tras selección de la persona.')
+  if (typeof value.observed !== 'string' || !value.observed.trim() || value.observed.length > 1200)
+    throw new FreeImageInputError('evaluation.observed', 'usa texto no vacío de hasta 1200 caracteres con lo que observaste.')
+  if (!Array.isArray(value.meets) || value.meets.length > 12)
+    throw new FreeImageInputError('evaluation.meets', 'usa una lista de hasta 12 textos; [] si no cumple requisitos.')
+  for (const [index, item] of value.meets.entries())
+    if (typeof item !== 'string' || !item.trim() || item.length > 400)
+      throw new FreeImageInputError(`evaluation.meets[${index}]`, 'usa texto no vacío de hasta 400 caracteres.')
+  let doubts = value.doubts
+  if (Array.isArray(doubts)) {
+    if (doubts.length > 12) throw new FreeImageInputError('evaluation.doubts', 'usa hasta 12 dudas; [] si no hay dudas.')
+    for (const [index, item] of doubts.entries())
+      if (typeof item !== 'string' || !item.trim() || item.length > 1200)
+        throw new FreeImageInputError(`evaluation.doubts[${index}]`, 'usa texto no vacío de hasta 1200 caracteres.')
+    doubts = doubts.join('\n')
+  }
+  if (typeof doubts !== 'string' || doubts.length > 1200)
+    throw new FreeImageInputError(
+      'evaluation.doubts',
+      'usa texto o una lista de textos, hasta 1200 caracteres en total; "" o [] si no hay dudas.'
+    )
+  return { mode: value.mode, observed: value.observed, meets: [...value.meets] as string[], doubts }
+}
 const API = 'https://commons.wikimedia.org/w/api.php'
 export const FREE_IMAGE_MAX_BYTES = 6 * 1024 * 1024
 const CACHE_BYTES = 32 * 1024 * 1024
@@ -243,34 +283,32 @@ export function parseCommonsImages(raw: unknown): CommonsImage[] {
 }
 function validateSearch(input: NormalizedSearch): void {
   const text = (s: unknown, max = 400): boolean => typeof s === 'string' && s.trim().length > 0 && s.length <= max
-  const list = (s: unknown): boolean => Array.isArray(s) && s.length <= 12 && s.every((v) => text(v))
+  if (!Array.isArray(input.queries) || input.queries.length < 2 || input.queries.length > 4)
+    throw new FreeImageInputError('queries', `usa de dos a cuatro consultas distintas. ${SEARCH_EXAMPLE}`)
+  for (const [index, query] of input.queries.entries())
+    if (!text(query, 200)) throw new FreeImageInputError(`queries[${index}]`, 'usa texto no vacío de hasta 200 caracteres.')
+  if (new Set(input.queries.map((q) => q.trim().toLowerCase())).size !== input.queries.length)
+    throw new FreeImageInputError('queries', 'usa consultas distintas; elimina las repetidas.')
   const r = input.requirements
-  if (
-    !Array.isArray(input.queries) ||
-    input.queries.length < 2 ||
-    input.queries.length > 3 ||
-    !input.queries.every((q) => text(q, 200)) ||
-    new Set(input.queries.map((q) => q.trim().toLowerCase())).size !== input.queries.length
-  )
-    throw new FreeImageError(`Usa dos o tres consultas distintas, incluida la original; conserva los nombres propios. ${SEARCH_EXAMPLE}`)
-  if (
-    !r ||
-    !text(r.subject) ||
-    !text(r.usage) ||
-    !list(r.required) ||
-    !list(r.excluded) ||
-    typeof r.realPhoto !== 'boolean' ||
-    (r.action !== undefined && !text(r.action)) ||
-    (r.place !== undefined && !text(r.place))
-  )
-    throw new FreeImageError(
-      `Indica requirements.subject y requirements.usage; required/excluded son listas opcionales y realPhoto es booleano. ${SEARCH_EXAMPLE}`
-    )
-  if (input.orientation !== undefined && !normalizeOrientation(input.orientation))
-    throw new FreeImageError('Orientación inválida: usa horizontal, vertical, cuadrada o cualquiera (landscape, portrait, square, any).')
-  for (const n of [input.minWidth, input.minHeight])
+  for (const field of ['subject', 'usage'] as const)
+    if (!text(r[field]))
+      throw new FreeImageInputError(`requirements.${field}`, `usa texto no vacío de hasta 400 caracteres. ${SEARCH_EXAMPLE}`)
+  for (const field of ['action', 'place'] as const)
+    if (r[field] !== undefined && !text(r[field]))
+      throw new FreeImageInputError(`requirements.${field}`, 'usa texto no vacío de hasta 400 caracteres u omite el campo.')
+  for (const field of ['required', 'excluded'] as const) {
+    const list = r[field]
+    if (!Array.isArray(list) || list.length > 12)
+      throw new FreeImageInputError(`requirements.${field}`, 'usa una lista de hasta 12 textos, [] o no incluyas el campo.')
+    for (const [index, item] of list.entries())
+      if (!text(item)) throw new FreeImageInputError(`requirements.${field}[${index}]`, 'usa texto no vacío de hasta 400 caracteres.')
+  }
+  if (typeof r.realPhoto !== 'boolean') throw new FreeImageInputError('requirements.realPhoto', 'usa true o false, sin comillas.')
+  for (const field of ['minWidth', 'minHeight'] as const) {
+    const n = input[field]
     if (n !== undefined && (!Number.isInteger(n) || n < 100 || n > 4000))
-      throw new FreeImageError('Tamaño útil inválido (100–4000 píxeles).')
+      throw new FreeImageInputError(field, 'usa un entero entre 100 y 4000 píxeles.')
+  }
 }
 
 /** Instantiate per authorized binding AND root. It never knows or accepts a destination path. */
@@ -478,6 +516,10 @@ export class FreeImagesService {
   async search(input: FreeImageSearch): Promise<FreeImageSearchResult> {
     this.deadline = this.now() + 60000
     this.retryWait = 0
+    if (input.searchId !== undefined && (typeof input.searchId !== 'string' || !input.searchId.trim() || input.searchId.length > 200))
+      throw new FreeImageInputError('searchId', 'usa el identificador devuelto por la búsqueda anterior u omite el campo.')
+    if (input.requirements !== undefined && !record(input.requirements))
+      throw new FreeImageInputError('requirements', 'usa un objeto con subject y usage; omítelo solo al enviar searchId.')
     const previous = input.searchId ? [...this.searches.values()].find((s) => s.id === input.searchId) : undefined
     if (input.searchId && !previous)
       throw new FreeImageError(`searchId no pertenece a esta tarea. Omítelo al iniciar una búsqueda. ${SEARCH_EXAMPLE}`)
@@ -492,11 +534,18 @@ export class FreeImagesService {
       input.requirements?.orientation !== undefined &&
       normalizeOrientation(input.orientation) !== normalizeOrientation(input.requirements.orientation)
     )
-      throw new FreeImageError('La orientación de requirements contradice la orientación principal.')
+      throw new FreeImageInputError(
+        'requirements.orientation',
+        'contradice orientation; usa el mismo valor o deja solo uno de los dos campos.'
+      )
     const requestedOrientation = input.orientation ?? raw?.orientation ?? previous?.input.orientation
     if (requestedOrientation !== undefined) {
       const orientation = normalizeOrientation(requestedOrientation)
-      if (!orientation) throw new FreeImageError('Orientación inválida: usa horizontal, vertical, cuadrada o cualquiera.')
+      if (!orientation)
+        throw new FreeImageInputError(
+          input.orientation !== undefined ? 'orientation' : 'requirements.orientation',
+          'usa horizontal, vertical, cuadrada o cualquiera (landscape, portrait, square, any).'
+        )
       normalized.orientation = orientation
       normalized.requirements.orientation = orientation
     }
@@ -684,24 +733,12 @@ export class FreeImagesService {
     for (const item of selected) item.viewed = true
     return result
   }
-  async use(id: string, evaluation: FreeImageEvaluation): Promise<FreeImageAsset> {
+  async use(id: string, rawEvaluation: FreeImageEvaluationInput): Promise<FreeImageAsset> {
     this.deadline = this.now() + 30000
     this.retryWait = 0
     const item = this.get(id)
     if (!item.viewed) throw new FreeImageError('Primero amplía la finalista con imagenes_ver.')
-    if (
-      !evaluation ||
-      !['visual', 'manual'].includes(evaluation.mode) ||
-      typeof evaluation.observed !== 'string' ||
-      !evaluation.observed.trim() ||
-      evaluation.observed.length > 1200 ||
-      !Array.isArray(evaluation.meets) ||
-      evaluation.meets.length > 12 ||
-      evaluation.meets.some((v) => typeof v !== 'string' || !v.trim() || v.length > 400) ||
-      typeof evaluation.doubts !== 'string' ||
-      evaluation.doubts.length > 1200
-    )
-      throw new FreeImageError('Declara lo observado, los requisitos cumplidos y las dudas; sin visión usa selección manual.')
+    const evaluation = normalizeImageEvaluation(rawEvaluation)
     const current = (await this.currentFiles([item])).get(item.file.pageId)
     if (
       !current ||

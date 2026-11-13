@@ -3128,3 +3128,11 @@ El resolvedor incrusta una sola copia de cada JPEG preparado y conserva proceden
 El canal nuevo `extras:downloadHtml` usa contrato tipado, esquema estricto, `handle`/guardia existente y preload, sin rol secundario; clase **X** en el control remoto. Prepara el HTML antes del diálogo, guarda solo en el destino elegido por la persona y anota en galería solo el archivo exacto. No hay permisos nuevos de red ni de sandbox.
 
 La exportación PowerPoint fija DPR 4 antes de cargar un lienzo de 960×540 CSS y valida cada PNG de 3840×2160, sin reducir resolución. Captura una lámina por vez a temporales propios y ensambla por streams con límite de 256 MiB, plazos y limpieza en `finally`. No se afirma verificada la captura en Electron ni su independencia del DPI de macOS/Windows hasta correr la prueba externa y abrir el PPTX. No se modificaron zonas intocables, CSP, preloads secundarios ni identidad de la app.
+
+#### Segunda ronda: navegación, ámbito relativo y pruebas sin diálogo (F8-B293)
+
+La ventana aislada inicia `about:blank` antes de enviar emulación: Electron podía esperar esa primera navegación. La densidad se fija antes del documento; navegación, órdenes CDP y salida quedan dentro del plazo global con destrucción en `finally`. Se normalizan variantes 16:9 sin ampliar CSP ni habilitar red.
+
+Las rutas relativas de fotos se anclan al directorio real del HTML autorizado. El registro puede pertenecer a esa subcarpeta, pero la lectura sigue confinada a la raíz autorizada, con controles de enlaces y SHA256; un id o JSON del documento no concede acceso. Un crédito ya presente conserva su nodo, con contraste reforzado; los controles no comparten la capa del crédito generado.
+
+`LAZUNOX_E2E_EXPORT_DIR` solo se lee en `extras/export-dialog.ts` bajo `!app.isPackaged`, igual que los demás ganchos E2E. Requiere ruta absoluta y cada exportación recibe una subcarpeta nueva y un nombre base. En producción empaquetada siempre se conserva el diálogo nativo, aun si existe esa variable. No es un canal IPC ni una preferencia controlable por el modelo. El comprobador externo usa el harness normal, mock-keychain y userData temporal; su validación real queda pendiente fuera del entorno restringido.

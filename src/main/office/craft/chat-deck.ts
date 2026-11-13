@@ -281,10 +281,10 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         }
       } else if (!spec.identity?.cover && (playful || rock || technical || editorial)) {
         if (playful) {
-          if (title.trim()) rect(0, 0, 960, 308, accent)
-          txt(60, 70, 840, 210, title, 90, pal.bg, true, 'left', -1, titleFont)
-          if (s.eyebrow) txt(60, 24, 840, 32, s.eyebrow, 16, pal.bg, true)
-          if (bullets.length) txt(170, 344, 730, 130, bullets.join(' · '), 30, pal.text)
+          // Sin foto, el título y la idea ocupan la portada; no se reserva un bloque de color vacío.
+          if (s.eyebrow) txt(60, 54, 840, 32, s.eyebrow, 18, accent, true)
+          txt(60, 116, 840, 210, title, 100, accent, true, 'left', -1, titleFont)
+          if (bullets.length) txt(60, 350, 840, 120, bullets.join(' · '), 34, pal.text)
         } else if (editorial) {
           if (s.eyebrow) txt(60, 50, 310, 36, s.eyebrow, 16, accent)
           txt(60, 116, 840, 210, title, 86, pal.text, bold, 'left', 0, titleFont)
@@ -473,7 +473,8 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
             const x = 60 + (i % per) * (per === 2 ? 440 : 288)
             const y = 150 + Math.floor(i / per) * (h + 24)
             if (playful) {
-              rect(x, y, w, h, i % 2 ? pal.panel : pal.accent)
+              // Las ideas tienen el mismo rango: misma tarjeta y tinta, sin alternancias arbitrarias.
+              panel(x, y, w, h)
               txt(x + 18, y + 16, w - 36, h - 32, t, 28, pal.text, true)
             } else if (editorial) {
               // Retícula editorial abierta: encabezado semántico y descripción, sin marcos ni iconos.
@@ -665,9 +666,8 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           } else if (playful && bullets.length > 1) {
             const h = 330 / bullets.length
             bullets.forEach((item, i) => {
-              const x = i % 2 ? 140 : 60
-              rect(x, 150 + i * h, 760, h - 10, i % 2 ? pal.panel : pal.accent)
-              txt(x + 20, 158 + i * h, 720, h - 26, item, 28, pal.text, true)
+              panel(60, 150 + i * h, 840, h - 10)
+              txt(80, 158 + i * h, 800, h - 26, item, 30, pal.text, true)
             })
           } else adaptiveList(bullets, 60, 150, 840, 330, bullets.length >= 4 ? 2 : 1)
         }
