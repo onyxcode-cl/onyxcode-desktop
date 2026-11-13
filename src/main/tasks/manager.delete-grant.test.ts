@@ -18,6 +18,20 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(root, { recursive: true, force: true }))
 describe('permiso de borrar por carpeta', () => {
+  it('solo persiste el destino explícito: consultar otras carpetas y recargar no concede permisos', async () => {
+    const manager = new TasksManager({ platform: 'darwin' })
+    const restart = vi.spyOn(manager, 'restartSandbox').mockResolvedValue(true)
+    const folders = ['a', 'b', 'c'].map((name) => join(root, name))
+    for (const folder of folders) {
+      mkdirSync(folder)
+      expect(manager.hasDeleteGrant(folder)).toBe(false)
+    }
+    await manager.setDeleteGrant(folders[1], true)
+    expect(restart).toHaveBeenCalledExactlyOnceWith(folders[1])
+    const reloaded = new TasksManager({ platform: 'darwin' })
+    expect(folders.map((folder) => reloaded.hasDeleteGrant(folder))).toEqual([false, true, false])
+    expect(JSON.parse(readFileSync(join(m.userData, 'tasks-folders.json'), 'utf8')).deleteGrants).toEqual([folders[1]])
+  })
   it('persiste conceder y retirar; exige cambiar el servidor aislado solo si cambia el permiso', async () => {
     const manager = new TasksManager({ platform: 'darwin' })
     const restart = vi.spyOn(manager, 'restartSandbox').mockResolvedValue(true)

@@ -21,6 +21,7 @@ import { sdkDirOf } from './path-map'
 export function DeleteGrantToggle(): React.JSX.Element | null {
   const t = useT()
   const folder = useTasks((s) => s.folder)
+  const conn = useTasks((s) => s.conn)
   const allowed = useTasks((s) => s.deleteGrant)
   const busy = useTasks((s) => s.deleteGrantBusy)
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +30,7 @@ export function DeleteGrantToggle(): React.JSX.Element | null {
   const toggle = async (): Promise<void> => {
     setError(null)
     try {
-      await setDeleteGrantAllowed(!allowed)
+      await setDeleteGrantAllowed(!allowed, { folder, conn })
     } catch (err) {
       setError(errorMessage(err))
     }

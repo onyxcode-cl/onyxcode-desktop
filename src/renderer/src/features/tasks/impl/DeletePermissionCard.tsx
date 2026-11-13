@@ -6,9 +6,10 @@ import { hasHiddenChars } from '../../../components/permission/PermissionShell'
 import { Button } from '../../../components/Button'
 import { useT } from '../../../lib/i18n'
 import { errorMessage } from '../../../lib/opencode'
+import { useRejectionNotices } from '../../../stores/rejection-notices'
 import { replyPermission } from './actions'
 import { enableDeleteAndRetry } from './delete-grant-retry'
-import { useTasks } from './store'
+import { rootTaskId, useTasks } from './store'
 
 export function DeletePermissionCard({
   request,
@@ -22,6 +23,8 @@ export function DeletePermissionCard({
   onDismiss?: () => void
 }): React.JSX.Element {
   const t = useT()
+  const folder = useTasks((s) => s.folder)
+  const conn = useTasks((s) => s.conn)
   const grant = useTasks((s) => s.deleteGrant)
   const grantBusy = useTasks((s) => s.deleteGrantBusy)
   const [busy, setBusy] = useState(false)
@@ -34,9 +37,19 @@ export function DeletePermissionCard({
     setBusy(true)
     setError(null)
     try {
-      if (enable) await enableDeleteAndRetry(request)
-      else if ('type' in request) onDismiss?.()
-      else await replyPermission(request.id, 'reject')
+      if (enable) await enableDeleteAndRetry(request, { folder, conn })
+      else if ('type' in request) {
+        if (folder)
+          useRejectionNotices.getState().add({
+            mode: 'tasks',
+            directory: folder,
+            sessionID: rootTaskId(request.sessionID),
+            requestID: request.id,
+            kind: 'permission',
+            detail: command
+          })
+        onDismiss?.()
+      } else await replyPermission(request.id, 'reject')
     } catch (err) {
       const message = errorMessage(err)
       setError(message)

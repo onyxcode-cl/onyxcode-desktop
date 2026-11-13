@@ -13,7 +13,7 @@ beforeEach(() => {
 describe('acción real del permiso de carpeta', () => {
   it('usa el IPC existente y reconecta el servidor aislado tras guardar', async () => {
     m.cw.mockResolvedValue(true)
-    await setDeleteGrantAllowed(true)
+    await setDeleteGrantAllowed(true, useTasks.getState())
     expect(m.cw).toHaveBeenCalledWith('tasks:deleteGrant:set', { folder: '/fixture', allowed: true })
     expect(m.connect).toHaveBeenCalledWith('/fixture', false)
     expect(useTasks.getState()).toMatchObject({ deleteGrant: true, deleteGrantBusy: false })
@@ -23,13 +23,13 @@ describe('acción real del permiso de carpeta', () => {
       useTasks.setState({ folder: '/otra', deleteGrant: false })
       return true
     })
-    await expect(setDeleteGrantAllowed(true)).rejects.toThrow('cambió')
+    await expect(setDeleteGrantAllowed(true, useTasks.getState())).rejects.toThrow('cambió')
     expect(m.connect).not.toHaveBeenCalled()
     expect(useTasks.getState()).toMatchObject({ folder: '/otra', deleteGrant: false, deleteGrantBusy: false })
   })
   it('si falla el IPC, no concede y libera el indicador ocupado', async () => {
     m.cw.mockRejectedValue(new Error('fallo simulado'))
-    await expect(setDeleteGrantAllowed(true)).rejects.toThrow('fallo simulado')
+    await expect(setDeleteGrantAllowed(true, useTasks.getState())).rejects.toThrow('fallo simulado')
     expect(m.connect).not.toHaveBeenCalled()
     expect(useTasks.getState()).toMatchObject({ deleteGrant: false, deleteGrantBusy: false })
   })

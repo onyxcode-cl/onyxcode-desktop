@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { TasksConnection } from '@shared/ipc-tasks'
 import type { PermissionRequest, ToolPart } from '@opencode-ai/sdk/v2/client'
 interface MockState {
   folder: string
@@ -32,6 +33,8 @@ vi.mock('./actions', () => ({
   sendToTask: m.send
 }))
 import { enableDeleteAndRetry } from './delete-grant-retry'
+const scope = () => ({ folder: m.state.folder, conn: m.state.conn as TasksConnection })
+const enableCurrent = (request: PermissionRequest | ToolPart) => enableDeleteAndRetry(request, scope())
 const req = { id: 'p', sessionID: 'child' } as PermissionRequest
 beforeEach(() => {
   vi.resetAllMocks()
@@ -65,30 +68,57 @@ beforeEach(() => {
   })
 })
 describe('activar permiso real y reintentar', () => {
+  it.each(['carpeta', 'conexión'])('una tarjeta de otro contexto (%s) no confirma, aborta ni concede', async (change) => {
+    const clickedScope = scope()
+    if (change === 'carpeta') m.state.folder = 'C:\\otra'
+    else m.state.conn = { fullAccess: false }
+    await expect(enableDeleteAndRetry(req, clickedScope)).rejects.toThrow('cambió')
+    expect(m.confirm).not.toHaveBeenCalled()
+    expect(m.log).toEqual([])
+  })
+  it.each(['confirmación', 'abort'])('cambiar carpeta durante %s no concede ni reintenta', async (step) => {
+    if (step === 'confirmación') {
+      m.confirm.mockImplementation(async () => {
+        m.state.folder = 'C:\\otra'
+        return true
+      })
+    } else {
+      m.abort.mockImplementation(async () => {
+        m.state.folder = 'C:\\otra'
+        return {}
+      })
+    }
+    await expect(enableCurrent(req)).rejects.toThrow('cambió')
+    expect(m.grant).not.toHaveBeenCalled()
+    expect(m.send).not.toHaveBeenCalled()
+  })
   it('rechaza la pregunta antigua, aborta hija y raíz, cambia perfil, reabre raíz y reintenta con su modelo', async () => {
-    await enableDeleteAndRetry(req)
+    const clickedScope = scope()
+    await enableDeleteAndRetry(req, clickedScope)
     expect(m.log).toEqual(['reject', 'abort', 'abort', 'grant/restart', 'open', 'retry'])
     expect(m.confirm).toHaveBeenCalledWith('root')
     expect(m.reply.mock.calls[0].slice(0, 2)).toEqual(['p', 'reject'])
+    expect(m.reply.mock.calls[0][3]).toBe(true)
     expect(m.abort.mock.calls).toEqual([
       [{ sessionID: 'child', directory: '/win/c/fixture' }],
       [{ sessionID: 'root', directory: '/win/c/fixture' }]
     ])
-    expect(m.grant).toHaveBeenCalledWith(true)
+    expect(m.grant).toHaveBeenCalledWith(true, clickedScope)
     expect(m.open).toHaveBeenCalledWith('root')
     expect(m.send).toHaveBeenCalledWith(expect.stringContaining('reintenta'), { providerID: 'fake', modelID: 'fake' })
   })
   it('herramienta ya denegada: aborta y reinicia igual, sin responder a un permiso inexistente', async () => {
     m.state.permissions = {}
     const attempt = { id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart
-    await enableDeleteAndRetry(attempt)
+    const clickedScope = scope()
+    await enableDeleteAndRetry(attempt, clickedScope)
     expect(m.log).toEqual(['abort', 'abort', 'grant/restart', 'open', 'retry'])
     expect(m.reply).not.toHaveBeenCalled()
-    expect(m.grant).toHaveBeenCalledExactlyOnceWith(true)
+    expect(m.grant).toHaveBeenCalledExactlyOnceWith(true, clickedScope)
   })
   it('herramienta denegada de una tarea que ya no está activa: no concede', async () => {
     m.state.activeTaskId = 'otra'
-    await expect(enableDeleteAndRetry({ id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart)).rejects.toThrow('cambió')
+    await expect(enableCurrent({ id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart)).rejects.toThrow('cambió')
     expect(m.log).toEqual([])
   })
   it('cambiar de tarea durante el abort de una herramienta fallida no concede el permiso', async () => {
@@ -96,56 +126,56 @@ describe('activar permiso real y reintentar', () => {
       m.state.activeTaskId = 'otra'
       return {}
     })
-    await expect(enableDeleteAndRetry({ id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart)).rejects.toThrow('cambió')
+    await expect(enableCurrent({ id: 'tool', type: 'tool', sessionID: 'child' } as ToolPart)).rejects.toThrow('cambió')
     expect(m.grant).not.toHaveBeenCalled()
     expect(m.send).not.toHaveBeenCalled()
   })
   it('cancelar la interrupción de otras tareas no cambia permisos ni responde al motor', async () => {
     m.confirm.mockResolvedValue(false)
-    await enableDeleteAndRetry(req)
+    await enableCurrent(req)
     expect(m.log).toEqual([])
   })
   it('fallar la concesión no reabre ni reintenta, y libera el cerrojo', async () => {
     m.grant.mockRejectedValueOnce(new Error('fallo simulado'))
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('fallo simulado')
+    await expect(enableCurrent(req)).rejects.toThrow('fallo simulado')
     expect(m.open).not.toHaveBeenCalled()
-    await enableDeleteAndRetry(req)
+    await enableCurrent(req)
     expect(m.send).toHaveBeenCalledTimes(1)
   })
   it('un arranque fallido o cambio de carpeta no envía el reintento', async () => {
     m.grant.mockImplementation(async () => {
       m.state.phase = 'error'
     })
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('no se pudo reabrir')
+    await expect(enableCurrent(req)).rejects.toThrow('no se pudo reabrir')
     expect(m.send).not.toHaveBeenCalled()
     m.state.phase = 'ready'
     m.confirm.mockImplementation(async () => {
       m.state.folder = 'otra'
       return true
     })
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('cambió')
+    await expect(enableCurrent(req)).rejects.toThrow('cambió')
     expect(m.send).not.toHaveBeenCalled()
   })
   it('no actúa sobre Control total o petición resuelta', async () => {
     m.state.conn.fullAccess = true
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('cambió')
+    await expect(enableCurrent(req)).rejects.toThrow('cambió')
     m.state.conn.fullAccess = false
     m.state.permissions = {}
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('cambió')
+    await expect(enableCurrent(req)).rejects.toThrow('cambió')
     expect(m.log).toEqual([])
   })
   it('un doble clic simultáneo hace una sola concesión', async () => {
-    await Promise.all([enableDeleteAndRetry(req), enableDeleteAndRetry(req)])
+    await Promise.all([enableCurrent(req), enableCurrent(req)])
     expect(m.grant).toHaveBeenCalledTimes(1)
   })
   it('no sigue si falla el abort ni si la persona cambia de tarea al reabrir', async () => {
     m.abort.mockResolvedValueOnce({ error: 'fallo' })
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('cambió')
+    await expect(enableCurrent(req)).rejects.toThrow('cambió')
     expect(m.grant).not.toHaveBeenCalled()
     m.open.mockImplementation(async () => {
       m.state.activeTaskId = 'otra'
     })
-    await expect(enableDeleteAndRetry(req)).rejects.toThrow('cambió')
+    await expect(enableCurrent(req)).rejects.toThrow('cambió')
     expect(m.send).not.toHaveBeenCalled()
   })
 })

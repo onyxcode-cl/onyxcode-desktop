@@ -8,14 +8,16 @@ vi.hoisted(() => vi.unstubAllGlobals())
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 import { setLang } from '@shared/i18n'
 import type { TasksConnection } from '@shared/ipc-tasks'
+import type { ToolPart } from '@opencode-ai/sdk/v2/client'
 import { RejectionNotices } from './RejectionNotices'
 import { useRejectionNotices } from '../../stores/rejection-notices'
 import { useServer } from '../../stores/server'
 import { useSessions } from '../../stores/sessions'
 import { useCode } from '../../features/code/impl/store'
 import { useTasks } from '../../features/tasks/impl/store'
-import { replyPermission, rejectQuestion } from '../../features/tasks/impl/actions'
-import { makeSession } from '../../../../test/fixtures/events'
+import { replyPermission, rejectQuestion, sendToTask, retryAfterNetworkAllow } from '../../features/tasks/impl/actions'
+import { DeletePermissionCard } from '../../features/tasks/impl/DeletePermissionCard'
+import { makeSession, userMessage, textPart, toolPart } from '../../../../test/fixtures/events'
 
 vi.mock('../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
@@ -33,7 +35,19 @@ const question = { id: 'q1', sessionID: 'kid', questions: [{ header: 'Destino', 
 const reply = vi.fn()
 const reject = vi.fn()
 const promptAsync = vi.fn()
-const client = { permission: { reply }, question: { reject }, session: { promptAsync } }
+const command = vi.fn()
+const client = {
+  permission: { reply },
+  question: { reject },
+  session: {
+    promptAsync,
+    command,
+    update: vi.fn(async (args: { sessionID: string; permission?: unknown }) => ({
+      data: { ...makeSession(args.sessionID, directory), permission: args.permission }
+    })),
+    revert: vi.fn(async (args: { sessionID: string }) => ({ data: makeSession(args.sessionID, directory) }))
+  }
+}
 const html = (mode: 'code' | 'tasks', sessionID = 'root', folder = directory): string => {
   const host = document.createElement('div')
   const root = createRoot(host)
@@ -45,10 +59,13 @@ const html = (mode: 'code' | 'tasks', sessionID = 'root', folder = directory): s
 
 beforeEach(() => {
   vi.clearAllMocks()
+  Object.defineProperty(window, 'api', { configurable: true, value: {} })
   setLang('es')
   useLang.setState({ lang: 'es' })
   reply.mockResolvedValue({ data: true })
   reject.mockResolvedValue({ data: true })
+  promptAsync.mockReset().mockResolvedValue({ data: {} })
+  command.mockResolvedValue({ data: {} })
   useRejectionNotices.setState({ notices: [] })
   const sessions = { root: makeSession('root', directory), kid: makeSession('kid', directory, { parentID: 'root' }) }
   useCode.setState({
@@ -58,7 +75,9 @@ beforeEach(() => {
     activeSessionID: 'root',
     permissions: { p1: permission },
     questions: { q1: question },
-    globalError: null
+    globalError: null,
+    runState: {},
+    messages: { root: [{ info: userMessage('u1', 'root'), parts: [textPart('txt', 'u1', 'root', 'Revisa el proyecto')] }] }
   })
   useServer.setState({ client: client as never })
   useSessions.setState({ sessions })
@@ -67,6 +86,10 @@ beforeEach(() => {
     client: client as never,
     conn: null,
     activeTaskId: 'root',
+    taskModel: { providerID: 'opencode', modelID: 'test' },
+    sending: false,
+    attachments: [],
+    elements: [],
     permissions: { p1: permission },
     questions: { q1: question }
   })
@@ -98,6 +121,49 @@ describe.each(['code', 'tasks'] as const)('cierre de tarjeta en %s', (mode) => {
     expect(html(mode)).toContain('rechazaste la pregunta')
     expect(html(mode)).toContain('¿Dónde guardarlo?')
     expect(promptAsync).not.toHaveBeenCalled()
+  })
+
+  it.each(['mensaje', 'reintento'] as const)('el siguiente %s limpia solo los avisos de esa conversación', async (action) => {
+    await rejectPermission()
+    await rejectTheQuestion()
+    const base = useRejectionNotices.getState().notices[0]
+    const others = [
+      { ...base, mode: mode === 'code' ? ('tasks' as const) : ('code' as const) },
+      { ...base, directory: '/otra' },
+      { ...base, sessionID: 'other' }
+    ]
+    for (const notice of others) useRejectionNotices.getState().add(notice)
+    if (mode === 'code') {
+      expect(await (action === 'mensaje' ? useCode.getState().send('Sigue con otra cosa') : useCode.getState().retryLast())).toBe(true)
+    } else if (action === 'mensaje') await sendToTask('Sigue con otra cosa', { providerID: 'opencode', modelID: 'test' })
+    else await retryAfterNetworkAllow('root', 'example.test')
+    expect(promptAsync).toHaveBeenCalledTimes(1)
+    expect(html(mode)).toBe('')
+    expect(useRejectionNotices.getState().notices).toEqual(others)
+  })
+
+  it('conserva un rechazo nuevo que llega mientras se envía la siguiente instrucción', async () => {
+    await rejectPermission()
+    promptAsync.mockImplementationOnce(async () => {
+      useRejectionNotices.getState().add({ mode, directory, sessionID: 'root', requestID: 'nuevo', kind: 'permission', detail: 'nuevo' })
+      return { data: {} }
+    })
+    if (mode === 'code') await useCode.getState().send('Otra instrucción')
+    else await sendToTask('Otra instrucción', { providerID: 'opencode', modelID: 'test' })
+    expect(useRejectionNotices.getState().notices.map((n) => n.requestID)).toEqual(['nuevo'])
+  })
+
+  it('conserva el aviso cuando una comprobación impide enviar la nueva instrucción', async () => {
+    await rejectPermission()
+    if (mode === 'code') {
+      client.session.update.mockRejectedValueOnce(new Error('No se pudo actualizar los permisos'))
+      expect(await useCode.getState().send('Otra instrucción')).toBe(false)
+    } else {
+      useTasks.setState({ conn: { fullAccess: true } as TasksConnection, controlStoppedAt: Date.now() })
+      await expect(sendToTask('Otra instrucción', { providerID: 'opencode', modelID: 'test' })).rejects.toThrow()
+    }
+    expect(promptAsync).not.toHaveBeenCalled()
+    expect(html(mode)).toContain('npm run build')
   })
 
   it('no declara rechazado un permiso cuya respuesta falló y conserva la tarjeta', async () => {
@@ -143,6 +209,39 @@ describe.each(['code', 'tasks'] as const)('cierre de tarjeta en %s', (mode) => {
     }
     expect(html(mode)).toBe('')
   })
+})
+
+it('un comando de Código también cierra el aviso; un envío vacío lo conserva', async () => {
+  await useCode.getState().replyPermission(permission, 'reject')
+  expect(await useCode.getState().send('   ')).toBe(false)
+  expect(html('code')).toContain('npm run build')
+  await useCode.getState().runCommand('revisar', '')
+  expect(command).toHaveBeenCalledTimes(1)
+  expect(html('code')).toBe('')
+})
+
+it('Cancelar una acción bloqueada de Tareas deja el mismo aviso sin responder un permiso inexistente', async () => {
+  const host = document.createElement('div')
+  const root = createRoot(host)
+  const dismiss = vi.fn()
+  const failed = toolPart('blocked', 'm', 'kid', 'bash', {
+    status: 'error',
+    input: { command: 'rm viejo.txt' },
+    error: 'Permission denied'
+  }) as ToolPart
+  act(() => root.render(<DeletePermissionCard request={failed} command="rm viejo.txt" onDismiss={dismiss} />))
+  try {
+    await act(async () => (host.querySelector('button') as HTMLButtonElement).click())
+    expect(dismiss).toHaveBeenCalledTimes(1)
+    expect(reply).not.toHaveBeenCalled()
+    expect(promptAsync).not.toHaveBeenCalled()
+    expect(html('tasks')).toContain('No hice esta acción porque la rechazaste.')
+    expect(html('tasks')).toContain('rm viejo.txt')
+    await sendToTask('Ahora crea otro archivo', { providerID: 'opencode', modelID: 'test' })
+    expect(html('tasks')).toBe('')
+  } finally {
+    act(() => root.unmount())
+  }
 })
 
 it('muestra una ruta de Windows en el aviso y usa el directorio aislado en la respuesta', async () => {

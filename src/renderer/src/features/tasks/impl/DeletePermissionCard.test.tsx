@@ -12,6 +12,7 @@ const m = vi.hoisted(() => ({
   remote: false
 }))
 vi.mock('./store', () => ({
+  rootTaskId: (id: string) => id,
   useTasks: Object.assign((sel: (s: unknown) => unknown) => sel(m.state), { setState: (s: unknown) => Object.assign(m.state, s) })
 }))
 vi.mock('./actions', () => ({ replyPermission: m.reply, replyPermissionAlways: vi.fn() }))

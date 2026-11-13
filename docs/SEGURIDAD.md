@@ -2975,6 +2975,15 @@ Se usa el mismo permiso persistente por carpeta (`tasks:deleteGrant:get/set`): m
 guarda `deleteGrants` en `tasks-folders.json` y reinicia solo su servidor aislado. No cambia el permiso del motor
 ni las restricciones de las carpetas adicionales o de los archivos protegidos.
 
+**Destino del clic (F8-B284, V25B).** El interruptor de la Ficha, el botón del aviso de aislamiento y la tarjeta
+de activación entregan la carpeta y la conexión que tenían al renderizarse. Antes de enviar el IPC se exige que
+ambas sigan siendo las actuales; un botón pendiente de actualizar tras navegar no puede conceder el permiso
+a la nueva carpeta. El reintento conserva ese mismo destino durante la confirmación y los abortos. Si la carpeta
+cambia después de enviar el IPC, la concesión ya solicitada sigue referida exclusivamente a la carpeta pulsada;
+su respuesta no modifica el estado visible ni reconecta la carpeta nueva. Mostrar tarjetas, cambiar de tarea o
+de carpeta y el rechazo interno con `quiet=true` no conceden permisos. Main conserva su validación de carpeta
+aprobada y el canal remoto conserva la clase D, con confirmación ligada a la llamada concreta.
+
 La tarjeta y su barra fija (escritorio y celular) reconocen órdenes de borrar, mover o renombrar y, sin permiso
 de carpeta, ofrecen activar y reintentar o cancelar. La activación explica que vale para toda la carpeta hasta
 revocarlo y que interrumpe sus tareas en curso; confirma si hay otras tareas trabajando, rechaza la pregunta
@@ -3003,7 +3012,9 @@ El monitor Seatbelt conserva su clasificación fiable y su ámbito de carpeta; n
 
 El clic explícito utiliza el flujo ya existente `tasks:deleteGrant:set`: aborta la sesión y su raíz, cambia el permiso
 persistente por carpeta, reconecta y pide al modelo reintentar en la raíz. Para un resultado ya fallido no se fabrica
-ni se aprueba una solicitud del motor; cancelar solo descarta la oferta. Se comprueban carpeta/conexión y tarea
+ni se aprueba una solicitud del motor; cancelar descarta la oferta y deja el aviso local de rechazo con el comando
+pendiente (F8-B284). El aviso desaparece al enviar la siguiente instrucción en esa conversación o al cerrarlo a mano.
+Se comprueban carpeta/conexión y tarea
 activa para evitar continuar en otra. Ni mostrar la tarjeta ni recibir un error cambia permisos. El perfil Seatbelt,
 Landlock, IPC, la validación real de carpetas y las restricciones de rutas protegidas permanecen bajo los mismos controles.
 

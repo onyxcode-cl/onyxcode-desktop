@@ -40,7 +40,7 @@ describe('permiso alcanzable en Ficha del proyecto de Tareas', () => {
       const toggle = dialog.querySelector<HTMLButtonElement>('[role="switch"]')!
       expect(toggle.getAttribute('aria-label')).toBe('Permitir borrar, mover y renombrar')
       await act(async () => toggle.click())
-      expect(m.allow).toHaveBeenCalledWith(true)
+      expect(m.allow).toHaveBeenCalledWith(true, { folder: '/fixture', conn: m.state.conn })
     }
   )
   it('Control total no ofrece un permiso de aislamiento que no se aplica', async () => {
