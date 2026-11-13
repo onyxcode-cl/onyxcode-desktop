@@ -2,28 +2,28 @@
   "version": "1.19.0",
   "assets": {
     "darwin-arm64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.20/lazunox-motor-darwin-arm64.zip",
-      "sha256": "a620bf8e5171943b625f16375b3579cd087ba3779e9b4adb2a9283c779211d10",
-      "size": 35322783
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.21/lazunox-motor-darwin-arm64.zip",
+      "sha256": "761e496c9f38edf76bfa6aa1374fa62a93d11c88036f222afb8d84953a246aaf",
+      "size": 35324065
     },
     "win32-x64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.20/lazunox-motor-windows-x64.zip",
-      "sha256": "e4491b9b33ee0777898541382229664287490bf681e697684418d8d24f0a583c",
-      "size": 50753760
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.21/lazunox-motor-windows-x64.zip",
+      "sha256": "684b8c10d962ada396eff228eab109e306f1a95ac2fafbefbdf4b03aa5921815",
+      "size": 50753944
     },
     "linux-x64": {
-      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.20/opencode-linux-x64.tar.gz",
-      "sha256": "850d6dd8ecb27b8fa0a1ffd5c99734a50e2e1c7c9dc89c396eafd1bf96879929",
-      "size": 50884460
+      "url": "https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.21/opencode-linux-x64.tar.gz",
+      "sha256": "4c72ee72b2415cfeab6165553a9fcf15ee29e4b958f181e5f4a946f2f2dd6a60",
+      "size": 50884707
     }
   },
   "wsl-rootfs": {
-    "version": "2026.10.10",
-    "minVersion": "2026.10.10",
-    "builtAt": "2026-10-10",
-    "url": "https://github.com/onyxcode-cl/lazunox-wsl/releases/download/rootfs-2026.10.10/lazunox-rootfs-2026.10.10-x64.tar.gz",
-    "sha256": "8f855de87d073755ff8024eb4fe8f639538dbde7067bc74586e96028263cf39e",
-    "size": 98919533,
+    "version": "2026.11.12",
+    "minVersion": "2026.11.12",
+    "builtAt": "2026-10-01",
+    "url": "https://github.com/onyxcode-cl/lazunox-wsl/releases/download/rootfs-2026.11.12/lazunox-rootfs-2026.11.12-x64.tar.gz",
+    "sha256": "3af972f6074b8915bde473a6d5c615d37f6e4fb6aa5646219adce3ee3716a248",
+    "size": 128236044,
     "unpackedMax": 402653184
   }
 }

@@ -15,20 +15,20 @@ describe('resources/opencode-bin/pin.json (beta de Tareas en Windows, 2026-10-07
   it('pasa parseSetupPin (imagen estricta + opencode linux-x64 de la misma versión)', () => {
     const pin = parseSetupPin(raw)
     expect(pin).not.toBeNull()
-    expect(pin!.rootfs.version).toBe('2026.10.10')
-    expect(pin!.rootfs.minVersion).toBe('2026.10.10')
-    expect(pin!.rootfs.sha256).toBe('8f855de87d073755ff8024eb4fe8f639538dbde7067bc74586e96028263cf39e')
-    expect(pin!.rootfs.size).toBe(98919533)
+    expect(pin!.rootfs.version).toBe('2026.11.12')
+    expect(pin!.rootfs.minVersion).toBe('2026.11.12')
+    expect(pin!.rootfs.sha256).toBe('3af972f6074b8915bde473a6d5c615d37f6e4fb6aa5646219adce3ee3716a248')
+    expect(pin!.rootfs.size).toBe(128236044)
     expect(pin!.rootfs.unpackedMax).toBeGreaterThanOrEqual(274501120)
-    expect(pin!.opencode.sha256).toBe('850d6dd8ecb27b8fa0a1ffd5c99734a50e2e1c7c9dc89c396eafd1bf96879929')
-    expect(pin!.opencode.size).toBe(50884460)
+    expect(pin!.opencode.sha256).toBe('4c72ee72b2415cfeab6165553a9fcf15ee29e4b958f181e5f4a946f2f2dd6a60')
+    expect(pin!.opencode.size).toBe(50884707)
     expect(pin!.opencode.url).toBe(
-      'https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.20/opencode-linux-x64.tar.gz'
+      'https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.21/opencode-linux-x64.tar.gz'
     )
   })
   it('la url de la imagen es EXACTAMENTE la de wslRootfsUrl (no publicada: el parser no se relajó)', () => {
-    expect(raw['wsl-rootfs'].url).toBe(wslRootfsUrl('2026.10.10'))
-    expect(wslRootfsUrl('2026.10.10')).toContain('/lazunox-wsl/releases/download/rootfs-2026.10.10/')
+    expect(raw['wsl-rootfs'].url).toBe(wslRootfsUrl('2026.11.12'))
+    expect(wslRootfsUrl('2026.11.12')).toContain('/lazunox-wsl/releases/download/rootfs-2026.11.12/')
     expect(parseWslPin({ ...raw['wsl-rootfs'], url: 'https://example.com/x.tar.gz' })).toBeNull()
   })
   it('conserva los assets de darwin-arm64 y win32-x64', () => {
