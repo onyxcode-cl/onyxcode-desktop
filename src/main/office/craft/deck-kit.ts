@@ -96,13 +96,14 @@ const PALETTES: Record<string, Palette> = {
     bg: 'FFFFFF',
     text: '111111',
     muted: '6B7280',
-    accent: '111111',
+    // Sobrio, pero no en blanco y negro puro: un azul profundo de acento para títulos de sección, cifras y tablas.
+    accent: '1D4E89',
     accent2: '374151',
     panel: 'F5F5F5',
     edge: 'E2E2E2',
     glow: 'EEEEEE',
     glow2: 'F4F4F4',
-    marks: ['111111', '4B5563', '6B7280', '9CA3AF', '374151'],
+    marks: ['1D4E89', '4B5563', '6B7280', '9CA3AF', '374151'],
     dark: false
   }
 }

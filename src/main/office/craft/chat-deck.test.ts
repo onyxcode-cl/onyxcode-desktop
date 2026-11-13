@@ -479,11 +479,11 @@ describe('189: notas del orador', () => {
 
 describe('acento legible', () => {
   const j = (command: string): Record<string, unknown> => JSON.parse(command.slice(command.indexOf('=') + 1))
-  it('sin tema usa azul profundo AA en títulos, filete, cifras y cabecera de tabla; mono explícito se conserva', () => {
+  it('sin tema usa azul profundo AA en títulos, filete, cifras y cabecera de tabla; mono también lleva acento azul', () => {
     const pal = paletteFor(undefined)
     expect(pal.accent).toBe('1F4E79')
     for (const bg of [pal.bg, pal.panel, 'FFFFFF']) expect(contrastRatio(pal.accent, bg)).toBeGreaterThanOrEqual(4.5)
-    expect(paletteFor('mono').accent).toBe('111111')
+    expect(paletteFor('mono').accent).toBe('1D4E89')
     const cmds = chatDeckCommands({
       slides: [
         { title: 'Resumen', layout: 'kpis', kpis: [{ label: 'Cobertura', value: '91 %' }] },
