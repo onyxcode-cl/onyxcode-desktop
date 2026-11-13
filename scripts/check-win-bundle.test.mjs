@@ -253,12 +253,15 @@ test('bandera encendida: EXACTAMENTE los tres bloques del plan, solo en win; mac
   assert.deepEqual(checkWslBundlePackaging(cfg, true, realPin), [])
   const wsl = cfg.win.extraResources.filter((e) => /wsl/.test(e.to ?? '') || /wsl/.test(e.from))
   assert.deepEqual(wsl, [
-    { from: 'resources/wsl', to: 'wsl', filter: ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'wsl.conf'] },
+    { from: 'resources/wsl', to: 'wsl', filter: ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'lzx_rm.py', 'wsl.conf'] },
     { from: 'resources/opencode-bin', to: 'wsl', filter: ['pin.json'] },
-    { from: 'resources/wsl-images', to: 'wsl/images', filter: ['lazunox-rootfs-2026.10.10-x64.tar.gz', 'opencode-linux-x64.tar.gz'] }
+    { from: 'resources/wsl-images', to: 'wsl/images', filter: ['lazunox-rootfs-2026.11.12-x64.tar.gz', 'opencode-linux-x64.tar.gz'] }
   ])
   assert.deepEqual(wsl, expectedWslBlocks(realPin))
-  assert.ok(!JSON.stringify(cfg.mac.extraResources).includes('wsl') && !JSON.stringify(cfg.extraResources).includes('wsl'))
+  // En mac solo se permite el rm propio de Tareas (`lzx_rm.py`), la misma fuente que va a WSL; nada más de WSL.
+  const macWsl = cfg.mac.extraResources.filter((e) => JSON.stringify(e).includes('wsl'))
+  assert.deepEqual(macWsl, [{ from: 'resources/wsl', to: 'wsl', filter: ['lzx_rm.py'] }])
+  assert.ok(!JSON.stringify(cfg.extraResources).includes('wsl'))
   // mac.extraResources es idéntico con la bandera apagada
   assert.deepEqual(cfg.mac.extraResources, loadConfig({ flagLiteral: 'false' }).mac.extraResources)
   // con la función «apagada» esperada, esos bloques son un error

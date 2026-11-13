@@ -116,7 +116,10 @@ export function wslBundlePackExpected(featureFlagsSource) {
   return /export const TASKS_WIN_BUILD\s*=\s*true\b/.test(featureFlagsSource)
 }
 
-const WSL_PAYLOAD_FILTER = ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'wsl.conf']
+const WSL_PAYLOAD_FILTER = ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'lzx_rm.py', 'wsl.conf']
+// Única excepción en macOS: el rm propio de Tareas (`lzx_rm.py`) es la misma fuente en Mac y en WSL y se copia a Resources/wsl.
+const isMacOwnRm = (plat, e) =>
+  plat === 'mac' && e && e.from === 'resources/wsl' && e.to === 'wsl' && JSON.stringify(e.filter) === JSON.stringify(['lzx_rm.py'])
 const isWslEntry = (e) => {
   if (typeof e === 'string') return /wsl|pin\.json/.test(e)
   const from = norm(e.from ?? '')
@@ -153,7 +156,8 @@ export function checkWslBundlePackaging(config, expectActive, pin) {
     ['mac', config.mac?.extraResources ?? []]
   ])
     for (const e of list)
-      if (isWslEntry(e)) problems.push(`${plat}.extraResources lleva recursos de WSL (solo win.extraResources): ${JSON.stringify(e)}`)
+      if (isWslEntry(e) && !isMacOwnRm(plat, e))
+        problems.push(`${plat}.extraResources lleva recursos de WSL (solo win.extraResources): ${JSON.stringify(e)}`)
 
   const winWsl = (config.win?.extraResources ?? []).filter(isWslEntry)
   if (!expectActive) {
