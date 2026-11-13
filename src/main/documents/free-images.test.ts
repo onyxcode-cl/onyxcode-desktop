@@ -184,12 +184,40 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     expect(viewed[0].mimeType).toBe('image/jpeg')
     const used = await service.use(id, evaluation)
     expect(used.credit).toContain('CC BY-SA 4.0')
-    expect(used.credit).toContain('adaptaciones')
+    expect(used.provenance.fullCredit).toContain('adaptaciones')
+    expect(used.credit.length).toBeLessThanOrEqual(120)
     expect(used.provenance.evaluationStatus).toBe('declarada-por-el-modelo')
     expect(used.provenance.status).toBe('licencia-comprobada')
     expect(used.provenance.sha256).toBe(createHash('sha256').update(used.bytes).digest('hex'))
     await expect(new FreeImagesService({ fetch, processor }).view([id])).rejects.toThrow('desconocido')
     await expect(service.view(['https://evil.test/p.jpg'])).rejects.toThrow('no se aceptan URLs')
+  })
+  it.each(['h1', 'h6'])('limpia el pie de %s y conserva los metadatos reales íntegros en procedencia', async (caseId) => {
+    const captured = JSON.parse(await readFile(new URL(`./fixtures-free-images/${caseId}-attribution-real.json`, import.meta.url), 'utf8'))
+    const raw = {
+      ...metadata,
+      Artist: { value: captured.author },
+      LicenseShortName: { value: captured.license },
+      License: { value: caseId === 'h1' ? 'cc-by-2.0' : 'cc-by-sa-4.0' },
+      LicenseUrl: { value: captured.licenseUrl },
+      UsageTerms: { value: caseId === 'h1' ? 'Creative Commons Attribution 2.0' : 'Creative Commons Attribution-Share Alike 4.0' },
+      Credit: { value: captured.notices }
+    }
+    const fetch = fakeFetch((u) =>
+      u.hostname === 'commons.wikimedia.org' ? Response.json(response([page(1, raw)])) : new Response(new Uint8Array(bytes))
+    )
+    const service = new FreeImagesService({ fetch, processor })
+    const found = await service.search(input)
+    const id = found.candidates[0].id
+    await service.view([id])
+    const asset = await service.use(id, evaluation)
+    expect(asset.credit).toBe(
+      `Foto: ${caseId === 'h1' ? 'Cafeterías Nebraska' : 'Spielvogel'} · ${captured.license} · Wikimedia Commons · ajustada`
+    )
+    expect(asset.credit.length).toBeLessThanOrEqual(120)
+    expect(asset.provenance.fullCredit).toContain(captured.author)
+    expect(asset.provenance.notices).toBe(captured.notices)
+    expect(asset.provenance.rawMetadata).toMatchObject({ Artist: captured.author, Credit: captured.notices })
   })
   it('prepara un JPEG menor cuando se pide tamaño útil reducido para el PDF', async () => {
     const service = new FreeImagesService({ fetch: fakeFetch(), processor })
@@ -200,7 +228,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     expect(sniffImage(asset.bytes)).toMatchObject({ kind: 'jpeg', width: 300, height: 200 })
     expect(asset.provenance).toMatchObject({ width: 300, height: 200 })
     expect(asset.ext).toBe('jpg')
-    expect(asset.credit).toContain('reducción de tamaño')
+    expect(asset.provenance.fullCredit).toContain('reducción de tamaño')
   })
   it('conserva cache de bytes normalizados y limita a dos rondas por requisitos', async () => {
     const fetch = fakeFetch(),

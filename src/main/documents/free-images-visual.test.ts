@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const state = vi.hoisted(() => ({
   bitmap: Buffer.alloc(16),
@@ -21,6 +22,8 @@ vi.mock('electron', () => ({
     }
   }
 }))
+vi.mock('./free-images-webp', () => ({ normalizeExifJpeg: vi.fn(), normalizeWebp: vi.fn() }))
+import { normalizeExifJpeg } from './free-images-webp'
 import { nativeFreeImageProcessor, protectFreeImagePreview } from './free-images-visual'
 import { isFreeImagePreview } from './free-image-preview'
 function png(): Buffer {
@@ -53,6 +56,14 @@ describe('composición raster sin abrir Electron', () => {
     expect(center.equals(original.subarray(90 * 400 * 4, 110 * 400 * 4))).toBe(false)
   })
 
+  it('deriva JPEG con EXIF al conversor que aplica la orientación', async () => {
+    const bytes = await readFile(new URL('./fixtures-free-images/synthetic-exif-6.jpg', import.meta.url))
+    const converted = Buffer.from('JPEG orientado')
+    vi.mocked(normalizeExifJpeg).mockResolvedValueOnce(converted)
+    expect(await nativeFreeImageProcessor.normalize(bytes, 1280)).toBe(converted)
+    expect(normalizeExifJpeg).toHaveBeenCalledWith(bytes, 1280)
+    expect(state.captured.length).toBe(0)
+  })
   it('aplana BGRA premultiplicado sobre blanco sin multiplicar alfa otra vez', async () => {
     await nativeFreeImageProcessor.normalize(png(), 100)
     expect([...state.captured.subarray(0, 4)]).toEqual([191, 127, 127, 255])

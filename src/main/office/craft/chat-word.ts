@@ -70,13 +70,14 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     })
     return tail
   }
-  const par = (t: string, style?: string, align?: string, size?: number): void => {
+  const par = (t: string, style?: string, align?: string, size?: number, caption = false): void => {
     if (style) cmd('para.style', { style })
-    cmd('para.set', { props: { keepNext: style === 'Title' || style === 'Subtitle', keepLines: false, widowControl: true } })
+    cmd('para.set', { props: { keepNext: style === 'Title' || style === 'Subtitle', keepLines: caption, widowControl: true } })
     cmd('format.size', { size: size ?? (style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size) })
     if (style === 'Title') cmd('format.bold', { value: true })
-    cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
-    cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
+    // El pie ocupa el mínimo legible y no se divide entre páginas: la foto ya lo une con keepNext.
+    cmd('para.lineSpacing', { value: caption ? 1 : WORD_REPORT.line_spacing })
+    cmd('para.spacing', { before: 0, after: caption ? 3 : WORD_REPORT.space_after_pt })
     cmd('para.align', { value: align ?? 'left' })
     const tail = inline(t)
     cmd('text.newParagraph')
@@ -146,6 +147,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     switch (b.type) {
       case 'heading':
         cmd(`para.heading${b.level}`)
+        cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
         cmd('format.size', { size: WORD_REPORT.heading_sizes[b.level - 1] })
         cmd('format.bold', { value: true })
         cmd('para.set', { props: { keepNext: true, keepLines: true, spaceBefore: 16, spaceAfter: 6 } })
@@ -249,7 +251,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         cmd('para.style', { style: 'Normal' })
         if (b.caption) {
           cmd('format.italic', { value: true })
-          par(b.caption, 'Normal', 'center', 9)
+          par(b.caption, 'Normal', 'center', 9, true)
           cmd('format.italic', { value: false })
         }
         break

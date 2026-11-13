@@ -6,6 +6,7 @@ import type { ReviewResult } from './review'
 import { OutputPathError } from './output-path'
 import { extractKnowledgeText } from '../projects/extract'
 import { layoutOf } from '../office/craft/chat-deck'
+import { shortImageCredit } from './free-image-credit'
 import { decodeHtmlText, htmlImageTags } from './html-images'
 
 /** `path` es la referencia exacta que usa el documento, ya resuelta y cotejada por hash por el servidor. */
@@ -13,6 +14,7 @@ export interface ImageCredit {
   path: string
   credit: string
   attribution?: {
+    fullCredit?: string
     author: string
     license: string
     provider: string
@@ -44,9 +46,23 @@ function escapeHtml(text: string): string {
 export function imageCreditCaption(asset: ImageCredit): string {
   const a = asset.attribution
   if (!a) return asset.credit
-  return [`Foto: ${a.author} · ${a.license} · ${a.provider}${a.transformations?.length ? ' · ajustada' : ''}`, a.notices]
-    .filter(Boolean)
-    .join(' · ')
+  return shortImageCredit(a)
+}
+
+function hasCopiedCredit(text: string, asset: ImageCredit): boolean {
+  return [imageCreditCaption(asset), asset.credit, asset.attribution?.fullCredit]
+    .filter((value): value is string => !!value?.trim())
+    .some((value) => comparable(text).includes(comparable(value)))
+}
+
+/** Replace an existing attribution in place, retaining the person's description before it. */
+function mergeCaption(previous: string, asset: ImageCredit): string {
+  const caption = imageCreditCaption(asset)
+  if (!previous) return caption
+  const marker = /(?:^|\s)(?:foto|fotografía)\s*[:：-]\s*/i.exec(previous)
+  if (marker) return [previous.slice(0, marker.index).trim(), caption].filter(Boolean).join(' ')
+  if (hasCopiedCredit(previous, asset)) return caption
+  return [previous, caption].join(' · ')
 }
 
 const CAPTION_STYLE =
@@ -93,11 +109,11 @@ export function attachImageCredits(
       for (const index of uses) {
         const slide = slides[index]
         const originalNote = slide.note ?? input.data.footer ?? ''
-        const foot = originalNote.includes(caption) ? originalNote : [originalNote, caption].filter(Boolean).join(' · ')
+        const foot = mergeCaption(originalNote, asset)
         if (foot.length <= 240) slide.imageCredit = foot
         else overflow.push(index + 1)
         // El pie visible es breve; la ficha íntegra sigue disponible al presentar y en el JSON de procedencia.
-        const notes = [slide.speaker_notes, asset.credit].filter(Boolean).join('\n\n')
+        const notes = [slide.speaker_notes, asset.attribution?.fullCredit ?? asset.credit].filter(Boolean).join('\n\n')
         if (notes.length <= MAX_SPEAKER_NOTES_CHARS) slide.speaker_notes = notes
         else if (asset.attribution) {
           const links = `${asset.attribution.source}\n${asset.attribution.licenseUrl}`
@@ -143,13 +159,7 @@ export function attachImageCredits(
       if (!asset || block.type !== 'image') return block
       const caption = imageCreditCaption(asset)
       if (!expectedCredits.includes(caption)) expectedCredits.push(caption)
-      const linked = asset.attribution ? `${caption}\n${asset.attribution.source} · ${asset.attribution.licenseUrl}` : caption
-      const previousCaption = block.caption ?? ''
-      const text = previousCaption.includes(linked)
-        ? previousCaption
-        : previousCaption.includes(caption) && asset.attribution
-          ? `${previousCaption}\n${asset.attribution.source} · ${asset.attribution.licenseUrl}`
-          : [previousCaption, linked].filter(Boolean).join('\n')
+      const text = mergeCaption(block.caption ?? '', asset)
       if (text.length > MAX_DOCX_TEXT_CHARS)
         throw new OutputPathError('size', 'No cabe el crédito bajo la foto; elige una imagen con una atribución más breve.')
       return { ...block, caption: text }
@@ -169,29 +179,12 @@ export function attachImageCredits(
       const existing = decodeHtmlText((existingMatch?.[2] ?? '').replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, ''))
         .trim()
         .replace(/ · Fuente · Licencia$/, '')
-      const creditStart = /(?:^|\s)(?:Foto|Fotografía):\s*/i.exec(existing)
-      const attributionText = creditStart ? comparable(existing.slice(creditStart.index)).toLowerCase() : ''
-      const partialCredit =
-        asset.attribution &&
-        creditStart &&
-        attributionText.includes(comparable(asset.attribution.author).toLowerCase()) &&
-        attributionText.includes(comparable(asset.attribution.license).toLowerCase())
-      // Solo se reutiliza un pie inmediatamente bajo ESTA imagen, reconstruido con estilo visible.
-      if (
-        existingMatch &&
-        (comparable(existing).includes(comparable(caption)) || comparable(existing).includes(comparable(asset.credit)))
-      ) {
-        expectedCredits.push(existing)
-        html = html.slice(0, image.end) + captionHtml(asset, existing) + tail.slice(existingMatch[0].length)
-      } else if (existingMatch && partialCredit) {
-        // El modelo suele omitir el ajuste o los avisos del pie breve. Completar ese mismo pie
-        // desde main evita dos atribuciones; la descripción anterior a «Foto:» se conserva.
-        const description = existing.slice(0, creditStart.index).trim()
+      const creditStart = /(?:^|\s)(?:Foto|Fotografía)\s*[:：-]\s*/i.exec(existing)
+      // Rebuild the adjacent attribution from verified fields. Boilerplate and stale copied
+      // credits never enlarge the page; descriptions preceding “Foto:” remain intact.
+      if (existingMatch && (creditStart || hasCopiedCredit(existing, asset))) {
         expectedCredits.push(caption)
-        html =
-          html.slice(0, image.end) +
-          captionHtml(asset, [description, caption].filter(Boolean).join(' ')) +
-          tail.slice(existingMatch[0].length)
+        html = html.slice(0, image.end) + captionHtml(asset, mergeCaption(existing, asset)) + tail.slice(existingMatch[0].length)
       } else {
         expectedCredits.push(caption)
         html = html.slice(0, image.end) + captionHtml(asset, caption) + tail
@@ -222,7 +215,11 @@ function decodeXml(text: string): string {
 }
 
 // El render puede partir URLs en varias líneas/runs y Word aplica el marcado de énfasis de sus párrafos.
-const comparable = (text: string): string => text.normalize('NFKC').replace(/[\s*\u00ad\u200b]/g, '')
+const comparable = (text: string): string =>
+  text
+    .normalize('NFKC')
+    .toLocaleLowerCase('es')
+    .replace(/[\s\p{P}\p{S}\u00ad\u200b]/gu, '')
 
 /** Comprueba el contenido del archivo final, no el spec ni notas del orador. No sustituye la revisión visual del encuadre/legibilidad. */
 export async function reviewImageCredits(
@@ -258,14 +255,14 @@ export async function reviewImageCredits(
     }
   }
   const actual = comparable(text)
-  const missing = expectedCredits.filter((credit) => !actual.includes(comparable(credit))).length
+  const missing = expectedCredits.filter((credit) => !actual.includes(comparable(credit)))
   return {
-    ok: missing === 0,
+    ok: missing.length === 0,
     items: [
       {
-        ok: missing === 0,
-        text: missing
-          ? `Faltan ${missing} crédito(s) de imágenes en el contenido del archivo final.`
+        ok: missing.length === 0,
+        text: missing.length
+          ? `Faltan ${missing.length} crédito(s) de imágenes en el contenido del archivo final. Pon este texto visible bajo la foto correspondiente, en su misma página o lámina: ${missing.map((credit) => `«${credit}»`).join('; ')}.`
           : `Los ${expectedCredits.length} crédito(s) de imágenes están en el contenido del archivo final; revisa su legibilidad en las páginas.`
       }
     ]

@@ -1,6 +1,7 @@
 import { markFreeImagePreview } from './free-image-preview'
 import { sniffImage, MAX_IMAGE_PIXELS } from './image-files'
-import { normalizeWebp } from './free-images-webp'
+import { normalizeExifJpeg, normalizeWebp } from './free-images-webp'
+import { jpegOrientation } from './jpeg-orientation'
 
 export interface FreeImageProcessor {
   normalize(bytes: Buffer, maxEdge: number): Promise<Buffer>
@@ -13,6 +14,7 @@ export const nativeFreeImageProcessor: FreeImageProcessor = {
     const info = sniffImage(bytes)
     if (!info || info.kind === 'gif' || info.width * info.height > MAX_IMAGE_PIXELS) throw new Error('Imagen inválida o demasiado grande.')
     if (info.kind === 'webp') return normalizeWebp(bytes, maxEdge)
+    if (info.kind === 'jpeg' && jpegOrientation(bytes) !== 1) return normalizeExifJpeg(bytes, maxEdge)
     const { nativeImage } = await import('electron')
     let image = nativeImage.createFromBuffer(bytes)
     if (image.isEmpty()) throw new Error('No se pudo decodificar la imagen.')

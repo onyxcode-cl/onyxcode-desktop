@@ -101,15 +101,16 @@ function addFooterRow(
   note: string | undefined,
   page: { current: number; total: number } | undefined,
   noteColor: string,
-  pageColor: string
+  pageColor: string,
+  noteSize = 9.5
 ): void {
   if (note)
     slide.addText(note, {
       x: MARGIN_X,
-      y: note.length > 140 ? 4.98 : FOOTER_Y,
+      y: note.length > 140 || noteSize >= 12 ? 4.98 : FOOTER_Y,
       w: 7.4,
-      h: note.length > 140 ? 0.4 : 0.24,
-      fontSize: 9.5,
+      h: note.length > 140 || noteSize >= 12 ? 0.4 : 0.24,
+      fontSize: noteSize,
       color: noteColor,
       fontFace: BODY_FONT,
       margin: 0
@@ -191,7 +192,7 @@ function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
       margin: 0
     })
   }
-  addFooterRow(slide, spec.imageCredit ?? spec.note ?? ctx.footer, undefined, p.onDarkMuted, p.onDarkMuted)
+  addFooterRow(slide, spec.imageCredit ?? spec.note ?? ctx.footer, undefined, p.onDarkMuted, p.onDarkMuted, spec.imageCredit ? 12 : 9.5)
 }
 
 function addSectionSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
@@ -402,7 +403,14 @@ function addImageSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
       }
     )
   }
-  addFooterRow(slide, spec.imageCredit ?? spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
+  addFooterRow(
+    slide,
+    spec.imageCredit ?? spec.note ?? ctx.footer,
+    { current: ctx.page, total: ctx.total },
+    p.muted,
+    p.accent,
+    spec.imageCredit ? 12 : 9.5
+  )
 }
 
 /** Viñetas como pasos numerados (círculo de acento + número), para una secuencia/proceso en vez de una lista plana. */

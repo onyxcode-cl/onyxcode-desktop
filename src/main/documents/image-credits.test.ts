@@ -6,8 +6,12 @@ import { join } from 'node:path'
 import { isDocxSpec, isPptxSpec, MAX_DOCX_BLOCKS, MAX_SLIDES, type DocxSpec, type PptxSpec } from '@shared/chat-doc-spec'
 import { attachImageCredits, imageCreditCaption, reviewImageCredits } from './image-credits'
 import { renderPptx } from '../extras/render-pptx'
+import { reviewDocument } from './review'
+import { ensureTitlePlaceholders } from '../office/craft/pptx-titles'
 import { chatDeckCommands } from '../office/craft/chat-deck'
 import { chatDocxCommands } from '../office/craft/chat-word'
+import h1 from './fixtures-free-images/h1-attribution-real.json'
+import h6 from './fixtures-free-images/h6-attribution-real.json'
 import type { ImageMap } from './image-files'
 
 const CREDIT =
@@ -216,7 +220,7 @@ describe('créditos comprobados de fotografías', () => {
     if (result.input.kind !== 'pptx') throw new Error('kind')
     expect(result.input.data.slides).toHaveLength(3)
     expect(result.input.data.slides[0].imageCredit).toContain(caption)
-    expect(result.input.data.slides[0].imageCredit!.length).toBeGreaterThan(140)
+    expect(result.input.data.slides[0].imageCredit!.length).toBeLessThanOrEqual(160)
     expect(isPptxSpec(result.input.data)).toBe(true)
     const bytes = await renderPptx(result.input.data, await imageMap())
     const zip = await JSZip.loadAsync(bytes)
@@ -295,7 +299,7 @@ describe('créditos comprobados de fotografías', () => {
     }
   )
 
-  it('no atribuye al data-src ni al img comentado y conserva obligaciones largas en Word y lámina extra', () => {
+  it('no atribuye al data-src ni al img comentado y mantiene el pie corto ante avisos largos', () => {
     const result = attachImageCredits(
       {
         kind: 'pdf',
@@ -311,12 +315,68 @@ describe('créditos comprobados de fotografías', () => {
     const word = attachImageCredits({ kind: 'docx', data: { blocks: [{ type: 'image', path: ASSET.path }] } }, [asset])
     if (word.input.kind !== 'docx') throw new Error('kind')
     expect(isDocxSpec(word.input.data)).toBe(true)
-    expect(word.input.data.blocks[0]).toHaveProperty('caption', expect.stringContaining(asset.attribution.notices))
-    const slides = attachImageCredits({ kind: 'pptx', data: { slides: [{ image: { path: ASSET.path } }] } }, [asset])
+    expect(word.input.data.blocks[0]).toHaveProperty('caption', imageCreditCaption(asset))
+    expect(imageCreditCaption(asset).length).toBeLessThanOrEqual(120)
+    const slides = attachImageCredits({ kind: 'pptx', data: { slides: [{ title: 'Foto real de prueba', image: { path: ASSET.path } }] } }, [
+      asset
+    ])
     if (slides.input.kind !== 'pptx') throw new Error('kind')
-    expect(slides.input.data.slides).toHaveLength(2)
+    expect(slides.input.data.slides).toHaveLength(1)
     expect(slides.expectedCredits).toEqual([imageCreditCaption(asset)])
     expect(isPptxSpec(slides.input.data)).toBe(true)
+  })
+
+  it('acepta espacios, puntuación y mayúsculas al comprobar los archivos finales, pero no cambia autor ni licencia', async () => {
+    const variant = 'FOTO: ALICE & BOB — CC BY-SA 4.0 / WIKIMEDIA COMMONS / AJUSTADA'
+    for (const kind of ['docx', 'pptx'] as const) {
+      const zip = new JSZip()
+      const path = kind === 'docx' ? 'word/document.xml' : 'ppt/slides/slide1.xml'
+      zip.file(path, `<a:t>${xmlEscape(variant)}</a:t>`)
+      const bytes = await zip.generateAsync({ type: 'nodebuffer' })
+      expect((await reviewImageCredits(kind, bytes, [CAPTION])).ok).toBe(true)
+      const wrong = await reviewImageCredits(kind, bytes, [CAPTION.replace('4.0', '3.0')])
+      expect(wrong.ok).toBe(false)
+      expect(wrong.items[0].text).toContain(CAPTION.replace('4.0', '3.0'))
+      expect(wrong.items[0].text).toContain('misma página o lámina')
+    }
+  })
+
+  it('corrige el pie copiado en Word/PPTX/PDF sin duplicar créditos ni agregar páginas o láminas', () => {
+    const copied = 'Figura 1. Interior. FOTO: ALICE & BOB — CC BY-SA 4.0 — WIKIMEDIA COMMONS'
+    const word = attachImageCredits({ kind: 'docx', data: { blocks: [{ type: 'image', path: ASSET.path, caption: copied }] } }, [ASSET])
+    if (word.input.kind !== 'docx') throw new Error('kind')
+    expect(word.input.data.blocks[0]).toHaveProperty('caption', `Figura 1. Interior. ${CAPTION}`)
+    const slides = attachImageCredits({ kind: 'pptx', data: { slides: [{ image: { path: ASSET.path }, note: copied }] } }, [ASSET])
+    if (slides.input.kind !== 'pptx') throw new Error('kind')
+    expect(slides.input.data.slides).toHaveLength(1)
+    expect(slides.input.data.slides[0].imageCredit).toBe(`Figura 1. Interior. ${CAPTION}`)
+    const pdf = attachImageCredits({ kind: 'pdf', html: `<img src="${ASSET.path}"><p>${xmlEscape(copied)}</p>` }, [ASSET])
+    if (pdf.input.kind !== 'pdf') throw new Error('kind')
+    expect(pdf.input.html.match(/Foto:/g)).toHaveLength(1)
+    expect(pdf.input.html).toContain('Figura 1. Interior.')
+    expect(pdf.expectedCredits).toEqual([CAPTION])
+  })
+
+  it.each([h1, h6])('inserta el crédito real limpio de $title sin copiarlo el modelo', async (raw) => {
+    const asset = { path: ASSET.path, credit: raw.credit, attribution: { ...raw, fullCredit: raw.credit } }
+    const caption = imageCreditCaption(asset)
+    const slides = attachImageCredits({ kind: 'pptx', data: { slides: [{ title: raw.title, image: { path: ASSET.path } }] } }, [asset])
+    if (slides.input.kind !== 'pptx') throw new Error('kind')
+    const bytes = await ensureTitlePlaceholders(await renderPptx(slides.input.data, await imageMap()))
+    expect(slides.input.data.slides).toHaveLength(1)
+    expect(slides.input.data.slides[0].imageCredit).toBe(caption)
+    expect(slides.input.data.slides[0].speaker_notes).toContain(raw.credit)
+    expect((await reviewImageCredits('pptx', bytes, slides.expectedCredits)).ok).toBe(true)
+    const review = await reviewDocument('pptx', bytes, slides.input.data)
+    expect(review.items.filter((item) => !item.ok).map((item) => item.text)).toEqual([])
+    const word = attachImageCredits({ kind: 'docx', data: { blocks: [{ type: 'image', path: ASSET.path, caption: raw.credit }] } }, [asset])
+    if (word.input.kind !== 'docx') throw new Error('kind')
+    expect(word.input.data.blocks[0]).toHaveProperty('caption', caption)
+    const pdf = attachImageCredits({ kind: 'pdf', html: `<img src="${ASSET.path}"><p>${xmlEscape(raw.credit)}</p>` }, [asset])
+    if (pdf.input.kind !== 'pdf') throw new Error('kind')
+    expect(pdf.input.html).toContain(xmlEscape(caption))
+    expect(pdf.input.html).not.toContain(raw.notices)
+    expect(pdf.input.html.match(/<small/g)).toHaveLength(1)
   })
 
   it('no atribuye imágenes ajenas y rechaza un layout que omitiría la fotografía', () => {

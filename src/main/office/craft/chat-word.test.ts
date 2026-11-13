@@ -405,7 +405,9 @@ describe('informe con fotos y créditos: paginación sin estilos heredados', () 
       blocks: [
         { type: 'heading', level: 1, text: 'Fauna' },
         { type: 'image', path: 'foto.jpg', caption: 'Figura. Fauna local' },
-        { type: 'paragraph', text: 'Descripción de la foto.' }
+        { type: 'paragraph', text: 'Descripción de la foto.' },
+        { type: 'image', path: 'foto.jpg', caption: 'Segunda foto' },
+        { type: 'heading', level: 2, text: 'Siguiente sección' }
       ]
     }
     const images = new Map([
@@ -420,5 +422,17 @@ describe('informe con fotos y créditos: paginación sin estilos heredados', () 
     expect(before).toContain('para.set={"props":{"keepNext":true,"keepLines":false,"widowControl":false}}')
     expect(before).toContain('para.spacing={"before":0,"after":6}')
     expect(before).toContain('para.lineSpacing={"value":1}')
+    const after = group.slice(group.findIndex((c) => c.startsWith('insert.picture=')) + 1)
+    expect(after).toContain('para.set={"props":{"keepNext":false,"keepLines":true,"widowControl":true}}')
+    expect(after).toContain('para.spacing={"before":0,"after":3}')
+    expect(after).toContain('para.lineSpacing={"value":1}')
+    expect(after).toContain('format.size={"size":9}')
+    const following = groups.find((g) => g.includes('text.insert={"text":"Descripción de la foto."}'))!
+    expect(following).toContain('para.set={"props":{"keepNext":false,"keepLines":false,"widowControl":true}}')
+    expect(following).toContain('para.spacing={"before":0,"after":6}')
+    expect(following).toContain('para.lineSpacing={"value":1.15}')
+    expect(following).toContain('format.size={"size":11}')
+    const heading = groups.find((g) => g.includes('para.heading2') && g.some((command) => command.includes('Siguiente sección')))!
+    expect(heading).toContain('para.lineSpacing={"value":1.15}')
   })
 })

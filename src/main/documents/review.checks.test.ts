@@ -86,6 +86,16 @@ describe('PowerPoint: chequeos de aspecto', () => {
     const r2 = await reviewDocument('pptx', await pptx([T, sp('Nota', 914400, 5000000, 8000000, 300000, 'letra chica', 11, '', '')]))
     expect(bad(r2)).toContain('menos de 12 pt')
   })
+  it('un pie de 11 pt es aviso; cuerpo de 11 pt y pie de 8 pt siguen siendo fallos', async () => {
+    const r = await reviewDocument(
+      'pptx',
+      await pptx([T, sp('Crédito', 914400, 6200000, 8000000, 300000, 'Foto: Autora · CC BY 4.0', 11, '', '')])
+    )
+    expect(bad(r)).not.toContain('menos de 12 pt')
+    expect(notes(r)).toContain('Pie de 11 pt')
+    const small = await reviewDocument('pptx', await pptx([T, sp('Crédito', 914400, 6200000, 8000000, 300000, 'Foto: Autora', 8, '', '')]))
+    expect(bad(small)).toContain('menos de 12 pt')
+  })
   it('el número de página y los pies de página pueden ser chicos', async () => {
     const r = await reviewDocument(
       'pptx',

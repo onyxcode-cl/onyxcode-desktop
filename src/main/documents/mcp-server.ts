@@ -18,6 +18,7 @@
 import { CODE_BINDING_FOLDER } from '@shared/documents-permissions'
 import { reviewDocument, reviewSummary } from './review'
 import { countPdfPages, pageTarget } from './pdf-page-count'
+import { normalizeDocumentExtras } from './normalize-extras'
 import { moneyWithoutNumbers, specGapCells, templateLeftovers } from './review-checks'
 
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
@@ -261,7 +262,7 @@ export const IMAGE_TOOLS = [
   {
     name: 'imagenes_usar',
     description:
-      'Prepara un id visto en imagenes_ver: vuelve a comprobar licencia, normaliza y guarda foto más procedencia en img/. La evaluación visual es TU declaración, no una certificación del servicio. mode=manual solo tras selección de la persona. Usa la ruta relativa devuelta en documentos_crear: el crédito se incorpora automáticamente. Revisa también la página terminada, sujeto, proporciones y crédito legible.',
+      'Prepara un id visto en imagenes_ver: vuelve a comprobar licencia, normaliza y guarda foto más procedencia en img/. La evaluación visual es TU declaración, no una certificación del servicio. mode=manual solo tras selección de la persona. Usa la ruta relativa devuelta en documentos_crear; Word y PowerPoint admiten también el id preparado en el objeto de imagen. El crédito se incorpora automáticamente. Revisa también la página terminada, sujeto, proporciones y crédito legible.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -319,6 +320,34 @@ export function normalizeArgs(raw: Record<string, unknown>): Record<string, unkn
     a.nombre = typeof spec?.title === 'string' && spec.title.trim() ? spec.title : 'Documento'
   }
   return a
+}
+
+/** Referencias por ID de fotos ya preparadas; el camino resultante aún pasa por hash, procedencia y guardias de ruta. */
+function resolvePreparedImageIds(tipo: unknown, spec: unknown, paths: ReadonlyMap<string, string>): unknown {
+  const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+  if (!object(spec)) return spec
+  const resolve = (value: unknown): unknown => {
+    if (!object(value) || value.id === undefined) return value
+    if (typeof value.id !== 'string' || !paths.has(value.id))
+      throw new OutputPathError(
+        'name',
+        'El id de foto no está preparado en esta carpeta y sesión. Llama primero a imagenes_usar y usa el id o path que devuelve.'
+      )
+    const path = paths.get(value.id)!
+    if (value.path !== undefined && value.path !== path)
+      throw new OutputPathError('name', 'La foto indica un id y una ruta distintos; usa solo el id o el path devuelto por imagenes_usar.')
+    const { id: _id, ...rest } = value
+    void _id
+    return { ...rest, path }
+  }
+  if (tipo === 'pptx' && Array.isArray(spec.slides))
+    return {
+      ...spec,
+      slides: spec.slides.map((slide) => (object(slide) && slide.image !== undefined ? { ...slide, image: resolve(slide.image) } : slide))
+    }
+  if (tipo === 'docx' && Array.isArray(spec.blocks))
+    return { ...spec, blocks: spec.blocks.map((block) => (object(block) && block.type === 'image' ? resolve(block) : block)) }
+  return spec
 }
 
 /** Aviso de largo de un Word: se calcula por palabras (≈400 por página, las tablas ocupan más); solo si el encargo trae `paginas_objetivo`. */
@@ -473,6 +502,7 @@ function rewriteCreated(root: string, entry: CreatedFile, bytes: Buffer): Writte
 }
 
 interface SavedPhoto {
+  id: string
   provenance: string
   provenanceSha: string
   rel: string
@@ -483,6 +513,7 @@ interface SavedPhoto {
 interface PhotoScope {
   service: Pick<FreeImagesService, 'search' | 'view' | 'use'>
   assets: Map<string, SavedPhoto>
+  deliveredViews: Set<string>
 }
 
 interface Quota {
@@ -536,7 +567,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
   }
 
   /** Valida y arma el `ChatDocInput` (el contenido es dato: solo los validadores del Chat, con sus topes). */
-  private buildInput(args: Record<string, unknown>): { input: ChatDocInput; tipo: Tipo } | { error: string } {
+  private buildInput(args: Record<string, unknown>): { input: ChatDocInput; tipo: Tipo; warnings?: string[] } | { error: string } {
     const rawTipo = args.tipo
     if (typeof rawTipo !== 'string' || !(TIPOS as readonly string[]).includes(rawTipo))
       return { error: 'tipo debe ser pptx, docx, xlsx o pdf.' }
@@ -555,7 +586,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       if (bad) return { error: bad }
       return { tipo, input: { kind: 'pdf', html } }
     }
-    const spec = args.spec
+    let spec = args.spec
     if (!spec || typeof spec !== 'object' || Array.isArray(spec))
       return {
         error: `Falta el campo \`spec\` para ${tipo}: pásalo como un objeto JSON (o texto JSON) con el contenido del documento, el de la skill ${tipo}. Los campos son tipo, nombre y spec.`
@@ -568,6 +599,8 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     }
     if (Buffer.byteLength(json, 'utf8') > MAX_SPEC_BYTES) return { error: '`spec` supera 1 MB.' }
     if (Object.prototype.hasOwnProperty.call(spec, '__proto__')) return { error: '`spec` tiene claves no permitidas.' }
+    const normalized = normalizeDocumentExtras(tipo, spec)
+    spec = normalized.spec
     const badSpec = markers(stringsOf(spec).join('\n'))
     if (badSpec) return { error: badSpec }
     if (!allowMarkers) {
@@ -599,12 +632,12 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         return {
           error: `El \`spec\` no cumple el esquema de presentaciones del Chat (ver la skill pptx). ${explainPptx(spec)} No se generó nada: corrige ese campo y vuelve a llamar a documentos_crear.`
         }
-      return { tipo, input: { kind: 'pptx', data: spec } }
+      return { tipo, input: { kind: 'pptx', data: spec }, warnings: normalized.warnings }
     }
     if (tipo === 'docx') {
       if (!isDocxSpec(spec))
         return { error: `El \`spec\` no cumple el esquema de Word del Chat (ver la skill docx). ${explainDocx(spec)} No se generó nada.` }
-      return { tipo, input: { kind: 'docx', data: spec } }
+      return { tipo, input: { kind: 'docx', data: spec }, warnings: normalized.warnings }
     }
     if (!isXlsxSpec(spec))
       return { error: `El \`spec\` no cumple el esquema de Excel del Chat (ver la skill xlsx). ${explainXlsx(spec)} No se generó nada.` }
@@ -652,7 +685,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     let scope = scopes.get(canonical)
     if (!scope) {
       if (scopes.size >= 16) throw new OutputPathError('size', 'Demasiadas carpetas de fotos en esta sesión; abre una sesión nueva.')
-      scope = { service: this.deps.freeImages?.() ?? new FreeImagesService(), assets: new Map() }
+      scope = { service: this.deps.freeImages?.() ?? new FreeImagesService(), assets: new Map(), deliveredViews: new Set() }
       scopes.set(canonical, scope)
     }
     return scope
@@ -756,11 +789,19 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
             data: (await protectFreeImagePreview(view.image)).toString('base64'),
             mimeType: 'image/jpeg'
           })
+        if (signal?.aborted)
+          return this.text('La ampliación se canceló antes de entregar las imágenes. Vuelve a llamar a imagenes_ver.', true)
+        for (const view of views) scope.deliveredViews.add(view.id)
         this.audit({ at: t0, tool: name, result: 'ok', ms: now() - t0 })
         return result
       }
       if (typeof args.id !== 'string' || !args.evaluation || typeof args.evaluation !== 'object' || Array.isArray(args.evaluation))
         return this.text('Pasa un id conocido y evaluation con mode, observed, meets y doubts.', true)
+      if ((args.evaluation as { mode?: unknown }).mode === 'visual' && !scope.deliveredViews.has(args.id))
+        return this.text(
+          'Primero llama a imagenes_ver y espera la ampliación completa de este id antes de declarar una selección visual.',
+          true
+        )
       if (scope.assets.size >= 60) return this.text('Se alcanzó el límite de fotos preparadas en esta sesión.', true)
       const asset = await scope.service.use(args.id, args.evaluation as FreeImageEvaluation)
       if (signal?.aborted) return this.text('La operación de fotos se canceló antes de guardar.', true)
@@ -785,6 +826,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
               source: p.source,
               licenseUrl: p.licenseUrl,
               notices: p.notices,
+              fullCredit: p.fullCredit,
               transformations: p.transformations
             }
           : undefined
@@ -798,6 +840,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       })
       incompletePhoto = undefined
       scope.assets.set(written.rel, {
+        id: args.id,
         rel: written.rel,
         sha,
         credit: asset.credit,
@@ -808,13 +851,14 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       this.audit({ at: t0, tool: name, result: 'ok', bytes: written.bytes, ms: now() - t0 })
       return this.text(
         JSON.stringify({
+          id: args.id,
           path: written.rel,
           agentPath: binding.toAgentPath?.(written.abs) ?? written.abs,
           provenance: manifest.rel,
           credit: asset.credit,
           caption: imageCreditCaption({ path: written.rel, credit: asset.credit, attribution }),
           notice:
-            'Foto preparada con licencia comprobada. Evaluación registrada como declaración del selector; no certificada por la app. Inserta path en documentos_crear; crédito automático. Revisa después la página terminada. Conserva imagen y procedencia.'
+            'Foto preparada con licencia comprobada. Evaluación registrada como declaración del selector; no certificada por la app. Inserta path en documentos_crear (o id en el objeto de imagen de Word/PowerPoint); crédito automático. Revisa después la página terminada. Conserva imagen y procedencia.'
         })
       )
     } catch (err) {
@@ -1055,6 +1099,21 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     if (name === 'renderizar' && this.deps.preview) return this.callPreview(binding, args)
     if (name !== 'crear') return this.text(`Herramienta desconocida: ${name}`, true)
     args = normalizeArgs(args)
+    const where = await this.rootOf(binding, args)
+    if (!where.ok) {
+      this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'carpeta', ms: now() - t0 })
+      return this.text(where.message, true)
+    }
+    const root = where.root
+    // Un ID solo se resuelve si imagenes_usar ya guardó ese recurso en ESTA atadura y carpeta.
+    const scope = this.photoScopes.get(binding)?.get(await realpath(root))
+    const byId = new Map([...(scope?.assets.values() ?? [])].map((asset) => [asset.id, asset.rel]))
+    try {
+      args = { ...args, spec: resolvePreparedImageIds(args.tipo, args.spec, byId) }
+    } catch (err) {
+      if (err instanceof OutputPathError) return this.text(err.message, true)
+      throw err
+    }
     const built = this.buildInput(args)
     if ('error' in built) {
       this.audit({ at: t0, tool: name, result: 'rechazado', detail: 'contenido', ms: now() - t0 })
@@ -1066,12 +1125,6 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         'paginas_objetivo debe ser un número positivo o un rango ordenado, por ejemplo 1 o "2-3". No se guardó el PDF.',
         true
       )
-    const where = await this.rootOf(binding, args)
-    if (!where.ok) {
-      this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: 'carpeta', ms: now() - t0 })
-      return this.text(where.message, true)
-    }
-    const root = where.root
     const agentRoots = binding.code ? [root] : [binding.folder, binding.toAgentPath ? binding.toAgentPath(binding.folder) : binding.folder]
     const quota = this.quotaOf(binding)
     quota.stamps = quota.stamps.filter((s) => t0 - s < 3_600_000)
@@ -1249,8 +1302,9 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
             : undefined
       )
       const pagesNote = credited.input.kind === 'docx' ? pageBudgetNote(args.paginas_objetivo, credited.input.data) : ''
+      const extrasNote = built.warnings?.length ? `\nAvisos: ${built.warnings.join(' ')}` : ''
       const result = this.text(
-        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${creditNote}${insertionNote}${pagesNote}`
+        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${creditNote}${insertionNote}${pagesNote}${extrasNote}`
       )
       // Se usan los mismos bytes guardados: no se relee una ruta que podría cambiar. Fallar al dibujar nunca invalida un archivo creado.
       if (this.deps.preview) {

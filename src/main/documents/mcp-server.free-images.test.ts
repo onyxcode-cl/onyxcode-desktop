@@ -8,12 +8,14 @@ import { DocumentsMcpServer, type DocumentsBinding } from './mcp-server'
 import { CODE_BINDING_FOLDER } from '@shared/documents-permissions'
 import type { FreeImageAsset, FreeImagesService } from './free-images'
 import type { ChatDocInput } from './engine'
+import { protectFreeImagePreview } from './free-images-visual'
 import { FREE_IMAGE_PREVIEW_MARKER } from './free-image-preview'
 import { renderPptx } from '../extras/render-pptx'
 vi.mock('./free-images-visual', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./free-images-visual')>()),
-  protectFreeImagePreview: async (bytes: Buffer) =>
+  protectFreeImagePreview: vi.fn(async (bytes: Buffer) =>
     Buffer.concat([bytes, Buffer.from('lazunox-free-image-preview:not-for-document-use:v1')])
+  )
 }))
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH7sAAAAASUVORK5CYII=', 'base64')
@@ -32,8 +34,8 @@ const searchArgs = {
 const evaluation = { mode: 'visual', observed: 'Se ve mobiliario y barra.', meets: ['mobiliario'], doubts: '' }
 const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 class Harness extends DocumentsMcpServer {
-  invoke(binding: DocumentsBinding, tool: string, args: Record<string, unknown>) {
-    return this.callTool(binding, tool, args)
+  invoke(binding: DocumentsBinding, tool: string, args: Record<string, unknown>, signal?: AbortSignal) {
+    return this.callTool(binding, tool, args, signal)
   }
 }
 let root: string
@@ -87,7 +89,7 @@ const text = (r: Awaited<ReturnType<Harness['invoke']>>) => (r.content[0] as { t
 async function prepare(
   extra: Record<string, unknown> = {},
   owner = binding
-): Promise<{ path: string; agentPath: string; provenance: string }> {
+): Promise<{ id: string; path: string; agentPath: string; provenance: string }> {
   const found = await server.invoke(owner, 'imagenes_buscar', { ...searchArgs, ...extra })
   const id = JSON.parse(text(found)).candidates[0].id
   await server.invoke(owner, 'imagenes_ver', { ids: [id], ...extra })
@@ -127,6 +129,73 @@ afterEach(async () => {
 })
 
 describe('fotos libres por MCP', () => {
+  it('no acepta selección visual si falla la preparación del bloque image del transporte', async () => {
+    const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
+    const id = JSON.parse(text(found)).candidates[0].id
+    vi.mocked(protectFreeImagePreview).mockRejectedValueOnce(new Error('falló imagen de transporte'))
+    expect((await server.invoke(binding, 'imagenes_ver', { ids: [id] })).isError).toBe(true)
+    const use = await server.invoke(binding, 'imagenes_usar', { id, evaluation })
+    expect(use.isError).toBe(true)
+    expect(text(use)).toContain('espera la ampliación completa')
+    expect(services[0].use).not.toHaveBeenCalled()
+    expect((await server.invoke(binding, 'imagenes_ver', { ids: [id] })).isError).not.toBe(true)
+    expect((await server.invoke(binding, 'imagenes_usar', { id, evaluation })).isError).not.toBe(true)
+  })
+
+  it('una ampliación cancelada durante la protección no autoriza selección visual', async () => {
+    const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
+    const id = JSON.parse(text(found)).candidates[0].id
+    const controller = new AbortController()
+    vi.mocked(protectFreeImagePreview).mockImplementationOnce(async (bytes) => {
+      controller.abort()
+      return bytes
+    })
+    expect((await server.invoke(binding, 'imagenes_ver', { ids: [id] }, controller.signal)).isError).toBe(true)
+    expect((await server.invoke(binding, 'imagenes_usar', { id, evaluation })).isError).toBe(true)
+    expect(services[0].use).not.toHaveBeenCalled()
+  })
+
+  it('resuelve el id preparado y pone el crédito sin copiar texto al spec', async () => {
+    const saved = await prepare()
+    const created = await server.invoke(binding, 'crear', {
+      tipo: 'docx',
+      nombre: 'Por id',
+      spec: { blocks: [{ type: 'image', id: saved.id, alt: 'Café' }] }
+    })
+    expect(created.isError).not.toBe(true)
+    const input = renderInputs.at(-1)!
+    if (input.kind !== 'docx') throw new Error('kind')
+    expect(input.data.blocks[0]).toMatchObject({ type: 'image', path: saved.path, caption: expect.any(String) })
+    expect(input.data.blocks[0]).not.toHaveProperty('id')
+  })
+
+  it('el id no permite saltar la procedencia ni reutilizar otra atadura', async () => {
+    const saved = await prepare()
+    const args = { tipo: 'docx', nombre: 'ID ajeno', spec: { blocks: [{ type: 'image', id: saved.id }] } }
+    expect((await server.invoke({ folder: root }, 'crear', args)).isError).toBe(true)
+    expect(renderInputs).toHaveLength(0)
+    await writeFile(join(root, saved.provenance), '{}')
+    expect((await server.invoke(binding, 'crear', args)).isError).toBe(true)
+    expect(renderInputs).toHaveLength(0)
+  })
+
+  it('un id buscado sin preparar y un id con ruta contradictoria fallan con instrucción exacta', async () => {
+    const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
+    const id = JSON.parse(text(found)).candidates[0].id
+    const args = { tipo: 'pptx', nombre: 'Sin preparar', spec: { slides: [{ layout: 'image', image: { id } }] } }
+    const unprepared = await server.invoke(binding, 'crear', args)
+    expect(unprepared.isError).toBe(true)
+    expect(text(unprepared)).toContain('Llama primero a imagenes_usar')
+    const saved = await prepare()
+    const mismatch = await server.invoke(binding, 'crear', {
+      tipo: 'docx',
+      spec: { blocks: [{ type: 'image', id: saved.id, path: 'img/otra.jpg' }] }
+    })
+    expect(mismatch.isError).toBe(true)
+    expect(text(mismatch)).toContain('ruta distintos')
+    expect(renderInputs).toHaveLength(0)
+  })
+
   it('usa atribución comprobada de main para el pie breve bajo la foto y conserva la ficha completa', async () => {
     const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
     const id = JSON.parse(text(found)).candidates[0].id
@@ -238,7 +307,7 @@ describe('fotos libres por MCP', () => {
     expect(renderInputs).toHaveLength(0)
   })
 
-  it('PPTX incorpora crédito visible aunque el modelo lo pusiera solo en las notas; rechaza motor que solo conserva notas', async () => {
+  it.each(['path', 'id'] as const)('PPTX por %s incorpora crédito visible y rechaza motor que solo conserva notas', async (reference) => {
     await server.stop()
     let notesOnly = false
     server = new Harness({
@@ -258,7 +327,7 @@ describe('fotos libres por MCP', () => {
     const args = {
       tipo: 'pptx',
       nombre: 'Credito-visible',
-      spec: { slides: [{ title: 'Colibríes', layout: 'cover', image: { path: saved.path }, speaker_notes: CREDIT }] }
+      spec: { slides: [{ title: 'Colibríes', layout: 'cover', image: { [reference]: saved[reference] }, speaker_notes: CREDIT }] }
     }
     const result = await server.invoke(binding, 'crear', args)
     expect(result.isError).not.toBe(true)

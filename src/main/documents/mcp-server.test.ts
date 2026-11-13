@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DocumentsMcpServer, localImageRefs, MAX_PER_BINDING_PER_HOUR, MAX_PREVIEWS_PER_HOUR, type AuditEntry } from './mcp-server'
 import type { ChatDocInput } from './engine'
+import PptxGenJS from 'pptxgenjs'
 
 let folder: string
 let folder2: string
@@ -662,5 +663,90 @@ describe('errores de datos: mensaje accionable, no «Error interno»', () => {
     expect(textOf(r)).not.toContain(folder)
     expect(warn.mock.calls.flat().join(' ')).toContain('boom')
     warn.mockRestore()
+  })
+})
+
+describe('tolerancia de notas accesorias en crear', () => {
+  it('ignora footer/note largos y extras de tabla con aviso y conserva filas y láminas', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, {
+      tipo: 'pptx',
+      nombre: 'Notas',
+      spec: {
+        footer: 'x'.repeat(61),
+        slides: [
+          {
+            title: 'Tabla',
+            layout: 'table',
+            note: 'n'.repeat(141),
+            table: { columns: ['Producto', 'Precio'], rows: [['Café', '$2.000']], footer: 'Texto accesorio', note: 'Detalle' }
+          }
+        ]
+      }
+    })
+    expect(r.body.result.isError).toBeUndefined()
+    expect(textOf(r)).toContain('Se ignoró spec.footer')
+    expect(textOf(r)).toContain('spec.slides[0].table.note')
+    const input = renders[0].input
+    if (input.kind !== 'pptx') throw new Error('kind')
+    expect(input.data.slides).toHaveLength(1)
+    expect(input.data.slides[0].table).toEqual({ columns: ['Producto', 'Precio'], rows: [['Café', '$2.000']] })
+    expect(input.data.footer).toBeUndefined()
+  })
+
+  it('Word ignora solo las notas accesorias, sin perder el texto del bloque', async () => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, {
+      tipo: 'docx',
+      nombre: 'Texto',
+      spec: {
+        blocks: [{ type: 'paragraph', text: 'Contenido real', footer: 'Pie', note: 'Detalle' }]
+      }
+    })
+    expect(r.body.result.isError).toBeUndefined()
+    expect(textOf(r)).toContain('Avisos:')
+    expect(renders[0].input).toEqual({ kind: 'docx', data: { blocks: [{ type: 'paragraph', text: 'Contenido real' }] } })
+  })
+
+  it('un pie real de 11 pt se guarda a la primera y devuelve un aviso', async () => {
+    renderImpl = async (input) => {
+      if (input.kind !== 'pptx') throw new Error('kind')
+      const pptx = new PptxGenJS()
+      pptx.layout = 'LAYOUT_WIDE'
+      const slide = pptx.addSlide()
+      slide.addText('Mercado local', { x: 1, y: 1, w: 10, h: 1, fontSize: 32 })
+      slide.addText('Foto: Autora · CC BY 4.0 · Wikimedia Commons', { x: 1, y: 6.8, w: 10, h: 0.3, fontSize: 11 })
+      return (await pptx.write({ outputType: 'nodebuffer' })) as Buffer
+    }
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, {
+      tipo: 'pptx',
+      nombre: 'Pie',
+      spec: {
+        slides: [
+          {
+            layout: 'free',
+            elements: [
+              { type: 'text', x: 60, y: 60, w: 800, h: 80, size: 32, text: 'Mercado local' },
+              { type: 'text', x: 60, y: 490, w: 800, h: 30, size: 11, text: 'Foto: Autora · CC BY 4.0 · Wikimedia Commons' }
+            ]
+          }
+        ]
+      }
+    })
+    expect(r.body.result.isError).toBeUndefined()
+    expect(textOf(r)).toContain('Pie de 11 pt')
+    expect(renders).toHaveLength(1)
+  })
+
+  it.each([
+    { slides: [{ layout: 'image', title: 'Sin foto' }] },
+    { slides: [{ layout: 'table', table: { columns: ['A', 'B'], rows: [['1']], note: 'Accesoria' } }] },
+    { slides: [{ layout: 'table', table: { columns: ['A', 'B'], rows: [['1', '2']], script: 'alert(1)', note: 'Accesoria' } }] }
+  ])('sigue rechazando errores estructurales aunque haya notas accesorias', async (spec) => {
+    const { token, port } = await server.clientFor({ folder })
+    const r = await call(port, token, { tipo: 'pptx', nombre: 'Malo', spec })
+    expect(r.body.result.isError).toBe(true)
+    expect(renders).toHaveLength(0)
   })
 })

@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { INTERNAL_NAME, RELEASES_ORIGIN, RELEASES_REPO } from '@shared/brand'
+import { cleanImageAuthor, shortImageCredit } from './free-image-credit'
 import { commonsLicense, plainMetadata, type FreeImageLicense } from './free-images-license'
 import { sniffImage, MAX_IMAGE_PIXELS } from './image-files'
+import { jpegOrientation } from './jpeg-orientation'
 import { nativeFreeImageProcessor, type FreeImageProcessor } from './free-images-visual'
 import {
   fallbackImageQueries,
@@ -73,6 +75,8 @@ export interface FreeImageProvenance {
   license: string
   licenseUrl: string
   credit: string
+  fullCredit?: string
+  rawMetadata?: Record<string, string>
   sourceSha1: string
   sha256: string
   checkedAt: string
@@ -100,6 +104,8 @@ export interface FreeImagesDeps {
   sleep?: (ms: number) => Promise<void>
 }
 export interface CommonsImage {
+  rawAuthor?: string
+  rawMetadata?: Record<string, string>
   pageId: number
   title: string
   author: string
@@ -202,11 +208,21 @@ export function parseCommonsImages(raw: unknown): CommonsImage[] {
     const sha1 = typeof info.sha1 === 'string' && /^[a-z0-9]{31,40}$/i.test(info.sha1) ? info.sha1 : ''
     // Production requests always ask for sha1. Older fixtures without it can still exercise license parsing.
     if (!sha1) continue
-    const rawAuthor = plainMetadata(record(metadata?.Artist)?.value, 6001)
-    const author = rawAuthor
+    const rawAuthor = plainMetadata(record(metadata?.Artist)?.value, 20000)
+    const author = cleanImageAuthor(rawAuthor)
     if (!author || author.length > 800) continue
+    const rawMetadata = Object.fromEntries(
+      ['Artist', 'Attribution', 'Credit', 'Permission', 'Restrictions', 'UsageTerms', 'LicenseShortName', 'License', 'LicenseUrl'].flatMap(
+        (key) => {
+          const value = record(metadata?.[key])?.value
+          return typeof value === 'string' ? [[key, value]] : []
+        }
+      )
+    )
     if (Number(info.size) > FREE_IMAGE_MAX_BYTES) continue
     result.push({
+      rawAuthor,
+      rawMetadata,
       pageId: Number(page.pageid),
       title: field('ObjectName') || plainMetadata(page.title),
       author,
@@ -436,14 +452,19 @@ export class FreeImagesService {
     const rawKey = `raw:${file.sha1}:${url}`
     const bytes = this.cached(rawKey) ?? (await this.request(url, FREE_IMAGE_MAX_BYTES))
     const info = sniffImage(bytes)
-    if (!info || info.kind === 'gif' || info.width * info.height > MAX_IMAGE_PIXELS || info.width > file.width || info.height > file.height)
+    if (!info || info.kind === 'gif' || info.width * info.height > MAX_IMAGE_PIXELS)
       throw new FreeImageError('El archivo no es una imagen válida.')
-    if (!checkOriginal && (info.width !== file.thumbWidth || info.height !== file.thumbHeight))
+    // Commons reports displayed dimensions; JPEG SOF stores the unrotated raster.
+    const rotated = info.kind === 'jpeg' && jpegOrientation(bytes) >= 5
+    const width = rotated ? info.height : info.width
+    const height = rotated ? info.width : info.height
+    if (width > file.width || height > file.height) throw new FreeImageError('El archivo no es una imagen válida.')
+    if (!checkOriginal && (width !== file.thumbWidth || height !== file.thumbHeight))
       throw new FreeImageError('Las dimensiones de la miniatura no coinciden con la ficha.')
     if (checkOriginal) {
       const shaHex = createHash('sha1').update(bytes).digest('hex')
       const shaBase36 = BigInt(`0x${shaHex}`).toString(36).padStart(31, '0')
-      if (![shaHex, shaBase36].includes(file.sha1) || info.width !== file.width || info.height !== file.height)
+      if (![shaHex, shaBase36].includes(file.sha1) || width !== file.width || height !== file.height)
         throw new FreeImageError('El archivo descargado no corresponde a la versión revisada.')
     }
     this.remember(rawKey, bytes)
@@ -649,10 +670,18 @@ export class FreeImagesService {
       const current = currentFiles.get(item.file.pageId)
       if (!current || current.sha1 !== item.file.sha1 || current.url !== item.file.url)
         throw new FreeImageError('Cambió la foto desde la búsqueda; busca otra candidata.')
-      const image = await this.image(current, 1280, true)
-      item.viewed = true
-      result.push({ id: item.candidate.id, image, mimeType: 'image/jpeg', candidate: item.candidate })
+      try {
+        const image = await this.image(current, 1280, true)
+        result.push({ id: item.candidate.id, image, mimeType: 'image/jpeg', candidate: item.candidate })
+      } catch (error) {
+        const reason = error instanceof FreeImageError ? error.message : 'No se pudo preparar la ampliación.'
+        throw new FreeImageError(
+          `No se entregó ninguna ampliación: falló la candidata ${item.candidate.id}. ${reason} Vuelve a llamar imagenes_ver con un solo id válido antes de usarlo.`
+        )
+      }
     }
+    // A failed batch delivers no pixels: do not authorize a previously unviewed first item.
+    for (const item of selected) item.viewed = true
     return result
   }
   async use(id: string, evaluation: FreeImageEvaluation): Promise<FreeImageAsset> {
@@ -692,9 +721,9 @@ export class FreeImagesService {
     if (info.width + 1 < minWidth || info.height + 1 < minHeight)
       throw new FreeImageError('La foto preparada no alcanza el tamaño útil pedido.')
     const transformations = ['Conversión a JPEG sobre fondo blanco y reducción de tamaño si era necesaria; imagen completa, sin recorte.']
-    const credit = [
+    const fullCredit = [
       current.title,
-      current.author,
+      current.rawAuthor ?? current.author,
       current.source,
       `${current.license.name} (${current.license.url})`,
       current.license.notices,
@@ -703,6 +732,12 @@ export class FreeImagesService {
     ]
       .filter(Boolean)
       .join(' · ')
+    const credit = shortImageCredit({
+      author: current.author,
+      license: current.license.name,
+      provider: 'Wikimedia Commons',
+      transformations
+    })
     return {
       bytes,
       ext: 'jpg',
@@ -716,6 +751,8 @@ export class FreeImagesService {
         license: current.license.name,
         licenseUrl: current.license.url,
         credit,
+        fullCredit,
+        rawMetadata: current.rawMetadata,
         sourceSha1: current.sha1,
         sha256: createHash('sha256').update(bytes).digest('hex'),
         checkedAt: new Date(this.verified.get(current.pageId)!.at).toISOString(),
