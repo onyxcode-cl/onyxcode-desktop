@@ -260,8 +260,7 @@ export async function readWslStatus(
   const empty: RunResult = { code: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0) }
   if (o.platform !== 'win32') return { status: { state: 'unsupported' }, version: empty, list: empty }
   if (o.policyDisabled?.()) return { status: { state: 'policyDisabled' }, version: empty, list: empty }
-  const version = await run({ kind: 'version' }, LIST_MS)
-  const list = await run({ kind: 'list' }, LIST_MS)
+  const [version, list] = await Promise.all([run({ kind: 'version' }, LIST_MS), run({ kind: 'list' }, LIST_MS)])
   let probe: RunResult | null = null
   const pre = classifyWslStatus({ version, list })
   if (pre.state === 'broken' && pre.detail === 'probe') probe = await run({ kind: 'probe' }, PROBE_MS)

@@ -32,7 +32,13 @@ vi.mock('./opencode-config', () => ({ getOpencodeEnv: () => ({ OPENCODE_CONFIG_D
 vi.mock('./backends/spawn', () => ({
   spawnOnHost: (_cmd: string, _args: string[], _cwd: string, env: Record<string, string>) => {
     rec.hostEnv = env
-    return Object.assign(new EventEmitter(), { pid: 78, exitCode: null, signalCode: null, stdout: new EventEmitter(), stderr: new EventEmitter() })
+    return Object.assign(new EventEmitter(), {
+      pid: 78,
+      exitCode: null,
+      signalCode: null,
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter()
+    })
   }
 }))
 vi.mock('./proxy', () => {
@@ -68,7 +74,13 @@ const wsl: SandboxBackend = {
   launch: async (spec) => {
     rec.wslEnv = { ...spec.baseEnv, ...spec.extraEnv }
     return {
-      child: Object.assign(new EventEmitter(), { pid: 77, exitCode: null, signalCode: null, stdout: new EventEmitter(), stderr: new EventEmitter() }) as never,
+      child: Object.assign(new EventEmitter(), {
+        pid: 77,
+        exitCode: null,
+        signalCode: null,
+        stdout: new EventEmitter(),
+        stderr: new EventEmitter()
+      }) as never,
       mounts: [{ win: 'C:\\lzx\\a', linux: '/win/c/lzx/a' }],
       toHostPath: (p) => p,
       toSandboxPath: () => '/win/c/lzx/a',
@@ -79,6 +91,39 @@ const wsl: SandboxBackend = {
 const provider: WinBackendProvider = { build: true, gate: async () => ({ ok: true }), create: () => wsl }
 
 describe('servidores de Tareas con la confianza obligatoria del motor', () => {
+  it('debug distingue preparación, puente, salud HTTP y confianza solo en Windows, sin rutas ni secretos', async () => {
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined)
+    try {
+      const h = await startTasksServer(dir, {
+        platform: 'win32',
+        tasksWin: true,
+        winBackend: provider,
+        isolation: { privateDir: join(dir, 'p'), userData: dir }
+      })
+      const entries = debug.mock.calls.map((args) => JSON.parse(String(args[1])))
+      expect(entries.map((entry) => entry.stage)).toEqual([
+        'server.resolve-binary',
+        'server.select-backend',
+        'server.backend-status',
+        'server.port',
+        'server.proxies-config',
+        'server.launch',
+        'server.health-setup',
+        'server.health',
+        'server.declare-trust',
+        'server.total'
+      ])
+      expect(entries.every((entry) => Number.isFinite(entry.ms) && entry.ms >= 0)).toBe(true)
+      const printed = JSON.stringify(debug.mock.calls)
+      expect(printed).not.toContain(dir)
+      expect(printed).not.toContain(h.authorization)
+      debug.mockClear()
+      await startTasksServer(dir, { platform: 'darwin', noSandbox: true })
+      expect(debug).not.toHaveBeenCalled()
+    } finally {
+      debug.mockRestore()
+    }
+  })
   it('WSL: lleva las dos banderas y declara la carpeta DENTRO de la distro, con la conexión del servidor', async () => {
     const h = await startTasksServer(dir, {
       platform: 'win32',
@@ -110,7 +155,13 @@ describe('servidores de Tareas con la confianza obligatoria del motor', () => {
   it('si no se pudo declarar, el servidor arranca igual (la pantalla verá «sin confianza», no un fallo de arranque)', async () => {
     rec.declareResult = 'failed'
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const h = await startTasksServer(dir, { platform: 'win32', noSandbox: true, winFullAccess: true, tasksWin: true, isElevated: async () => false })
+    const h = await startTasksServer(dir, {
+      platform: 'win32',
+      noSandbox: true,
+      winFullAccess: true,
+      tasksWin: true,
+      isElevated: async () => false
+    })
     expect(h.baseUrl).toBe('http://127.0.0.1:51000')
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()

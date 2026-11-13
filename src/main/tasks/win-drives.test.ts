@@ -70,7 +70,9 @@ describe('readWinDrives (execFile doble)', () => {
     const [exe, args, opts] = fn.mock.calls[0]!
     expect(exe).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
     expect(args).toContain('-NoProfile')
-    expect(args.join(' ')).toContain('Win32_LogicalDisk')
+    expect(args.join(' ')).toContain('[System.IO.DriveInfo]::GetDrives()')
+    expect(args.join(' ')).toContain('[int]$_.DriveType')
+    expect(args.join(' ')).not.toMatch(/Get-CimInstance|IsReady|TotalSize/)
     expect(opts).toMatchObject({ timeout: WIN_DRIVES_TIMEOUT_MS, windowsHide: true })
   })
   it('caché de 30 s y después vuelve a leer', async () => {
@@ -99,5 +101,56 @@ describe('readWinDrives (execFile doble)', () => {
     expect(await readWinDrives(deps)).toBeNull()
     mode = 'bad'
     expect(await readWinDrives(deps)).toBeNull()
+  })
+  it('comparte una sola consulta concurrente y aísla ejecutores y SystemRoot', async () => {
+    let finish!: (result: { stdout: string }) => void
+    const fn = vi.fn(() => new Promise<{ stdout: string }>((resolve) => (finish = resolve)))
+    const deps = { execFile: fn, systemRoot: 'C:\\Windows', now: () => 0 }
+    const a = readWinDrives(deps)
+    const b = readWinDrives(deps)
+    expect(fn).toHaveBeenCalledTimes(1)
+    finish({ stdout: OUT })
+    expect(await a).toEqual(await b)
+    const other = vi.fn(async () => ({ stdout: '{"DeviceID":"Q:","DriveType":4}' }))
+    expect(await readWinDrives({ ...deps, execFile: other })).toEqual([{ letter: 'Q', kind: 'network' }])
+    expect(other).toHaveBeenCalledTimes(1)
+    const c = readWinDrives({ ...deps, systemRoot: 'D:\\Windows' })
+    expect(fn).toHaveBeenCalledTimes(2)
+    finish({ stdout: OUT })
+    await c
+  })
+  it('renueva antes del TTL sin retener un éxito si la renovación falla', async () => {
+    let finish!: (result: { stdout: string }) => void
+    const fn = vi.fn(async () => ({ stdout: OUT }))
+    let now = 0
+    const deps = { execFile: fn, systemRoot: 'C:\\Windows', now: () => now }
+    await readWinDrives(deps)
+    now = 25_000
+    fn.mockImplementation(() => new Promise((resolve) => (finish = resolve)))
+    const renewal = readWinDrives(deps, true)
+    // Todavía fresco: abrir no espera el proceso de renovación.
+    expect(await readWinDrives(deps)).toHaveLength(3)
+    expect(fn).toHaveBeenCalledTimes(2)
+    finish({ stdout: '<bad>' })
+    expect(await renewal).toBeNull()
+    const next = readWinDrives(deps)
+    expect(fn).toHaveBeenCalledTimes(3)
+    finish({ stdout: OUT })
+    await next
+  })
+  it('no prolonga el TTL por lo que tarde el proceso ni por un reloj que retrocede', async () => {
+    let now = 0
+    const fn = vi.fn(async () => {
+      now += 1000
+      return { stdout: OUT }
+    })
+    const deps = { execFile: fn, systemRoot: 'C:\\Windows', now: () => now }
+    await readWinDrives(deps)
+    now = WIN_DRIVES_TTL_MS
+    await readWinDrives(deps)
+    expect(fn).toHaveBeenCalledTimes(2)
+    now = 0
+    await readWinDrives(deps)
+    expect(fn).toHaveBeenCalledTimes(3)
   })
 })

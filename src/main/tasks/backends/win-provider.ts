@@ -33,6 +33,7 @@ import type { GatePurpose, GateReason, GateResult, WinBackendProvider } from './
 import { createWslBackend } from './wsl'
 import { createRealWslDeps, PAYLOAD_PY_NAMES, readPayloadPyFiles, readSetupPin } from './wsl-real-deps'
 import { expectedPayloadSha, parseSetupPin, wslSetupPaths, type SetupPin } from './wsl-setup'
+import type { SandboxBackend } from './types'
 
 export interface WinProviderDirs {
   /** `pin.json` (raíz de confianza: versión de OpenCode, URL y sha de su `linux-x64`, y `wsl-rootfs`). */
@@ -56,6 +57,7 @@ export interface WinProviderOptions {
   /** Para pruebas; por defecto la constante real. */
   build?: boolean
   log?: (m: string) => void
+  debug?: (m: string) => void
   /** `true` elevado, `false` normal, cualquier otra cosa = elevado (cierra). Por defecto `whoami /groups`. */
   isElevated?: () => Promise<boolean | null>
   /** Contenido de `state.json` (por defecto, el del usuario en `%LOCALAPPDATA%\\Lazunox\\wsl`). Pruebas. */
@@ -128,26 +130,39 @@ async function readStateFile(localAppData: string | undefined): Promise<unknown>
 export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvider {
   const imagesDir = o.dirs.imagesDir ?? join(o.dirs.payloadDir, 'images')
   const localAppData = (): string | undefined => o.hostEnv.LOCALAPPDATA ?? o.hostEnv.localappdata
+  let backend: { key: string; value: SandboxBackend } | undefined
+  const timed = async <T>(stage: string, action: () => Promise<T>): Promise<T> => {
+    const start = performance.now()
+    try {
+      return await action()
+    } finally {
+      try {
+        o.debug?.(`[tasks-startup] ${JSON.stringify({ stage: `win.gate.${stage}`, ms: Math.round(performance.now() - start) })}`)
+      } catch {
+        /* diagnóstico */
+      }
+    }
+  }
 
   const check = async (purpose: GatePurpose): Promise<GateResult> => {
     const closed = (reason: GateReason): GateResult => ({ ok: false, reason })
     // 1. Elevación: solo `false` pasa (no saberlo cuenta como elevado).
     let elevated: unknown
     try {
-      elevated = await (o.isElevated ?? detectElevated)()
+      elevated = await timed('elevated', () => (o.isElevated ?? detectElevated)())
     } catch {
       elevated = null
     }
     if (elevated !== false) return closed('elevated')
     // 2. Pin empaquetado.
-    const pin = await readSetupPin(o.dirs.pinJson)
+    const pin = await timed('pin', () => readSetupPin(o.dirs.pinJson))
     if (!pin) return closed('pin')
     // 3. Huella del paquete incluido.
-    if (!(await bundleFingerprintOk(imagesDir, pin))) return closed('bundle')
+    if (!(await timed('bundle', () => bundleFingerprintOk(imagesDir, pin)))) return closed('bundle')
     // 4. Carga de Linux (los `.py` de esta app + la huella del OpenCode fijado).
     let payloadSha: string
     try {
-      payloadSha = expectedPayloadSha(await readPayloadPyFiles(o.dirs.payloadDir), pin.opencode)
+      payloadSha = await timed('payload', async () => expectedPayloadSha(await readPayloadPyFiles(o.dirs.payloadDir), pin.opencode))
     } catch {
       return closed('payload')
     }
@@ -155,7 +170,7 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
     // 5. `state.json` del usuario: la imagen y la carga importadas son las de ESTE pin.
     let state: unknown
     try {
-      state = await (o.readState ?? (() => readStateFile(localAppData())))()
+      state = await timed('state', () => (o.readState ?? (() => readStateFile(localAppData())))())
     } catch {
       return closed('state')
     }
@@ -165,7 +180,7 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
     // 6. Política de la organización.
     let disabled = false
     try {
-      disabled = o.policyDisabled?.() === true
+      disabled = await timed('policy', async () => o.policyDisabled?.() === true)
     } catch {
       disabled = true
     }
@@ -177,19 +192,34 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
     build: o.build ?? TASKS_WIN_BUILD,
     gate: async (purpose = 'run') => {
       try {
-        const r = await check(purpose === 'setup' ? 'setup' : 'run')
+        const r = await timed('total', () => check(purpose === 'setup' ? 'setup' : 'run'))
+        if (!r.ok) backend = undefined
         return r.ok ? { ok: true } : { ok: false, reason: r.reason }
       } catch {
+        backend = undefined
         return { ok: false, reason: 'state' }
       }
     },
     create: () => {
       const lad = localAppData()
-      if (!lad) return null
+      if (!lad) {
+        backend = undefined
+        return null
+      }
       const pin = loadPinSync(o.dirs.pinJson)
-      if (!pin) return null
-      if (!PAYLOAD_PY_NAMES.every((n) => existsSync(join(o.dirs.payloadDir, n)))) return null
-      return createWslBackend(
+      if (!pin) {
+        backend = undefined
+        return null
+      }
+      if (!PAYLOAD_PY_NAMES.every((n) => existsSync(join(o.dirs.payloadDir, n)))) {
+        backend = undefined
+        return null
+      }
+      // Cada create relee el pin y comprueba los .py; la puerta sigue releyendo todos los controles.
+      // Compartir solo esta instancia conserva la caché de versión de WSL entre carpetas.
+      const key = JSON.stringify([lad, pin])
+      if (backend?.key === key) return backend.value
+      const value = createWslBackend(
         createRealWslDeps({
           fetch: o.fetch,
           localAppData: lad,
@@ -201,9 +231,12 @@ export function createWinBackendProvider(o: WinProviderOptions): WinBackendProvi
           },
           hostEnv: o.hostEnv,
           policyDisabled: o.policyDisabled,
-          log: o.log
+          log: o.log,
+          debug: o.debug
         })
       )
+      backend = { key, value }
+      return value
     }
   }
 }

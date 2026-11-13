@@ -14,7 +14,7 @@ import { join, win32 } from 'node:path'
 import { promisify } from 'node:util'
 import { wslSetupPaths } from './backends/wsl-setup'
 import type { WinDirEntry, WinDrive, WinFolderPolicyContext, WinLinkProbe } from './folder-policy-win'
-import { readWinDrives, type ExecFileFn } from './win-drives'
+import { readWinDrives, WIN_DRIVES_TTL_MS, type ExecFileFn } from './win-drives'
 
 /** Una lectura de unidades más vieja que esto ya no vale (la caché propia de `readWinDrives` es de 30 s). */
 export const WIN_CONTEXT_MAX_AGE_MS = 120_000
@@ -26,7 +26,8 @@ export interface WinHostDeps {
   userData: string
   /** `process.execPath`: su carpeta es la de instalación de Lazunox (vetada). */
   execPath: string
-  readDrives(): Promise<WinDrive[] | null>
+  /** `force`: renovación anticipada, sin reutilizar una lectura anterior. */
+  readDrives(force?: boolean): Promise<WinDrive[] | null>
   now?: () => number
   /** Disco: se inyecta en pruebas; por defecto `node:fs`. `lstat` lanza ENOENT si no existe. */
   fs?: {
@@ -40,6 +41,10 @@ export interface WinHostDeps {
 export interface WinHost {
   /** Relee las unidades (con la caché de 30 s de `readWinDrives`). Nunca lanza. */
   refresh(): Promise<void>
+  /** Precarga y renueva las unidades antes de caducar. Optativo para los dobles antiguos. */
+  startBackgroundRefresh?(): void
+  /** Cancela las renovaciones futuras; no cancela la consulta en curso (ya tiene timeout de 3 s). */
+  stopBackgroundRefresh?(): void
   /** Contexto de la política, o `undefined` si falta algo (cierra). `allowedRoots` ya normalizadas por el llamador. */
   context(allowedRoots?: string[]): WinFolderPolicyContext | undefined
   /** `realpath` nativo (expande 8.3 y `subst`, quita `\\?\`); lanza si no existe. */
@@ -78,6 +83,28 @@ export function createWinHost(deps: WinHostDeps): WinHost {
   const now = deps.now ?? Date.now
   const fs = deps.fs ?? realFs
   let drives: { at: number; list: WinDrive[] } | null = null
+  let backgroundGeneration = 0
+  let backgroundRunning = false
+  let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+  const refresh = async (force = false): Promise<void> => {
+    const at = now()
+    try {
+      const list = await deps.readDrives(force)
+      drives = list ? { at, list } : null
+    } catch {
+      drives = null
+    }
+  }
+
+  const backgroundRefresh = (generation: number): void => {
+    void refresh(true).finally(() => {
+      if (!backgroundRunning || generation !== backgroundGeneration) return
+      // El lector conserva TTL=30 s. Renovar a los 25 s permite usar el acierto fresco mientras se consulta.
+      refreshTimer = setTimeout(() => backgroundRefresh(generation), WIN_DRIVES_TTL_MS - 5000)
+      refreshTimer.unref?.()
+    })
+  }
 
   const links: WinLinkProbe = {
     lstat: (p) => {
@@ -93,13 +120,17 @@ export function createWinHost(deps: WinHostDeps): WinHost {
   }
 
   return {
-    async refresh() {
-      try {
-        const list = await deps.readDrives()
-        drives = list ? { at: now(), list } : null
-      } catch {
-        drives = null
-      }
+    refresh,
+    startBackgroundRefresh() {
+      if (backgroundRunning) return
+      backgroundRunning = true
+      backgroundRefresh(++backgroundGeneration)
+    },
+    stopBackgroundRefresh() {
+      backgroundRunning = false
+      backgroundGeneration++
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = null
     },
     context(allowedRoots) {
       const e = deps.env
@@ -108,7 +139,7 @@ export function createWinHost(deps: WinHostDeps): WinHost {
       const programData = envGet(e, 'ProgramData')
       const localAppData = envGet(e, 'LOCALAPPDATA')
       if (!userProfile || !systemRoot || !programData || !localAppData) return undefined
-      if (!drives || now() - drives.at > WIN_CONTEXT_MAX_AGE_MS) return undefined
+      if (!drives || now() < drives.at || now() - drives.at > WIN_CONTEXT_MAX_AGE_MS) return undefined
       // Distro WSL de Tareas (`%LOCALAPPDATA%\Lazunox\wsl`): `wslSetupPaths` valida la ruta; si es rara, no se aprueba nada.
       let wslRoot: string
       try {
@@ -137,7 +168,8 @@ export function createWinHost(deps: WinHostDeps): WinHost {
       // de red abriría una conexión SMB ANTES de que la política la rechace. Lanza → el llamador usa la ruta léxica.
       const letter = /^([A-Za-z]):/.exec(p)?.[1]?.toUpperCase()
       const drive = letter ? drives?.list.find((d) => d.letter === letter) : undefined
-      if (!drive || drive.kind !== 'fixed') throw new Error('unidad no fija o sin leer')
+      if (!drives || now() < drives.at || now() - drives.at > WIN_CONTEXT_MAX_AGE_MS || !drive || drive.kind !== 'fixed')
+        throw new Error('unidad no fija o sin leer')
       return fs.realpath(p)
     },
     isDirectory: (p) => fs.isDirectory(p),
@@ -155,6 +187,6 @@ export function createRealWinHost(o: { userData: string; execPath?: string; env?
     env,
     userData: o.userData,
     execPath: o.execPath ?? process.execPath,
-    readDrives: () => readWinDrives({ execFile: execFileP as unknown as ExecFileFn, systemRoot })
+    readDrives: (force) => readWinDrives({ execFile: execFileP as unknown as ExecFileFn, systemRoot, debug: console.debug }, force)
   })
 }

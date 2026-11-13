@@ -2,7 +2,7 @@
  * Contexto de Windows de la política de carpetas (`win-context.ts`): falla cerrado sin unidades, con unidades caducadas o con
  * variables esenciales ausentes; arma `extraDenied` con la instalación de Lazunox y la distro; el probe de enlaces falla cerrado.
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { forbiddenWinFolderReason, type WinDrive } from './folder-policy-win'
 import { createWinHost, WIN_CONTEXT_MAX_AGE_MS, type WinHostDeps } from './win-context'
 
@@ -44,6 +44,7 @@ function host(over: Partial<WinHostDeps> = {}) {
 }
 
 describe('createWinHost', () => {
+  afterEach(() => vi.useRealTimers())
   it('sin refresh() no hay contexto (cierra): la política rechaza todo', () => {
     expect(host().context()).toBeUndefined()
   })
@@ -147,5 +148,46 @@ describe('createWinHost', () => {
     })
     await boom.refresh()
     expect(forbiddenWinFolderReason('D:\\Proy\\x', boom.context()!)).not.toBeNull()
+  })
+  it('precarga una sola vez y renueva a los 25 s; detener cancela los siguientes ciclos', async () => {
+    vi.useFakeTimers()
+    const readDrives = vi.fn(async () => DRIVES)
+    const h = host({ readDrives })
+    h.startBackgroundRefresh!()
+    h.startBackgroundRefresh!()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(readDrives).toHaveBeenCalledTimes(1)
+    expect(readDrives).toHaveBeenLastCalledWith(true)
+    expect(h.context()).toBeDefined()
+    await vi.advanceTimersByTimeAsync(25_000)
+    expect(readDrives).toHaveBeenCalledTimes(2)
+    h.stopBackgroundRefresh!()
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(readDrives).toHaveBeenCalledTimes(2)
+  })
+  it('un fallo de renovación cierra el contexto y no reanima un ciclo detenido en vuelo', async () => {
+    vi.useFakeTimers()
+    let finish!: (list: WinDrive[] | null) => void
+    const readDrives = vi.fn(async (): Promise<WinDrive[] | null> => DRIVES)
+    const h = host({ readDrives })
+    await h.refresh()
+    readDrives.mockImplementation(() => new Promise((resolve) => (finish = resolve)))
+    h.startBackgroundRefresh!()
+    h.stopBackgroundRefresh!()
+    finish(null)
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(h.context()).toBeUndefined()
+    expect(readDrives).toHaveBeenCalledTimes(2)
+  })
+  it('realpath tampoco usa unidades caducadas ni una lectura con reloj futuro', async () => {
+    const h = host()
+    await h.refresh()
+    expect(h.realpath('C:\\x')).toBe('C:\\x')
+    clock += WIN_CONTEXT_MAX_AGE_MS + 1
+    expect(() => h.realpath('C:\\x')).toThrow()
+    await h.refresh()
+    clock--
+    expect(h.context()).toBeUndefined()
+    expect(() => h.realpath('C:\\x')).toThrow()
   })
 })

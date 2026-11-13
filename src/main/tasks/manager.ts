@@ -142,6 +142,8 @@ interface Persisted {
   fullAccessConsentAt?: number
   /** Última carpeta de trabajo usada en Control total (por defecto, la carpeta personal). */
   fullAccessDir?: string
+  /** Windows: última carpeta usada con aislamiento; solo orienta la precarga, nunca autoriza. */
+  lastIsolatedFolder?: string
 }
 
 /** Carpeta adicional efectiva de un servidor sandbox (vinculada ∪ de confianza, sin duplicados). */
@@ -508,6 +510,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         if (typeof raw.fullAccessConsentAt === 'number' && Number.isFinite(raw.fullAccessConsentAt) && raw.fullAccessConsentAt > 0) {
           data.fullAccessConsentAt = raw.fullAccessConsentAt
         }
+        if (typeof raw.lastIsolatedFolder === 'string' && raw.lastIsolatedFolder) data.lastIsolatedFolder = raw.lastIsolatedFolder
         if (typeof raw.fullAccessDir === 'string' && raw.fullAccessDir) data.fullAccessDir = raw.fullAccessDir
       }
     } catch (err) {
@@ -1271,9 +1274,35 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    * `fullAccess` ⇒ servidor aparte sin sandbox con el MCP de control del computador.
    */
   async start(folder: string, fullAccess = false): Promise<TasksConnection> {
+    const generation = ++this.foregroundStarts
+    return this.startServer(folder, fullAccess, undefined, generation)
+  }
+
+  private async startServer(
+    folder: string,
+    fullAccess: boolean,
+    warmupGeneration?: number,
+    foregroundGeneration = this.foregroundStarts
+  ): Promise<TasksConnection> {
+    const at = performance.now()
+    const source = warmupGeneration === undefined ? 'foreground' : 'warmup'
+    let previous = at
+    const mark = (stage: string, total = false): void => {
+      const now = performance.now()
+      if (this.win) console.debug('[tasks-startup]', JSON.stringify({ stage, source, ms: Math.round(now - (total ? at : previous)) }))
+      previous = now
+    }
+    const checkWarmup = (): void => {
+      if (warmupGeneration !== undefined && (this.backgroundStopped || this.foregroundStarts !== warmupGeneration)) {
+        throw new Error('warmup-cancelled')
+      }
+    }
+    checkWarmup()
     // Windows: sin Control total (decisión de `main`, no solo de la interfaz: A18) y con la política releída al arrancar.
     if (this.noFullAccess && fullAccess) throw new Error(t('merr.task.fullAccessUnavailable'))
     await this.refreshPolicy()
+    mark('manager.policy')
+    checkWarmup()
     const f = this.nf(folder)
     if (fullAccess) {
       // Control total: consentimiento del equipo (o concesión antigua de la carpeta); la carpeta no tiene que estar autorizada.
@@ -1289,6 +1318,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       const why = this.forbidden(f)
       if (why) throw new Error(why)
     }
+    mark('manager.folder-validation')
     const key = serverKey(f, fullAccess)
     // El sandbox lee las credenciales una sola vez: si se conectó (o quitó) un proveedor después de arrancar, un servidor ocioso se
     // reinicia para que lo vea (OpenCode Go aún no llegaba al entorno aislado). Uno ocupado no se toca: `applied` queda en false.
@@ -1298,12 +1328,22 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     }
     const existing = this.servers.get(key)
     let handle = existing?.handle
+    const reused = !!handle && existing?.info.state === 'ready'
+    checkWarmup()
     if (!handle || existing?.info.state !== 'ready') {
       handle = await (existing?.starting ?? this.spawn(f, fullAccess))
     }
     const used = this.servers.get(key)
     if (used) used.lastStartCallAt = Date.now()
-    this.touch(f)
+    if (this.win && !fullAccess && (warmupGeneration ?? foregroundGeneration) === this.foregroundStarts) {
+      this.warmFolder = f
+      if (warmupGeneration === undefined && this.load().lastIsolatedFolder !== f) {
+        this.load().lastIsolatedFolder = f
+        this.save()
+      }
+    }
+    if (warmupGeneration === undefined) this.touch(f)
+    mark(reused ? 'manager.reused' : 'manager.ready', true)
     const computerUse = fullAccess && this.opts.computer ? await this.opts.computer.info() : noComputer()
     return {
       folder: f,
@@ -1316,6 +1356,62 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       fullAccess,
       computerUse: fullAccess && !this.fullAccessMcp.get(key) ? { ...computerUse, available: false } : computerUse
     }
+  }
+
+  private warmFolder: string | null = null
+  private foregroundStarts = 0
+  private backgroundStopped = true
+  private warmupTimer: ReturnType<typeof setTimeout> | null = null
+  private warmupPending: Promise<void> | null = null
+
+  /** Solo Windows: precarga UNA carpeta aislada, tras dar prioridad al arranque de la ventana/motor principal. */
+  startBackgroundWarmup(): void {
+    if (!this.win || this.opts.tasksWin !== true || !this.opts.winBackend || !this.backgroundStopped) return
+    this.backgroundStopped = false
+    this.win.startBackgroundRefresh?.()
+    const generation = this.foregroundStarts
+    this.warmupTimer = setTimeout(() => {
+      this.warmupTimer = null
+      if (this.backgroundStopped || this.foregroundStarts !== generation) return
+      const data = this.load()
+      const last =
+        data.lastIsolatedFolder ??
+        [...data.folders].sort((a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0)).find((f) => (f.lastUsedAt ?? 0) > 0)?.path
+      // Un dato persistido no concede permisos. startServer vuelve a validar carpeta, enlaces, política y backend.
+      if (!last || !this.isApproved(last)) return
+      const pending = this.startServer(last, false, generation)
+        .then(
+          () => undefined,
+          () => {
+            console.debug('[tasks-startup]', JSON.stringify({ stage: 'manager.warmup-skipped' }))
+          }
+        )
+        .finally(() => {
+          if (this.warmupPending === pending) this.warmupPending = null
+        })
+      this.warmupPending = pending
+    }, 2000)
+    this.warmupTimer.unref?.()
+  }
+
+  /** Cancela la precarga pendiente y la consulta periódica de unidades; no vuelve a crear procesos al salir. */
+  stopBackgroundWarmup(): void {
+    this.backgroundStopped = true
+    if (this.warmupTimer) clearTimeout(this.warmupTimer)
+    this.warmupTimer = null
+    this.win?.stopBackgroundRefresh?.()
+  }
+
+  /** El monitor conserva como máximo UN servidor aislado de Windows; el límite de capacidad aún puede desalojarlo. */
+  keepWarm(folder: string, fullAccess: boolean): boolean {
+    return (
+      !!this.win &&
+      this.opts.tasksWin === true &&
+      !fullAccess &&
+      this.warmFolder === folder &&
+      this.isApproved(folder) &&
+      loadManagedPolicy()?.disableWslTasks !== true
+    )
   }
 
   /** true si el servidor de acceso completo de esa clave arrancó con el MCP `computer`. */
@@ -1577,6 +1673,13 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   private spawn(folder: string, fullAccess: boolean): Promise<TasksServerHandle> {
+    const at = performance.now()
+    let previous = at
+    const mark = (stage: string): void => {
+      const now = performance.now()
+      if (this.win) console.debug('[tasks-startup]', JSON.stringify({ stage, ms: Math.round(now - previous) }))
+      previous = now
+    }
     const key = serverKey(folder, fullAccess)
     // Carpetas extra y borrado se fijan AHORA (el perfil Seatbelt no se puede cambiar en caliente);
     // la firma registrada es la de lo realmente usado, para que `applied` sea fiable.
@@ -1590,12 +1693,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       fullAccess && this.opts.computer ? this.opts.computer.planGateUrl().catch(() => null) : Promise.resolve<string | null>(null)
     const before = Promise.resolve(this.beforeSpawn ? this.beforeSpawn(folder, fullAccess) : undefined)
     const prepared = before.then(() => {
+      mark('manager.capacity-and-extras')
       // scratch antiguo → `.lazunox/trabajo/` en main y ANTES de lanzar el servidor (Seatbelt no permite renombrar fuera del scratch).
       // Nunca en la carpeta personal (Control total sin carpeta): no se toca nada del home del usuario.
       if (folder !== this.nf(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
     const starting = prepared.then(([{ config, mcpProxy, browserToken, documentsToken, hostToken }, gateUrl]) => {
+      mark('manager.config-and-mcp')
       // El token del MCP del navegador vive en el entorno de `opencode serve` (OPENCODE_CONFIG_CONTENT): se
       // revoca en cuanto ese proceso termina o no llega a arrancar (F8-B69, hallazgos 6 y 10).
       const revokeBrowserToken = (): void => {
@@ -1743,6 +1848,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     if (entry) entry.starting = starting
     return starting.then(
       (handle) => {
+        mark('manager.server-start')
         const e = this.servers.get(key)
         if (e) {
           e.handle = handle
@@ -1791,11 +1897,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   }
 
   async stopAll(): Promise<void> {
+    this.stopBackgroundWarmup()
+    await this.warmupPending
     await Promise.all([...this.servers.values()].map((e) => this.stopOne(e.info.folder, !!e.info.fullAccess).catch(() => undefined)))
   }
 
   /** Mata todo de forma síncrona (process.on('exit')). */
   killAllSync(): void {
+    this.stopBackgroundWarmup()
     for (const e of this.servers.values()) {
       e.denialControl?.killSync()
       // Grupo entero (MCP, bash…): los servidores se lanzan detached.

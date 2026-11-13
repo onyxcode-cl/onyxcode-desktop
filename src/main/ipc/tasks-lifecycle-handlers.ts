@@ -88,6 +88,7 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
   const monitor: TasksMonitor = new TasksMonitor({
     servers: () => tasksManager.liveServers(),
     stop: (folder, fullAccess) => tasksManager.stop(folder, fullAccess),
+    keepWarm: (folder, fullAccess) => tasksManager.keepWarm(folder, fullAccess),
     prefs,
     tasks,
     notify,
