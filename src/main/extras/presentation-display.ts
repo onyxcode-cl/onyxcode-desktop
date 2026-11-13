@@ -38,8 +38,13 @@ export async function choosePresentationDisplay(): Promise<Display | null> {
     cancelId: displays.length,
     noLink: true
   }
-  const parent = BrowserWindow.getFocusedWindow()
-  const { response } = await (parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options))
+  const focused = BrowserWindow.getFocusedWindow()
+  const parent =
+    focused && !focused.isDestroyed() ? focused : BrowserWindow.getAllWindows().find((win) => !win.isDestroyed() && win.isVisible())
+  // Without a live parent, Electron's macOS dialog would block the main event loop.
+  if (!parent) return null
+  const { response } = await dialog.showMessageBox(parent, options)
+  if (parent.isDestroyed()) return null
   if (response < 0 || response >= displays.length) return null
   // A cable may be unplugged while the chooser is open.
   const selected = screen.getAllDisplays().find((display) => display.id === displays[response].id) ?? screen.getPrimaryDisplay()

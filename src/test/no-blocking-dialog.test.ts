@@ -17,7 +17,8 @@ const REVIEWED: Record<string, string> = {
   'util/native-dialog.ts': 'es el sitio que decide: usa el diálogo de Electron solo de respaldo',
   'index.ts': 'confirmación de SALIR de la app: la app ya se cierra, no hay nada que congelar',
   'security/web-security.ts': 'cuadro «Acerca de», lo abre el usuario',
-  'ipc/remote-handlers.ts': 'solo con ventana padre (hoja); sin ventana va por askButtons'
+  'ipc/remote-handlers.ts': 'solo con ventana padre (hoja); sin ventana va por askButtons',
+  'extras/presentation-display.ts': 'solo con ventana padre viva (hoja); sin ventana cancela, probado en presentation-display.test.ts'
 }
 
 function walk(dir: string): string[] {

@@ -5,11 +5,18 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BrowserWindow, Display } from 'electron'
 
-const mocks = vi.hoisted(() => ({ getPath: vi.fn(), getAllDisplays: vi.fn(), getPrimaryDisplay: vi.fn(), showMessageBox: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  getPath: vi.fn(),
+  getAllDisplays: vi.fn(),
+  getPrimaryDisplay: vi.fn(),
+  showMessageBox: vi.fn(),
+  getFocusedWindow: vi.fn(),
+  getAllWindows: vi.fn()
+}))
 const events = new EventEmitter()
 vi.mock('electron', () => ({
   app: { getPath: mocks.getPath },
-  BrowserWindow: { getFocusedWindow: () => null },
+  BrowserWindow: { getFocusedWindow: mocks.getFocusedWindow, getAllWindows: mocks.getAllWindows },
   dialog: { showMessageBox: mocks.showMessageBox },
   screen: {
     ...mocks,
@@ -33,6 +40,7 @@ const second = {
   bounds: { x: 1440, y: 0, width: 1920, height: 1080 }
 } as Display
 let dir: string
+const parent = { isDestroyed: vi.fn(() => false), isVisible: () => true }
 beforeEach(async () => {
   vi.clearAllMocks()
   dir = await mkdtemp(join(tmpdir(), 'presentation-display-'))
@@ -40,6 +48,9 @@ beforeEach(async () => {
   mocks.getAllDisplays.mockReturnValue([first, second])
   mocks.getPrimaryDisplay.mockReturnValue(first)
   mocks.showMessageBox.mockResolvedValue({ response: 1 })
+  parent.isDestroyed.mockReturnValue(false)
+  mocks.getFocusedWindow.mockReturnValue(parent)
+  mocks.getAllWindows.mockReturnValue([])
 })
 afterEach(async () => {
   vi.useRealTimers()
@@ -57,6 +68,7 @@ describe('presentation display', () => {
     await writeFile(join(dir, 'presentation-display.json'), JSON.stringify({ displayId: 2 }))
     expect(await choosePresentationDisplay()).toBe(second)
     expect(mocks.showMessageBox).toHaveBeenCalledWith(
+      parent,
       expect.objectContaining({
         defaultId: 1,
         cancelId: 2,
@@ -64,6 +76,35 @@ describe('presentation display', () => {
       })
     )
     expect(JSON.parse(await readFile(join(dir, 'presentation-display.json'), 'utf8'))).toEqual({ displayId: 2 })
+  })
+  it('uses a live visible parent when no window is focused', async () => {
+    mocks.getFocusedWindow.mockReturnValue(null)
+    mocks.getAllWindows.mockReturnValue([
+      { isDestroyed: () => true, isVisible: () => true },
+      { isDestroyed: () => false, isVisible: () => false },
+      parent
+    ])
+    expect(await choosePresentationDisplay()).toBe(second)
+    expect(mocks.showMessageBox).toHaveBeenCalledWith(parent, expect.any(Object))
+  })
+  it.each(['missing', 'destroyed'])('cancels without opening an unparented dialog if the parent is %s', async (state) => {
+    if (state === 'missing') mocks.getFocusedWindow.mockReturnValue(null)
+    else parent.isDestroyed.mockReturnValue(true)
+    mocks.getAllWindows.mockReturnValue([
+      { isDestroyed: () => true, isVisible: () => true },
+      { isDestroyed: () => false, isVisible: () => false }
+    ])
+    expect(await choosePresentationDisplay()).toBeNull()
+    expect(mocks.showMessageBox).not.toHaveBeenCalled()
+    await expect(readFile(join(dir, 'presentation-display.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+  it('cancels if the parent closes while choosing a display', async () => {
+    mocks.showMessageBox.mockImplementationOnce(async () => {
+      parent.isDestroyed.mockReturnValue(true)
+      return { response: 1 }
+    })
+    expect(await choosePresentationDisplay()).toBeNull()
+    await expect(readFile(join(dir, 'presentation-display.json'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
   })
   it('cancel creates no presentation and disconnected selection falls back to primary', async () => {
     mocks.showMessageBox.mockResolvedValueOnce({ response: 2 })

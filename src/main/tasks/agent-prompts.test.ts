@@ -196,8 +196,15 @@ describe('prompts de agente', () => {
 })
 
 describe('instrucción de apps del modo unificado', () => {
-  it('tasks.md no la contiene (sin bandera el prompt del agente es el de siempre)', () => {
-    expect(read('tasks')).not.toContain('computer_request_access')
+  it('tasks.md solo menciona el acceso para aclarar que los documentos no lo necesitan', () => {
+    const tasks = read('tasks')
+    // V26: esta advertencia evita pedir control del equipo para crear o revisar documentos.
+    // El resto del prompt sigue sin incorporar la instrucción de acceso por app del modo unificado.
+    const documentWarning =
+      'Crear, convertir o revisar documentos no requiere `computer_request_access`, abrir Word ni manejar la pantalla.'
+    expect(tasks).toContain(documentWarning)
+    expect(tasks.replace(documentWarning, '')).not.toContain('computer_request_access')
+    expect(tasks).toContain('Si no hay vista previa, declara esa limitación sin pedir Control del equipo.')
   })
 
   it('el archivo de instrucciones trae lo esencial y no nombra otros productos', () => {
