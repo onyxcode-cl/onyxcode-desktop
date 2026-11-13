@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest'
 
 /** Guardias de instrucciones: no miden obediencia del modelo, evitan reintroducir el flujo contradictorio. */
 describe('quinta ronda: instrucciones de seguimiento de documentos', () => {
+  it.each(['docx', 'pptx'])('%s propone fotos pertinentes aunque no se pidan y conserva su flujo y crédito', (kind) => {
+    const guide = readFileSync(`resources/opencode/skills/${kind}/SKILL.md`, 'utf8')
+    expect(guide).toContain('promocionales, infantiles, de turismo o de producto')
+    expect(guide).toContain('aunque no las pidan, siguiendo este flujo de fotos libres con crédito')
+    expect(guide).toContain('si no hay una buena, continúa sin foto')
+    expect(guide).toContain('`documentos_imagenes_buscar` → `documentos_imagenes_ver` → `documentos_imagenes_usar`')
+  })
+
   it.each(['docx', 'pptx', 'pdf'])('%s usa el original para exportar y no pide controlar el equipo', (kind) => {
     const guide = readFileSync(`resources/opencode/skills/${kind}/SKILL.md`, 'utf8')
     expect(guide).toContain('documentos_exportar_pdf')

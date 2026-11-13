@@ -312,7 +312,7 @@ export function textExtentBox(shape: Pick<PptxTextShape, 'box' | 'anchor' | 'run
 /** Palabras de un título que anuncian cifras (presupuesto, inversión, costos, precios, tarifas, cotización). */
 const MONEY_TOPIC = /presupuesto|inversi[oó]n|costos?\b|precios?\b|tarifas?\b|cotizaci[oó]n|financiamiento|retorno|roi\b/i
 
-/** Láminas (pptx) o tablas (docx) sobre dinero sin un solo dígito: el modelo quitó las cifras en vez de poner valores de ejemplo. */
+/** Láminas (pptx) o tablas (docx) sobre dinero sin datos numéricos visibles; un año en el título no es un presupuesto. */
 export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): string[] {
   const out: string[] = []
   const texts = (v: unknown, acc: string[] = []): string[] => {
@@ -326,7 +326,13 @@ export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): strin
   if (kind === 'pptx') {
     for (const [i, sl] of (s.slides ?? []).entries()) {
       const title = typeof sl.title === 'string' ? sl.title : ''
-      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && texts({ ...sl, title: '' }).filter((t) => /\d/.test(t)).length < 3)
+      // No exigir tres campos numéricos: una sola tarifa o cifra puede ser toda la idea de la lámina.
+      // Solo contenido: los colores, coordenadas, rutas de imágenes y notas del orador no son cifras de la lámina.
+      const visible = [sl.subtitle, sl.bullets, sl.columns, sl.kpis, sl.table, sl.chart]
+      if (Array.isArray(sl.elements)) {
+        for (const el of sl.elements) if (el && typeof el === 'object') visible.push((el as Record<string, unknown>).text)
+      }
+      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && !texts(visible).some((t) => /\d/.test(t)))
         out.push(`lámina ${i + 1} «${title.slice(0, 40)}»`)
     }
   } else {

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import type { DocumentIdentity, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import { resolveDocumentIdentity } from '@shared/document-identity'
-import { chatDeckCommands } from './chat-deck'
+import { chatDeckCommands, clearBleedDecorations, renderChatDeck } from './chat-deck'
+import { renderPreview } from '../../documents/preview'
 import { renderPptx } from '../../extras/render-pptx'
 import type { ImageMap } from '../../documents/image-files'
 import { autoFitSize, contrastRatio, DeckTextFitError } from './deck-kit'
@@ -132,9 +136,18 @@ describe('V26 identidad aplicada PPTX', () => {
             expect(commands[footerIndex + 1]).toEqual({ id: 'format.size', p: { size: 12 } })
             expect(footer).toEqual([60, 490, 740, 38])
             const photo = commands.find((c) => c.id === 'insert.picture')!.p.rect
-            expect(footer[1] - (photo[1] + photo[3])).toBeGreaterThanOrEqual(12)
+            const bleed = layout === 'cover' && photos === 'wide'
+            if (bleed) {
+              expect(photo).toEqual([0, 0, 960, 540])
+              const backing = commands.findIndex((c) => c.id === 'shape.insert' && JSON.stringify(c.p.rect) === '[0,478,960,62]')
+              expect(backing).toBeGreaterThan(commands.findIndex((c) => c.id === 'insert.picture'))
+              expect(backing).toBeLessThan(footerIndex)
+              expect(commands[backing + 1]).toEqual({ id: 'shape.fill', p: { color: identity.palette!.bg } })
+              expect(commands.some((c) => c.id === 'picture.crop')).toBe(true)
+            } else expect(footer[1] - (photo[1] + photo[3])).toBeGreaterThanOrEqual(12)
             for (const [index, command] of commands.entries()) {
-              if (index !== footerIndex && command.p.rect) expect(intersects(footer, command.p.rect)).toBe(false)
+              if (index !== footerIndex && command.p.rect && (!bleed || command.id === 'insert.textBox'))
+                expect(intersects(footer, command.p.rect)).toBe(false)
             }
             expect(commands).toContainEqual({ id: 'design.fonts', p: { major: 'Georgia', minor: 'Verdana' } })
           }
@@ -356,5 +369,134 @@ describe('V26 identidad aplicada PPTX', () => {
     expect(body).toContain('172B28')
     expect(body).toContain('typeface="+mn-lt"')
     expect(await zip.file('ppt/notesSlides/notesSlide1.xml')!.async('string')).toContain('Conservar esta nota')
+  })
+  it('separa géneros con geometría real y conserva etiquetas sin imponer mayúsculas ni adornos al pie', () => {
+    const concepts = [
+      'Dinosaurios para niños',
+      'Pastelería francesa de lujo',
+      'Energía solar técnica',
+      'Banda de rock en gira',
+      'Clínica dental institucional'
+    ]
+    const layouts = concepts.map((concept) => {
+      const commands = parse(
+        chatDeckCommands({
+          identity: { concept },
+          slides: [
+            { layout: 'cover', title: concept, bullets: ['Una experiencia propia'] },
+            {
+              layout: 'cards',
+              title: 'Ideas principales',
+              eyebrow: 'Para compartir',
+              bullets: [
+                'Mirar: un enfoque claro',
+                'Crear: una propuesta propia',
+                'Aprender: una idea nueva',
+                'Participar: un siguiente paso'
+              ]
+            },
+            {
+              layout: 'bullets',
+              title: 'Próximos pasos',
+              bullets: ['Explorar el proyecto', 'Conocer las opciones', 'Compartir los resultados']
+            }
+          ]
+        })
+      )
+      expect(commands.some((c) => c.p.text === 'Para compartir')).toBe(true)
+      expect(commands.some((c) => c.p.text === 'PARA COMPARTIR')).toBe(false)
+      expect(commands.some((c) => c.id === 'shape.insert' && c.p.rect[1] >= 500)).toBe(false)
+      for (const { p } of commands.filter((c) => c.p.rect)) {
+        expect(p.rect[0]).toBeGreaterThanOrEqual(0)
+        expect(p.rect[1]).toBeGreaterThanOrEqual(0)
+        expect(p.rect[0] + p.rect[2]).toBeLessThanOrEqual(960)
+        expect(p.rect[1] + p.rect[3]).toBeLessThanOrEqual(540)
+      }
+      return JSON.stringify(commands.filter((c) => c.p.rect).map((c) => [c.id, c.p.rect]))
+    })
+    expect(new Set(layouts).size).toBe(5)
+  })
+
+  it('la portada libre de rock conserva texto y gradiente, pero aparta el círculo que lo pisaba', () => {
+    const elements: NonNullable<PptxSlideSpec['elements']> = [
+      { type: 'shape', shape: 'rect', x: 0, y: 0, w: 960, h: 540, fill: '#121212' },
+      { type: 'shape', shape: 'ellipse', x: 560, y: -120, w: 560, h: 560, fill: '#E63946', fillTo: '#F4A261', opacity: 0.85 },
+      { type: 'text', x: 60, y: 150, w: 620, h: 150, text: 'Ruta Nocturna 2027', size: 54 },
+      { type: 'text', x: 60, y: 310, w: 560, h: 80, text: 'Gira latinoamericana de Los Relámpagos del Sur', size: 20 }
+    ]
+    const fixed = clearBleedDecorations(elements)
+    expect(fixed[0]).toEqual(elements[0])
+    expect(fixed.slice(2)).toEqual(elements.slice(2))
+    expect(fixed[1]).toMatchObject({ type: 'shape', shape: 'ellipse', fill: '#E63946', fillTo: '#F4A261', opacity: 0.85 })
+    const circle = fixed[1]
+    expect(circle.x).toBeGreaterThanOrEqual(692)
+    expect(circle.x + circle.w).toBeLessThanOrEqual(960)
+    expect(circle.y).toBeGreaterThanOrEqual(0)
+    expect(circle.y + circle.h).toBeLessThanOrEqual(540)
+    expect(clearBleedDecorations(fixed)).toEqual(fixed)
+    const intentional = [{ ...elements[1], x: 60, y: 150, w: 620, h: 150 }, elements[2]]
+    expect(clearBleedDecorations(intentional)).toEqual(intentional)
+    const commands = parse(chatDeckCommands({ slides: [{ layout: 'free', elements }] }))
+    const shape = commands.filter((c) => c.id === 'shape.insert' && c.p.preset === 'ellipse')[0]
+    expect(shape.p.rect).toEqual([circle.x, circle.y, circle.w, circle.h])
+  })
+
+  it.skipIf(!process.env.DECKCRAFT_CLI)('CLI real: portada a sangre con recorte proporcional, crédito visible y PNG', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'lzx-bleed-photo-'))
+    try {
+      const file = join(dir, 'photo.png')
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQqAgAAAG8APFhJZwZAAAAAElFTkSuQmCC', 'base64')
+      await writeFile(file, png)
+      const credit = 'Foto: Autor de prueba · CC BY 4.0 · Wikimedia Commons'
+      const spec: PptxSpec = {
+        identity: { ...identity, photos: 'wide' },
+        slides: [
+          {
+            layout: 'cover',
+            title: 'Museo marino',
+            eyebrow: 'Colección documental',
+            bullets: ['Conservar y aprender'],
+            image: { path: 'photo.png', alt: 'Imagen sintética de prueba' },
+            imageCredit: credit
+          }
+        ]
+      }
+      const bytes = await renderChatDeck(
+        process.env.DECKCRAFT_CLI!,
+        spec,
+        20_000,
+        undefined,
+        new Map([['photo.png', { ...images.get('photo.png')!, file, width: 1, height: 1, bytes: png.length }]])
+      )
+      const zip = await JSZip.loadAsync(bytes)
+      const xml = await zip.file('ppt/slides/slide1.xml')!.async('string')
+      expect(xml).toContain('Foto: Autor de prueba')
+      expect(xml).toContain('CC BY 4.0')
+      expect(xml).toContain('Wikimedia Commons')
+      expect(xml).toMatch(/<a:srcRect[^>]*t="21875"[^>]*b="21875"/)
+      expect(xml).toMatch(/<p:pic>[\s\S]*?<a:xfrm>[\s\S]*?<a:off x="0" y="0"\/>[\s\S]*?<a:ext cx="12192000" cy="6858000"/)
+      expect(Object.keys(zip.files).filter((name) => /^ppt\/media\/[^/]+$/.test(name))).toHaveLength(1)
+      const preview = await renderPreview('pptx', bytes, { deckcraft: process.env.DECKCRAFT_CLI!, wordcraft: null })
+      expect(preview?.images).toHaveLength(1)
+      expect(preview!.images[0].subarray(1, 4).toString()).toBe('PNG')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('la portada minera larga reserva tres líneas de título y separa el subtítulo', () => {
+    const title = 'Bienvenido a nuestra operación minera'
+    const subtitle = 'Programa de inducción para nuevos trabajadores'
+    const commands = parse(
+      chatDeckCommands({
+        palette: { bg: '#1F2A30', text: '#F4F1EA', accent: '#E0A526' },
+        fonts: { title: 'Georgia', body: 'Arial' },
+        slides: [{ layout: 'cover', title, bullets: [subtitle] }]
+      })
+    )
+    const heading = commands.findIndex((c) => c.p.text === title)
+    const sub = commands.find((c) => c.p.text === subtitle)!
+    expect(commands[heading + 1].p.size).toBeLessThanOrEqual(60)
+    expect(commands[heading].p.rect[1] + 3 * commands[heading + 1].p.size * 1.2).toBeLessThanOrEqual(sub.p.rect[1] - 24)
   })
 })

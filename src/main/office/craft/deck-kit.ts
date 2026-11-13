@@ -4,6 +4,7 @@
  * decoración según `style`, como ya lo pide el agente de Chat). Cada función añade comandos `id={json}` a `c`.
  */
 import type { DocumentIdentity } from '@shared/chat-doc-spec'
+import type { ResolvedDocumentIdentity } from '@shared/document-identity'
 export class DeckTextFitError extends Error {}
 
 /** Tamaño de letra que cabe: reduce `base` en proporción al largo cuando el texto pasa de `fits` caracteres (mínimo 55 % de `base`). */
@@ -219,7 +220,7 @@ export function createKit(
   accent: string = pal.accent,
   titleFontOverride?: string,
   autoFit = false,
-  identity?: DocumentIdentity
+  identity?: DocumentIdentity & Partial<Pick<ResolvedDocumentIdentity, 'tone'>>
 ) {
   const c: string[] = []
   const a = (id: string, params?: Record<string, unknown>): void => {
@@ -273,6 +274,7 @@ export function createKit(
     }
   }
   const rect = (x: number, y: number, w: number, h: number, col: string): void => {
+    if (identity) panelBackdrops.push({ x, y, w, h, color: col })
     a('shape.insert', { preset: 'rect', rect: [x, y, w, h] })
     a('shape.fill', { color: '#' + col })
     a('shape.line', { none: true })
@@ -359,22 +361,39 @@ export function createKit(
   }
   const header = (n: number, title: string, kicker: string | undefined, footerDecoration = true): void => {
     bgslide([[680, -250, 500, pal.glow]])
+    if (identity) {
+      // La etiqueta conserva su contenido, pero deja de imponer una línea de mayúsculas en todas las láminas.
+      const editorial = identity.tone === 'luxury' || identity.tone === 'editorial'
+      const playful = identity.tone === 'playful'
+      const rock = identity.tone === 'rock'
+      if (playful) rect(0, 0, 960, 132, pal.accent)
+      if (rock) rect(0, 0, 18, 480, pal.accent)
+      const y = kicker ? (editorial ? 42 : 54) : 40
+      txt(
+        60,
+        y,
+        editorial ? 680 : 840,
+        72,
+        title,
+        editorial ? 38 : rock ? 46 : 40,
+        pal.text,
+        identity.titles === 'bold' || rock,
+        'left',
+        editorial ? 0 : -1,
+        titleFont
+      )
+      if (kicker) {
+        if (editorial) txt(754, 52, 146, 58, kicker, 14, accent, false, 'right', undefined, undefined, true)
+        else txt(60, 20, 840, 26, kicker, 14, playful ? pal.text : accent, false, 'left', undefined, undefined, true)
+      }
+      txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right', undefined, undefined, true)
+      return
+    }
     if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 14, accent, true, 'left', 3)
-    txt(
-      60,
-      62,
-      840,
-      64,
-      title,
-      fitSize(title, 40, 36),
-      autoFit ? pal.accent : pal.text,
-      identity ? identity.titles === 'bold' : true,
-      'left',
-      identity?.titles === 'editorial' ? 1 : -1,
-      titleFont
-    )
+    txt(60, 62, 840, 64, title, fitSize(title, 40, 36), autoFit ? pal.accent : pal.text, true, 'left', -1, titleFont)
     if (footerDecoration) dotrow(60, 506, 8, 6)
     txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right', undefined, undefined, true)
   }
+
   return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg, footInk }
 }

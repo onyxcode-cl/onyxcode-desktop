@@ -10,7 +10,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { resolveDocumentIdentity } from '@shared/document-identity'
-import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
+import type { PptxChartType, PptxFreeElement, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import type { ImageMap } from '../../documents/image-files'
 import { craftBatch, runCraft } from './craft-run'
 import { ensureTitlePlaceholders } from './pptx-titles'
@@ -65,6 +65,48 @@ export function foldSubtitles(spec: PptxSpec): PptxSpec {
   return { ...spec, slides }
 }
 
+/**
+ * Un círculo cortado por el borde es decoración, no un panel de texto. Si pisa texto libre, se
+ * reduce en el mayor margen disponible. No altera fondos, formas con texto ni superposiciones
+ * deliberadas dentro del lienzo. El texto y su orden quedan intactos.
+ */
+export function clearBleedDecorations(elements: PptxFreeElement[]): PptxFreeElement[] {
+  const texts = elements.filter((e) => e.type === 'text' || (e.type === 'shape' && e.text))
+  if (!texts.length) return elements
+  return elements.flatMap((e) => {
+    if (e.type !== 'shape' || e.shape !== 'ellipse' || e.text || e.rotate) return [e]
+    const clipped = e.x < 0 || e.y < 0 || e.x + e.w > 960 || e.y + e.h > 540
+    const overlaps = texts.some((t) => e.x < t.x + t.w && e.x + e.w > t.x && e.y < t.y + t.h && e.y + e.h > t.y)
+    if (!clipped || !overlaps) return [e]
+    const left = Math.min(...texts.map((t) => t.x)) - 12
+    const top = Math.min(...texts.map((t) => t.y)) - 12
+    const right = Math.max(...texts.map((t) => t.x + t.w)) + 12
+    const bottom = Math.max(...texts.map((t) => t.y + t.h)) + 12
+    const margins = [
+      [0, 0, left, 540],
+      [right, 0, 960 - right, 540],
+      [0, 0, 960, top],
+      [0, bottom, 960, 540 - bottom]
+    ]
+      .map(([x, y, w, h]) => ({ x, y, w, h, scale: Math.min(1, w / e.w, h / e.h) }))
+      .filter((m) => m.scale > 0)
+      .sort((a, b) => b.scale - a.scale)
+    const margin = margins[0]
+    if (!margin || Math.min(e.w, e.h) * margin.scale < 24) return []
+    const w = e.w * margin.scale
+    const h = e.h * margin.scale
+    return [
+      {
+        ...e,
+        w,
+        h,
+        x: Math.max(margin.x, Math.min(e.x, margin.x + margin.w - w)),
+        y: Math.max(margin.y, Math.min(e.y, margin.y + margin.h - h))
+      }
+    ]
+  })
+}
+
 /** Genera los comandos `id={json}` de DeckCraft para toda la presentación. Asume `PptxSpec` ya validado (`isPptxSpec`). */
 export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   const spec = foldSubtitles(input)
@@ -72,7 +114,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   const identity = resolveDocumentIdentity(spec)
   const pal = customPalette(identity.palette)
   const look = spec.style ?? 'classic'
-  const { c, a, bgslide, rect, ring, dot, dotrow, txt, panel, header, titleFont, setBg, footInk } = createKit(
+  const { c, a, bgslide, rect, dot, dotrow, txt, panel, header, titleFont, setBg, footInk } = createKit(
     pal,
     look,
     pal.accent,
@@ -81,6 +123,11 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
     identity
   )
   const accent = pal.accent
+  const editorial = identity.tone === 'luxury' || identity.tone === 'editorial'
+  const playful = identity.tone === 'playful'
+  const technical = identity.tone === 'technical'
+  const rock = identity.tone === 'rock'
+  const openPanels = !spec.identity?.cards && (editorial || technical || rock)
   const DOTS = pal.marks
   const chartColors = DOTS.map((col) => '#' + col)
   const g2 = pal.dark ? '14285E' : pal.glow2
@@ -180,14 +227,21 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
     for (const char of layoutOf(s, idx)) compositionSeed = Math.imul(compositionSeed ^ char.charCodeAt(0), 16777619) >>> 0
     return (compositionSeed + rhythm + idx + count) % 3
   }
-  const picture = (s: PptxSlideSpec, box: number[]): boolean => {
+  const picture = (s: PptxSlideSpec, box: number[], fill = false): boolean => {
     const img = s.image ? images?.get(s.image.path) : undefined
     if (!img) return false
     const [x, y, width, height] = box
     const scale = Math.min(width / img.width, height / img.height)
     const w = img.width * scale
     const h = img.height * scale
-    a('insert.picture', { path: img.file, rect: [x + (width - w) / 2, y + (height - h) / 2, w, h] })
+    a('insert.picture', { path: img.file, rect: fill ? box : [x + (width - w) / 2, y + (height - h) / 2, w, h] })
+    if (fill) {
+      // Recorte nativo centrado: el marco permanece dentro de la lámina y no deforma la fotografía.
+      const coverScale = Math.max(width / img.width, height / img.height)
+      const cropX = (1 - width / (img.width * coverScale)) / 2
+      const cropY = (1 - height / (img.height * coverScale)) / 2
+      a('picture.crop', { left: cropX, right: cropX, top: cropY, bottom: cropY })
+    }
     if (s.image?.alt) a('shape.altText', { text: s.image.alt })
     return true
   }
@@ -202,7 +256,15 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
       bgslide()
       const photo = Boolean(s.image && images?.has(s.image.path))
       const cover = kind === 'cover' ? (identity.cover === 'center' ? 1 : identity.cover === 'band' ? 2 : 0) : v
-      if (photo) {
+      if (photo && identity.photos === 'wide' && kind === 'cover') {
+        picture(s, [0, 0, 960, 540], true)
+        // El texto y el crédito se apoyan sobre tinta opaca: contraste conocido incluso en fotos claras.
+        rect(0, 0, 510, 478, pal.bg)
+        rect(0, 478, 960, 62, pal.bg)
+        if (s.eyebrow) txt(48, 48, 414, 34, s.eyebrow, 16, accent, true)
+        txt(48, 116, 414, 220, title, 66, pal.text, bold, 'left', -1, titleFont)
+        if (bullets.length) txt(48, 354, 414, 106, bullets.join(' · '), 26)
+      } else if (photo) {
         const photoVariant = identity.photos === 'wide' ? 2 : identity.photos === 'portrait' ? 1 : cover
         if (photoVariant === 2) {
           if (s.eyebrow) txt(60, 18, 840, 28, s.eyebrow, 16, accent, true)
@@ -216,6 +278,29 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           if (s.eyebrow) txt(x, 62, 400, 32, s.eyebrow, 16, accent, true)
           txt(x, 112, 400, 230, title, 62, pal.text, bold, 'left', 0, titleFont)
           if (bullets.length) txt(x, 362, 400, 108, bullets.join('\n'), 24)
+        }
+      } else if (!spec.identity?.cover && (playful || rock || technical || editorial)) {
+        if (playful) {
+          rect(0, 0, 960, 308, accent)
+          txt(60, 70, 840, 210, title, 90, pal.bg, true, 'left', -1, titleFont)
+          if (s.eyebrow) txt(60, 24, 840, 32, s.eyebrow, 16, pal.bg, true)
+          if (bullets.length) txt(170, 344, 730, 130, bullets.join(' · '), 30, pal.text)
+        } else if (editorial) {
+          if (s.eyebrow) txt(60, 50, 310, 36, s.eyebrow, 16, accent)
+          txt(60, 116, 840, 210, title, 86, pal.text, bold, 'left', 0, titleFont)
+          rect(60, 350, 280, 2, accent)
+          if (bullets.length) txt(400, 350, 500, 125, bullets.join(' · '), 26)
+        } else if (technical) {
+          rect(0, 0, 34, 540, accent)
+          if (s.eyebrow) txt(70, 50, 820, 34, s.eyebrow, 16, accent)
+          txt(70, 110, 820, 244, title, title.length > 28 ? 60 : 88, pal.text, true, 'left', -1, titleFont)
+          if (bullets.length) txt(350, 390, 540, 84, bullets.join(' · '), 26)
+        } else {
+          // Rock: tipografía como protagonista; ningún círculo detrás del título.
+          rect(0, 0, 960, 18, accent)
+          if (s.eyebrow) txt(60, 52, 840, 34, s.eyebrow, 18, accent)
+          txt(60, 116, 840, 220, title, 100, pal.text, true, 'left', -2, titleFont)
+          if (bullets.length) txt(60, 366, 840, 108, bullets.join(' · '), 30, accent)
         }
       } else if (cover === 0) {
         if (s.eyebrow) txt(60, 64, 820, 34, s.eyebrow, 16, accent, true)
@@ -259,7 +344,8 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         const y = v === 1 ? 148 + i * 171 : 150
         const w = v === 1 ? 840 : v === 2 ? (i === 0 ? 530 : 280) : 400
         const h = v === 1 ? 158 : 330
-        panel(x, y, w, h)
+        if (!openPanels) panel(x, y, w, h)
+        else if (i > 0 && v !== 1) rect(x - 20, y, 1, h, pal.edge)
         if (col.heading) txt(x + 16, y + 10, w - 32, 42, col.heading, 26, accent, bold, 'left', 0, titleFont)
         adaptiveList(
           col.bullets,
@@ -287,7 +373,8 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         const h = (height - 16 * (rows - 1)) / rows - (mode === 2 && ks.length <= 2 ? 44 : 0)
         const x = 60 + (i % cols) * (w + 20)
         const y = 150 + Math.floor(i / cols) * (h + 16) + (mode === 2 && ks.length <= 2 ? i * 44 : 0)
-        panel(x, y, w, h)
+        if (!openPanels) panel(x, y, w, h)
+        else if (mode === 1 && i > 0) rect(x, y - 8, w, 1, pal.edge)
         if (mode === 1) {
           txt(x + 16, y + 10, 222, h - 20, kp.label, 24, pal.text, bold)
           txt(x + 260, y + 8, 340, h - 16, kp.value, stackedSize, accent, true)
@@ -371,14 +458,29 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           head(n, s)
           const items = bullets.slice(0, 6)
           const per = items.length <= 4 ? 2 : 3
-          const w = per === 2 ? 400 : 270
+          const w = per === 2 ? 400 : 264
+          const rows = Math.ceil(items.length / per)
+          const h = Math.min(156, (330 - (rows - 1) * 24) / Math.max(1, rows))
           items.forEach((t, i) => {
-            const x = 60 + (i % per) * (per === 2 ? 440 : 285)
-            const y = 150 + Math.floor(i / per) * (per === 2 ? 150 : 160)
-            panel(x, y, w, 134)
-            ring(x, y + 22, 56, DOTS[i % DOTS.length])
-            dot(x + 18, y + 40, 20, DOTS[i % DOTS.length])
-            txt(x + 76, y + 18, w - 76, 110, t, fitSize(t, 19, Math.floor((w - 76) / 10.5) * 3), pal.text)
+            const x = 60 + (i % per) * (per === 2 ? 440 : 288)
+            const y = 150 + Math.floor(i / per) * (h + 24)
+            if (playful) {
+              rect(x, y, w, h, i % 2 ? pal.panel : pal.accent)
+              txt(x + 18, y + 16, w - 36, h - 32, t, 28, pal.text, true)
+            } else if (editorial) {
+              // Retícula editorial abierta: encabezado semántico y descripción, sin marcos ni iconos.
+              const cut = t.indexOf(': ')
+              if (cut > 0 && cut < 30) {
+                txt(x, y, w, 42, t.slice(0, cut), 28, accent, false, 'left', 0, titleFont)
+                txt(x, y + 52, w, h - 54, t.slice(cut + 2), 24)
+              } else txt(x, y + 12, w, h - 24, t, 28, pal.text, false, 'left', 0, titleFont)
+            } else if (technical || rock) {
+              txt(x, y, 56, 62, String(i + 1).padStart(2, '0'), 36, accent, true)
+              txt(x + 72, y + 4, w - 72, h - 8, t, rock ? 28 : 25, pal.text, rock)
+            } else {
+              panel(x, y, w, h)
+              txt(x + 20, y + 18, w - 40, h - 36, t, 27)
+            }
           })
           break
         }
@@ -489,7 +591,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           // Lienzo libre: la IA decide qué va y dónde. Todo se valida antes (`isPptxSpec`): solo textos y formas con colores hex.
           a('slide.new', { layout: 'blank' })
           a('design.background', { color: '#' + (s.background ? stripHash(s.background) : pal.bg) })
-          for (const e of s.elements ?? []) {
+          for (const e of clearBleedDecorations(s.elements ?? [])) {
             const font = e.font ?? undefined
             if (e.type === 'text') {
               txt(
@@ -543,7 +645,23 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         default: {
           // bullets (el normal)
           head(n, s)
-          adaptiveList(bullets, 60, 150, 840, 330, bullets.length >= 4 ? 2 : 1)
+          if ((editorial || technical || rock) && bullets.length > 1) {
+            const rows = bullets.length
+            const h = 330 / rows
+            bullets.forEach((item, i) => {
+              const y = 150 + i * h
+              if (technical) txt(60, y, 72, h - 8, String(i + 1).padStart(2, '0'), 32, accent, true)
+              txt(technical ? 154 : 60, y + 2, technical ? 746 : 840, h - 12, item, Math.min(rock ? 44 : 34, h * 0.56), pal.text, rock)
+              if (editorial && i < rows - 1) rect(60, y + h - 5, 840, 1, pal.edge)
+            })
+          } else if (playful && bullets.length > 1) {
+            const h = 330 / bullets.length
+            bullets.forEach((item, i) => {
+              const x = i % 2 ? 140 : 60
+              rect(x, 150 + i * h, 760, h - 10, i % 2 ? pal.panel : pal.accent)
+              txt(x + 20, 158 + i * h, 720, h - 26, item, 28, pal.text, true)
+            })
+          } else adaptiveList(bullets, 60, 150, 840, 330, bullets.length >= 4 ? 2 : 1)
         }
       }
     // Notas del orador: texto que solo ve quien presenta (DeckCraft: `slide.notes` sobre la diapositiva recién armada).

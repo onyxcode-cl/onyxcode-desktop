@@ -3600,11 +3600,13 @@ const TOOLS: ToolDef[] = [
   {
     name: 'request_access',
     description:
-      'Flujo Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO de cada tarea, ANTES de tocar la pantalla o usar ' +
-      'la terminal, los archivos o la web, con "plan" (tus pasos, en orden) y en "apps" la lista COMPLETA de ' +
-      'apps que vas a necesitar (no solo una), con su nivel en "levels". Si la tarea NO controla ninguna app ' +
-      '(solo terminal, archivos o web), envía el plan con "apps": []. Ninguna otra herramienta de acción (clic, ' +
-      'teclear, capturar…) funciona hasta que el usuario apruebe esta tarjeta. También sirve, SIN "plan", a ' +
+      'En Tareas o Código dentro de una carpeta: úsala SOLO para controlar apps, con "apps" y "levels"; no envíes "plan". ' +
+      'Crear, leer, convertir o revisar documentos con documentos_crear/documentos_renderizar no requiere esta herramienta; ' +
+      'no la llames con "apps": [] para preparar archivos ni para aprobar un plan de documentos. ' +
+      'Solo en Control total (fuera del modo de carpeta), el flujo es Plan → Aprobar → Ejecutar: llámala AL PRINCIPIO, ' +
+      'ANTES de tocar la pantalla o usar la terminal, los archivos o la web, con "plan" (tus pasos, en orden) y la lista ' +
+      'COMPLETA de apps y sus "levels". Solo en ese modo, si no controlas apps, envía "plan" con "apps": []. ' +
+      'Allí ninguna herramienta de acción funciona hasta que el usuario apruebe la tarjeta. También sirve, SIN "plan", a ' +
       'mitad de tarea si necesitas una app extra o un nivel mayor: llámala en cuanto una herramienta falle con ' +
       '"no tiene acceso concedido" o "nivel insuficiente". En todos los casos ESPERA a que el usuario responda ' +
       '(sin límite de tiempo: la tarea queda en pausa, no se cancela sola). Si el usuario pide cambios ' +
@@ -3616,7 +3618,8 @@ const TOOLS: ToolDef[] = [
         apps: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Nombres de las apps, p.ej. ["Safari", "Terminal"]. Puede ser [] si envías "plan" y no controlas ninguna app.'
+          description:
+            'Nombres de las apps, p.ej. ["Safari", "Terminal"]. En modo carpeta exige al menos una app; solo en Control total puede ser [] con "plan".'
         },
         levels: {
           type: 'array',
@@ -3630,7 +3633,7 @@ const TOOLS: ToolDef[] = [
           type: 'array',
           items: { type: 'string' },
           description:
-            'Solo al principio de la tarea: tus pasos en orden (p.ej. ["Abrir Spotlight y buscar Discord", ' +
+            'Solo en Control total, nunca en modo carpeta: al principio de la tarea, tus pasos en orden (p.ej. ["Abrir Spotlight y buscar Discord", ' +
             '"Abrir el canal #pega", "Escribir un saludo"]). El usuario los ve y aprueba de una vez.'
         }
       },

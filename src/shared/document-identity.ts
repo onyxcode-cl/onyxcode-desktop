@@ -4,7 +4,11 @@ export interface ResolvedDocumentIdentity extends Required<Omit<DocumentIdentity
   palette: Required<PptxPalette>
   fonts: { title: PptxFont; body: PptxFont }
   seed: number
+  tone: DocumentTone
 }
+
+/** Tono resuelto, no un menú obligatorio del esquema. Orienta tipografía y composición. */
+export type DocumentTone = 'playful' | 'luxury' | 'technical' | 'rock' | 'institutional' | 'editorial' | 'general'
 
 const rgb = (hex: string): number[] =>
   hex
@@ -65,24 +69,65 @@ function hueColor(hue: number, saturation: number, light: number): string {
   }
   return hex([f(0), f(8), f(4)])
 }
-const legacy: Record<string, PptxPalette> = {
-  blue: { bg: '#F6F9FE', text: '#0F172A', accent: '#2563EB', panel: '#FFFFFF', muted: '#5B6B84', accent2: '#1D4ED8', edge: '#D9E2F1' },
-  green: { bg: '#F4FAF6', text: '#10281C', accent: '#15803D', panel: '#FFFFFF', muted: '#5A7566', accent2: '#166534', edge: '#D3E6DA' },
-  warm: { bg: '#FFF8F0', text: '#3B2417', accent: '#D9480F', panel: '#FFFFFF', muted: '#8A6A55', accent2: '#B93A0A', edge: '#F0DDCB' },
-  mono: { bg: '#FFFFFF', text: '#111111', accent: '#1D4E89', panel: '#F5F5F5', muted: '#6B7280', accent2: '#374151', edge: '#E2E2E2' },
-  dark: { bg: '#07070C', text: '#F5F5FA', accent: '#8B5CF6', panel: '#12121B', muted: '#A1A1B5', accent2: '#C4B5FD', edge: '#25253A' }
+function toneFor(text: string): DocumentTone {
+  if (/\b(infantil|infancia|ninos?|ninas?|dinosaurios?|kids|children|playful|juguetes?)\b/.test(text)) return 'playful'
+  const musicalContext = /\b(musica|musical|music|canciones?|songs?|setlist|teloneros?|guitarras?|album|concert)\b/.test(text)
+  if (/\b(rock|punk|concierto)\b/.test(text) || (musicalContext && /\b(metal|gira|band|tour)\b/.test(text))) return 'rock'
+  if (/lujo|luxury|premium|pasteleria|patisserie|francesa|boutique|alta cocina|joyeria/.test(text)) return 'luxury'
+  if (/tecnic|cientific|investigacion|ingenier|solar|fotovoltaic|minera|mineria|industrial|software|arquitect/.test(text))
+    return 'technical'
+  if (/instituci|clinica|dental|salud|comite|financ|formal|contrato|trimestral|corporativ/.test(text)) return 'institutional'
+  if (/museo|marin|oceano|conservacion|cultur|editorial|festival|campana|turismo/.test(text)) return 'editorial'
+  return 'general'
+}
+
+const themeHue: Record<NonNullable<PptxSpec['theme']>, number> = { blue: 220, green: 140, warm: 24, mono: 215, dark: 270 }
+const fontPairs: Record<DocumentTone, Array<{ title: PptxFont; body: PptxFont }>> = {
+  playful: [
+    { title: 'Comic Sans MS', body: 'Verdana' },
+    { title: 'Trebuchet MS', body: 'Comic Sans MS' }
+  ],
+  luxury: [
+    { title: 'Georgia', body: 'Times New Roman' },
+    { title: 'Times New Roman', body: 'Georgia' }
+  ],
+  technical: [
+    { title: 'Courier New', body: 'Tahoma' },
+    { title: 'Arial Black', body: 'Verdana' }
+  ],
+  rock: [
+    { title: 'Impact', body: 'Trebuchet MS' },
+    { title: 'Arial Black', body: 'Tahoma' }
+  ],
+  institutional: [
+    { title: 'Tahoma', body: 'Verdana' },
+    { title: 'Verdana', body: 'Arial' }
+  ],
+  editorial: [
+    { title: 'Georgia', body: 'Trebuchet MS' },
+    { title: 'Times New Roman', body: 'Verdana' }
+  ],
+  general: [
+    { title: 'Georgia', body: 'Verdana' },
+    { title: 'Trebuchet MS', body: 'Tahoma' },
+    { title: 'Arial Black', body: 'Arial' }
+  ]
 }
 
 export function resolveDocumentIdentity(spec: PptxSpec | DocxSpec): ResolvedDocumentIdentity {
   const requested = spec.identity ?? {}
   const pptx = 'slides' in spec ? spec : undefined
   // La portada/concepto ancla la identidad: corregir el cuerpo o una cifra no cambia el diseño.
-  const title = pptx ? pptx.slides[0]?.title : (spec as DocxSpec).title
+  const cover = pptx?.slides[0]
+  const freeTitle = cover?.elements?.filter((element) => element.type === 'text').sort((a, b) => (b.size ?? 24) - (a.size ?? 24))[0]?.text
+  const title = pptx ? (cover?.title ?? freeTitle) : (spec as DocxSpec).title
   const content = pptx
     ? pptx.slides
         .map((s) =>
           [
             s.title,
+            'subtitle' in s && typeof s.subtitle === 'string' ? s.subtitle : undefined,
+            ...(s.elements ?? []).flatMap((element) => (element.type === 'text' ? [element.text] : [])),
             ...(s.bullets ?? []),
             ...(s.columns ?? []).flatMap((c) => [c.heading, ...c.bullets]),
             ...(s.kpis ?? []).map((k) => k.label),
@@ -97,30 +142,53 @@ export function resolveDocumentIdentity(spec: PptxSpec | DocxSpec): ResolvedDocu
         .map((b) => ('text' in b ? b.text : 'items' in b ? b.items.flat().join(' ') : 'columns' in b ? b.columns.join(' ') : b.type))
         .join(' ')
   const genericTitle =
-    !title?.trim() || /^(informe|presentacion|resumen|propuesta|reporte|documento|report|presentation|summary)$/.test(normalized(title))
+    !title?.trim() ||
+    /^(informe|presentacion|resumen|propuesta|reporte|documento|report|presentation|summary|portada)( (trimestral|anual|mensual|ejecutivo|quarterly|annual|monthly))?$/.test(
+      normalized(title)
+    )
   const concept = requested.concept ?? (genericTitle ? normalized(content).slice(0, 500) : title!)
   const key = normalized(concept)
   const seed = hash(key)
-  // El contenido orienta el matiz; la huella conserva variedad dentro de cada ámbito.
-  const anchor = /marin|oceano|museo|conservacion/.test(key)
-    ? 176
-    : /cafe|cocina|alimento/.test(key)
-      ? 28
-      : /financ|comite|formal|contrato/.test(key)
-        ? 224
-        : /seguridad|laboral|prevencion/.test(key)
-          ? 40
-          : /cultur|festival|campana/.test(key)
-            ? 322
-            : seed % 360
-  const hue = (anchor + (seed % 43) - 21 + 360) % 360
-  const sober = /formal|comite|financ|tecnic|cientific|investigacion/.test(key)
+  // Una marca/concepto explícitos anclan también el tono; sin ellos, el cuerpo aporta el contexto
+  // que no cabe en títulos como «Ruta nocturna» o «Bienvenidos». Corregir cifras no cambia la huella.
+  const context = requested.concept ? key : normalized(`${concept} ${content}`)
+  const tone = toneFor(context)
+  // El tema nombrado es una inspiración cromática. La materia y el tono conservan una identidad
+  // propia incluso si dos documentos llegan con el mismo «warm» o «green» del modelo.
+  const anchor = /solar|fotovoltaic/.test(context)
+    ? 42
+    : /pasteleria|patisserie|francesa/.test(context)
+      ? 338
+      : /dinosaur|infantil|ninos/.test(context)
+        ? 112
+        : /clinica|dental|salud/.test(context)
+          ? 184
+          : /marin|oceano|museo|conservacion/.test(context)
+            ? 176
+            : /cafe|cocina|alimento/.test(context)
+              ? 28
+              : /financ|comite|formal|contrato/.test(context)
+                ? 224
+                : /seguridad|laboral|prevencion|minera|mineria/.test(context)
+                  ? 40
+                  : /cultur|festival|campana/.test(context)
+                    ? 322
+                    : seed % 360
+  const startingHue = pptx?.theme ? themeHue[pptx.theme] : anchor
+  const distance = ((anchor - startingHue + 540) % 360) - 180
+  const hue = (startingHue + distance * 0.72 + (seed % 43) - 21 + 360) % 360
+  const sober = tone === 'institutional' || tone === 'technical'
+  const dark = pptx?.theme === 'dark' || tone === 'rock'
+  const neutral = pptx?.theme === 'mono'
+  const saturation = neutral ? 0.13 : (sober ? 0.43 : 0.61) + ((seed >>> 8) % 14) / 100
+  const bgLight = dark ? 0.065 + ((seed >>> 12) % 4) / 100 : 0.94 + ((seed >>> 12) % 4) / 100
   const base: PptxPalette = {
-    bg: hueColor(hue, 0.2, 0.97),
-    text: hueColor(hue, 0.25, 0.12),
-    accent: hueColor(hue, sober ? 0.48 : 0.65, 0.3)
+    bg: hueColor(hue, neutral ? 0.025 : tone === 'luxury' ? 0.32 : 0.2, bgLight),
+    text: hueColor(hue, neutral ? 0.02 : 0.25, dark ? 0.96 : 0.12),
+    accent: hueColor(hue, saturation, dark ? 0.68 : 0.29 + ((seed >>> 16) % 7) / 100),
+    accent2: hueColor((hue + (tone === 'playful' ? 72 : 32)) % 360, saturation * 0.8, dark ? 0.76 : 0.3)
   }
-  const p = requested.palette ?? pptx?.palette ?? (pptx?.theme ? legacy[pptx.theme] : undefined) ?? base
+  const p = requested.palette ?? pptx?.palette ?? base
   const bg = p.bg.toUpperCase()
   const text = accessibleIdentityColor(p.text, bg)
   // Si una tarjeta pedida invierte el contraste, acercarla al fondo conserva texto legible en ambos.
@@ -128,7 +196,13 @@ export function resolveDocumentIdentity(spec: PptxSpec | DocxSpec): ResolvedDocu
   if (identityContrast(text, panel) < 4.5) panel = bg
   const both = (color: string): string => {
     const onBg = accessibleIdentityColor(color, bg)
-    return identityContrast(onBg, panel) >= 4.5 ? onBg : text
+    if (identityContrast(onBg, panel) >= 4.5) return onBg
+    // Aumentar contraste solo lo necesario conserva el matiz; no sustituir todo acento por tinta.
+    for (let step = 1; step <= 20; step++) {
+      const candidate = identityMix(onBg, text, step / 20)
+      if (identityContrast(candidate, bg) >= 4.5 && identityContrast(candidate, panel) >= 4.5) return candidate
+    }
+    return text
   }
   const palette: Required<PptxPalette> = {
     bg,
@@ -139,22 +213,32 @@ export function resolveDocumentIdentity(spec: PptxSpec | DocxSpec): ResolvedDocu
     muted: both(p.muted ?? identityMix(text, bg, 0.35)),
     edge: p.edge ?? identityMix(bg, text, 0.2)
   }
-  const fontPairs: Array<{ title: PptxFont; body: PptxFont }> = [
-    { title: 'Georgia', body: 'Arial' },
-    { title: 'Arial', body: 'Verdana' },
-    { title: 'Trebuchet MS', body: 'Arial' },
-    { title: 'Times New Roman', body: 'Arial' }
-  ]
-  const fonts = { ...fontPairs[seed % fontPairs.length], ...pptx?.fonts, ...requested.fonts }
+  const pairs = fontPairs[tone]
+  const fonts = { ...pairs[seed % pairs.length], ...pptx?.fonts, ...requested.fonts }
   return {
     concept,
     seed,
+    tone,
     palette,
     fonts,
     titles: requested.titles ?? (sober ? 'plain' : (['editorial', 'plain', 'bold'] as const)[seed % 3]),
-    cards: requested.cards ?? (['square', 'rounded', 'outline'] as const)[(seed >>> 2) % 3],
-    background: requested.background ?? (['plain', 'panel', 'split'] as const)[(seed >>> 4) % 3],
-    rhythm: requested.rhythm ?? (sober ? 'calm' : (['calm', 'balanced', 'dynamic'] as const)[(seed >>> 6) % 3]),
+    cards:
+      requested.cards ??
+      (tone === 'playful'
+        ? 'rounded'
+        : tone === 'luxury'
+          ? 'outline'
+          : tone === 'technical'
+            ? 'square'
+            : (['square', 'rounded', 'outline'] as const)[(seed >>> 2) % 3]),
+    background: requested.background ?? (tone === 'luxury' ? 'plain' : (['plain', 'panel', 'split'] as const)[(seed >>> 4) % 3]),
+    rhythm:
+      requested.rhythm ??
+      (sober || tone === 'luxury'
+        ? 'calm'
+        : tone === 'rock' || tone === 'playful'
+          ? 'dynamic'
+          : (['calm', 'balanced', 'dynamic'] as const)[(seed >>> 6) % 3]),
     photos: requested.photos ?? (['contain', 'wide', 'portrait'] as const)[(seed >>> 8) % 3],
     cover: requested.cover ?? (['left', 'center', 'band'] as const)[(seed >>> 10) % 3],
     headers: requested.headers ?? (sober ? 'plain' : 'accent')

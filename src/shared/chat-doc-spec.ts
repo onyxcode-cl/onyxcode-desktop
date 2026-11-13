@@ -49,7 +49,19 @@ export const MAX_DOCX_COLS = 12
 export const MAX_DOCX_META_CHARS = 200
 export const MAX_XLSX_CHART_TITLE_CHARS = 80
 export const MAX_FREE_TEXT_CHARS = 600
-export const FREE_FONTS = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Courier New', 'Tahoma'] as const
+// Familias presentes en macOS y Windows; no confundir las fuentes web del visor con fuentes incrustadas en Office.
+export const FREE_FONTS = [
+  'Arial',
+  'Georgia',
+  'Verdana',
+  'Trebuchet MS',
+  'Times New Roman',
+  'Courier New',
+  'Tahoma',
+  'Arial Black',
+  'Comic Sans MS',
+  'Impact'
+] as const
 export const FREE_SHAPES = [
   'rect',
   'roundRect',
