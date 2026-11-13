@@ -988,6 +988,7 @@ export const useCode = create<CodeState>((set, get) => {
       ...keptElementTexts.map((text) => ({ type: 'text' as const, text, synthetic: true as const, metadata: ELEMENT_METADATA }))
     ].map((p) => (remote && p.type === 'text' ? { type: 'text' as const, text: p.text } : p))
     try {
+      useRejectionNotices.getState().clearConversation({ mode: 'code', directory: dir, sessionID: sid })
       sdkData(
         await client.session.promptAsync({
           sessionID: sid,
@@ -1397,6 +1398,7 @@ export const useCode = create<CodeState>((set, get) => {
       }
       set((s) => ({ runState: { ...s.runState, [sid]: 'busy' } }))
       try {
+        useRejectionNotices.getState().clearConversation({ mode: 'code', directory: dir, sessionID: sid })
         sdkData(
           await client.session.command({
             sessionID: sid,
@@ -1699,16 +1701,14 @@ export const useCode = create<CodeState>((set, get) => {
           return reply === 'reject' ? { permissions, permissionRejectedAt: Date.now() } : { permissions }
         })
         if (reply === 'reject' && !quiet && dir) {
-          useRejectionNotices
-            .getState()
-            .add({
-              mode: 'code',
-              directory: dir,
-              sessionID: root,
-              requestID: p.id,
-              kind: 'permission',
-              detail: rejectedPermissionDetail(p)
-            })
+          useRejectionNotices.getState().add({
+            mode: 'code',
+            directory: dir,
+            sessionID: root,
+            requestID: p.id,
+            kind: 'permission',
+            detail: rejectedPermissionDetail(p)
+          })
         }
       } catch (err) {
         set({ globalError: errorMessage(err) })
@@ -1756,16 +1756,14 @@ export const useCode = create<CodeState>((set, get) => {
           return { questions }
         })
         if (dir)
-          useRejectionNotices
-            .getState()
-            .add({
-              mode: 'code',
-              directory: dir,
-              sessionID: root,
-              requestID: q.id,
-              kind: 'question',
-              detail: q.questions.map((question) => question.question).join('\n')
-            })
+          useRejectionNotices.getState().add({
+            mode: 'code',
+            directory: dir,
+            sessionID: root,
+            requestID: q.id,
+            kind: 'question',
+            detail: q.questions.map((question) => question.question).join('\n')
+          })
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }

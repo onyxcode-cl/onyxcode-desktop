@@ -16,13 +16,16 @@ export const useRejectionNotices = create<{
   notices: RejectionNotice[]
   add: (notice: RejectionNotice) => void
   dismiss: (notice: RejectionNotice) => void
+  clearConversation: (conversation: Pick<RejectionNotice, 'mode' | 'directory' | 'sessionID'>) => void
 }>((set) => ({
   notices: [],
   add: (notice) =>
     set((s) => ({
       notices: [...s.notices.filter((n) => keyOf(n) !== keyOf(notice)), { ...notice, detail: notice.detail.slice(0, 2000) }].slice(-100)
     })),
-  dismiss: (notice) => set((s) => ({ notices: s.notices.filter((n) => keyOf(n) !== keyOf(notice)) }))
+  dismiss: (notice) => set((s) => ({ notices: s.notices.filter((n) => keyOf(n) !== keyOf(notice)) })),
+  clearConversation: ({ mode, directory, sessionID }) =>
+    set((s) => ({ notices: s.notices.filter((n) => n.mode !== mode || n.directory !== directory || n.sessionID !== sessionID) }))
 }))
 
 export function rejectedPermissionDetail(request: { metadata: Record<string, unknown>; patterns: string[]; permission: string }): string {

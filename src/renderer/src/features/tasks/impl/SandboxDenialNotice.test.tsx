@@ -61,7 +61,7 @@ describe('aviso de aislamiento en la tarea', () => {
     await act(async () => {
       button.click()
     })
-    expect(mock.allow).toHaveBeenCalledWith(true)
+    expect(mock.allow).toHaveBeenCalledWith(true, { folder: '/fixture/tarea', conn: mock.state.conn })
   })
   it('nunca ofrece ampliar permisos para rutas protegidas o permiso ya concedido', () => {
     mock.state.sandboxDenials = { '/fixture/tarea': [event('delete'), event('git-hooks')] }

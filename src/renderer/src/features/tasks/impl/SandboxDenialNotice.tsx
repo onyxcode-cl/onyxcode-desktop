@@ -21,6 +21,7 @@ const LABELS: Record<SandboxDenialKind, MsgKey> = {
 export function SandboxDenialNotice(): React.JSX.Element | null {
   const t = useT()
   const folder = useTasks((s) => s.folder)
+  const conn = useTasks((s) => s.conn)
   const events = useTasks((s) => (folder ? s.sandboxDenials[folder] : undefined))
   const unavailable = useTasks((s) => (folder ? s.denialMonitorUnavailable[folder] : false))
   const enabled = useTasks((s) => s.prefs?.sandboxDenialNotices ?? true)
@@ -33,7 +34,7 @@ export function SandboxDenialNotice(): React.JSX.Element | null {
   const enable = async (): Promise<void> => {
     setError(null)
     try {
-      await setDeleteGrantAllowed(true)
+      await setDeleteGrantAllowed(true, { folder, conn })
     } catch (err) {
       setError(errorMessage(err))
     }

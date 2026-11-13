@@ -114,6 +114,22 @@ describe('web-open (prueba Craft)', () => {
     expect(openWebDoc.mock.calls[0][2]).toBe('documento.docx')
   })
 
+  it('cerrar y volver a Ver lee los bytes actuales del mismo PowerPoint, sin caché de Chat', async () => {
+    webDir.mockReturnValue('/web/deckcraft')
+    openWebDoc.mockResolvedValue(true)
+    const path = file()
+    writeFileSync(path, 'primera versión')
+    expect(await openInCraftWeb('pptx', path, 'Informe')).toBe(true)
+    panelClose()
+    writeFileSync(path, 'versión corregida')
+    expect(await openInCraftWeb('pptx', path, 'Informe')).toBe(true)
+    expect(openWebDoc.mock.calls.map((args) => (args[3] as Buffer).toString())).toEqual(['primera versión', 'versión corregida'])
+    expect(openWebDoc.mock.calls.map((args) => args.slice(0, 3))).toEqual([
+      ['/web/deckcraft', 'pptx', 'Informe.pptx'],
+      ['/web/deckcraft', 'pptx', 'Informe.pptx']
+    ])
+  })
+
   it('un archivo demasiado grande no se abre en la vista web', async () => {
     webDir.mockReturnValue('/web/x')
     expect(await openInCraftWeb('pptx', file(2000), 'T')).toBe(false)

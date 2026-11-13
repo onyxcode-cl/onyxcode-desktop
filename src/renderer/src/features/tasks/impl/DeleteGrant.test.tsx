@@ -8,6 +8,7 @@ import type { MessageEntry } from '../../../stores/sessions'
 
 const m = vi.hoisted(() => ({ state: {} as Record<string, unknown>, enable: vi.fn(), reply: vi.fn(), grant: vi.fn() }))
 vi.mock('./store', () => ({
+  rootTaskId: (id: string) => id,
   useTasks: Object.assign((sel: (s: unknown) => unknown) => sel(m.state), { setState: (s: unknown) => Object.assign(m.state, s) })
 }))
 vi.mock('./actions', () => ({ replyPermission: m.reply, setDeleteGrantAllowed: m.grant }))
@@ -138,7 +139,7 @@ describe.each(['mac', 'wsl'])('vigencia de la oferta posterior al fallo (%s)', (
       expect(mounted!.host.textContent).toContain('Activar permiso y reintentar')
       expect(m.enable).not.toHaveBeenCalled()
       await act(async () => mounted!.qa<HTMLButtonElement>('button')[1].click())
-      expect(m.enable).toHaveBeenCalledExactlyOnceWith(first.parts[0])
+      expect(m.enable).toHaveBeenCalledExactlyOnceWith(first.parts[0], { folder: m.state.folder, conn: m.state.conn })
     }
   )
 
@@ -225,7 +226,7 @@ describe('tarjeta tras un borrado denegado', () => {
     expect(m.enable).not.toHaveBeenCalled()
     expect(m.grant).not.toHaveBeenCalled()
     await act(async () => mounted!.qa<HTMLButtonElement>('button')[1].click())
-    expect(m.enable).toHaveBeenCalledExactlyOnceWith(p)
+    expect(m.enable).toHaveBeenCalledExactlyOnceWith(p, { folder: m.state.folder, conn: m.state.conn })
     expect(m.reply).not.toHaveBeenCalled()
   })
   it('parche que solo edita y falla al escribir no ofrece permiso', () => {

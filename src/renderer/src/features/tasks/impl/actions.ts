@@ -5,7 +5,7 @@ import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { getLang, t } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
-import { type AccessDecision, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
+import { type AccessDecision, type TasksConnection, type TasksFolderSet, type FolderAccessMode } from '@shared/ipc-tasks'
 import { COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
 import { buildTasksSystemPrompt } from '@shared/tasks-prompt'
 import { formatForPrompt } from '@shared/memory-format'
@@ -74,15 +74,19 @@ export async function retryAfterNetworkAllow(taskId: string, host: string): Prom
 
 // ── "Permitir borrar" (Seatbelt: file-write-unlink) ──
 
+export type DeleteGrantScope = { folder: string | null; conn: TasksConnection | null }
+
 /**
- * Concede/retira "Permitir borrar" para la carpeta actual. El proceso principal reinicia el
+ * Concede/retira "Permitir borrar" para la carpeta del botón pulsado. El proceso principal reinicia el
  * servidor sandboxeado para que el nuevo perfil Seatbelt tome efecto: si estaba en modo sandbox,
  * reconectamos (nuevo cliente/URL) y la tarea activa queda cerrada — el usuario debe reabrirla y
  * pedirle al agente que continúe.
  */
-export async function setDeleteGrantAllowed(allowed: boolean): Promise<void> {
-  const { folder, conn } = useTasks.getState()
-  if (!folder) return
+export async function setDeleteGrantAllowed(allowed: boolean, scope: DeleteGrantScope): Promise<void> {
+  const { folder, conn } = scope
+  const current = useTasks.getState()
+  // El destino viene del botón renderizado; nunca se sustituye por la carpeta global tras navegar.
+  if (!folder || current.folder !== folder || current.conn !== conn) throw new Error(t('tasksComputer.delete.changed'))
   useTasks.setState({ deleteGrantBusy: true })
   try {
     const now = await cw('tasks:deleteGrant:set', { folder, allowed })
@@ -762,6 +766,7 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
   }
   let promptError: unknown
   try {
+    useRejectionNotices.getState().clearConversation({ mode: 'tasks', directory: folder, sessionID })
     const res = await client.session.promptAsync({
       sessionID,
       directory: sdkDir(folder),
