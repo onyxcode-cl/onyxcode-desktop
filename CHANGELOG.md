@@ -4,6 +4,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.24] - 2026-11-13
+
+### Menos interrupciones
+
+- **Overdrive ya no pide permiso para limpiar sus propios archivos temporales.** Los archivos que ya estaban en tu carpeta siguen protegidos: borrarlos, moverlos o renombrarlos pide tu permiso como siempre.
+- **Sin copias «-v2», «-v3» de más:** al corregir un documento, Overdrive rehace el mismo archivo que creó, en vez de dejar varias versiones en tu carpeta.
+- **Se acabó el aviso falso «No se pudo instalar»** que aparecía cuando dos partes de la app pedían el mismo componente a la vez.
+
+### Documentos
+
+- **Los informes en Word traen portada** y las presentaciones cierran con una lámina con contenido, no con un «Gracias» suelto.
+- **Las planillas quedan con sus totales guardados** aunque se hayan hecho sin la herramienta de planillas.
+- **Si la vista previa de una presentación queda en blanco, la app lo detecta y la muestra con el visor de respaldo.**
+
+### Windows
+
+- **Overdrive arranca de forma más confiable:** si la comprobación del entorno falla una vez, la app la repite sola.
+
 ## [1.8.23] - 2026-11-12
 
 ### Más rápido
