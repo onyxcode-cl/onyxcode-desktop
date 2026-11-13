@@ -4,6 +4,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.25] - 2026-11-13
+
+### Más claro
+
+- **Si rechazas una acción, la app te lo dice.** Al pulsar «Rechazar» en una tarjeta de permiso, en Código o en Overdrive aparece un aviso de qué quedó sin hacer, para que puedas dar otra instrucción.
+- **La instalación inicial se retoma sola al volver internet.** Si se cortaba la conexión a mitad de la instalación de componentes, algunos podían quedar sin instalar y sin aviso.
+
+### Documentos
+
+- **Si pides portada en un informe de Word, sale con portada**, aunque el informe sea corto.
+- **La vista previa de Word ya no muestra como completo un documento a medias**: si una página falla, lo dice, y se pueden pedir páginas sueltas.
+- **En el Chat, descargar o abrir un documento ya no lo vuelve a generar**: se usa el mismo que viste.
+
+### Trabajos largos
+
+- **Las comprobaciones de cada paso no se pierden al resumir la conversación.** En trabajos largos, cuando Overdrive o Código resumen lo hecho para seguir, ahora conservan el comando con el que se revisa cada tarea.
+
 ## [1.8.24] - 2026-11-13
 
 ### Menos interrupciones
