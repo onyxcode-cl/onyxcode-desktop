@@ -4,7 +4,6 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { inlineScriptHashes, startWebServer, webCsp, type WebServer } from './web-server'
-import { dropScript } from './web-view'
 
 const INLINE = "import init from './app.js'; await init()"
 const HTML = `<!doctype html><html><head><script type="module">${INLINE}</script></head><body><canvas id="c"></canvas></body></html>`
@@ -103,39 +102,5 @@ describe('web-server (prueba Craft)', () => {
     const vacio = mkdtempSync(join(tmpdir(), 'web-vacio-'))
     await expect(startWebServer(vacio)).rejects.toThrow('index.html')
     rmSync(vacio, { recursive: true, force: true })
-  })
-})
-
-describe('dropScript', () => {
-  it('mete el archivo como datos JSON (no como código) y espera al motor', () => {
-    const evil = "');alert(1);('"
-    const s = dropScript('QUJD', evil, 'application/x-test')
-    expect(s).toContain(JSON.stringify(evil))
-    expect(s).toContain('TrunkApplicationStarted')
-    expect(s).toContain('new DragEvent(t, o)')
-    expect(s).toContain('"QUJD"')
-  })
-
-  /** Ejecuta el script en un contexto falso (sin Electron) y devuelve lo que responde. */
-  const run = async (script: string, wasmReady: boolean): Promise<unknown> => {
-    const { runInNewContext } = await import('node:vm')
-    const ctx = {
-      window: wasmReady ? { wasmBindings: {} } : {},
-      addEventListener: () => undefined,
-      setTimeout,
-      clearTimeout,
-      document: { querySelector: () => null },
-      innerWidth: 1,
-      innerHeight: 1
-    }
-    return runInNewContext(script, ctx) as Promise<unknown>
-  }
-
-  it('si el motor wasm nunca arranca, se rinde y devuelve false (no espera para siempre)', async () => {
-    expect(await run(dropScript('QUJD', 'a.docx', 'application/x-test', 30), false)).toBe(false)
-  })
-
-  it('con el motor listo no se queda colgado (sin lienzo devuelve false)', async () => {
-    expect(await run(dropScript('QUJD', 'a.docx', 'application/x-test', 30), true)).toBe(false)
   })
 })

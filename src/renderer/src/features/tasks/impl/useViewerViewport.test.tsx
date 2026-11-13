@@ -69,17 +69,24 @@ it('recupera un 0x0 inicial sin depender de otro resize y confirma el attach de 
   panel = undefined
   expect(vi.getTimerCount()).toBe(0)
 })
-it('al recibir listo vuelve a medir y mostrar, aunque no haya evento resize', async () => {
+it('adjunta durante la carga y vuelve a medir al recibir listo aunque no haya resize', async () => {
   mock.cw.mockResolvedValue(true)
   panel = mount(createElement(Probe, { ready: false }))
   await act(async () => {
     await Promise.resolve()
   })
-  expect(mock.cw.mock.lastCall?.[1].visible).toBe(false)
+  expect(mock.cw).toHaveBeenLastCalledWith('tasks:viewer:attach', {
+    rect: { x: 5, y: 10, width: 600, height: 400 },
+    visible: true
+  })
+  vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({ x: 5, y: 10, width: 650, height: 450 } as DOMRect)
   panel.rerender(createElement(Probe, { ready: true }))
   await act(async () => {
     await Promise.resolve()
   })
-  expect(mock.cw.mock.lastCall?.[1].visible).toBe(true)
+  expect(mock.cw).toHaveBeenLastCalledWith('tasks:viewer:attach', {
+    rect: { x: 5, y: 10, width: 650, height: 450 },
+    visible: true
+  })
   expect(panel.host.textContent).toBe('superficie confirmada')
 })

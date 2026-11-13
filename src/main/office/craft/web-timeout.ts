@@ -3,8 +3,11 @@
  * se quedaba en «generando» para siempre. Con el plazo, la apertura FALLA (se registra) y quien llama cae al visor de siempre.
  */
 
-/** Plazo total de `openWebDoc` (cargar la página + que el motor reciba el archivo). */
+/** Plazo para cargar la página y entregar el archivo al motor; la comprobación visual tiene su propio margen. */
 export const WEB_OPEN_TIMEOUT_MS = 5_000
+
+/** Después del drop: comprobaciones a 1,5 y 4 s, más hasta 1 s por captura. */
+export const WEB_RENDER_TIMEOUT_MS = 6_000
 
 export class WebTimeoutError extends Error {
   constructor(what: string, ms: number) {

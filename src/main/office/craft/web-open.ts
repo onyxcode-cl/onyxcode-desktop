@@ -10,7 +10,7 @@ import type { DocKind } from '@shared/doc-kind'
 import { attach as attachViewer, closeView } from '../../viewer/view'
 import { recordCraftProblem } from './craft-problems'
 import { craftService } from './service'
-import { WEB_OPEN_TIMEOUT_MS, withTimeout } from './web-timeout'
+import { WEB_OPEN_TIMEOUT_MS, WEB_RENDER_TIMEOUT_MS, withTimeout } from './web-timeout'
 import { MAX_WEB_FILE_BYTES, attachWeb, closeWeb, isWebActive, openWebDoc } from './web-view'
 
 /** Programa de ArtCraft para los formatos Office; PDF se lee en el visor aislado PDF.js. */
@@ -87,7 +87,7 @@ export async function openInCraftWeb(kind: DocKind, file: string, title: string)
         if (!current()) return false
         return openWebDoc(dir, kind, name, bytes)
       })(),
-      WEB_OPEN_TIMEOUT_MS,
+      WEB_OPEN_TIMEOUT_MS + WEB_RENDER_TIMEOUT_MS,
       'apertura'
     )
     if (!current()) return false

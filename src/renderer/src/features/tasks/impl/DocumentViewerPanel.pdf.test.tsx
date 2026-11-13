@@ -44,7 +44,8 @@ it.each(['/docs/informe.pdf', 'C:\\Trabajo\\informe.pdf'])(
       await Promise.resolve()
     })
     const rect = { x: 730, y: 136, width: 559, height: 662 }
-    expect(mock.cw).toHaveBeenCalledWith('tasks:viewer:attach', { rect, visible: false })
+    // La superficie se adjunta antes de que responda la apertura.
+    expect(mock.cw).toHaveBeenCalledWith('tasks:viewer:attach', { rect, visible: true })
     await act(async () => {
       loaded({ ok: true, kind: 'pdf', mode: 'classic' })
       await Promise.resolve()
