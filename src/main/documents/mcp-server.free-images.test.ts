@@ -219,7 +219,7 @@ describe('fotos libres por MCP', () => {
     const prepared = await server.invoke(binding, 'imagenes_usar', { id, evaluation })
     expect(prepared.isError).not.toBe(true)
     const saved = JSON.parse(text(prepared))
-    expect(saved.caption).toBe('Foto: Autora Ejemplo · CC BY 4.0 · Wikimedia Commons · ajustada')
+    expect(saved.caption).toBe('Foto: Autora Ejemplo · CC BY 4.0 · Wikimedia Commons · con cambios')
     expect(saved.credit).toBe(CREDIT)
     expect(JSON.parse(await readFile(join(root, saved.provenance), 'utf8')).credit).toBe(CREDIT)
     const created = await server.invoke(binding, 'crear', {

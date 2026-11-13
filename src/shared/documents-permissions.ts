@@ -11,6 +11,7 @@ export const DOCUMENTS_SERVER = 'documentos'
 /** `folder` de la atadura de Code en main: NO es una ruta, solo la clave que hace que un arranque nuevo del motor sustituya el token anterior. */
 export const CODE_BINDING_FOLDER = '<code>'
 export const DOCUMENTS_CREATE_TOOL = `${DOCUMENTS_SERVER}_crear`
+export const DOCUMENTS_EXPORT_PDF_TOOL = `${DOCUMENTS_SERVER}_exportar_pdf`
 export const DOCUMENTS_RENDER_TOOL = `${DOCUMENTS_SERVER}_renderizar`
 export const DOCUMENTS_IMAGE_SEARCH_TOOL = `${DOCUMENTS_SERVER}_imagenes_buscar`
 export const DOCUMENTS_IMAGE_VIEW_TOOL = `${DOCUMENTS_SERVER}_imagenes_ver`
@@ -50,7 +51,8 @@ export function documentsSessionRules(mode: PermissionModeId, agent?: string): P
     { permission: DOCUMENTS_RENDER_TOOL, pattern: '*', action: 'allow' },
     { permission: DOCUMENTS_IMAGE_SEARCH_TOOL, pattern: '*', action: documentsSearchAction(mode, agent) },
     { permission: DOCUMENTS_IMAGE_VIEW_TOOL, pattern: '*', action: documentsSearchAction(mode, agent) },
-    { permission: DOCUMENTS_IMAGE_USE_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) }
+    { permission: DOCUMENTS_IMAGE_USE_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) },
+    { permission: DOCUMENTS_EXPORT_PDF_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) }
   ]
 }
 
@@ -64,6 +66,7 @@ export function documentsConfigPermission(): Record<string, RuleAction> {
     [DOCUMENTS_RENDER_TOOL]: 'allow',
     [DOCUMENTS_IMAGE_SEARCH_TOOL]: 'ask',
     [DOCUMENTS_IMAGE_VIEW_TOOL]: 'ask',
-    [DOCUMENTS_IMAGE_USE_TOOL]: 'ask'
+    [DOCUMENTS_IMAGE_USE_TOOL]: 'ask',
+    [DOCUMENTS_EXPORT_PDF_TOOL]: 'ask'
   }
 }

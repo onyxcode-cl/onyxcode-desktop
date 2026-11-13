@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DOCUMENTS_CREATE_TOOL,
+  DOCUMENTS_EXPORT_PDF_TOOL,
   DOCUMENTS_RENDER_TOOL,
   DOCUMENTS_IMAGE_SEARCH_TOOL,
   DOCUMENTS_IMAGE_USE_TOOL,
@@ -18,6 +19,7 @@ describe('documents-permissions', () => {
   it('nombres de las herramientas (la igualdad con la ruta de main se prueba en mcp-server.code.test.ts)', () => {
     expect(DOCUMENTS_SERVER).toBe('documentos')
     expect(DOCUMENTS_CREATE_TOOL).toBe('documentos_crear')
+    expect(DOCUMENTS_EXPORT_PDF_TOOL).toBe('documentos_exportar_pdf')
     expect(DOCUMENTS_RENDER_TOOL).toBe('documentos_renderizar')
     expect(DOCUMENTS_IMAGE_SEARCH_TOOL).toBe('documentos_imagenes_buscar')
     expect(DOCUMENTS_IMAGE_VIEW_TOOL).toBe('documentos_imagenes_ver')
@@ -50,6 +52,7 @@ describe('documents-permissions', () => {
         expect(rules[2]).toEqual({ permission: 'documentos_imagenes_buscar', pattern: '*', action: search?.action ?? 'ask' })
         expect(rules[3]).toEqual({ permission: 'documentos_imagenes_ver', pattern: '*', action: search?.action ?? 'ask' })
         expect(rules[4]).toEqual({ permission: 'documentos_imagenes_usar', pattern: '*', action: write?.action ?? 'ask' })
+        expect(rules[5]).toEqual({ permission: 'documentos_exportar_pdf', pattern: '*', action: write?.action ?? 'ask' })
       }
     }
   })
@@ -60,7 +63,8 @@ describe('documents-permissions', () => {
       documentos_renderizar: 'allow',
       documentos_imagenes_buscar: 'ask',
       documentos_imagenes_ver: 'ask',
-      documentos_imagenes_usar: 'ask'
+      documentos_imagenes_usar: 'ask',
+      documentos_exportar_pdf: 'ask'
     })
   })
 })

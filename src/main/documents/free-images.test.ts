@@ -212,7 +212,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     await service.view([id])
     const asset = await service.use(id, evaluation)
     expect(asset.credit).toBe(
-      `Foto: ${caseId === 'h1' ? 'Cafeterías Nebraska' : 'Spielvogel'} · ${captured.license} · Wikimedia Commons · ajustada`
+      `Foto: ${caseId === 'h1' ? 'Cafeterías Nebraska' : 'Spielvogel'} · ${captured.license} · Wikimedia Commons · con cambios`
     )
     expect(asset.credit.length).toBeLessThanOrEqual(120)
     expect(asset.provenance.fullCredit).toContain(captured.author)

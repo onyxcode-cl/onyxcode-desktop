@@ -93,12 +93,13 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   const foot = (s: PptxSlideSpec): void => {
     const t = s.imageCredit ?? s.note ?? footer
     if (t) {
-      if (s.imageCredit) txt(60, 490, 840, 38, t, 12, footInk())
+      // El crédito tiene su propia franja: termina antes de la numeración y no comparte la decoración.
+      if (s.imageCredit) txt(60, 490, 740, 38, t, 12, footInk())
       else txt(120, 500, 640, 24, t, 11, footInk())
     }
   }
   const head = (n: number, s: PptxSlideSpec): void => {
-    header(n, s.title ?? '', s.eyebrow)
+    header(n, s.title ?? '', s.eyebrow, !s.imageCredit)
     foot(s)
   }
   const list = (items: string[], x: number, y: number, w: number, max: number, gap: number, size: number): void => {
@@ -470,7 +471,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           break
         }
         const withText = bullets.length > 0
-        const box = { x: 60, y: 146, w: withText ? 540 : 840, h: 336 }
+        const box = { x: 60, y: 146, w: withText ? 540 : 840, h: s.imageCredit ? 332 : 336 }
         const k = Math.min(box.w / img.width, box.h / img.height)
         const w = Math.round(img.width * k)
         const h = Math.round(img.height * k)

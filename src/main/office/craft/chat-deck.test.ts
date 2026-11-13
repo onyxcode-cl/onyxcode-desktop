@@ -527,3 +527,60 @@ describe('acento legible', () => {
     expect(contrastRatio(p.accent, p.bg)).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+describe('quinta ronda: crédito separado de foto, decoración y número', () => {
+  const credit = 'Foto: Takeaway · CC BY-SA 4.0 · Wikimedia Commons · con cambios'
+  const images = new Map([
+    [
+      'img/free-cafe.jpg',
+      { file: '/prepared/cafe.jpg', width: 1200, height: 1600, kind: 'jpeg' as const, mime: 'image/jpeg', ext: 'jpg', bytes: 100 }
+    ]
+  ])
+  const parse = (command: string): { rect: number[]; text?: string } => JSON.parse(command.slice(command.indexOf('=') + 1))
+  const intersects = (a: number[], b: number[]): boolean =>
+    a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1]
+
+  it.each(['classic', 'editorial', 'minimal', 'geometric'] as const)('%s: portada y lámina de foto tienen franja propia', (style) => {
+    for (const layout of ['cover', 'image'] as const) {
+      const commands = chatDeckCommands(
+        {
+          style,
+          slides: [{ title: 'Cafetería', layout, image: { path: 'img/free-cafe.jpg', alt: 'Interior' }, imageCredit: credit }]
+        },
+        images
+      )
+      const texts = commands.filter((c) => c.startsWith('insert.textBox=')).map(parse)
+      const footer = texts.find((c) => c.text === credit)!
+      expect(footer).toBeDefined()
+      const photo = parse(commands.find((c) => c.startsWith('insert.picture='))!)
+      expect(footer.rect[1] - (photo.rect[1] + photo.rect[3])).toBeGreaterThanOrEqual(12)
+      expect(footer.rect[1] + footer.rect[3]).toBeLessThanOrEqual(540)
+      for (const text of texts.filter((t) => t !== footer)) expect(intersects(footer.rect, text.rect)).toBe(false)
+      const bottomShapes = commands
+        .filter((c) => c.startsWith('shape.insert='))
+        .map(parse)
+        .filter((s) => s.rect[1] >= 480)
+      for (const shape of bottomShapes) expect(intersects(footer.rect, shape.rect)).toBe(false)
+      const next = commands.indexOf(commands.find((c) => c.startsWith('insert.textBox=') && parse(c).text === credit)!) + 1
+      expect(commands[next]).toBe('format.size={"size":12}')
+    }
+  })
+
+  it('el pie con descripción y crédito de 160 caracteres conserva 12 pt en dos líneas', () => {
+    const text = 'Figura 1. '.padEnd(100, 'a') + credit
+    const caption = text.slice(0, 160)
+    const commands = chatDeckCommands({ slides: [{ title: 'Foto', layout: 'image', imageCredit: caption }] })
+    const at = commands.findIndex((c) => c.startsWith('insert.textBox=') && parse(c).text === caption)
+    expect(commands[at + 1]).toBe('format.size={"size":12}')
+  })
+
+  it('mantiene la decoración habitual en láminas sin crédito', () => {
+    const commands = chatDeckCommands({ style: 'editorial', slides: [{ title: 'Cafetería', layout: 'image' }] })
+    expect(
+      commands
+        .filter((c) => c.startsWith('shape.insert='))
+        .map(parse)
+        .some((s) => s.rect[1] === 509)
+    ).toBe(true)
+  })
+})

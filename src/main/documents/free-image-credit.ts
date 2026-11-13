@@ -20,7 +20,7 @@ export function shortImageCredit(attribution: {
   provider: string
   transformations?: readonly string[]
 }): string {
-  const suffix = ` · ${attribution.license} · ${attribution.provider}${attribution.transformations?.length ? ' · ajustada' : ''}`
+  const suffix = ` · ${attribution.license} · ${attribution.provider}${attribution.transformations?.length ? ' · con cambios' : ''}`
   const available = MAX_IMAGE_CREDIT_CHARS - 'Foto: '.length - suffix.length
   const author = cleanImageAuthor(attribution.author) || 'Autor indicado en la fuente'
   const shortened = author.length > available ? `${author.slice(0, Math.max(1, available - 1)).trimEnd()}…` : author

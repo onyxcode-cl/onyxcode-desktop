@@ -66,6 +66,7 @@ describe('modo de permisos → sesión del motor', () => {
       'documentos_imagenes_buscar',
       'documentos_imagenes_ver',
       'documentos_imagenes_usar',
+      'documentos_exportar_pdf',
       'edit',
       'write',
       'bash',
@@ -97,7 +98,8 @@ describe('modo de permisos → sesión del motor', () => {
       ])
       expect(rules[8]!.action).toBe(rules[7]!.action)
       expect(rules[9]!.action).toBe(rules[5]!.action)
-      expect(rules.slice(10)).toEqual(rulesetForMode(mode))
+      expect(rules[10]).toEqual({ permission: 'documentos_exportar_pdf', pattern: '*', action: rules[5]!.action })
+      expect(rules.slice(11)).toEqual(rulesetForMode(mode))
       expect(rules[0]!.action).toBe(mode === 'bypass' ? 'allow' : 'ask')
     }
     expect(approvalKindOf(rulesetFor('auto'))).toBe('auto')

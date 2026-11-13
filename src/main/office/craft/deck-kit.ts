@@ -320,12 +320,12 @@ export function createKit(
     else a('shape.fill', { color: '#' + pal.panel })
     a('shape.line', { color: '#' + pal.edge, width: 1 })
   }
-  const header = (n: number, title: string, kicker: string | undefined): void => {
+  const header = (n: number, title: string, kicker: string | undefined, footerDecoration = true): void => {
     bgslide([[680, -250, 500, pal.glow]])
     if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 13, accent, true, 'left', 3)
     txt(60, 62, 840, 64, title, fitSize(title, 40, 36), autoFit ? pal.accent : pal.text, true, 'left', -1, titleFont)
     if (autoFit) rect(60, 128, 840, 4, pal.accent)
-    dotrow(60, 506, 8, 6)
+    if (footerDecoration) dotrow(60, 506, 8, 6)
     txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right')
   }
   return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg, footInk }

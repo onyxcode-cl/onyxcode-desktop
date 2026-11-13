@@ -231,7 +231,7 @@ describe('créditos comprobados de fotografías', () => {
     expect((await reviewImageCredits('pptx', bytes, result.expectedCredits)).ok).toBe(true)
     const commands = chatDeckCommands(result.input.data, await imageMap()).join('\n')
     expect(commands).toContain(caption)
-    expect(commands).toContain('[60,490,840,38]')
+    expect(commands).toContain('[60,490,740,38]')
   })
 
   it('reutiliza el pie PDF inmediato, conserva los enlaces y no crea sección ni crédito duplicado', () => {
@@ -327,7 +327,7 @@ describe('créditos comprobados de fotografías', () => {
   })
 
   it('acepta espacios, puntuación y mayúsculas al comprobar los archivos finales, pero no cambia autor ni licencia', async () => {
-    const variant = 'FOTO: ALICE & BOB — CC BY-SA 4.0 / WIKIMEDIA COMMONS / AJUSTADA'
+    const variant = 'FOTO: ALICE & BOB — CC BY-SA 4.0 / WIKIMEDIA COMMONS / CON CAMBIOS'
     for (const kind of ['docx', 'pptx'] as const) {
       const zip = new JSZip()
       const path = kind === 'docx' ? 'word/document.xml' : 'ppt/slides/slide1.xml'

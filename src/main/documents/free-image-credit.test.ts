@@ -23,4 +23,17 @@ describe('pie breve a partir de metadatos comprobados', () => {
     expect(credit.length).toBe(120)
     expect(credit).toContain('… · CC BY-SA 4.0 · Wikimedia Commons')
   })
+  it('usa una indicación sencilla de cambios y conserva el detalle en los metadatos', () => {
+    const attribution = {
+      author: 'Takeaway',
+      license: 'CC BY-SA 4.0',
+      provider: 'Wikimedia Commons',
+      transformations: ['Conversión a JPEG y reducción de tamaño; sin recorte.']
+    }
+    const original = structuredClone(attribution)
+    expect(shortImageCredit(attribution)).toBe('Foto: Takeaway · CC BY-SA 4.0 · Wikimedia Commons · con cambios')
+    expect(shortImageCredit(attribution)).not.toContain('ajustada')
+    expect(attribution).toEqual(original)
+    expect(shortImageCredit({ ...attribution, transformations: [] })).not.toContain('con cambios')
+  })
 })
