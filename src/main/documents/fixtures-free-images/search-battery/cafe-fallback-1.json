@@ -1,0 +1,1427 @@
+{
+  "capturedAt": "2026-11-13T17:50:08.094Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=coffee+shop+interior+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 13798924,
+          "ns": 6,
+          "title": "File:Christmas Eve coffee shop scene, Monmouth - geograph.org.uk - 1090905.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 74293,
+              "width": 640,
+              "height": 480,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/8/81/Christmas_Eve_coffee_shop_scene%2C_Monmouth_-_geograph.org.uk_-_1090905.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/Christmas_Eve_coffee_shop_scene%2C_Monmouth_-_geograph.org.uk_-_1090905.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/81/Christmas_Eve_coffee_shop_scene%2C_Monmouth_-_geograph.org.uk_-_1090905.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Christmas_Eve_coffee_shop_scene,_Monmouth_-_geograph.org.uk_-_1090905.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=13798924",
+              "sha1": "e3c3c72466567daed76d56e01efe493a27829b9d",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2011-02-24 13:46:50",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Christmas Eve coffee shop scene, Monmouth - geograph.org.uk - 1090905",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Building interiors in Wales|Images from Geograph Britain and Ireland|Information field template with formatting|Images by Jonathan Billinger|United Kingdom photographs taken on 2008-12-24|2008 in Monmouth, Wales|Coffee shops in Wales|Shops in Monmouth",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "51.810150",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-2.718000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Christmas Eve coffee shop scene; <a href=\"https://en.wikipedia.org/wiki/Monmouth\" class=\"extiw\" title=\"en:Monmouth\">Monmouth</a> A pit-stop for those taking a more relaxed route to the final bout of pre-Christmas shopping for 2008.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2008-12-24",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "From <a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/photo/1090905\">geograph.org.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/profile/8569\">Jonathan Billinger</a>",
+                  "source": "commons-desc-page"
+                },
+                "Attribution": {
+                  "value": "Jonathan Billinger",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 58211754,
+          "ns": 6,
+          "title": "File:Coffee shop in Göteborg railway station, Sweden .jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4410138,
+              "width": 4128,
+              "height": 3096,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg/1280px-Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg/3840px-Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg/1280px-Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1a/Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg/3840px-Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Coffee_shop_in_G%C3%B6teborg_railway_station%2C_Sweden_.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Coffee_shop_in_G%C3%B6teborg_railway_station,_Sweden_.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=58211754",
+              "sha1": "d17db158dd1632d1904e1e7c38a2e2d7807702e8",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2017-04-21 19:55:36",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Coffee shop in Göteborg railway station, Sweden ",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Samsung Galaxy J5 (2016)|Self-published work|Photographs and images by Yann Forget|Information field template with formatting|Uploaded with Mobile/Android|Coffee shops in Sweden|Interior of the Gothenburg Central Station|Photographs taken on 2017-04-21|April 2017 in Göteborg",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Coffee shop in Göteborg railway station, Sweden.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "21 April 2017 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data)",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Yann\" title=\"User:Yann\">Yann Forget</a>",
+                  "source": "commons-desc-page"
+                },
+                "Attribution": {
+                  "value": "This file is not in the public domain. Therefore you are requested to use the following next to the image if you reuse this file: © <a href=\"//commons.wikimedia.org/wiki/User:Yann\" title=\"User:Yann\">Yann Forget</a> / <a class=\"external text\" href=\"https://commons.wikimedia.org\">Wikimedia Commons</a>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 76794825,
+          "ns": 6,
+          "title": "File:2019 02 Awesome Coffee Shop in Korat.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4633426,
+              "width": 4032,
+              "height": 3024,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/2019_02_Awesome_Coffee_Shop_in_Korat.jpg/1280px-2019_02_Awesome_Coffee_Shop_in_Korat.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/2019_02_Awesome_Coffee_Shop_in_Korat.jpg/3840px-2019_02_Awesome_Coffee_Shop_in_Korat.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/2019_02_Awesome_Coffee_Shop_in_Korat.jpg/1280px-2019_02_Awesome_Coffee_Shop_in_Korat.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/2019_02_Awesome_Coffee_Shop_in_Korat.jpg/3840px-2019_02_Awesome_Coffee_Shop_in_Korat.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/3f/2019_02_Awesome_Coffee_Shop_in_Korat.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:2019_02_Awesome_Coffee_Shop_in_Korat.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=76794825",
+              "sha1": "3e80ec5e6db896e876dccabb97ed6b30217796dd",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-02-23 13:11:32",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "2019 02 Awesome Coffee Shop in Korat",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Samsung Galaxy S8+|Nakhon Ratchasima|Self-published work|Coffee shops in Thailand|Files with coordinates missing SDC location of creation|Images of Thailand by User:Takeaway",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "14.975278",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "102.100000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Korat's \"Awesome Coffee\" shop interior. The owner is the winner of Thailand's 7th Indy Barista Championship. This shop is located behind the family's gold shop on the main road, and accessed through a small alley from the main road.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-02-10 12:26:10",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Takeaway\" title=\"User:Takeaway\">Takeaway</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 101701074,
+          "ns": 6,
+          "title": "File:Interior Johnie's Coffee Shop 2021 2.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2055908,
+              "width": 6188,
+              "height": 2330,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Interior_Johnie%27s_Coffee_Shop_2021_2.jpg/1280px-Interior_Johnie%27s_Coffee_Shop_2021_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 482,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Interior_Johnie%27s_Coffee_Shop_2021_2.jpg/3840px-Interior_Johnie%27s_Coffee_Shop_2021_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Interior_Johnie%27s_Coffee_Shop_2021_2.jpg/1280px-Interior_Johnie%27s_Coffee_Shop_2021_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 482,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Interior_Johnie%27s_Coffee_Shop_2021_2.jpg/3840px-Interior_Johnie%27s_Coffee_Shop_2021_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Interior_Johnie%27s_Coffee_Shop_2021_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Interior_Johnie%27s_Coffee_Shop_2021_2.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=101701074",
+              "sha1": "9600157f3588c775b2e3156174c7f19a428f4c01",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-03-17 20:20:58",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Interior Johnie's Coffee Shop 2021 2",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Johnie's Coffee Shop|Self-published work|Files with coordinates missing SDC location of creation|Bernie Sanders presidential campaign, 2016 in California|March 2021 in Los Angeles",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "34.063261",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-118.361475",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Interior of Johnie's Coffee Shop, Los Angeles, 2021. This is a 3-image panorama from outside the glass window.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2021-03-14 16:18:38",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Downtowngal\" title=\"User:Downtowngal\">Downtowngal</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 101701075,
+          "ns": 6,
+          "title": "File:Interior Johnie's Coffee Shop 2021.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2011170,
+              "width": 3409,
+              "height": 2502,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Interior_Johnie%27s_Coffee_Shop_2021.jpg/1280px-Interior_Johnie%27s_Coffee_Shop_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 939,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Interior_Johnie%27s_Coffee_Shop_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1b/Interior_Johnie%27s_Coffee_Shop_2021.jpg/1280px-Interior_Johnie%27s_Coffee_Shop_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 939,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Interior_Johnie%27s_Coffee_Shop_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Interior_Johnie%27s_Coffee_Shop_2021.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Interior_Johnie%27s_Coffee_Shop_2021.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=101701075",
+              "sha1": "37220dd469ee24eae377cce2bee6b2c086459031",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-03-17 20:21:02",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Interior Johnie's Coffee Shop 2021",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Johnie's Coffee Shop|Self-published work|Files with coordinates missing SDC location of creation|Bernie Sanders presidential campaign, 2016 in California",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "34.063261",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-118.361475",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Interior of Johnie's Coffee Shop, Los Angeles, 2021",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2021-03-14 16:18:59",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Downtowngal\" title=\"User:Downtowngal\">Downtowngal</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 129257786,
+          "ns": 6,
+          "title": "File:Figaro Coffee shop interior in Salawag, Dasmariñas, Cavite — 19 Mar 2022.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4021678,
+              "width": 4160,
+              "height": 3120,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg/1280px-Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg/3840px-Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg/1280px-Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/72/Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg/3840px-Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/72/Figaro_Coffee_shop_interior_in_Salawag%2C_Dasmari%C3%B1as%2C_Cavite_%E2%80%94_19_Mar_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Figaro_Coffee_shop_interior_in_Salawag,_Dasmari%C3%B1as,_Cavite_%E2%80%94_19_Mar_2022.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=129257786",
+              "sha1": "6e731332d0e5b29db50371d293b2555fd456bc29",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-03-04 08:58:24",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Figaro Coffee shop interior in Salawag, Dasmariñas, Cavite — 19 Mar 2022",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Figaro Coffee|Jose Abad Santos Avenue, Dasmariñas City|Salawag, Dasmariñas City|Interiors of cafés",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "A view of the cashier's desk, stairs and some chairs and tables at the <a href=\"//commons.wikimedia.org/w/index.php?title=Commons:Category:Figaro_Coffee&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"Commons:Category:Figaro Coffee (page does not exist)\">Figaro Coffee</a> branch located at <a href=\"//commons.wikimedia.org/w/index.php?title=Commons:Category:Jose_Abad_Santos_Avenue,_Dasmari%C3%B1as_City&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"Commons:Category:Jose Abad Santos Avenue, Dasmariñas City (page does not exist)\">Jose Abad Santos Ave.</a>, in <a href=\"//commons.wikimedia.org/w/index.php?title=Commons:Category:Salawag,_Dasmari%C3%B1as_City&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"Commons:Category:Salawag, Dasmariñas City (page does not exist)\">Salawag</a>, <a href=\"//commons.wikimedia.org/w/index.php?title=Commons:Category:Dasmari%C3%B1as&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"Commons:Category:Dasmariñas (page does not exist)\">Dasmariñas</a>, <a href=\"https://en.wikipedia.org/wiki/en:Cavite\" class=\"extiw\" title=\"wikipedia:en:Cavite\">Cavite</a>, <a href=\"https://en.wikipedia.org/wiki/en:Philippines\" class=\"extiw\" title=\"wikipedia:en:Philippines\">Philippines</a>.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2022-03-19 18:05:16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:UndueMarmot\" title=\"User:UndueMarmot\">UndueMarmot</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 131805962,
+          "ns": 6,
+          "title": "File:Starbucks coffee shop interior design.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3611961,
+              "width": 4000,
+              "height": 3000,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Starbucks_coffee_shop_interior_design.jpg/1280px-Starbucks_coffee_shop_interior_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Starbucks_coffee_shop_interior_design.jpg/3840px-Starbucks_coffee_shop_interior_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Starbucks_coffee_shop_interior_design.jpg/1280px-Starbucks_coffee_shop_interior_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/Starbucks_coffee_shop_interior_design.jpg/3840px-Starbucks_coffee_shop_interior_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Starbucks_coffee_shop_interior_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Starbucks_coffee_shop_interior_design.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=131805962",
+              "sha1": "2f55da86ede9356ae7dc692f1d6dd63b0f6abb12",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-05-12 10:41:16",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Starbucks coffee shop interior design",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Starbucks Coffee in China|Changzhou|Interior design|Self-published work|Taken with Huawei Enjoy 20 Plus 5G",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Starbucks coffee shop interior design",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-05-09 17:01:33",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Fumikas_Sagisavas\" title=\"User:Fumikas Sagisavas\">Fumikas Sagisavas</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 168735284,
+          "ns": 6,
+          "title": "File:Newark-on-Trent, Interior of 'Cherizena Coffee Shop', 23-24 Stodman Street - geograph.org.uk - 7846323.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4532873,
+              "width": 8256,
+              "height": 5504,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg/1280px-Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg/3840px-Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg/1280px-Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg/3840px-Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Newark-on-Trent%2C_Interior_of_%27Cherizena_Coffee_Shop%27%2C_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Newark-on-Trent,_Interior_of_%27Cherizena_Coffee_Shop%27,_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=168735284",
+              "sha1": "1b34c169c572097f3f9868a15753724146151b78",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-06-28 13:04:32",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Newark-on-Trent, Interior of 'Cherizena Coffee Shop', 23-24 Stodman Street - geograph.org.uk - 7846323",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Images from Geograph Britain and Ireland|Coffee shops in England|Shops in Newark-on-Trent",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "53.075979",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-0.810181",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Newark-on-Trent: Interior of 'Cherizena Coffee Shop', 23-24 Stodman Street <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Newark-on-Trent,_Interior_of_%27Cherizena_Coffee_Shop%27,_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg#ooui-php-4\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2024-07-26",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/photo/7846323\">Geograph Britain and Ireland</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Newark-on-Trent,_Interior_of_%27Cherizena_Coffee_Shop%27,_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg#P7482\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/profile/118660\">Michael Garlick</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Newark-on-Trent,_Interior_of_%27Cherizena_Coffee_Shop%27,_23-24_Stodman_Street_-_geograph.org.uk_-_7846323.jpg#P170\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "<i>Newark-on-Trent: Interior of 'Cherizena Coffee Shop', 23-24 Stodman Street</i> by Michael Garlick",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 176112922,
+          "ns": 6,
+          "title": "File:The Courtyard Coffee Shop interior, Ballycastle - geograph.org.uk - 8123928.jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 218887,
+              "width": 1024,
+              "height": 769,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/5/5b/The_Courtyard_Coffee_Shop_interior%2C_Ballycastle_-_geograph.org.uk_-_8123928.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 961,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/5/5b/The_Courtyard_Coffee_Shop_interior%2C_Ballycastle_-_geograph.org.uk_-_8123928.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 961
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/5b/The_Courtyard_Coffee_Shop_interior%2C_Ballycastle_-_geograph.org.uk_-_8123928.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:The_Courtyard_Coffee_Shop_interior,_Ballycastle_-_geograph.org.uk_-_8123928.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=176112922",
+              "sha1": "db077a20efdaf18f3ec9337f9874b3d00a347cc0",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-10-05 03:53:25",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "The Courtyard Coffee Shop interior, Ballycastle - geograph.org.uk - 8123928",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Ballycastle, County Antrim|Images from Geograph Britain and Ireland",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "55.200390",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-6.252777",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "The Courtyard Coffee Shop interior, Ballycastle <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:The_Courtyard_Coffee_Shop_interior,_Ballycastle_-_geograph.org.uk_-_8123928.jpg#ooui-php-4\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-08-13",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/photo/8123928\">Geograph Britain and Ireland</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:The_Courtyard_Coffee_Shop_interior,_Ballycastle_-_geograph.org.uk_-_8123928.jpg#P7482\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/profile/2282\">Kenneth  Allen</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:The_Courtyard_Coffee_Shop_interior,_Ballycastle_-_geograph.org.uk_-_8123928.jpg#P170\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "<i>The Courtyard Coffee Shop interior, Ballycastle</i> by Kenneth  Allen",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 177472856,
+          "ns": 6,
+          "title": "File:Union Pacific Depot coffee shop (Cheyenne, Wyoming) 2025-10-23.jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3844569,
+              "width": 4080,
+              "height": 3060,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg/1280px-Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg/3840px-Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg/1280px-Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/76/Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg/3840px-Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/76/Union_Pacific_Depot_coffee_shop_%28Cheyenne%2C_Wyoming%29_2025-10-23.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Union_Pacific_Depot_coffee_shop_(Cheyenne,_Wyoming)_2025-10-23.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=177472856",
+              "sha1": "c7df055b87a6bfa96c9ec0c7f0333427e201f472",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-10-27 23:26:45",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Union Pacific Depot coffee shop (Cheyenne, Wyoming) 2025-10-23",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Coffee shops in the United States|Files with coordinates missing SDC location of creation|Union Pacific Depot interior (Cheyenne, Wyoming)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "41.131808",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-104.814358",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Union Pacific Depot coffee shop (Cheyenne, Wyoming)",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-10-23 11:44:56",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Xnatedawgx\" title=\"User:Xnatedawgx\">Xnatedawgx</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 192151052,
+          "ns": 6,
+          "title": "File:French Coffee Shop, Dieppe 2026-05-11.jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7282344,
+              "width": 7944,
+              "height": 6041,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg/1280px-French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 973,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg/3840px-French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg/1280px-French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 973,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg/3840px-French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/99/French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:French_Coffee_Shop,_Dieppe_2026-05-11.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=192151052",
+              "sha1": "381dc2b42df0b88413ba95808a9dbd5fc75e4303",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-05-16 22:33:27",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "French Coffee Shop, Dieppe 2026-05-11",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Creative Commons CC0 1.0 Universal Public Domain Dedication missing SDC copyright license|Self-published work|Self-published work missing SDC copyright license|Interiors of cafés in France|Cafés in 2026|Restaurants in France photographed in 2026|Files with coordinates missing SDC location of creation (49° N, 1° E)|2026 in Dieppe|May 2026 in Seine-Maritime|Normandie photographs taken on 2026-05-11|French Coffee Shop, Dieppe",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "49.921175",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "1.079867",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "French Coffee Shop, Dieppe",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2026-05-11 15:13:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Onthewings\" title=\"User:Onthewings\">Andy Li</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 192756375,
+          "ns": 6,
+          "title": "File:Johnie's Coffee Shop interior.jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2283240,
+              "width": 4032,
+              "height": 3024,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Johnie%27s_Coffee_Shop_interior.jpg/1280px-Johnie%27s_Coffee_Shop_interior.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Johnie%27s_Coffee_Shop_interior.jpg/3840px-Johnie%27s_Coffee_Shop_interior.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Johnie%27s_Coffee_Shop_interior.jpg/1280px-Johnie%27s_Coffee_Shop_interior.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Johnie%27s_Coffee_Shop_interior.jpg/3840px-Johnie%27s_Coffee_Shop_interior.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Johnie%27s_Coffee_Shop_interior.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Johnie%27s_Coffee_Shop_interior.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=192756375",
+              "sha1": "a1ce51da3ed5da6e673c831046b6d05ddebad073",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-05-24 23:34:09",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Johnie's Coffee Shop interior",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Johnie's Coffee Shop|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Interior of Johnie's, May 2026",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2026-05-24",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Caterpillar84\" title=\"User:Caterpillar84\">Caterpillar84</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

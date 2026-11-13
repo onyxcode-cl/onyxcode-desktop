@@ -1,0 +1,675 @@
+{
+  "baselineCommit": "d1b5a936058ad08489641ed4cdd0fbf6990060e0",
+  "capturedOn": "2026-11-13",
+  "commonsRequests": 35,
+  "openverseRequests": 0,
+  "metric": "Pertinencia conservadora por título, descripción y categorías. Sin inspección visual ni descarga/comprobación de bytes reales. Píxeles y SHA1 sustituidos coherentemente solo en el replay; capturas de API intactas.",
+  "cases": [
+    {
+      "id": "cafe",
+      "requirements": {
+        "subject": "Cafetería de barrio",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true
+      },
+      "before": {
+        "queriesExecuted": ["cafetería de barrio interior", "neighborhood coffee shop interior"],
+        "shown": 2,
+        "usefulByMetadata": 2,
+        "candidates": [
+          {
+            "title": "Cafetería Popular al Barrio Yungay (55184)",
+            "source": "https://commons.wikimedia.org/wiki/File:Cafeter%C3%ADa_Popular_al_Barrio_Yungay_(55184).jpg",
+            "description": "Cafetería Popular al Barrio Yungay de Santiago de Xile.",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          },
+          {
+            "title": "Cafetería Popular al Barrio Yungay (51162)",
+            "source": "https://commons.wikimedia.org/wiki/File:Cafeter%C3%ADa_Popular_al_Barrio_Yungay_(51162).jpg",
+            "description": "Cafetería Popular al Barrio Yungay de Santiago de Xile.",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["cafetería de barrio interior", "neighborhood coffee shop interior", "coffee shop interior"],
+        "shown": 6,
+        "usefulByMetadata": 5,
+        "candidates": [
+          {
+            "title": "Cafetería Popular al Barrio Yungay (55184)",
+            "source": "https://commons.wikimedia.org/wiki/File:Cafeter%C3%ADa_Popular_al_Barrio_Yungay_(55184).jpg",
+            "description": "Cafetería Popular al Barrio Yungay de Santiago de Xile.",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          },
+          {
+            "title": "Cafetería Popular al Barrio Yungay (51162)",
+            "source": "https://commons.wikimedia.org/wiki/File:Cafeter%C3%ADa_Popular_al_Barrio_Yungay_(51162).jpg",
+            "description": "Cafetería Popular al Barrio Yungay de Santiago de Xile.",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          },
+          {
+            "title": "Interior Johnie's Coffee Shop 2021",
+            "source": "https://commons.wikimedia.org/wiki/File:Interior_Johnie%27s_Coffee_Shop_2021.jpg",
+            "description": "Interior of Johnie's Coffee Shop, Los Angeles, 2021",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          },
+          {
+            "title": "Interior Johnie's Coffee Shop 2021 2",
+            "source": "https://commons.wikimedia.org/wiki/File:Interior_Johnie%27s_Coffee_Shop_2021_2.jpg",
+            "description": "Interior of Johnie's Coffee Shop, Los Angeles, 2021. This is a 3-image panorama from outside the glass window.",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          },
+          {
+            "title": "2019 02 Awesome Coffee Shop in Korat",
+            "source": "https://commons.wikimedia.org/wiki/File:2019_02_Awesome_Coffee_Shop_in_Korat.jpg",
+            "description": "Korat's \"Awesome Coffee\" shop interior. The owner is the winner of Thailand's 7th Indy Barista Championship. This shop is located behind the family's gold shop on the main road, and accessed through a small alley from the main road.",
+            "usefulByMetadata": true,
+            "reason": "Interior de café documentado en título, descripción o categoría; se descarta la sucursal de cadena para cafetería de barrio."
+          },
+          {
+            "title": "Figaro Coffee shop interior in Salawag, Dasmariñas, Cavite — 19 Mar 2022",
+            "source": "https://commons.wikimedia.org/wiki/File:Figaro_Coffee_shop_interior_in_Salawag,_Dasmari%C3%B1as,_Cavite_%E2%80%94_19_Mar_2022.jpg",
+            "description": "A view of the cashier's desk, stairs and some chairs and tables at the Figaro Coffee branch located at Jose Abad Santos Ave. , in Salawag , Dasmariñas , Cavite , Philippines .",
+            "usefulByMetadata": false,
+            "reason": "Sucursal de cadena; no cumple la intención de cafetería de barrio."
+          }
+        ]
+      }
+    },
+    {
+      "id": "hummingbird",
+      "requirements": {
+        "subject": "Colibrí en vuelo junto a flores",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true
+      },
+      "before": {
+        "queriesExecuted": ["colibrí en vuelo flores", "hummingbird flying flowers"],
+        "shown": 5,
+        "usefulByMetadata": 2,
+        "candidates": [
+          {
+            "title": "Colibri * macroglossum stellatarum (8568213533)",
+            "source": "https://commons.wikimedia.org/wiki/File:Colibri_*_macroglossum_stellatarum_(8568213533).jpg",
+            "description": "Aunque la mayoría de los miembros de su familia vuelan de noche, la esfinge colibrí lo hace a pleno día. Su forma de batir las alas, 85 veces por segundo, le permite superar los 60 km/h de velocidad de vuelo, y lo que es más importante, puede mantenerse estática mientras liba las flores.",
+            "usefulByMetadata": false,
+            "reason": "Polilla, o ficha sin evidencia suficiente de ambos requisitos: vuelo y flores."
+          },
+          {
+            "title": "Hummingbird Poo",
+            "source": "https://commons.wikimedia.org/wiki/File:Hummingbird_Poo_(209183175).jpeg",
+            "description": "500px provided description: the cutest act of defecation I have photographed ;) [#bird ,#flower ,#flight ,#animal ,#california ,#green ,#wildlife ,#san francisco ,#flying ,#hummingbird]",
+            "usefulByMetadata": true,
+            "reason": "La ficha/categorías documenta colibrí en vuelo y flores."
+          },
+          {
+            "title": "Red throated hummingbird flying",
+            "source": "https://commons.wikimedia.org/wiki/File:Red_throated_hummingbird_flying.jpg",
+            "description": "Ruby throated hummingbird flying away from red flower",
+            "usefulByMetadata": true,
+            "reason": "La ficha/categorías documenta colibrí en vuelo y flores."
+          },
+          {
+            "title": "Hummingbird flower",
+            "source": "https://commons.wikimedia.org/wiki/File:Hummingbird_flower.jpg",
+            "description": "Estação Ecológica Juréia-Itatins de nível Estadual, localizado (a) em Iguape (SP), Itariri (SP), Miracatu (SP), Peruíbe (SP)",
+            "usefulByMetadata": false,
+            "reason": "Polilla, o ficha sin evidencia suficiente de ambos requisitos: vuelo y flores."
+          },
+          {
+            "title": "Hummingbird Hawk Moth, Buskett Gardens",
+            "source": "https://commons.wikimedia.org/wiki/File:Hummingbird_Hawk_Moth,_Buskett_Gardens.jpg",
+            "description": "With some patience and being at the right place, you can observe the agile hawk moth. They are among some of the fastest flying insects and can hover in mid-air while feeding with its long tongue sipping the nectar.",
+            "usefulByMetadata": false,
+            "reason": "Polilla, o ficha sin evidencia suficiente de ambos requisitos: vuelo y flores."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["colibrí en vuelo flores", "hummingbird flying flowers", "hummingbird"],
+        "shown": 6,
+        "usefulByMetadata": 3,
+        "candidates": [
+          {
+            "title": "Red throated hummingbird flying",
+            "source": "https://commons.wikimedia.org/wiki/File:Red_throated_hummingbird_flying.jpg",
+            "description": "Ruby throated hummingbird flying away from red flower",
+            "usefulByMetadata": true,
+            "reason": "La ficha/categorías documenta colibrí en vuelo y flores."
+          },
+          {
+            "title": "Cinnamon hummingbird (Amazilia rutila) in flight Los Tarrales",
+            "source": "https://commons.wikimedia.org/wiki/File:Cinnamon_hummingbird_(Amazilia_rutila)_in_flight_Los_Tarrales.jpg",
+            "description": "Cinnamon hummingbird ( Amazilia rutila ) in flight, Los Tarrales, Suchitepéquez Department, Guatemala",
+            "usefulByMetadata": true,
+            "reason": "La ficha/categorías documenta colibrí en vuelo y flores."
+          },
+          {
+            "title": "Hummingbird flower",
+            "source": "https://commons.wikimedia.org/wiki/File:Hummingbird_flower.jpg",
+            "description": "Estação Ecológica Juréia-Itatins de nível Estadual, localizado (a) em Iguape (SP), Itariri (SP), Miracatu (SP), Peruíbe (SP)",
+            "usefulByMetadata": false,
+            "reason": "Polilla, o ficha sin evidencia suficiente de ambos requisitos: vuelo y flores."
+          },
+          {
+            "title": "Hummingbird Poo",
+            "source": "https://commons.wikimedia.org/wiki/File:Hummingbird_Poo_(209183175).jpeg",
+            "description": "500px provided description: the cutest act of defecation I have photographed ;) [#bird ,#flower ,#flight ,#animal ,#california ,#green ,#wildlife ,#san francisco ,#flying ,#hummingbird]",
+            "usefulByMetadata": true,
+            "reason": "La ficha/categorías documenta colibrí en vuelo y flores."
+          },
+          {
+            "title": "Colibrí Cola de Oro (Golden-tailed Sapphire Hummingbird) Bigger File",
+            "source": "https://commons.wikimedia.org/wiki/File:Colibr%C3%AD_Cola_de_Oro_(Golden-tailed_Sapphire_Hummingbird)_Bigger_File.jpg",
+            "description": "Hummingbird on flying. Golden-tailed Sapphire ( Chrysuronia oenone ) in NE Venezuela.",
+            "usefulByMetadata": false,
+            "reason": "Polilla, o ficha sin evidencia suficiente de ambos requisitos: vuelo y flores."
+          },
+          {
+            "title": "Sword-billed hummingbird in Ecuador - (54572220117)",
+            "source": "https://commons.wikimedia.org/wiki/File:Sword-billed_hummingbird_in_Ecuador_-_(54572220117).jpg",
+            "description": "Sword-billed hummingbird ( Ensifera ensifera ) in flight, Ecuador.",
+            "usefulByMetadata": false,
+            "reason": "Polilla, o ficha sin evidencia suficiente de ambos requisitos: vuelo y flores."
+          }
+        ]
+      }
+    },
+    {
+      "id": "penguin",
+      "requirements": {
+        "subject": "Pingüino de Humboldt en Chile",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true,
+        "place": "Chile"
+      },
+      "before": {
+        "queriesExecuted": ["pingüino de Humboldt Chile", "Humboldt penguin Chile"],
+        "shown": 6,
+        "usefulByMetadata": 1,
+        "candidates": [
+          {
+            "title": "Gaviota Dominicana Reserva Nacional Pinguino de Humboldt 02",
+            "source": "https://commons.wikimedia.org/wiki/File:Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg",
+            "description": "Gaviota Dominicana. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": false,
+            "reason": "Fauna o paisaje de la reserva cuyo nombre menciona Humboldt; no evidencia del pingüino."
+          },
+          {
+            "title": "Lagartija Reserva Nacional Pinguino de Humboldt 03",
+            "source": "https://commons.wikimedia.org/wiki/File:Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg",
+            "description": "Lagartija. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": false,
+            "reason": "Fauna o paisaje de la reserva cuyo nombre menciona Humboldt; no evidencia del pingüino."
+          },
+          {
+            "title": "Jotes Reserva Nacional Pinguino de Humboldt 04",
+            "source": "https://commons.wikimedia.org/wiki/File:Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg",
+            "description": "Jotes en la Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": false,
+            "reason": "Fauna o paisaje de la reserva cuyo nombre menciona Humboldt; no evidencia del pingüino."
+          },
+          {
+            "title": "Reserva Nacional Pinguino de Humboldt 01",
+            "source": "https://commons.wikimedia.org/wiki/File:Reserva_Nacional_Pinguino_de_Humboldt_01.jpg",
+            "description": "Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": false,
+            "reason": "Fauna o paisaje de la reserva cuyo nombre menciona Humboldt; no evidencia del pingüino."
+          },
+          {
+            "title": "Pinguino de Humboldt Reserva Nacional Pinguino de Humboldt 07",
+            "source": "https://commons.wikimedia.org/wiki/File:Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg",
+            "description": "Pinguino de Humboldt. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          },
+          {
+            "title": "Reserva Nacional Pinguino de Humboldt 11",
+            "source": "https://commons.wikimedia.org/wiki/File:Reserva_Nacional_Pinguino_de_Humboldt_11.jpg",
+            "description": "Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": false,
+            "reason": "Fauna o paisaje de la reserva cuyo nombre menciona Humboldt; no evidencia del pingüino."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["pingüino de Humboldt Chile", "Humboldt penguin Chile"],
+        "shown": 6,
+        "usefulByMetadata": 6,
+        "candidates": [
+          {
+            "title": "Spheniscus humboldti, Quelalmahue, Chile 1",
+            "source": "https://commons.wikimedia.org/wiki/File:Spheniscus_humboldti,_Quelalmahue,_Chile_1.jpg",
+            "description": "A group of Humboldt Penguins Spheniscus humboldti , Quelalmahue, Los Lagos Region, Chile",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          },
+          {
+            "title": "Pinguino de Humboldt Reserva Nacional Pinguino de Humboldt 07",
+            "source": "https://commons.wikimedia.org/wiki/File:Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg",
+            "description": "Pinguino de Humboldt. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          },
+          {
+            "title": "Humboldt Penguin in a cliff",
+            "source": "https://commons.wikimedia.org/wiki/File:Humboldt_Penguin_in_a_cliff.jpg",
+            "description": "Pingüino de Humboldt en un acantilado",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          },
+          {
+            "title": "Lonely Humboldt Penguin",
+            "source": "https://commons.wikimedia.org/wiki/File:Lonely_Humboldt_Penguin.jpg",
+            "description": "Solitario Pingüino de Humboldt",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          },
+          {
+            "title": "Magellanic & Humboldt Penguins (48368399497)",
+            "source": "https://commons.wikimedia.org/wiki/File:Magellanic_%26_Humboldt_Penguins_(48368399497).jpg",
+            "description": "Cachagua, Chile",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          },
+          {
+            "title": "Humboldt Penguins (49656575256)",
+            "source": "https://commons.wikimedia.org/wiki/File:Humboldt_Penguins_(49656575256).jpg",
+            "description": "Humboldt penguins thrive in the cool waters around Isla Pan de Azucar off northern Chile.",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica Humboldt y localización en Chile; no zoológico extranjero."
+          }
+        ]
+      }
+    },
+    {
+      "id": "fossil",
+      "requirements": {
+        "subject": "Fósil de dinosaurio en museo",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true
+      },
+      "before": {
+        "queriesExecuted": ["fósil dinosaurio museo", "dinosaur fossil museum"],
+        "shown": 2,
+        "usefulByMetadata": 1,
+        "candidates": [
+          {
+            "title": "Velafrons coahuilensis skull",
+            "source": "https://commons.wikimedia.org/wiki/File:Velafrons_coahuilensis_skull.jpg",
+            "description": "Velafrons coahuilensis skull at Desert Museum in Saltillo Coahuila, Mexico.",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica fósil/esqueleto de dinosaurio expuesto en museo; no certifica si las piezas son originales o réplicas."
+          },
+          {
+            "title": "Natural History Museum, London, Dinosaur Gallery - fossil design",
+            "source": "https://commons.wikimedia.org/wiki/File:Natural_History_Museum,_London,_Dinosaur_Gallery_-_fossil_design.jpg",
+            "description": "Natural History Museum, London, Dinosaur Gallery",
+            "usefulByMetadata": false,
+            "reason": "Galería genérica sin evidencia suficiente del fósil, o imagen estereoscópica."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["fósil dinosaurio museo", "dinosaur fossil museum", "dinosaur skeleton museum"],
+        "shown": 6,
+        "usefulByMetadata": 5,
+        "candidates": [
+          {
+            "title": "Natural History Museum, London, Dinosaur Gallery - fossil design",
+            "source": "https://commons.wikimedia.org/wiki/File:Natural_History_Museum,_London,_Dinosaur_Gallery_-_fossil_design.jpg",
+            "description": "Natural History Museum, London, Dinosaur Gallery",
+            "usefulByMetadata": false,
+            "reason": "Galería genérica sin evidencia suficiente del fósil, o imagen estereoscópica."
+          },
+          {
+            "title": "Dinosaur skeleton, Museum national d'histoire naturelle, Paris",
+            "source": "https://commons.wikimedia.org/wiki/File:Dinosaur_skeleton,_Museum_national_d%27histoire_naturelle,_Paris.jpg",
+            "description": "Dinosaur skeleton (Allosaurus fragilis), Museum national d'histoire naturelle, Paris.",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica fósil/esqueleto de dinosaurio expuesto en museo; no certifica si las piezas son originales o réplicas."
+          },
+          {
+            "title": "Duck-Billed Dinosaur skeletons at American Museum of Natural History",
+            "source": "https://commons.wikimedia.org/wiki/File:Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg",
+            "description": "Duck-Billed Dinosaur skeletons at American Museum of Natural History",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica fósil/esqueleto de dinosaurio expuesto en museo; no certifica si las piezas son originales o réplicas."
+          },
+          {
+            "title": "Cetiosaurus Dinosaur Skeleton, Leicester Museum - geograph.org.uk - 7771936",
+            "source": "https://commons.wikimedia.org/wiki/File:Cetiosaurus_Dinosaur_Skeleton,_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg",
+            "description": "Cetiosaurus Dinosaur Skeleton, Leicester Museum",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica fósil/esqueleto de dinosaurio expuesto en museo; no certifica si las piezas son originales o réplicas."
+          },
+          {
+            "title": "World's tallest mounted dinosaur skeleton Brachiosaurus brancai",
+            "source": "https://commons.wikimedia.org/wiki/File:World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg",
+            "description": "The tallest mounted dinosaur skeleton in the world according to the Guinness Book of Records. Brachiosaurus brancai stands 13.27 metres tall in the Museum für Naturkunde, Berlin.",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica fósil/esqueleto de dinosaurio expuesto en museo; no certifica si las piezas son originales o réplicas."
+          },
+          {
+            "title": "PXL 20231218 111916909 Natural History Museum Exhibits 38 armored, dinosaur skeleton, such as an Ankylosaurus",
+            "source": "https://commons.wikimedia.org/wiki/File:PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored,_dinosaur_skeleton,_such_as_an_Ankylosaurus.jpg",
+            "description": "Natural History Museum Exhibits armored, dinosaur skeleton, such as an Ankylosaurus",
+            "usefulByMetadata": true,
+            "reason": "Ficha identifica fósil/esqueleto de dinosaurio expuesto en museo; no certifica si las piezas son originales o réplicas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "fruit",
+      "requirements": {
+        "subject": "Mercado de frutas",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true
+      },
+      "before": {
+        "queriesExecuted": ["mercado de frutas", "fruit market"],
+        "shown": 6,
+        "usefulByMetadata": 1,
+        "candidates": [
+          {
+            "title": "Mercado de Frutas y Verduras - Madrid Rio (Arganzuela)",
+            "source": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_(Arganzuela).JPG",
+            "description": "Esquina del viejo Mercado de Frutas y Verduras",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Mercado de Frutas de Legazpi 02",
+            "source": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_de_Legazpi_02.jpg",
+            "description": "Mercado Central de Frutas y Verduras de Legazpi",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Yau Ma Tei Fruit Market (Hong Kong)",
+            "source": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Fruit_Market_(Hong_Kong).jpg",
+            "description": "Yau Ma Tei Fruit Market, Kowloon, Hong Kong.",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Yau Ma Tei Fruit Market in April 2022",
+            "source": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg",
+            "description": "Shek Lung Street, Yau Ma Tei Fruit Market",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Yau Ma Tei Fruit Market at night 20231214",
+            "source": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg",
+            "description": "Yau Ma Tei Fruit Market at night on 14 December 2023",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "202303 Yau Ma Tei Fruit Market (油麻地果欄)",
+            "source": "https://commons.wikimedia.org/wiki/File:202303_Yau_Ma_Tei_Fruit_Market_(%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84).jpg",
+            "description": "Yau Ma Tei Fruit Market (油麻地果欄) in Hong Kong, March 2023",
+            "usefulByMetadata": true,
+            "reason": "Categorías documentan puestos/tiendas de fruta (y productos en el segundo caso)."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["mercado de frutas", "fruit market"],
+        "shown": 6,
+        "usefulByMetadata": 2,
+        "candidates": [
+          {
+            "title": "Mercado de Frutas y Verduras - Madrid Rio (Arganzuela)",
+            "source": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_(Arganzuela).JPG",
+            "description": "Esquina del viejo Mercado de Frutas y Verduras",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Mercado de Frutas de Legazpi 02",
+            "source": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_de_Legazpi_02.jpg",
+            "description": "Mercado Central de Frutas y Verduras de Legazpi",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Mercado de Frutas de Legazpi 01",
+            "source": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_de_Legazpi_01.jpg",
+            "description": "Mercado Central de Frutas y Verduras de Legazpi",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "Patio del Mercado de Frutas de Legazpi",
+            "source": "https://commons.wikimedia.org/wiki/File:Patio_del_Mercado_de_Frutas_de_Legazpi.jpg",
+            "description": "La renta media por persona en la ciudad de Madrid se situó en 14.115,6 euros en 2015, mientras que los ingresos anuales medios por hogar fueron de 32.697 euros. Son algunos de los datos de la Encuesta de Condiciones de Vida de la ciudad de Madrid publicada recientemente.",
+            "usefulByMetadata": false,
+            "reason": "Edificio, patio, fachada o calle; no evidencia suficiente de puestos/frutas visibles."
+          },
+          {
+            "title": "202303 Yau Ma Tei Fruit Market (油麻地果欄)",
+            "source": "https://commons.wikimedia.org/wiki/File:202303_Yau_Ma_Tei_Fruit_Market_(%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84).jpg",
+            "description": "Yau Ma Tei Fruit Market (油麻地果欄) in Hong Kong, March 2023",
+            "usefulByMetadata": true,
+            "reason": "Categorías documentan puestos/tiendas de fruta (y productos en el segundo caso)."
+          },
+          {
+            "title": "HK Yau Ma Tei Wholesale Fruit Market retailing shop Jan-2014 03",
+            "source": "https://commons.wikimedia.org/wiki/File:HK_Yau_Ma_Tei_Wholesale_Fruit_Market_retailing_shop_Jan-2014_03.JPG",
+            "description": "油麻地果欄",
+            "usefulByMetadata": true,
+            "reason": "Categorías documentan puestos/tiendas de fruta (y productos en el segundo caso)."
+          }
+        ]
+      }
+    },
+    {
+      "id": "classroom",
+      "requirements": {
+        "subject": "Sala de clases",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true
+      },
+      "before": {
+        "queriesExecuted": ["sala de clases", "classroom interior"],
+        "shown": 5,
+        "usefulByMetadata": 5,
+        "candidates": [
+          {
+            "title": "Sala de clases (3217639603)",
+            "source": "https://commons.wikimedia.org/wiki/File:Sala_de_clases_(3217639603).jpg",
+            "description": "Sala de clases",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "FOTO 4. Estudiantes en clases y en sala de la facultad de educación",
+            "source": "https://commons.wikimedia.org/wiki/File:FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg",
+            "description": "Se puede observar un salón de clases y estudiantes mayormente de una edad adulta. Ellos se muestran atentos a clases. En sala se muestran comunicativos y concentrados en su portátil.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Sala de clases FEN",
+            "source": "https://commons.wikimedia.org/wiki/File:Sala_de_clases_FEN.jpg",
+            "description": "Sala de clases FEN",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Queen's College Classroom interior 2018",
+            "source": "https://commons.wikimedia.org/wiki/File:Queen%27s_College_Classroom_interior_2018.jpg",
+            "description": "Queen's College Classroom interior",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Inside of a classroom of CU",
+            "source": "https://commons.wikimedia.org/wiki/File:Inside_of_a_classroom_of_CU.jpg",
+            "description": "Inside of a classroom of the University of Calcutta, Alipore campus. Photo taken in February 2022.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["sala de clases", "classroom interior"],
+        "shown": 6,
+        "usefulByMetadata": 6,
+        "candidates": [
+          {
+            "title": "Sala de clases FEN",
+            "source": "https://commons.wikimedia.org/wiki/File:Sala_de_clases_FEN.jpg",
+            "description": "Sala de clases FEN",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Sala de clases (3217639603)",
+            "source": "https://commons.wikimedia.org/wiki/File:Sala_de_clases_(3217639603).jpg",
+            "description": "Sala de clases",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Comienzo de clases en la escuela N 4 Artigas - 20230306dicimouysm5758",
+            "source": "https://commons.wikimedia.org/wiki/File:Comienzo_de_clases_en_la_escuela_N_4_Artigas_-_20230306dicimouysm5758.jpg",
+            "description": "Comienzo de clases en la escuela Nº 4 Artigas",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Empty interior half portable modular classroom IMG 7277",
+            "source": "https://commons.wikimedia.org/wiki/File:Empty_interior_half_portable_modular_classroom_IMG_7277.jpg",
+            "description": "empty interior half portable modular classroom",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Queen's College Classroom interior 2018",
+            "source": "https://commons.wikimedia.org/wiki/File:Queen%27s_College_Classroom_interior_2018.jpg",
+            "description": "Queen's College Classroom interior",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          },
+          {
+            "title": "Inside of a classroom of CU",
+            "source": "https://commons.wikimedia.org/wiki/File:Inside_of_a_classroom_of_CU.jpg",
+            "description": "Inside of a classroom of the University of Calcutta, Alipore campus. Photo taken in February 2022.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta aula, sala de clases o estudiantes en clases."
+          }
+        ]
+      }
+    },
+    {
+      "id": "port",
+      "requirements": {
+        "subject": "Puerto de Valparaíso",
+        "usage": "Informe",
+        "required": [],
+        "excluded": [],
+        "realPhoto": true
+      },
+      "before": {
+        "queriesExecuted": ["puerto de Valparaíso", "Valparaíso harbor"],
+        "shown": 3,
+        "usefulByMetadata": 2,
+        "candidates": [
+          {
+            "title": "Puerto de Valparaíso (dic 2007)",
+            "source": "https://commons.wikimedia.org/wiki/File:Puerto_de_Valpara%C3%ADso_(dic_2007).JPG",
+            "description": "Balsa de fuegos artificiales en el puerto de Valparaíso.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          },
+          {
+            "title": "Puerto de Valparaíso, Chile",
+            "source": "https://commons.wikimedia.org/wiki/File:Puerto_de_Valpara%C3%ADso,_Chile.JPG",
+            "description": "Puerto de Valparaíso, Chile",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          },
+          {
+            "title": "Estación Puerto, Valparaíso 20201102 12",
+            "source": "https://commons.wikimedia.org/wiki/File:Estaci%C3%B3n_Puerto,_Valpara%C3%ADso_20201102_12.jpg",
+            "description": "Estación Puerto, Valparaíso, Región de Valparaíso, Chile",
+            "usefulByMetadata": false,
+            "reason": "Estación ferroviaria Puerto; no el puerto marítimo."
+          }
+        ]
+      },
+      "after": {
+        "queriesExecuted": ["puerto de Valparaíso", "Valparaíso harbor"],
+        "shown": 6,
+        "usefulByMetadata": 5,
+        "candidates": [
+          {
+            "title": "Puerto de Valparaíso, Chile",
+            "source": "https://commons.wikimedia.org/wiki/File:Puerto_de_Valpara%C3%ADso,_Chile.JPG",
+            "description": "Puerto de Valparaíso, Chile",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          },
+          {
+            "title": "Puerto de Valparaíso (dic 2007)",
+            "source": "https://commons.wikimedia.org/wiki/File:Puerto_de_Valpara%C3%ADso_(dic_2007).JPG",
+            "description": "Balsa de fuegos artificiales en el puerto de Valparaíso.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          },
+          {
+            "title": "Muelle Prat, Puerto de Valparaíso 1",
+            "source": "https://commons.wikimedia.org/wiki/File:Muelle_Prat,_Puerto_de_Valpara%C3%ADso_1.jpg",
+            "description": "Barcos en el muelle Prat, puerto de Valparaíso, Chile.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          },
+          {
+            "title": "Estación Puerto, Valparaíso 20201102 12",
+            "source": "https://commons.wikimedia.org/wiki/File:Estaci%C3%B3n_Puerto,_Valpara%C3%ADso_20201102_12.jpg",
+            "description": "Estación Puerto, Valparaíso, Región de Valparaíso, Chile",
+            "usefulByMetadata": false,
+            "reason": "Estación ferroviaria Puerto; no el puerto marítimo."
+          },
+          {
+            "title": "J28 133 Valparaíso, Hafen",
+            "source": "https://commons.wikimedia.org/wiki/File:J28_133_Valpara%C3%ADso,_Hafen.jpg",
+            "description": "Containerkai mit Lagerplatz, die dahinterliegende »Molo de Abrigo« wird von der »Armada de Chile« als Liegeplatz genutzt.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          },
+          {
+            "title": "J28 126 Valparaíso, Container- und Militärhafen",
+            "source": "https://commons.wikimedia.org/wiki/File:J28_126_Valpara%C3%ADso,_Container-_und_Milit%C3%A4rhafen.jpg",
+            "description": "Bahía de Valparaíso, im Vordergrund der Containerhafen, die »Molo de Abrigo« dient als Liegeplatz der Armada de Chile. Im Hintergrund liegt Viña de Mar.",
+            "usefulByMetadata": true,
+            "reason": "Ficha documenta puerto/muelle/bahía de Valparaíso."
+          }
+        ]
+      }
+    }
+  ]
+}

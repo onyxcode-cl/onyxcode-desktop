@@ -70,10 +70,10 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     })
     return tail
   }
-  const par = (t: string, style?: string, align?: string): void => {
+  const par = (t: string, style?: string, align?: string, size?: number): void => {
     if (style) cmd('para.style', { style })
     cmd('para.set', { props: { keepNext: style === 'Title' || style === 'Subtitle', keepLines: false, widowControl: true } })
-    cmd('format.size', { size: style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size })
+    cmd('format.size', { size: size ?? (style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size) })
     if (style === 'Title') cmd('format.bold', { value: true })
     cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
     cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
@@ -249,7 +249,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         cmd('para.style', { style: 'Normal' })
         if (b.caption) {
           cmd('format.italic', { value: true })
-          par(b.caption, 'Normal', 'center')
+          par(b.caption, 'Normal', 'center', 9)
           cmd('format.italic', { value: false })
         }
         break

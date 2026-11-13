@@ -91,8 +91,11 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   let sectionN = 0
 
   const foot = (s: PptxSlideSpec): void => {
-    const t = s.note ?? footer
-    if (t) txt(120, 500, 640, 24, t, 11, footInk())
+    const t = s.imageCredit ?? s.note ?? footer
+    if (t) {
+      if (s.imageCredit) txt(60, 490, 840, 38, t, 12, footInk())
+      else txt(120, 500, 640, 24, t, 11, footInk())
+    }
   }
   const head = (n: number, s: PptxSlideSpec): void => {
     header(n, s.title ?? '', s.eyebrow)

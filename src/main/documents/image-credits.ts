@@ -1,16 +1,26 @@
 /** Créditos de recursos comprobados por main. Nunca lee ni confía en JSON de procedencia escrito por el modelo. */
 import JSZip from 'jszip'
-import { MAX_DOCX_BLOCKS, MAX_SLIDES, type PptxSlideSpec } from '@shared/chat-doc-spec'
+import { MAX_DOCX_TEXT_CHARS, MAX_SPEAKER_NOTES_CHARS, MAX_SLIDES, type PptxSlideSpec } from '@shared/chat-doc-spec'
 import type { ChatDocInput } from './engine'
 import type { ReviewResult } from './review'
 import { OutputPathError } from './output-path'
 import { extractKnowledgeText } from '../projects/extract'
 import { layoutOf } from '../office/craft/chat-deck'
+import { decodeHtmlText, htmlImageTags } from './html-images'
 
 /** `path` es la referencia exacta que usa el documento, ya resuelta y cotejada por hash por el servidor. */
 export interface ImageCredit {
   path: string
   credit: string
+  attribution?: {
+    author: string
+    license: string
+    provider: string
+    source: string
+    licenseUrl: string
+    notices?: string
+    transformations?: string[]
+  }
 }
 
 function chunks(text: string, max: number): string[] {
@@ -26,39 +36,81 @@ function chunks(text: string, max: number): string[] {
   return out
 }
 
-// Los alias absolutos de PDF/WSL no deben revelar carpetas personales al compartir el documento.
-function resourceName(path: string): string {
-  return path.split(/[\\/]/).at(-1) || 'foto'
-}
-
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
-/** No modifica el input. Los créditos completos cuentan contra los mismos límites que el contenido del documento. */
+/** Campos provenientes de la ficha comprobada por main; nunca se interpreta el crédito libre como una licencia. */
+export function imageCreditCaption(asset: ImageCredit): string {
+  const a = asset.attribution
+  if (!a) return asset.credit
+  return [`Foto: ${a.author} · ${a.license} · ${a.provider}${a.transformations?.length ? ' · ajustada' : ''}`, a.notices]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+const CAPTION_STYLE =
+  'display:block!important;visibility:visible!important;opacity:1!important;color:#333!important;font:8pt Arial!important;line-height:1.15!important;position:static!important;overflow:visible!important;height:auto!important;margin:2pt 0 3pt!important;white-space:normal!important;overflow-wrap:anywhere!important;break-before:avoid!important;break-inside:avoid!important'
+
+function captionHtml(asset: ImageCredit, text: string): string {
+  const a = asset.attribution
+  // Las URL proceden de main. Se vuelven a validar para no convertir metadatos en enlaces ejecutables.
+  const link = (url: string, label: string): string => {
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return escapeHtml(label)
+      return `<a href="${escapeHtml(parsed.href)}" style="color:inherit!important">${escapeHtml(label)}</a>`
+    } catch {
+      return escapeHtml(label)
+    }
+  }
+  return `<small style="${CAPTION_STYLE}">${escapeHtml(text)}${a ? ` · ${link(a.source, 'Fuente')} · ${link(a.licenseUrl, 'Licencia')}` : ''}</small>`
+}
+
+/** No modifica el input. Los créditos se colocan junto a la foto y no crean una sección final por defecto. */
 export function attachImageCredits(
   input: ChatDocInput,
   assets: readonly ImageCredit[]
 ): { input: ChatDocInput; expectedCredits: string[] } {
   if (!assets.length || input.kind === 'xlsx') return { input, expectedCredits: [] }
   const unique = [...new Map(assets.map((asset) => [asset.path, asset])).values()]
-  if (unique.some((asset) => !asset.credit.trim() || asset.credit.length > 12_000))
+  if (unique.some((asset) => !asset.credit.trim() || asset.credit.length > 12_000 || imageCreditCaption(asset).length > 12_000))
     throw new OutputPathError('size', 'El crédito de una imagen está vacío o es demasiado largo; elige otra imagen.')
   const expectedCredits: string[] = []
   if (input.kind === 'pptx') {
-    const slides = [...input.data.slides]
+    const slides = input.data.slides.map((slide) => ({ ...slide }))
     for (const asset of unique) {
+      const caption = imageCreditCaption(asset)
       const uses = input.data.slides.flatMap((slide, index) => {
         if (slide.image?.path !== asset.path) return []
         if (!['cover', 'image'].includes(layoutOf(slide, index)))
           throw new OutputPathError('name', 'Una foto con crédito necesita una lámina cover o image para quedar insertada.')
-        return [index + 1]
+        return [index]
       })
       if (!uses.length) continue
-      expectedCredits.push(asset.credit)
-      const pieces = chunks(asset.credit, 300)
+      expectedCredits.push(caption)
+      const overflow: number[] = []
+      for (const index of uses) {
+        const slide = slides[index]
+        const originalNote = slide.note ?? input.data.footer ?? ''
+        const foot = originalNote.includes(caption) ? originalNote : [originalNote, caption].filter(Boolean).join(' · ')
+        if (foot.length <= 240) slide.imageCredit = foot
+        else overflow.push(index + 1)
+        // El pie visible es breve; la ficha íntegra sigue disponible al presentar y en el JSON de procedencia.
+        const notes = [slide.speaker_notes, asset.credit].filter(Boolean).join('\n\n')
+        if (notes.length <= MAX_SPEAKER_NOTES_CHARS) slide.speaker_notes = notes
+        else if (asset.attribution) {
+          const links = `${asset.attribution.source}\n${asset.attribution.licenseUrl}`
+          const withLinks = [slide.speaker_notes, links].filter(Boolean).join('\n\n')
+          if (withLinks.length > MAX_SPEAKER_NOTES_CHARS)
+            throw new OutputPathError('size', 'No caben los enlaces de atribución en las notas; acorta las notas de la lámina.')
+          slide.speaker_notes = withLinks
+        }
+      }
+      if (!overflow.length) continue
+      const pieces = chunks(caption, 300)
       for (let offset = 0; offset < pieces.length; offset += 3) {
-        const title = `Créditos de imágenes · lámina${uses.length > 1 ? 's' : ''} ${uses.join(', ')}`
+        const title = `Fotos · lámina${overflow.length > 1 ? 's' : ''} ${overflow.join(', ')}`
         const slide: PptxSlideSpec = {
           title,
           layout: 'free',
@@ -85,32 +137,77 @@ export function attachImageCredits(
     return { input: { ...input, data: { ...input.data, slides } }, expectedCredits }
   }
   if (input.kind === 'docx') {
-    const images = input.data.blocks.filter((block) => block.type === 'image')
-    const paragraphs = unique.flatMap((asset) => {
-      const uses = images.flatMap((block, index) => (block.path === asset.path ? [index + 1] : []))
-      if (!uses.length) return []
-      expectedCredits.push(asset.credit)
-      return chunks(`Imagen${uses.length > 1 ? 'es' : ''} ${uses.join(', ')} (${resourceName(asset.path)}). ${asset.credit}`, 4500).map(
-        (text) => ({
-          type: 'paragraph' as const,
-          text
-        })
-      )
+    const byPath = new Map(unique.map((asset) => [asset.path, asset]))
+    const blocks = input.data.blocks.map((block) => {
+      const asset = block.type === 'image' ? byPath.get(block.path) : undefined
+      if (!asset || block.type !== 'image') return block
+      const caption = imageCreditCaption(asset)
+      if (!expectedCredits.includes(caption)) expectedCredits.push(caption)
+      const linked = asset.attribution ? `${caption}\n${asset.attribution.source} · ${asset.attribution.licenseUrl}` : caption
+      const previousCaption = block.caption ?? ''
+      const text = previousCaption.includes(linked)
+        ? previousCaption
+        : previousCaption.includes(caption) && asset.attribution
+          ? `${previousCaption}\n${asset.attribution.source} · ${asset.attribution.licenseUrl}`
+          : [previousCaption, linked].filter(Boolean).join('\n')
+      if (text.length > MAX_DOCX_TEXT_CHARS)
+        throw new OutputPathError('size', 'No cabe el crédito bajo la foto; elige una imagen con una atribución más breve.')
+      return { ...block, caption: text }
     })
-    if (!paragraphs.length) return { input, expectedCredits }
-    const blocks = [...input.data.blocks, { type: 'heading' as const, level: 1 as const, text: 'Créditos de imágenes' }, ...paragraphs]
-    if (blocks.length > MAX_DOCX_BLOCKS)
-      throw new OutputPathError('size', 'No caben los créditos de las fotos: reduce los bloques de contenido o la cantidad de fotos.')
     return { input: { ...input, data: { ...input.data, blocks } }, expectedCredits }
   }
-  // El servidor ya filtró los recursos usados en src/url y conserva las referencias originales hasta después de este paso.
-  const paragraphs = unique.map((asset, index) => {
-    expectedCredits.push(asset.credit)
-    return `<p style="display:block!important;visibility:visible!important;opacity:1!important;color:#111!important;font:11pt Arial!important;position:static!important;overflow:visible!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere!important">Recurso ${index + 1} (${escapeHtml(resourceName(asset.path))}). ${escapeHtml(asset.credit)}</p>`
-  })
-  const section = `<section style="display:block!important;visibility:visible!important;opacity:1!important;position:static!important;overflow:visible!important;height:auto!important;background:#fff!important;color:#111!important;break-inside:avoid"><h2 style="font:18pt Arial!important;color:#111!important">Créditos de imágenes</h2>${paragraphs.join('')}</section>`
-  const html = /<\/body\s*>/i.test(input.html) ? input.html.replace(/<\/body\s*>/i, `${section}</body>`) : input.html + section
-  return { input: { ...input, html }, expectedCredits }
+  let html = input.html
+  const fixed: string[] = []
+  for (const asset of unique) {
+    const caption = imageCreditCaption(asset)
+    let matched = false
+    for (const image of htmlImageTags(html).reverse()) {
+      if (image.source !== asset.path) continue
+      matched = true
+      const tail = html.slice(image.end)
+      const existingMatch = /^\s*<(figcaption|p|small)\b(?:"[^"]*"|'[^']*'|[^'">])*?>([\s\S]*?)<\/\1\s*>/i.exec(tail)
+      const existing = decodeHtmlText((existingMatch?.[2] ?? '').replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]*>/g, ''))
+        .trim()
+        .replace(/ · Fuente · Licencia$/, '')
+      const creditStart = /(?:^|\s)(?:Foto|Fotografía):\s*/i.exec(existing)
+      const attributionText = creditStart ? comparable(existing.slice(creditStart.index)).toLowerCase() : ''
+      const partialCredit =
+        asset.attribution &&
+        creditStart &&
+        attributionText.includes(comparable(asset.attribution.author).toLowerCase()) &&
+        attributionText.includes(comparable(asset.attribution.license).toLowerCase())
+      // Solo se reutiliza un pie inmediatamente bajo ESTA imagen, reconstruido con estilo visible.
+      if (
+        existingMatch &&
+        (comparable(existing).includes(comparable(caption)) || comparable(existing).includes(comparable(asset.credit)))
+      ) {
+        expectedCredits.push(existing)
+        html = html.slice(0, image.end) + captionHtml(asset, existing) + tail.slice(existingMatch[0].length)
+      } else if (existingMatch && partialCredit) {
+        // El modelo suele omitir el ajuste o los avisos del pie breve. Completar ese mismo pie
+        // desde main evita dos atribuciones; la descripción anterior a «Foto:» se conserva.
+        const description = existing.slice(0, creditStart.index).trim()
+        expectedCredits.push(caption)
+        html =
+          html.slice(0, image.end) +
+          captionHtml(asset, [description, caption].filter(Boolean).join(' ')) +
+          tail.slice(existingMatch[0].length)
+      } else {
+        expectedCredits.push(caption)
+        html = html.slice(0, image.end) + captionHtml(asset, caption) + tail
+      }
+    }
+    if (!matched) {
+      // Fondos CSS: pie fijo en la misma página, sin agregar bloques al flujo ni hojas de créditos.
+      expectedCredits.push(caption)
+      fixed.push(captionHtml(asset, caption))
+    }
+  }
+  if (fixed.length) {
+    const footer = `<aside style="position:fixed!important;bottom:3mm!important;left:12mm!important;right:12mm!important;background:#fff!important;z-index:2147483647!important">${fixed.join('')}</aside>`
+    html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, `${footer}</body>`) : html + footer
+  }
+  return { input: { ...input, html }, expectedCredits: [...new Set(expectedCredits)] }
 }
 
 function decodeXml(text: string): string {

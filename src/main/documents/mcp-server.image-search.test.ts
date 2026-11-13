@@ -32,6 +32,17 @@ afterEach(async () => {
 })
 
 describe('entrada de búsqueda de fotos', () => {
+  it.each(['horizontal', 'vertical', 'cuadrada', 'cualquiera', 'landscape', 'portrait', 'square', 'any'])(
+    'admite orientation=%s también dentro de requirements sin perder una llamada',
+    async (orientation) => {
+      const args = { queries, requirements: { subject: 'Cafetería', usage: 'Portada', orientation } }
+      expect((await server.search({ folder: root }, args)).isError).not.toBe(true)
+      expect(search).toHaveBeenLastCalledWith(args)
+      expect(IMAGE_TOOLS[0].inputSchema.properties.requirements.properties.orientation.enum).toContain(orientation)
+      expect(IMAGE_TOOLS[0].inputSchema.properties.orientation.enum).toContain(orientation)
+    }
+  )
+
   it('publica ficha mínima y permite segunda ronda sin repetir requisitos', async () => {
     const schema = IMAGE_TOOLS[0].inputSchema
     expect(schema.required).toEqual(['queries'])

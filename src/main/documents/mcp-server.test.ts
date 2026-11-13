@@ -612,6 +612,13 @@ describe('crear: pase 4', () => {
 })
 
 describe('pdf con imágenes de la carpeta', () => {
+  it('resuelve el src real con entidades sin atribuir data-src, comentarios ni texto de scripts', () => {
+    const html =
+      '<!-- <img src="comentario.jpg"> --><script>"<img src=script.jpg>"</script>' +
+      '<img data-src="equivocada.jpg" alt="a > b" src="img/caf&#233;.jpg"><img src=sin-comillas.png>'
+    expect(localImageRefs(html)).toEqual(['img/café.jpg', 'sin-comillas.png'])
+  })
+
   it('localImageRefs encuentra rutas relativas y descarta data: y http (una ruta absoluta se deja pasar para que se rechace con mensaje)', () => {
     const html =
       '<img src="logo.png"><img src="data:image/png;base64,xx"><img src="https://x/y.png"><div style="background:url(fondo.jpg)"></div><img src="/abs.png">'

@@ -35,7 +35,7 @@ const metadata = {
 function page(id = 1, meta = metadata) {
   return {
     pageid: id,
-    title: `File:Photo ${id}.jpg`,
+    title: `File:Coffee shop interior Photo ${id}.jpg`,
     imageinfo: [
       {
         url: `https://upload.wikimedia.org/wikipedia/commons/a/ab/Photo${id}.jpg`,
@@ -250,7 +250,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     const service = new FreeImagesService({ fetch, processor })
     await service.search(input)
     await service.search(input)
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(2) // One blocked attempt per provider, retained across rounds.
     const large = new FreeImagesService({
       fetch: fakeFetch((u) =>
         u.hostname === 'commons.wikimedia.org'
@@ -319,7 +319,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     ) as typeof globalThis.fetch
     const service = new FreeImagesService({ fetch, processor, now: () => now, sleep })
     expect((await service.search(input)).candidates).toEqual([])
-    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(fetch).toHaveBeenCalledTimes(4) // Three Commons attempts and one bounded secondary-index attempt.
     expect(sleep).toHaveBeenCalledTimes(2)
     expect(sleep.mock.calls.reduce((total, [ms]) => total + ms, 0)).toBe(10000)
   })
@@ -337,7 +337,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     expect(sleep).toHaveBeenCalledExactlyOnceWith(5000)
     const denied = vi.fn(async () => new Response('', { status: 403 })) as typeof globalThis.fetch
     expect((await new FreeImagesService({ fetch: denied, processor, sleep }).search(input)).candidates).toEqual([])
-    expect(denied).toHaveBeenCalledTimes(1)
+    expect(denied).toHaveBeenCalledTimes(2) // One Commons attempt and one secondary-index attempt; no 403 retry.
   })
   it('agrupa dos finalistas, reutiliza la ficha y descarga cada original una sola vez entre ver y usar', async () => {
     const secondBytes = Buffer.concat([bytes, Buffer.from('second')])
@@ -358,8 +358,8 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     const urls = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)))
     expect(urls.filter((url) => url.searchParams.has('pageids')).map((url) => url.searchParams.get('pageids'))).toEqual(['1|2'])
     expect(urls.filter((url) => url.hostname === 'upload.wikimedia.org')).toHaveLength(2)
-    // Two batched searches, two thumbnails, one finalist metadata batch and two originals.
-    expect(urls).toHaveLength(7)
+    // Two queries + two bounded variants + one secondary index; two thumbnails, one finalist batch and two originals.
+    expect(urls).toHaveLength(10)
   })
   it('hereda ficha/tamaño al continuar por searchId, acepta ajustes y no permite una tercera ronda sin id', async () => {
     const service = new FreeImagesService({ fetch: fakeFetch(), processor })
@@ -420,5 +420,180 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     const service = new FreeImagesService({ fetch: fakeFetch(), processor })
     expect((await service.search({ ...input, orientation: 'portrait' })).candidates).toHaveLength(0)
     await expect(service.search({ ...input, queries: ['single'] })).rejects.toThrow('dos o tres')
+  })
+})
+
+describe('tercera ronda: orientación, cobertura y verificación de origen', () => {
+  it.each(['landscape', 'horizontal', 'any', 'cualquiera'] as const)(
+    'acepta requirements.orientation=%s y la conserva en la segunda ronda',
+    async (orientation) => {
+      const service = new FreeImagesService({ fetch: fakeFetch(), processor })
+      const first = await service.search({ ...input, requirements: { ...input.requirements!, orientation } })
+      expect(first.candidates).toHaveLength(1)
+      const second = await service.search({
+        searchId: first.searchId,
+        queries: ['café interior', 'cafe interior'],
+        requirements: { subject: input.requirements!.subject, usage: 'portada' }
+      })
+      const id = second.candidates[0].id
+      await service.view([id])
+      const asset = await service.use(id, evaluation)
+      expect(asset.provenance.requirements.orientation).toBe(['any', 'cualquiera'].includes(orientation) ? 'any' : 'landscape')
+      expect(asset.provenance.requirements.required).toEqual(input.requirements!.required)
+    }
+  )
+  it.each(['portrait', 'vertical', 'square', 'cuadrada'] as const)(
+    'filtra horizontales ante orientation=%s en requirements',
+    async (orientation) => {
+      expect(
+        (
+          await new FreeImagesService({ fetch: fakeFetch(), processor }).search({
+            ...input,
+            requirements: { ...input.requirements!, orientation }
+          })
+        ).candidates
+      ).toEqual([])
+    }
+  )
+  it('rechaza orientación desconocida y dos orientaciones contradictorias antes de red', async () => {
+    const fetch = fakeFetch(),
+      service = new FreeImagesService({ fetch, processor })
+    await expect(service.search({ ...input, orientation: 'diagonal' as 'any' })).rejects.toThrow('Orientación inválida')
+    await expect(
+      service.search({ ...input, orientation: 'portrait', requirements: { ...input.requirements!, orientation: 'horizontal' } })
+    ).rejects.toThrow('contradice')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+  it('preserva relevancia index de Commons y excluye watermark en plantilla/título, no copyright del autor', () => {
+    const first = { ...page(1), index: 9 },
+      second = { ...page(2), index: 1 }
+    expect(parseCommonsImages(response([first, second])).map((p) => p.pageId)).toEqual([2, 1])
+    const marked = page(3, { ...metadata, Categories: { value: 'Watermarked images' } } as typeof metadata)
+    expect(parseCommonsImages(response([marked]))).toEqual([])
+    const copyrightTitle = { ...page(), title: 'File:Photo copyright Example.jpg' }
+    expect(parseCommonsImages(response([copyrightTitle]))).toEqual([])
+    expect(parseCommonsImages(response([page(1, { ...metadata, Artist: { value: '© Example photographer' } })]))).toHaveLength(1)
+  })
+  it('amplía por su cuenta una consulta pobre y conserva resultado aunque otra consulta falle', async () => {
+    const fetch = fakeFetch((u) => {
+      if (u.hostname === 'api.openverse.org') return Response.json({ results: [] })
+      if (u.hostname !== 'commons.wikimedia.org') return new Response(new Uint8Array(bytes))
+      const q = u.searchParams.get('gsrsearch') ?? ''
+      if (q.startsWith('coffee shop interior')) return Response.json(response())
+      if (q.startsWith('cafe interior')) throw new Error('temporary timeout')
+      return Response.json(response([]))
+    })
+    const found = await new FreeImagesService({ fetch, processor }).search({
+      queries: ['cafetería de barrio', 'neighborhood cafe'],
+      requirements: { subject: 'cafetería de barrio', usage: 'portada' }
+    })
+    expect(found.candidates).toHaveLength(1)
+    const queries = vi
+      .mocked(fetch)
+      .mock.calls.map(([url]) => new URL(String(url)))
+      .filter((url) => url.searchParams.has('gsrsearch'))
+    expect(queries.map((url) => url.searchParams.get('gsrsearch'))).toContain('coffee shop interior filetype:bitmap')
+    expect(queries.every((url) => url.searchParams.get('gsrsort') === 'relevance')).toBe(true)
+    expect(found.notice).toContain('Siguiente paso obligatorio')
+  })
+  it('una segunda consulta caída no borra las candidatas ya comprobadas', async () => {
+    let calls = 0
+    const fetch = fakeFetch((u) => {
+      if (u.hostname === 'api.openverse.org') return Response.json({ results: [] })
+      if (u.hostname !== 'commons.wikimedia.org') return new Response(new Uint8Array(bytes))
+      if (++calls === 1) return Response.json(response())
+      throw new Error('offline')
+    })
+    expect((await new FreeImagesService({ fetch, processor }).search(input)).candidates).toHaveLength(1)
+    expect(calls).toBe(2)
+  })
+  const reference = () => ({
+    id: '00000000-0000-4000-8000-000000000001',
+    source: 'wikimedia',
+    provider: 'wikimedia',
+    foreign_landing_url: 'https://commons.wikimedia.org/wiki/File:Photo1.jpg',
+    url: page().imageinfo[0].url,
+    license: 'by-sa',
+    license_version: '4.0',
+    license_url: metadata.LicenseUrl.value
+  })
+  it('Openverse rescata búsqueda vacía sólo tras comprobar Commons y vuelve a comprobar al usar', async () => {
+    let changed = false
+    const fetch = fakeFetch((u) => {
+      if (u.hostname === 'api.openverse.org') return Response.json({ results: [reference()] })
+      if (u.hostname !== 'commons.wikimedia.org') return new Response(new Uint8Array(bytes))
+      if (u.searchParams.has('generator')) return Response.json(response([]))
+      return Response.json(response([page(1, changed ? { ...metadata, LicenseShortName: { value: 'CC BY-NC 4.0' } } : metadata)]))
+    })
+    let now = Date.now()
+    const service = new FreeImagesService({ fetch, processor, now: () => now })
+    const found = await service.search(input)
+    expect(found.candidates).toHaveLength(1)
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => new URL(String(url)).searchParams.get('titles') === 'File:Photo1.jpg')).toBe(true)
+    await service.view([found.candidates[0].id])
+    changed = true
+    now += 120001
+    await expect(service.use(found.candidates[0].id, evaluation)).rejects.toThrow('licencia')
+  })
+  it.each([
+    { url: 'https://127.0.0.1/private.jpg' },
+    { foreign_landing_url: 'https://evil.test/wiki/File:Photo1.jpg' },
+    { license: 'by-nc' },
+    { license_url: 'https://creativecommons.org/licenses/by/4.0/' },
+    { source: 'flickr', provider: 'flickr' }
+  ])('rechaza Openverse sin identidad/licencia verificable %j', async (patch) => {
+    const fetch = fakeFetch((u) => {
+      if (u.hostname === 'api.openverse.org') return Response.json({ results: [{ ...reference(), ...patch }] })
+      if (u.hostname !== 'commons.wikimedia.org') throw new Error('No debe descargar')
+      return Response.json(u.searchParams.has('generator') ? response([]) : response())
+    })
+    expect((await new FreeImagesService({ fetch, processor }).search(input)).candidates).toEqual([])
+    expect(
+      vi.mocked(fetch).mock.calls.every(([url]) => ['api.openverse.org', 'commons.wikimedia.org'].includes(new URL(String(url)).hostname))
+    ).toBe(true)
+  })
+})
+
+describe('miniatura sin escalar y límites por proveedor', () => {
+  it('acepta thumbnail_unscaled sólo verificando el original por SHA1 y dimensiones reales', async () => {
+    const original = page()
+    original.imageinfo[0].thumburl = `${original.imageinfo[0].url}?utm_content=thumbnail_unscaled`
+    original.imageinfo[0].thumbwidth = 1280
+    original.imageinfo[0].thumbheight = 853
+    const fetch = fakeFetch((u) =>
+      u.hostname === 'commons.wikimedia.org'
+        ? Response.json(response([original]))
+        : u.hostname === 'api.openverse.org'
+          ? Response.json({ results: [] })
+          : new Response(new Uint8Array(bytes))
+    )
+    const found = await new FreeImagesService({ fetch, processor }).search(input)
+    expect(found.candidates).toHaveLength(1)
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('utm_content'))).toBe(false)
+    const altered = Buffer.concat([bytes, Buffer.from('different original')])
+    const badFetch = fakeFetch((u) =>
+      u.hostname === 'commons.wikimedia.org'
+        ? Response.json(response([original]))
+        : u.hostname === 'api.openverse.org'
+          ? Response.json({ results: [] })
+          : new Response(new Uint8Array(altered))
+    )
+    expect((await new FreeImagesService({ fetch: badFetch, processor }).search(input)).candidates).toEqual([])
+  })
+  it('un Retry-After largo del índice secundario no bloquea ver/usar un original de Commons', async () => {
+    const fetch = fakeFetch((u) =>
+      u.hostname === 'commons.wikimedia.org'
+        ? Response.json(response())
+        : u.hostname === 'api.openverse.org'
+          ? new Response('', { status: 429, headers: { 'retry-after': '3600' } })
+          : new Response(new Uint8Array(bytes))
+    )
+    const sleep = vi.fn(async () => undefined)
+    const service = new FreeImagesService({ fetch, processor, sleep })
+    const found = await service.search(input)
+    expect(found.candidates).toHaveLength(1)
+    await service.view([found.candidates[0].id])
+    expect((await service.use(found.candidates[0].id, evaluation)).provenance.status).toBe('licencia-comprobada')
+    expect(sleep).not.toHaveBeenCalled()
   })
 })

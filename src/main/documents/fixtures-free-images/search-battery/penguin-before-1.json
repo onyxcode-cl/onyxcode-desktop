@@ -1,0 +1,741 @@
+{
+  "capturedAt": "2026-11-13T17:48:30.148Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=ping%C3%BCino+de+Humboldt+Chile&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 79975467,
+          "ns": 6,
+          "title": "File:Gaviota Dominicana Reserva Nacional Pinguino de Humboldt 02.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2781348,
+              "width": 4548,
+              "height": 3411,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg/1280px-Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg/3840px-Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg/1280px-Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg/3840px-Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Gaviota_Dominicana_Reserva_Nacional_Pinguino_de_Humboldt_02.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=79975467",
+              "sha1": "442ae66bc130e0ccc41cab58ac4a9306a9c25c32",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-26 20:05:10",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Gaviota Dominicana Reserva Nacional Pinguino de Humboldt 02",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Larus dominicanus|Pingüino de Humboldt Nature Reserve|Self-published work|Files with coordinates missing SDC location of creation|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Chile photographs taken on 2015-12-17|Images from Wiki Loves Earth missing SDC location of creation|Laridae of Chile|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-29.246450",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.468600",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Gaviota Dominicana. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-17 15:11:13",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Natalia_Reyes_Escobar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Natalia Reyes Escobar (page does not exist)\">Natalia Reyes Escobar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 79975468,
+          "ns": 6,
+          "title": "File:Lagartija Reserva Nacional Pinguino de Humboldt 03.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2579202,
+              "width": 3089,
+              "height": 2317,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg/1280px-Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/42/Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg/1280px-Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/42/Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/42/Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Lagartija_Reserva_Nacional_Pinguino_de_Humboldt_03.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=79975468",
+              "sha1": "7172ab831273de7e5bf464066f27395bd0714089",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-26 20:05:10",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Lagartija Reserva Nacional Pinguino de Humboldt 03",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Liolaemus silvai|Pingüino de Humboldt Nature Reserve|Self-published work|Files with coordinates missing SDC location of creation|Lizards of Chile|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Chile photographs taken on 2015-12-18|Images from Wiki Loves Earth missing SDC location of creation|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-29.246450",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.468600",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Lagartija. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-18 13:58:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Natalia_Reyes_Escobar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Natalia Reyes Escobar (page does not exist)\">Natalia Reyes Escobar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 79975471,
+          "ns": 6,
+          "title": "File:Jotes Reserva Nacional Pinguino de Humboldt 04.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2799973,
+              "width": 3669,
+              "height": 2752,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg/1280px-Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg/1280px-Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Jotes_Reserva_Nacional_Pinguino_de_Humboldt_04.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=79975471",
+              "sha1": "2adce6fbd3b97ae4e76c2d7215a5d338c620c6f1",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-26 20:05:15",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Jotes Reserva Nacional Pinguino de Humboldt 04",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Pingüino de Humboldt Nature Reserve|Self-published work|Files with coordinates missing SDC location of creation|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Accipitriformes of Chile|Chile photographs taken on 2015-12-19|Images from Wiki Loves Earth missing SDC location of creation|Cathartes aura roosting|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-29.252127",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.537180",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Jotes en la Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-19 11:43:55",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Natalia_Reyes_Escobar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Natalia Reyes Escobar (page does not exist)\">Natalia Reyes Escobar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 79975473,
+          "ns": 6,
+          "title": "File:Reserva Nacional Pinguino de Humboldt 01.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2672774,
+              "width": 4096,
+              "height": 2577,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Reserva_Nacional_Pinguino_de_Humboldt_01.jpg/1280px-Reserva_Nacional_Pinguino_de_Humboldt_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 805,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Reserva_Nacional_Pinguino_de_Humboldt_01.jpg/3840px-Reserva_Nacional_Pinguino_de_Humboldt_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Reserva_Nacional_Pinguino_de_Humboldt_01.jpg/1280px-Reserva_Nacional_Pinguino_de_Humboldt_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 805,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bd/Reserva_Nacional_Pinguino_de_Humboldt_01.jpg/3840px-Reserva_Nacional_Pinguino_de_Humboldt_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bd/Reserva_Nacional_Pinguino_de_Humboldt_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Reserva_Nacional_Pinguino_de_Humboldt_01.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=79975473",
+              "sha1": "8c5a9f2a174be414621e5e4d860455ae9edce020",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-26 20:05:20",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Reserva Nacional Pinguino de Humboldt 01",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Mesembryanthemum|Pingüino de Humboldt Nature Reserve|Self-published work|Unidentified plants in Chile|Files with coordinates missing SDC location of creation|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Chile photographs taken on 2015-12-17|Images from Wiki Loves Earth missing SDC location of creation|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-29.246450",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.468600",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-17 18:53:50",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Natalia_Reyes_Escobar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Natalia Reyes Escobar (page does not exist)\">Natalia Reyes Escobar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 79975478,
+          "ns": 6,
+          "title": "File:Pinguino de Humboldt Reserva Nacional Pinguino de Humboldt 07.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3999611,
+              "width": 4608,
+              "height": 3456,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg/1280px-Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg/3840px-Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg/1280px-Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg/3840px-Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Pinguino_de_Humboldt_Reserva_Nacional_Pinguino_de_Humboldt_07.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=79975478",
+              "sha1": "1422ef1f5732c3f3eeefb55d6584987095b89546",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-26 20:05:30",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Pinguino de Humboldt Reserva Nacional Pinguino de Humboldt 07",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Pingüino de Humboldt Nature Reserve|Self-published work|Files with coordinates missing SDC location of creation|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Chile photographs taken on 2015-12-19|Images from Wiki Loves Earth missing SDC location of creation|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-29.252127",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.537180",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Pinguino de Humboldt. Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-19 11:53:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Natalia_Reyes_Escobar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Natalia Reyes Escobar (page does not exist)\">Natalia Reyes Escobar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 79975483,
+          "ns": 6,
+          "title": "File:Reserva Nacional Pinguino de Humboldt 11.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1486730,
+              "width": 2881,
+              "height": 2161,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/Reserva_Nacional_Pinguino_de_Humboldt_11.jpg/1280px-Reserva_Nacional_Pinguino_de_Humboldt_11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Reserva_Nacional_Pinguino_de_Humboldt_11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/Reserva_Nacional_Pinguino_de_Humboldt_11.jpg/1280px-Reserva_Nacional_Pinguino_de_Humboldt_11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Reserva_Nacional_Pinguino_de_Humboldt_11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Reserva_Nacional_Pinguino_de_Humboldt_11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Reserva_Nacional_Pinguino_de_Humboldt_11.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=79975483",
+              "sha1": "8dafe61c93697ae3c9477e43a06c570f3a71cfeb",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-26 20:05:35",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Reserva Nacional Pinguino de Humboldt 11",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Pingüino de Humboldt Nature Reserve|Self-published work|Files with coordinates missing SDC location of creation|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Chile photographs taken on 2015-12-19|Images from Wiki Loves Earth missing SDC location of creation|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-29.238106",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.524073",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Reserva Nacional Pingüino de Humboldt, Región de Coquimbo, Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-19 14:04:46",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Natalia_Reyes_Escobar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Natalia Reyes Escobar (page does not exist)\">Natalia Reyes Escobar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -107,7 +107,8 @@ beforeEach(async () => {
     render: async (input) => {
       renderInputs.push(input)
       const zip = new JSZip()
-      const strings = input.kind === 'docx' ? input.data.blocks.map((b) => ('text' in b ? b.text : '')).join(' ') : ''
+      const strings =
+        input.kind === 'docx' ? input.data.blocks.map((b) => ('text' in b ? b.text : b.type === 'image' ? b.caption : '')).join(' ') : ''
       zip.file(
         'word/document.xml',
         `<w:document><w:body><w:p><w:r><w:t>${xmlEscape(loseCredits ? 'Sin crédito' : strings)}</w:t></w:r></w:p></w:body></w:document>`
@@ -126,6 +127,65 @@ afterEach(async () => {
 })
 
 describe('fotos libres por MCP', () => {
+  it('usa atribución comprobada de main para el pie breve bajo la foto y conserva la ficha completa', async () => {
+    const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
+    const id = JSON.parse(text(found)).candidates[0].id
+    await server.invoke(binding, 'imagenes_ver', { ids: [id] })
+    const originalUse = services[0].use
+    services[0].use = async (...args) => {
+      const asset = await originalUse(...args)
+      return {
+        ...asset,
+        provenance: {
+          ...asset.provenance,
+          author: 'Autora Ejemplo',
+          license: 'CC BY 4.0',
+          source: 'https://commons.wikimedia.org/wiki/File:Cafe.jpg',
+          licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+          notices: '',
+          transformations: ['Conversión a JPEG sobre fondo blanco y reducción de tamaño si era necesaria; imagen completa, sin recorte.']
+        }
+      }
+    }
+    const prepared = await server.invoke(binding, 'imagenes_usar', { id, evaluation })
+    expect(prepared.isError).not.toBe(true)
+    const saved = JSON.parse(text(prepared))
+    expect(saved.caption).toBe('Foto: Autora Ejemplo · CC BY 4.0 · Wikimedia Commons · ajustada')
+    expect(saved.credit).toBe(CREDIT)
+    expect(JSON.parse(await readFile(join(root, saved.provenance), 'utf8')).credit).toBe(CREDIT)
+    const created = await server.invoke(binding, 'crear', {
+      tipo: 'docx',
+      nombre: 'Pie-breve',
+      spec: { blocks: [{ type: 'image', path: saved.path, caption: 'Interior de cafetería' }] }
+    })
+    expect(created.isError).not.toBe(true)
+    const input = renderInputs.at(-1)!
+    if (input.kind !== 'docx') throw new Error('kind')
+    expect(input.data.blocks).toHaveLength(1)
+    expect(input.data.blocks[0]).toMatchObject({ type: 'image', caption: expect.stringContaining(saved.caption) })
+  })
+
+  it('la búsqueda indica la llamada siguiente y ver devuelve el paso de usar sin inventar evaluación', async () => {
+    const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
+    const payload = JSON.parse(text(found))
+    expect(payload.selection).toContain('imagenes_buscar → imagenes_ver → imagenes_usar')
+    expect(payload.selection).toContain('todavía no llames a imagenes_usar')
+    expect(payload.selection).toContain('marcas de agua')
+    expect(payload.nextStep.tool).toBe('imagenes_ver')
+    expect(payload.nextStep.chooseIds).toBe(true)
+    const viewed = await server.invoke(binding, payload.nextStep.tool, payload.nextStep.arguments)
+    expect(viewed.isError).not.toBe(true)
+    const enlarged = JSON.parse(text(viewed))
+    expect(enlarged.nextStep).toEqual({
+      tool: 'imagenes_usar',
+      ids: [payload.candidates[0].id],
+      evaluationRequired: ['mode', 'observed', 'meets', 'doubts']
+    })
+    expect(enlarged.notice).toContain('foto original')
+    expect(enlarged.notice).toContain('añadida por la app')
+    expect((await server.invoke(binding, enlarged.nextStep.tool, { id: enlarged.nextStep.ids[0], evaluation })).isError).not.toBe(true)
+  })
+
   it('rechaza la copia renombrada de tool-output cuando usar falla, antes de renderizar', async () => {
     const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
     const id = JSON.parse(text(found)).candidates[0].id
@@ -203,7 +263,8 @@ describe('fotos libres por MCP', () => {
     const result = await server.invoke(binding, 'crear', args)
     expect(result.isError).not.toBe(true)
     const zip = await JSZip.loadAsync(await readFile(join(root, 'Credito-visible.pptx')))
-    expect(await zip.file('ppt/slides/slide2.xml')!.async('string')).toContain('CC BY 4.0')
+    expect(await zip.file('ppt/slides/slide1.xml')!.async('string')).toContain('CC BY 4.0')
+    expect(zip.file('ppt/slides/slide2.xml')).toBeNull()
     expect(text(result)).toContain('Créditos de imágenes: ✔')
     notesOnly = true
     const failed = await server.invoke(binding, 'crear', { ...args, nombre: 'Solo-notas' })

@@ -1,0 +1,633 @@
+{
+  "capturedAt": "2026-11-13T17:48:41.427Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=Valpara%C3%ADso+harbor&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 21977341,
+          "ns": 6,
+          "title": "File:James McNeill Whistler - Valparaiso Harbor - Google Art Project.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7101114,
+              "width": 4176,
+              "height": 6278,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg/1280px-James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1924,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg/3840px-James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg/1280px-James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1924,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg/3840px-James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:James_McNeill_Whistler_-_Valparaiso_Harbor_-_Google_Art_Project.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=21977341",
+              "sha1": "14705729c3522d38f5720cefa52b79ed03e89971",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-03-10 04:08:16",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\n<div style=\"font-weight:bold;display:inline-block;\"><div style=\"display:inline-block\" dir=\"ltr\" lang=\"en\"><i>Valparaiso Harbor</i></div></div><div style=\"display: none;\">title QS:P1476,en:\"Valparaiso Harbor\"</div><div style=\"display: none;\">label QS:Len,\"Valparaiso Harbor\"</div></div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Paintings of Chile|Paintings in the Smithsonian American Art Museum|PD-old-100-expired|PD-Art (PD-old-100-expired)|Artworks with Wikidata item|Artworks with known accession number|Valparaíso in art|CC-PD-Mark|Google Art Project works by James Abbott McNeill Whistler|Google Art Project works in Smithsonian American Art Museum|Google Art Project paintings|Artworks digital representation of 2D work|Files from Google Arts & Culture|Paintings by James McNeill Whistler in the Smithsonian American Art Museum|Files uploaded by Surajr7",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:James_McNeill_Whistler\" class=\"extiw\" title=\"w:en:James McNeill Whistler\"><span title=\"American painter (1834-1903)\">James McNeill Whistler</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1866<div style=\"display: none;\">date QS:P571,+1866-00-00T00:00:00Z/9</div>",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"//www.google.com/culturalinstitute/asset-viewer/SAHIU1kIf-Bfhw\">SAHIU1kIf-Bfhw at Google Cultural Institute</a> maximum zoom level",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 27784344,
+          "ns": 6,
+          "title": "File:Harbor at Valparaiso, Chile c1860.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 5752834,
+              "width": 3466,
+              "height": 2074,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Harbor_at_Valparaiso%2C_Chile_c1860.jpg/1280px-Harbor_at_Valparaiso%2C_Chile_c1860.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 766,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/1/10/Harbor_at_Valparaiso%2C_Chile_c1860.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Harbor_at_Valparaiso%2C_Chile_c1860.jpg/1280px-Harbor_at_Valparaiso%2C_Chile_c1860.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 766,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/1/10/Harbor_at_Valparaiso%2C_Chile_c1860.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/Harbor_at_Valparaiso%2C_Chile_c1860.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Harbor_at_Valparaiso,_Chile_c1860.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=27784344",
+              "sha1": "77eebe8a33265db3d874d355c4df43efdd3bc3f9",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2013-08-19 19:15:58",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Harbor at Valparaiso, Chile c1860",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "PD US|Valparaíso in art|Valparaíso in the 1860s|PD-US missing SDC copyright status",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Harbor at Valparaiso, Chile c1860",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1867",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p>Cornell, Sarah S. \"Cornell's Primary Geography\" (Revised Edition) p. 43 New York: D. Appleton &amp; Co 1867\n\"The Cooper Collections\" (uploader's private collection)\n</p>\nDigitized by <a href=\"//commons.wikimedia.org/wiki/User:Centpacrr\" title=\"User:Centpacrr\">Centpacrr</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Sarah S. Cornell",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 31318523,
+          "ns": 6,
+          "title": "File:1826 - Harbor and Town of Valparaíso, with the Town of the Almendral.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 163748,
+              "width": 1442,
+              "height": 895,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg/1280px-1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 794,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/a/a7/1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg/1280px-1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 794,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/a/a7/1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/1826_-_Harbor_and_Town_of_Valpara%C3%ADso%2C_with_the_Town_of_the_Almendral.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:1826_-_Harbor_and_Town_of_Valpara%C3%ADso,_with_the_Town_of_the_Almendral.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=31318523",
+              "sha1": "903c7ed63e6d9f63fcabe4aec7619fb53587fe86",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2014-02-24 08:46:51",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "1826 - Harbor and Town of Valparaíso, with the Town of the Almendral",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "PD-Chile|Unknown date|Template Unknown (author)|1826 in Valparaíso|Template Unknown (source)|Old maps of Valparaíso",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Harbor and Town of Valparaíso, with the Town of the Almendral, (Puerto y Pueblo de Valparaíso, con el Pueblo de El Almendral)",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Unknown date",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "Unknown source<span style=\"display: none;\">Unknown source</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Unknown author<span style=\"display: none;\">Unknown author</span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 66479512,
+          "ns": 6,
+          "title": "File:Harbor of Valparaiso, Chile LCCN2016821516.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2888585,
+              "width": 5943,
+              "height": 4289,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg/1280px-Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 924,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg/3840px-Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg/1280px-Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 924,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8c/Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg/3840px-Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Harbor_of_Valparaiso%2C_Chile_LCCN2016821516.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Harbor_of_Valparaiso,_Chile_LCCN2016821516.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=66479512",
+              "sha1": "ccca08a003dda66fd401f433d3cc0be30f2aa23e",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2018-06-15 13:10:24",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Harbor of Valparaiso, Chile LCCN2016821516",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Images from the Library of Congress|PD-old-70-expired|Images uploaded by Fæ|Port of Valparaíso|PD-National Photo Company|National Photo Company Collection|CC-PD-Mark|Library of Congress-no known copyright restrictions|PD-old missing SDC copyright status|Valparaíso in the 20th century",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<i>Title:</i> Harbor of Valparaiso, Chile\n<i>Abstract/medium:</i> 1 negative : glass ; 5 x 7 in. or smaller",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "between 1908 and 1919<div style=\"display: none;\">date QS:P,+1950-00-00T00:00:00Z/7,P1319,+1908-00-00T00:00:00Z/9,P1326,+1919-00-00T00:00:00Z/9</div>",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p>Library of Congress\n</p>\n<ul><li><i>Catalog:</i> <a rel=\"nofollow\" class=\"external free\" href=\"http://lccn.loc.gov/2016821516\">http://lccn.loc.gov/2016821516</a></li>\n<li><i>Image download:</i> <a rel=\"nofollow\" class=\"external free\" href=\"https://cdn.loc.gov/service/pnp/npcc/19900/19938v.jpg\">https://cdn.loc.gov/service/pnp/npcc/19900/19938v.jpg</a></li>\n<li><i>Original url:</i> <a rel=\"nofollow\" class=\"external free\" href=\"https://www.loc.gov/pictures/item/2016821516/\">https://www.loc.gov/pictures/item/2016821516/</a></li></ul>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "National Photo Company Collection",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "This image  is available from the United States <a href=\"//commons.wikimedia.org/wiki/Library_of_Congress\" title=\"Library of Congress\">Library of Congress</a>'s <a rel=\"nofollow\" class=\"external text\" href=\"//www.loc.gov/rr/print/\">Prints and Photographs division</a><br> under the digital ID <a rel=\"nofollow\" class=\"external text\" href=\"https://hdl.loc.gov/loc.pnp/npcc.19938\">npcc.19938</a>.<br><small>This tag does not indicate the copyright status of the attached work. <span style=\"white-space:nowrap\">A normal <a href=\"//commons.wikimedia.org/wiki/Special:MyLanguage/Commons:Copyright_tags\" title=\"Special:MyLanguage/Commons:Copyright tags\">copyright tag</a> is still required.</span> <span style=\"white-space:nowrap\">See <a href=\"//commons.wikimedia.org/wiki/Special:MyLanguage/Commons:Licensing\" title=\"Special:MyLanguage/Commons:Licensing\">Commons:Licensing</a>.</span></small>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 66743396,
+          "ns": 6,
+          "title": "File:Valparaiso harbor (1892).jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 541701,
+              "width": 1039,
+              "height": 793,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Valparaiso_harbor_%281892%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 977,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Valparaiso_harbor_%281892%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 977
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Valparaiso_harbor_%281892%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Valparaiso_harbor_(1892).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=66743396",
+              "sha1": "9cdd12fc6e2e06c1c734de9d19ef85d492c3005e",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2018-02-23 19:34:36",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Valparaiso harbor (1892)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "PD US|Port of Valparaíso|Valparaíso in art|Valparaíso in the 1890s|PD-US missing SDC copyright status",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Valpararaíso harbor in 1892.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1892",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://babel.hathitrust.org/cgi/pt?id=mdp.39015014126026;view=1up;seq=106;size=150\">https://babel.hathitrust.org/cgi/pt?id=mdp.39015014126026;view=1up;seq=106;size=150</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Harper's weekly.",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 132539834,
+          "ns": 6,
+          "title": "File:Whistler - Valparaiso Harbor, 1866, 1929.6.159.tif",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 78673128,
+              "width": 4176,
+              "height": 6278,
+              "pagecount": 1,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif/lossy-page1-1280px-Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1924,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif/lossy-page1-3840px-Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif/lossy-page1-1280px-Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1924,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif/lossy-page1-3840px-Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Whistler_-_Valparaiso_Harbor%2C_1866%2C_1929.6.159.tif?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Whistler_-_Valparaiso_Harbor,_1866,_1929.6.159.tif",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=132539834",
+              "sha1": "8779407cce059b161fbf300a760af1b04855f009",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-06-01 07:15:21",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\n<div style=\"font-weight:bold;display:inline-block;\"><div style=\"display:inline-block\" dir=\"ltr\" lang=\"en\"><i>Valparaiso Harbor <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q20524846#P1476\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span></i></div></div><div style=\"display: none;\">title QS:P1476,en:\"Valparaiso Harbor <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q20524846#P1476\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>\"</div><div style=\"display: none;\">label QS:Len,\"Valparaiso Harbor <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q20524846#P1476\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>\"</div></div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Uploaded with pattypan|PD-Art (PD-old)|Artworks with Wikidata item|Artworks with known accession number|CC-PD-Mark|Artworks with accession number from Wikidata|PD-Art missing SDC copyright status|PD-old missing SDC copyright status|Artworks digital representation of 2D work|Paintings by James McNeill Whistler in the Smithsonian American Art Museum",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:James_McNeill_Whistler\" class=\"extiw\" title=\"w:en:James McNeill Whistler\"><span title=\"American painter (1834-1903)\">James McNeill Whistler</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1866 <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q20524846#P571\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://americanart.si.edu/search/artworks?content_type=artwork&amp;persons\">https://americanart.si.edu/search/artworks?content_type=artwork&amp;persons</a>[]=6160",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/tiff"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,1337 @@
+{
+  "capturedAt": "2026-11-13T17:48:55.469Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=mercado+de+frutas+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 7226035,
+          "ns": 6,
+          "title": "File:Moore Street market, Dublin.jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 910176,
+              "width": 2122,
+              "height": 1414,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Moore_Street_market%2C_Dublin.jpg/1280px-Moore_Street_market%2C_Dublin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/48/Moore_Street_market%2C_Dublin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Moore_Street_market%2C_Dublin.jpg/1280px-Moore_Street_market%2C_Dublin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/48/Moore_Street_market%2C_Dublin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/48/Moore_Street_market%2C_Dublin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Moore_Street_market,_Dublin.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=7226035",
+              "sha1": "49950a8f7e85f7ac7065fbab8498e3f736b24c40",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2009-07-06 15:05:39",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Moore Street market, Dublin",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Food markets in Ireland|November 2007 Republic of Ireland photographs|Paddy Power|Moore Street, Dublin|Self-published work|Images by Tupungato|Files with coordinates missing SDC location of creation",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "53.349885",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-6.262089",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Moore Street market, Dublin, Dublin, Ireland.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken in November 2007",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Marek Ślusarczyk (<a href=\"//commons.wikimedia.org/wiki/User:Tupungato\" title=\"User:Tupungato\">Tupungato</a>) <a rel=\"nofollow\" class=\"external text\" href=\"http://galeria.wyprawa.info\">Photo gallery</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "Outside Wikipedia projects you <b>must</b> attribute the work to the author: <b>Marek Ślusarczyk</b> or <a rel=\"nofollow\" class=\"external text\" href=\"http://www.microstock.pl\"><b>www.microstock.pl</b></a>. In case of any doubts feel free to e-mail me: <i>marek (at) microstock pl</i>.",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.5",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.5",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Tupungato\" title=\"User:Tupungato\">Marek Slusarczyk</a>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.5",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.5",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 26107092,
+          "ns": 6,
+          "title": "File:Mercado de Frutas y Verduras - Madrid Rio (Arganzuela).JPG",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2096490,
+              "width": 3888,
+              "height": 2592,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG/1280px-Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG/3840px-Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG/1280px-Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG/3840px-Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/95/Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_%28Arganzuela%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_y_Verduras_-_Madrid_Rio_(Arganzuela).JPG",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=26107092",
+              "sha1": "fe2ead34df5188d5f1dc803e39181750fdc342d3",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2013-05-15 22:21:28",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Mercado de Frutas y Verduras - Madrid Rio (Arganzuela)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Canon EOS 400D|Mercado Central de Frutas y Verduras, Madrid|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Esquina del viejo Mercado de Frutas y Verduras",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-01-06 13:19:22",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Tamorlan\" title=\"User:Tamorlan\">Tamorlan</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 52113420,
+          "ns": 6,
+          "title": "File:Mercado de Frutas de Legazpi 02.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1429672,
+              "width": 1600,
+              "height": 1067,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Mercado_de_Frutas_de_Legazpi_02.jpg/1280px-Mercado_de_Frutas_de_Legazpi_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 854,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/1/10/Mercado_de_Frutas_de_Legazpi_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Mercado_de_Frutas_de_Legazpi_02.jpg/1280px-Mercado_de_Frutas_de_Legazpi_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 854,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/1/10/Mercado_de_Frutas_de_Legazpi_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/Mercado_de_Frutas_de_Legazpi_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_de_Legazpi_02.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=52113420",
+              "sha1": "25cdcdb0b55a87c8209588ba54a855b1208dcfb7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2016-10-07 13:16:18",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Mercado de Frutas de Legazpi 02",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Mercado Central de Frutas y Verduras, Madrid|Flickr images verified by UploadWizard|May 2005 in Madrid|Photographs by Arte-en-la-Calle (street art)|Files uploaded by User:Discasto",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Mercado Central de Frutas y Verduras de Legazpi",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-05-17 19:19:17",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/rh2ox/18283476492/\">https://www.flickr.com/photos/rh2ox/18283476492/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "r2hox",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 52113421,
+          "ns": 6,
+          "title": "File:Mercado de Frutas de Legazpi 01.jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1157995,
+              "width": 1600,
+              "height": 1067,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Mercado_de_Frutas_de_Legazpi_01.jpg/1280px-Mercado_de_Frutas_de_Legazpi_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 854,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/0/07/Mercado_de_Frutas_de_Legazpi_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Mercado_de_Frutas_de_Legazpi_01.jpg/1280px-Mercado_de_Frutas_de_Legazpi_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 854,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/0/07/Mercado_de_Frutas_de_Legazpi_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Mercado_de_Frutas_de_Legazpi_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_de_Legazpi_01.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=52113421",
+              "sha1": "b5e77d854cab34887fee09ef68c764a749baa673",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2016-10-07 13:16:18",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Mercado de Frutas de Legazpi 01",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Mercado Central de Frutas y Verduras, Madrid|Flickr images verified by UploadWizard|May 2005 in Madrid|Photographs by Arte-en-la-Calle (street art)|Files uploaded by User:Discasto",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Mercado Central de Frutas y Verduras de Legazpi",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-05-17 19:21:04",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/rh2ox/18099609680/\">https://www.flickr.com/photos/rh2ox/18099609680/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "r2hox",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 62492599,
+          "ns": 6,
+          "title": "File:Patio del Mercado de Frutas de Legazpi.jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 433139,
+              "width": 1158,
+              "height": 772,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Patio_del_Mercado_de_Frutas_de_Legazpi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Patio_del_Mercado_de_Frutas_de_Legazpi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/4c/Patio_del_Mercado_de_Frutas_de_Legazpi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Patio_del_Mercado_de_Frutas_de_Legazpi.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=62492599",
+              "sha1": "a1538667052d6947eb624807e75a1ecd8b8cecc2",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2017-09-17 00:17:18",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Patio del Mercado de Frutas de Legazpi",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Mercado Central de Frutas y Verduras, Madrid|September 2017 in Madrid|Files uploaded by User:Discasto|Images from Ayuntamiento de Madrid",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "La renta media por persona en la ciudad de Madrid se situó en 14.115,6 euros en 2015, mientras que los ingresos anuales medios por hogar fueron de 32.697 euros. Son algunos de los datos de la  Encuesta de Condiciones de Vida de la ciudad de Madrid publicada recientemente.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-09-16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://diario.madrid.es/blog/notas-de-prensa/encuesta-de-condiciones-de-vida-de-la-ciudad-de-madrid/\">Diario de Madrid - Encuesta de Condiciones de Vida de la ciudad de Madrid</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://diario.madrid.es/\">Diario de Madrid</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 82745261,
+          "ns": 6,
+          "title": "File:Museu Quinta das Cruzes, Funchal, Madeira - IMG 20190223 113641.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4264484,
+              "width": 3456,
+              "height": 4608,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg/1280px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1707,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg/1280px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1707,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113641.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Museu_Quinta_das_Cruzes,_Funchal,_Madeira_-_IMG_20190223_113641.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=82745261",
+              "sha1": "5d438af5ab45b5c25cd8c649d283e5c9668a3645",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-09-30 23:08:13",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Museu Quinta das Cruzes, Funchal, Madeira - IMG 20190223 113641",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Cultural heritage monuments in Portugal with known IDs|2019 in Funchal|Uploaded via Campaign:wlm-pt|Mercado de Frutas by August Plum (oil on canvas, 1853)|Photos taken by DarwIn|Images from Wiki Loves Monuments 2019 in Portugal - Madeira",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Museu Quinta das Cruzes - quinta e museu no Funchal, Madeira, Portugal",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-02-23 11:36:43",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:DarwIn\" title=\"User:DarwIn\">PESP/ Wikimedia</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 82745305,
+          "ns": 6,
+          "title": "File:Museu Quinta das Cruzes, Funchal, Madeira - IMG 20190223 113716.jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3971114,
+              "width": 4608,
+              "height": 3456,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg/1280px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg/3840px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg/1280px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg/3840px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/74/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113716.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Museu_Quinta_das_Cruzes,_Funchal,_Madeira_-_IMG_20190223_113716.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=82745305",
+              "sha1": "bc78a19c9e12e26b0a6c63ffe45ab42a4d615aeb",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-11-26 19:27:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Museu Quinta das Cruzes, Funchal, Madeira - IMG 20190223 113716",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Cultural heritage monuments in Portugal with known IDs|2019 in Funchal|Uploaded via Campaign:wlm-pt|Mercado de Frutas by August Plum (oil on canvas, 1853)|Files with coordinates missing SDC location of creation|Photos taken by DarwIn|Images from Wiki Loves Monuments 2019 in Portugal - Madeira",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "32.652493",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-16.913174",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Museu Quinta das Cruzes - quinta e museu no Funchal, Madeira, Portugal",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-02-23 11:37:18",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:DarwIn\" title=\"User:DarwIn\">PESP/ Wikimedia</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 82745586,
+          "ns": 6,
+          "title": "File:Museu Quinta das Cruzes, Funchal, Madeira - IMG 20190223 113611.jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3230716,
+              "width": 4608,
+              "height": 3456,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg/1280px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg/3840px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg/1280px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4d/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg/3840px-Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Museu_Quinta_das_Cruzes%2C_Funchal%2C_Madeira_-_IMG_20190223_113611.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Museu_Quinta_das_Cruzes,_Funchal,_Madeira_-_IMG_20190223_113611.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=82745586",
+              "sha1": "ef2cfccf85cb5bf65c47fe9b86b103862f93e2c7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-11-26 19:20:44",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Museu Quinta das Cruzes, Funchal, Madeira - IMG 20190223 113611",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Umbrellas in art|Cultural heritage monuments in Portugal with known IDs|2019 in Funchal|Uploaded via Campaign:wlm-pt|Mercado de Frutas by August Plum (oil on canvas, 1853)|Photos taken by DarwIn|Images from Wiki Loves Monuments 2019 in Portugal - Madeira",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Museu Quinta das Cruzes - quinta e museu no Funchal, Madeira, Portugal",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-02-23 11:36:13",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:DarwIn\" title=\"User:DarwIn\">PESP/ Wikimedia</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 110739813,
+          "ns": 6,
+          "title": "File:Kothapet Fruit Market.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7522293,
+              "width": 3862,
+              "height": 2556,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/1280px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 847,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/3840px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/1280px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 847,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/3840px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Kothapet_Fruit_Market.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=110739813",
+              "sha1": "c1b7d52ffdc8802446236908c941c0d93d9cc3ec",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-10-05 08:59:37",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Kothapet Fruit Market",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Featured pictures on Wikipedia, Vietnamese|Workers in India|Featured pictures of Hyderabad, India|Mosambi (fruit)|Featured Pictures by Dey.sandip|Own images by Dey.sandip|Kothapet Fruit Market",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "A worker rests in between work at the Kothapet fruit market, Hyderabad, India. The fruits depicted in this picture are\nsweet lemons, locally called <i>mosambi</i>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2018-10-29 10:58:21",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Dey.sandip\" title=\"User:Dey.sandip\">Dey.sandip</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "Sandip Dey, the copyright holder of this work, hereby publishes it under the following license:",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "Sandip Dey",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 141443455,
+          "ns": 6,
+          "title": "File:Salão Nobre do Museu das Cruzes com o Mercado de frutas no Largo do Pelourinho do Funchal - 2017 - Image 140282.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 77427,
+              "width": 901,
+              "height": 599,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Sal%C3%A3o_Nobre_do_Museu_das_Cruzes_com_o_Mercado_de_frutas_no_Largo_do_Pelourinho_do_Funchal_-_2017_-_Image_140282.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 851,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Sal%C3%A3o_Nobre_do_Museu_das_Cruzes_com_o_Mercado_de_frutas_no_Largo_do_Pelourinho_do_Funchal_-_2017_-_Image_140282.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 851
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Sal%C3%A3o_Nobre_do_Museu_das_Cruzes_com_o_Mercado_de_frutas_no_Largo_do_Pelourinho_do_Funchal_-_2017_-_Image_140282.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Sal%C3%A3o_Nobre_do_Museu_das_Cruzes_com_o_Mercado_de_frutas_no_Largo_do_Pelourinho_do_Funchal_-_2017_-_Image_140282.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=141443455",
+              "sha1": "e38bc24cd129f2970a496672c6b2b27412fd052d",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-11-26 17:20:29",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Salão Nobre do Museu das Cruzes com o Mercado de frutas no Largo do Pelourinho do Funchal - 2017 - Image 140282",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Files from Arquipelagos.pt|Items with VRTS permission confirmed|2017 in Funchal|Mercado de Frutas by August Plum (oil on canvas, 1853)|Uploaded with Catrapilha|Furniture in Museu Quinta das Cruzes|Photographs by José Lemos Silva|Salão Nobre (Museu Quinta das Cruzes)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<p><b>Salão Nobre do Museu das Cruzes com o Mercado de frutas no Largo do Pelourinho do Funchal</b><br>\n</p><p>Óleo sobre tela, 56,5 x 80 cm.<br>\nAugust ou Poul August, PLUM, (Copenhaga, 1815-Fredensborg, 1876), 1853.<br>\nAquisição GR, 1992.<br>\nFotografia de José Lemos Silva, 2017.<br>\n</p>\nMuseu Quinta das Cruzes (<b>MQC 2192</b>), Funchal, ilha da Madeira.<p class=\"mw-empty-elt\"></p>\n<p>Representação de um mercado de frutas, com, em primeiro plano, espaço térreo (praça) com bancas de frutas e aglomerados de pessoas. Destacam-se os edifícios, de arquitetura mediterrânica, torre, escadaria e do lado direito, muro e arvoredo. Ao fundo, montanhas e céu azul. Na zona inferior da pintura, pedra com a assinatura do pintor da Escola Dinamarquesa “A. Plum /1853”. Moldura em madeira dourada.<br>\nA representação de um mercado de fruta madeirense é mais ou menos idealizada, com edifícios em ruínas, numa tentativa de aproximação às vistas românticas e neoclássicas que imperavam no movimento artístico do século XIX e que atingem o seu auge nas vistas venezianas. A perceção de que a cena decorre na Madeira é-nos transmitida por algumas personagens que trajam vestes características e pela representação da ponta do Garajau (Ficha do Museu das Cruzes).</p>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span typeof=\"mw:File\"><a href=\"https://www.arquipelagos.pt/\" title=\"Arquipelagos\" rel=\"nofollow\"><img alt=\"Arquipelagos\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Logo_Arquipelagos.png/250px-Logo_Arquipelagos.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"150\" height=\"54\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Logo_Arquipelagos.png/330px-Logo_Arquipelagos.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"403\" data-file-height=\"145\"></a></span> (<a rel=\"nofollow\" class=\"external text\" href=\"https://www.arquipelagos.pt/imagem/salao-nobre-do-museu-das-cruzes-com-o-mercado-de-frutas-no-largo-do-pelourinho-do-funchal-oleo-de-poul-august-1853-funchal-ilha-da-madeira/\">consultar ficha</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "José Lemos Silva",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 141449870,
+          "ns": 6,
+          "title": "File:Mercado de Frutas by August Plum.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 864321,
+              "width": 1305,
+              "height": 911,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Mercado_de_Frutas_by_August_Plum.jpg/1280px-Mercado_de_Frutas_by_August_Plum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 894,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Mercado_de_Frutas_by_August_Plum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/Mercado_de_Frutas_by_August_Plum.jpg/1280px-Mercado_de_Frutas_by_August_Plum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 894,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Mercado_de_Frutas_by_August_Plum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Mercado_de_Frutas_by_August_Plum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mercado_de_Frutas_by_August_Plum.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=141449870",
+              "sha1": "595c9cd7e8f188023b62c786abf7280a36ea4636",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-11-26 19:11:47",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Mercado de Frutas by August Plum",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "PD-old-100-expired|PD-Art (PD-old-100-expired)|CC-PD-Mark|Mercado de Frutas by August Plum (oil on canvas, 1853)|PD-Art missing SDC copyright status|PD-old missing SDC copyright status",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Mercado de Frutas by August Plum (oil on canvas, 1853)",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1853",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://museus.madeira.gov.pt/DetalhesObra?id=11884&amp;tipo=OBJ\">Museus da Madeira</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q12302468\" class=\"extiw\" title=\"d:Q12302468\"><span title=\"Danish painter (1815-1876)\">August Plum</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 141450851,
+          "ns": 6,
+          "title": "File:Mercado de frutas no Funchal, óleo de Poul August, 1853, Funchal - Image 140280.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 96255,
+              "width": 1256,
+              "height": 854,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/7/73/Mercado_de_frutas_no_Funchal%2C_%C3%B3leo_de_Poul_August%2C_1853%2C_Funchal_-_Image_140280.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 870,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/7/73/Mercado_de_frutas_no_Funchal%2C_%C3%B3leo_de_Poul_August%2C_1853%2C_Funchal_-_Image_140280.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 870
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/73/Mercado_de_frutas_no_Funchal%2C_%C3%B3leo_de_Poul_August%2C_1853%2C_Funchal_-_Image_140280.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Mercado_de_frutas_no_Funchal,_%C3%B3leo_de_Poul_August,_1853,_Funchal_-_Image_140280.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=141450851",
+              "sha1": "628beb5b5740e5a622b6a553e865fc509b7b0ca9",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-11-26 19:31:31",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Mercado de frutas no Funchal, óleo de Poul August, 1853, Funchal - Image 140280",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Files from Arquipelagos.pt|PD-old-100-expired|CC-PD-Mark|Mercado de Frutas by August Plum (oil on canvas, 1853)|Uploaded with Catrapilha",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<p><b>Mercado de frutas no Largo do Pelourinho do Funchal</b><br>\n</p><p>Óleo sobre tela, 56,5 x 80 cm.<br>\nAugust ou Poul August, PLUM, (Copenhaga, 1815-Fredensborg, 1876), 1853.<br>\nAquisição GR, 1992.<br>\nFotografia de José Lemos Silva, 2017.<br>\n</p>\nMuseu Quinta das Cruzes (<b>MQC 2192</b>), Funchal, ilha da Madeira.<p class=\"mw-empty-elt\"></p>\n<p>Representação de um mercado de frutas, com, em primeiro plano, espaço térreo (praça) com bancas de frutas e aglomerados de pessoas. Destacam-se os edifícios, de arquitetura mediterrânica, torre, escadaria e do lado direito, muro e arvoredo. Ao fundo, montanhas e céu azul. Na zona inferior da pintura, pedra com a assinatura do pintor da Escola Dinamarquesa “A. Plum /1853”. Moldura em madeira dourada.<br>\nA representação de um mercado de fruta madeirense é mais ou menos idealizada, com edifícios em ruínas, numa tentativa de aproximação às vistas românticas e neoclássicas que imperavam no movimento artístico do século XIX e que atingem o seu auge nas vistas venezianas. A perceção de que a cena decorre na Madeira é-nos transmitida por algumas personagens que trajam vestes características e pela representação da ponta do Garajau (Ficha do Museu das Cruzes).</p>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1853",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span typeof=\"mw:File\"><a href=\"https://www.arquipelagos.pt/\" title=\"Arquipelagos\" rel=\"nofollow\"><img alt=\"Arquipelagos\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Logo_Arquipelagos.png/250px-Logo_Arquipelagos.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"150\" height=\"54\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Logo_Arquipelagos.png/330px-Logo_Arquipelagos.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"403\" data-file-height=\"145\"></a></span> (<a rel=\"nofollow\" class=\"external text\" href=\"https://www.arquipelagos.pt/imagem/mercado-de-frutas-no-largo-do-pelourinho-do-funchal-oleo-de-poul-august-1853-funchal-ilha-da-madeira-2/\">consultar ficha</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q12302468\" class=\"extiw\" title=\"d:Q12302468\"><span title=\"Danish painter (1815-1876)\">August Plum</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

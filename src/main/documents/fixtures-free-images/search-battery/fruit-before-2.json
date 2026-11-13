@@ -1,0 +1,712 @@
+{
+  "capturedAt": "2026-11-13T17:48:36.493Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=fruit+market&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 18417192,
+          "ns": 6,
+          "title": "File:Yau Ma Tei Fruit Market (Hong Kong).jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3162531,
+              "width": 3962,
+              "height": 2970,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg/1280px-Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg/3840px-Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg/1280px-Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg/3840px-Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/48/Yau_Ma_Tei_Fruit_Market_%28Hong_Kong%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Fruit_Market_(Hong_Kong).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=18417192",
+              "sha1": "4dbee2315d275dc94bb43c0076f51f8f47ef85dd",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2012-02-18 09:49:36",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Yau Ma Tei Fruit Market (Hong Kong)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Exterior of 8 Waterloo Road|Taken with Fujifilm FinePix F200EXR|Waterloo Road, Hong Kong|Self-published work|2012 photographs of Hong Kong by Mk2010|Facade of Yau Ma Tei Fruit Market",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Yau Ma Tei Fruit Market, Kowloon, Hong Kong.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2012-02-17",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Mk2010\" title=\"User:Mk2010\">Mk2010</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 89811169,
+          "ns": 6,
+          "title": "File:Yau Ma Tei Wholesale Fruit Market view1 202005.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7787748,
+              "width": 4032,
+              "height": 3024,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg/1280px-Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg/3840px-Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg/1280px-Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg/3840px-Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/15/Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Wholesale_Fruit_Market_view1_202005.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=89811169",
+              "sha1": "1b57a3d9c6176601659a76cf4779f8e351ed7bd7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-05-03 15:34:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Yau Ma Tei Wholesale Fruit Market view1 202005",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Files with coordinates missing SDC location of creation|Facade of Yau Ma Tei Fruit Market",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "22.312161",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "114.169061",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Yau Ma Tei Fruit Market",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2020-05",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Wpcpey&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Wpcpey (page does not exist)\">Wpcpey</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 110739813,
+          "ns": 6,
+          "title": "File:Kothapet Fruit Market.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7522293,
+              "width": 3862,
+              "height": 2556,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/1280px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 847,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/3840px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/1280px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 847,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b1/Kothapet_Fruit_Market.jpg/3840px-Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b1/Kothapet_Fruit_Market.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Kothapet_Fruit_Market.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=110739813",
+              "sha1": "c1b7d52ffdc8802446236908c941c0d93d9cc3ec",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-10-05 08:59:37",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Kothapet Fruit Market",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Featured pictures on Wikipedia, Vietnamese|Workers in India|Featured pictures of Hyderabad, India|Mosambi (fruit)|Featured Pictures by Dey.sandip|Own images by Dey.sandip|Kothapet Fruit Market",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "A worker rests in between work at the Kothapet fruit market, Hyderabad, India. The fruits depicted in this picture are\nsweet lemons, locally called <i>mosambi</i>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2018-10-29 10:58:21",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Dey.sandip\" title=\"User:Dey.sandip\">Dey.sandip</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "Sandip Dey, the copyright holder of this work, hereby publishes it under the following license:",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "Sandip Dey",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 121730198,
+          "ns": 6,
+          "title": "File:Yau Ma Tei Fruit Market in April 2022.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2935459,
+              "width": 4000,
+              "height": 3000,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg/1280px-Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg/3840px-Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg/1280px-Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg/3840px-Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Fruit_Market_in_April_2022.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=121730198",
+              "sha1": "b590182995b626cd09fe2f150b9f5ba0cede1b47",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2022-08-14 10:36:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Yau Ma Tei Fruit Market in April 2022",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Yau Ma Tei Fruit Market|Self-published work|April 2022 in Yau Ma Tei|April 2022 in Yau Tsim Mong District|Buildings in Yau Ma Tei|Shek Lung Street|Streets in Yau Ma Tei|Buildings in Yau Tsim Mong District|Yau Ma Tei Fruit Market - Shops",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Shek Lung Street, Yau Ma Tei Fruit Market",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2022-04-11 12:30:25",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:%E5%A7%92%E5%A7%93%E8%B3%A2%E5%AF%A7\" title=\"User:姒姓賢寧\">姒姓賢寧</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 145253082,
+          "ns": 6,
+          "title": "File:Yau Ma Tei Fruit Market at night 20231214.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1446893,
+              "width": 4000,
+              "height": 2250,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg/1280px-Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 720,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg/3840px-Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg/1280px-Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 720,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg/3840px-Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/40/Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Yau_Ma_Tei_Fruit_Market_at_night_20231214.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=145253082",
+              "sha1": "d7bdf76ce6ec8454fd8f4f8ccafaeeed8cdac013",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-02-12 09:47:33",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Yau Ma Tei Fruit Market at night 20231214",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Yau Ma Tei Fruit Market|Self-published work|Files with coordinates missing SDC location of creation",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "22.312537",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "114.167613",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Yau Ma Tei Fruit Market at night on 14 December 2023",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-12-14 22:33:10",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Cypp0847&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Cypp0847 (page does not exist)\">Cypp0847</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 151839961,
+          "ns": 6,
+          "title": "File:202303 Yau Ma Tei Fruit Market (油麻地果欄).jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4227656,
+              "width": 3840,
+              "height": 2160,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5f/202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg/1280px-202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 720,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/5/5f/202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5f/202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg/1280px-202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 720,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/5/5f/202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/202303_Yau_Ma_Tei_Fruit_Market_%28%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:202303_Yau_Ma_Tei_Fruit_Market_(%E6%B2%B9%E9%BA%BB%E5%9C%B0%E6%9E%9C%E6%AC%84).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=151839961",
+              "sha1": "c2d7ce9cf1c7eb4e0118703fba98eb7681ddb2e7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-08-26 15:53:11",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "202303 Yau Ma Tei Fruit Market (油麻地果欄)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Files with coordinates missing SDC location of creation|March 2023 in Yau Ma Tei|Files uploaded by Jonashtand|Shops in Reclamation Street|Fruit shops in Yau Ma Tei|Market stalls in Yau Ma Tei|2023 in Reclamation Street, Hong Kong|Night in Reclamation Street, Hong Kong|2023 in Yau Ma Tei Fruit Market",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "22.312582",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "114.168329",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Yau Ma Tei Fruit Market (油麻地果欄) in Hong Kong, March 2023",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-03-04 21:06:54",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Jonashtand\" title=\"User:Jonashtand\">Jonashtand</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

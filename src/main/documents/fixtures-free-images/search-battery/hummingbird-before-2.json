@@ -1,0 +1,674 @@
+{
+  "capturedAt": "2026-11-13T17:48:29.057Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=hummingbird+flying+flowers&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 45100825,
+          "ns": 6,
+          "title": "File:African hummingbird moth - Macroglossum trochilus flying, from the front, very hard to photograph (5649085005).jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 313519,
+              "width": 1024,
+              "height": 724,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/d/df/African_hummingbird_moth_-_Macroglossum_trochilus_flying%2C_from_the_front%2C_very_hard_to_photograph_%285649085005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 905,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/African_hummingbird_moth_-_Macroglossum_trochilus_flying%2C_from_the_front%2C_very_hard_to_photograph_%285649085005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 905
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/df/African_hummingbird_moth_-_Macroglossum_trochilus_flying%2C_from_the_front%2C_very_hard_to_photograph_%285649085005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:African_hummingbird_moth_-_Macroglossum_trochilus_flying,_from_the_front,_very_hard_to_photograph_(5649085005).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=45100825",
+              "sha1": "31b3c6eb0e11266b562284e142e97141011652e9",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-11-19 09:23:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "African hummingbird moth - Macroglossum trochilus flying, from the front, very hard to photograph (5649085005)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Macroglossum trochilus|Flickr images reviewed by FlickreviewR|Sphingidae of Gauteng|Photographs by Derek Keats|Macroglossum on flowers|Insects of Walter Sisulu National Botanical Garden|Unidentified Dicliptera|Sphingidae on flowers in South Africa",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "African hummingbird moth - Macroglossum trochilus",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-04-24 13:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/dkeats/5649085005/\">African hummingbird moth - Macroglossum trochilus flying, from the front, very hard to photograph</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/93242958@N00\">Derek Keats</a> from Johannesburg, South Africa",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 83562597,
+          "ns": 6,
+          "title": "File:Hummingbird Poo (209183175).jpeg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 851730,
+              "width": 2048,
+              "height": 1538,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Hummingbird_Poo_%28209183175%29.jpeg/1280px-Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 961,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/b/be/Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Hummingbird_Poo_%28209183175%29.jpeg/1280px-Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 961,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/be/Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/be/Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_Poo_(209183175).jpeg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=83562597",
+              "sha1": "48d8fbb803f013eef9c90c9b77a6a6b4c44d53dc",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-11-01 08:51:35",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\nHummingbird Poo</div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Unidentified Trochilidae|Files with coordinates missing SDC location of creation|Photos imported with import-500px|Trochilidae of San Francisco|Birds defecating",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "37.798263",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-122.413453",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<div class=\"fn value\">\n<a rel=\"nofollow\" class=\"external text\" href=\"https://500px.com/momerath\">Michael Warnock</a></div>",
+                  "source": "commons-desc-page"
+                },
+                "ImageDescription": {
+                  "value": "<div class=\"description\">\n500px provided description: the cutest act of defecation I have photographed ;) [#bird ,#flower ,#flight ,#animal ,#california ,#green ,#wildlife ,#san francisco ,#flying ,#hummingbird]</div>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "24 April 2017, 11:19:14",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "Imported from <a rel=\"nofollow\" class=\"external text\" href=\"https://500px.com/photo/209183175/hummingbird-poo-by-michael-warnock\">500px</a> (<a rel=\"nofollow\" class=\"external text\" href=\"https://web.archive.org/web/201807id_/https://drscdn.500px.org/photo/209183175/m%3D2048/v2?webp=true&amp;sig=cd1da77f89a7868afb4f6671359eafc16dcfb6bc4971a1d0a2957ccf35230826\">archived version</a>) by <a rel=\"nofollow\" class=\"external text\" href=\"https://www.archiveteam.org/index.php?title=500px\">the Archive Team</a>. (<a href=\"https://iw.toolforge.org/import-500px/photo/209183175\" class=\"extiw\" title=\"toolforge:import-500px/photo/209183175\">detail page</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "<div class=\"responsive-license-cc layouttemplate licensetpl\" dir=\"ltr\" lang=\"en\"><div class=\"rlicense-icons\"><span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"w:en:Creative Commons\"><img alt=\"w:en:Creative Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/CC_some_rights_reserved.svg/120px-CC_some_rights_reserved.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"90\" height=\"36\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/CC_some_rights_reserved.svg/250px-CC_some_rights_reserved.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"744\" data-file-height=\"300\"></span></span><br>\n<span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"attribution\"><img alt=\"attribution\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Cc-by_new_white.svg/40px-Cc-by_new_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"24\" height=\"24\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Cc-by_new_white.svg/60px-Cc-by_new_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"64\" data-file-height=\"64\"></span></span></div><div class=\"rlicense-text\"><div class=\"rlicense-declaration\">This file is licensed under the <a href=\"https://en.wikipedia.org/wiki/en:Creative_Commons\" class=\"extiw\" title=\"w:en:Creative Commons\">Creative Commons</a> <a href=\"//creativecommons.org/licenses/by/3.0/deed.en\" class=\"extiw\" title=\"creativecommons:by/3.0/deed.en\">Attribution 3.0 Unported</a> license.</div><div class=\"rlicense-desc\" style=\"text-align:start;\" dir=\"ltr\" lang=\"en\">\n<dl><dd>You are free:\n<ul><li><b>to share</b> – to copy, distribute and transmit the work</li>\n<li><b>to remix</b> – to adapt the work</li></ul></dd>\n<dd>Under the following conditions:\n<ul><li><b>attribution</b> – You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.</li></ul></dd></dl>\n</div><span class=\"licensetpl_link\" style=\"display:none;\">https://creativecommons.org/licenses/by/3.0</span><span class=\"licensetpl_short\" style=\"display:none;\">CC BY 3.0 </span><span class=\"licensetpl_long\" style=\"display:none;\">Creative Commons Attribution 3.0 </span><span class=\"licensetpl_link_req\" style=\"display:none;\">true</span><span class=\"licensetpl_attr_req\" style=\"display:none;\">true</span></div></div>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 93053841,
+          "ns": 6,
+          "title": "File:Red throated hummingbird flying.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 5071647,
+              "width": 3199,
+              "height": 2133,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Red_throated_hummingbird_flying.jpg/1280px-Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Red_throated_hummingbird_flying.jpg/1280px-Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Red_throated_hummingbird_flying.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=93053841",
+              "sha1": "27daaeb2b5702cc02aebb44b6e87f995cfe38019",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-08-11 18:22:26",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Red throated hummingbird flying",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Archilochus colubris feeding on flowers|Birds feeding on Stachytarpheta flowers",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Ruby throated hummingbird flying away from red flower",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2020-08-08 07:55:16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Jnevitt47&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Jnevitt47 (page does not exist)\">Jack Nevitt</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 106382144,
+          "ns": 6,
+          "title": "File:Hummingbird flower.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3910350,
+              "width": 3814,
+              "height": 2543,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Hummingbird_flower.jpg/1280px-Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/2/20/Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Hummingbird_flower.jpg/1280px-Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/2/20/Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_flower.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=106382144",
+              "sha1": "67b8a6d3ede2aee077020ffb64dc1657e6676ea9",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-06-08 10:10:03",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird flower",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Eupetomena macroura|Erythrina americana|Estação Ecológica Juréia-Itatins|Self-published work|Uploaded via Campaign:wle-br|Images from Wiki Loves Earth 2021|Images from Wiki Loves Earth 2021 in Brazil|Images from Wiki Loves Earth 2021 in Brazil - São Paulo|Birds at Erythrina flowers|Images from Wiki Loves Earth missing SDC depicts|Images from Wiki Loves Earth missing SDC location of creation|Images from Wiki Loves Earth with different SDC participant in|Best images from Wiki Loves Earth 2021 in Brazil - Living beings",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Estação Ecológica Juréia-Itatins de nível Estadual, localizado (a) em Iguape (SP), Itariri (SP), Miracatu (SP), Peruíbe (SP)",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-07-17 09:53:51",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Birdy_Flying&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Birdy Flying (page does not exist)\">Birdy Flying</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 149004910,
+          "ns": 6,
+          "title": "File:Hovering hummingbird wing aerodynamics during the annual cycle. I. Complete wing.pdf",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2743889,
+              "width": 1085,
+              "height": 1575,
+              "pagecount": 19,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Hovering_hummingbird_wing_aerodynamics_during_the_annual_cycle._I._Complete_wing.pdf/page1-960px-Hovering_hummingbird_wing_aerodynamics_during_the_annual_cycle._I._Complete_wing.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1858,
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Hovering_hummingbird_wing_aerodynamics_during_the_annual_cycle._I._Complete_wing.pdf/page1-960px-Hovering_hummingbird_wing_aerodynamics_during_the_annual_cycle._I._Complete_wing.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1858
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Hovering_hummingbird_wing_aerodynamics_during_the_annual_cycle._I._Complete_wing.pdf?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hovering_hummingbird_wing_aerodynamics_during_the_annual_cycle._I._Complete_wing.pdf",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=149004910",
+              "sha1": "5d24549ba1c605eb8b128de097d91d0438eac147",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-06-02 18:02:26",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hovering hummingbird wing aerodynamics during the annual cycle. I. Complete wing",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Files from PubMed Central uploaded by DaxBot|Files from Royal Society Open Science uploaded by DaxBot|Uploaded by DaxBot needing category review|Research articles|PDF files from the United Kingdom|Royal Society Open Science Journal Volume 4 Issue 8|English-language PDF files",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Achache, Yonathan; Sapir, Nir; Elimelech, Yossef (2017). <a rel=\"nofollow\" class=\"external text\" href=\"https://royalsocietypublishing.org/doi/10.1098/rsos.170183\">\"Hovering hummingbird wing aerodynamics during the annual cycle. I. Complete wing\"</a>. <i>Royal Society Open Science</i>. <b>4</b> (8): 170183. <a href=\"https://en.wikipedia.org/wiki/Doi_(identifier)\" class=\"extiw\" title=\"en:Doi (identifier)\">doi</a>:<a href=\"//doi.org/10.1098/rsos.170183\" class=\"extiw\" title=\"doi:10.1098/rsos.170183\">10.1098/rsos.170183</a>. <a href=\"https://en.wikipedia.org/wiki/ISSN_(identifier)\" class=\"extiw\" title=\"en:ISSN (identifier)\">ISSN</a> <a href=\"https://www.worldcat.org/issn/2054-5703\" class=\"extiw\" title=\"issn:2054-5703\">2054-5703</a>. (<a rel=\"nofollow\" class=\"external text\" href=\"https://crossmark.crossref.org/dialog/?doi=10.1098/rsos.170183&amp;domain=pdf\">Check for updates</a>)",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-08-23",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://doi.org/10.1098/rsos.170183\">https://doi.org/10.1098/rsos.170183</a> via PubMed Central FTP",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Achache, Yonathan; Sapir, Nir; Elimelech, Yossef",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "application/pdf"
+            }
+          ]
+        },
+        {
+          "pageid": 149321729,
+          "ns": 6,
+          "title": "File:Hummingbird Hawk Moth, Buskett Gardens.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3574763,
+              "width": 2711,
+              "height": 2169,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg/1280px-Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg/1280px-Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_Hawk_Moth,_Buskett_Gardens.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=149321729",
+              "sha1": "f380231bc0db8ba24e1c061932f5bace19e73d94",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-06-12 21:45:41",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird Hawk Moth, Buskett Gardens",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Protected areas of Malta|Self-published work|Uploaded via Campaign:wle-mt|Images from Wiki Loves Earth 2024|Images from Wiki Loves Earth 2024 in Malta|Images from Wiki Loves Earth missing SDC depicts|Images from Wiki Loves Earth missing SDC location of creation|Macroglossum stellatarum on Lantana flowers|Images from Wiki Loves Earth 2024 Human Rights and Environment Special Nomination",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "With some patience and being at the right place, you can observe the agile hawk moth. They are among some of the fastest flying insects and can hover in mid-air while feeding with its long tongue sipping the nectar.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2024-01-20 12:58:16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:T3rRyCa&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:T3rRyCa (page does not exist)\">T3rRyCa</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

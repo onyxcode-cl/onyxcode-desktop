@@ -1,0 +1,1396 @@
+{
+  "capturedAt": "2026-11-13T17:50:10.407Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=dinosaur+skeleton+museum+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 20261438,
+          "ns": 6,
+          "title": "File:Dinosaur skeleton, Museum national d'histoire naturelle, Paris.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 176494,
+              "width": 1398,
+              "height": 911,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg/1280px-Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 834,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/7/75/Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg/1280px-Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 834,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/7/75/Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/75/Dinosaur_skeleton%2C_Museum_national_d%27histoire_naturelle%2C_Paris.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_skeleton,_Museum_national_d%27histoire_naturelle,_Paris.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=20261438",
+              "sha1": "0e0f7f9cf1db210f05bc671bf99860fca92281c0",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2012-07-14 12:54:30",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur skeleton, Museum national d'histoire naturelle, Paris",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Collections of galerie de Paléontologie et d'Anatomie comparée|Inaccurate dinosaur skeletons|Obsolete dinosaur restorations|Allosaurus skeletal mounts",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur skeleton (Allosaurus fragilis), Museum national d'histoire naturelle, Paris.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2012-07-14",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Nicolas_Halftermeyer\" title=\"User:Nicolas Halftermeyer\">Nicolas Halftermeyer</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 64786121,
+          "ns": 6,
+          "title": "File:Zigong Dinosaur Museum Gasosaurus.jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7457336,
+              "width": 5472,
+              "height": 3648,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Zigong_Dinosaur_Museum_Gasosaurus.jpg/1280px-Zigong_Dinosaur_Museum_Gasosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Zigong_Dinosaur_Museum_Gasosaurus.jpg/3840px-Zigong_Dinosaur_Museum_Gasosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Zigong_Dinosaur_Museum_Gasosaurus.jpg/1280px-Zigong_Dinosaur_Museum_Gasosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Zigong_Dinosaur_Museum_Gasosaurus.jpg/3840px-Zigong_Dinosaur_Museum_Gasosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Zigong_Dinosaur_Museum_Gasosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Zigong_Dinosaur_Museum_Gasosaurus.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=64786121",
+              "sha1": "1d1601280a2ea7fe1e9b887d90a246bb617120ff",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2017-12-13 11:52:18",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Zigong Dinosaur Museum Gasosaurus",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Images from Wiki Science Competition 2017 in China|Self-published work|Inaccurate dinosaur skeletons|Inaccurate Theropoda restorations|General category images from Wiki Science Competition 2017|Gasosaurus skeletal mounts|Collections of Zigong Dinosaur Museum|Uploaded via Campaign:wsc-cn",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<i><b>Gasosaurus constructus</b></i>  Symtemtic position: Megalosauridae, Theropoda, Saruischia.  Locality: Dashanpu, Zigong, Sichuan, China.  Age: Middle Jurassic (about 160 million years ago).",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2014-04-24 09:49:22",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Zhangzhugang\" title=\"User:Zhangzhugang\">Zhangzhugang</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 98580291,
+          "ns": 6,
+          "title": "File:Dinosaur Egg Museum, Xixia Dinosaur Park- Psittacosaurus Skeleton 01.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2171073,
+              "width": 4752,
+              "height": 3168,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_Egg_Museum,_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_01.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=98580291",
+              "sha1": "bddbaad37ed09c7f1cd755ebe0b17c68f425b6a1",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-01-06 10:56:02",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur Egg Museum, Xixia Dinosaur Park- Psittacosaurus Skeleton 01",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Psittacosaurus fossils|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Xixia Dinosaur Relics Park",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "33.233784",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "111.680274",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Xixia, southern Henan Province. Complete indexed photo collection at WorldHistoryPics.com.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-11-20 15:21:20",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/101561334@N08/10264506305/\">https://www.flickr.com/photos/101561334@N08/10264506305/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Gary Todd",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 98580293,
+          "ns": 6,
+          "title": "File:Dinosaur Egg Museum, Xixia Dinosaur Park- Psittacosaurus Skeleton 02.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2581504,
+              "width": 4752,
+              "height": 3168,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/2d/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_Egg_Museum,_Xixia_Dinosaur_Park-_Psittacosaurus_Skeleton_02.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=98580293",
+              "sha1": "bc4bc3f354bb530214893b9fd57a2c44b867eebf",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-01-06 10:56:06",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur Egg Museum, Xixia Dinosaur Park- Psittacosaurus Skeleton 02",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Psittacosaurus fossils|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Xixia Dinosaur Relics Park",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "33.233784",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "111.680274",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Xixia, southern Henan Province. Complete indexed photo collection at WorldHistoryPics.com.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-11-20 15:21:29",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/101561334@N08/10264503255/\">https://www.flickr.com/photos/101561334@N08/10264503255/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Gary Todd",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 102921281,
+          "ns": 6,
+          "title": "File:World's tallest mounted dinosaur skeleton Brachiosaurus brancai.jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3669618,
+              "width": 3024,
+              "height": 4032,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg/1280px-World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1707,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg/1920px-World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg/1280px-World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1707,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg/1920px-World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/3e/World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:World%27s_tallest_mounted_dinosaur_skeleton_Brachiosaurus_brancai.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=102921281",
+              "sha1": "f990a170bef6c4dee3ff77afe107ca613b4a8cd1",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-04-02 18:20:32",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "World's tallest mounted dinosaur skeleton Brachiosaurus brancai",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Giraffatitan skeleton in Museum für Naturkunde Berlin|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "The tallest mounted dinosaur skeleton in the world according to the Guinness Book of Records. Brachiosaurus brancai stands 13.27 metres tall in the Museum für Naturkunde, Berlin.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-02-09",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Ssamuel1010\" title=\"User:Ssamuel1010\">Sheeba Samuel</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 128068616,
+          "ns": 6,
+          "title": "File:Dinosaurs in the Museum - geograph.org.uk - 4325116.jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 139920,
+              "width": 600,
+              "height": 800,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/2/26/Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1707,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1707
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/26/Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=128068616",
+              "sha1": "eb31156c2e80bb1485170575dd8313c758a55aa2",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-01-24 15:37:24",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaurs in the Museum - geograph.org.uk - 4325116",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Dinosaurs in museums|Images from Geograph Britain and Ireland|Oxford University Museum of Natural History (interior)|Skeletons in museums",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "51.758610",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-1.255829",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaurs in the Museum <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg#ooui-php-4\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2014-12-16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/photo/4325116\">Geograph Britain and Ireland</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg#P7482\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/profile/21460\">Bill Nicholls</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Dinosaurs_in_the_Museum_-_geograph.org.uk_-_4325116.jpg#P170\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "<i>Dinosaurs in the Museum</i> by Bill Nicholls",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 136725734,
+          "ns": 6,
+          "title": "File:View of a dinosaur skeleton in a frame in the Viktor Wynd Museum of Curiosities - geograph.org.uk - 5363443.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3608545,
+              "width": 4608,
+              "height": 3456,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e4/View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg/1280px-View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e4/View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg/3840px-View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e4/View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg/1280px-View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e4/View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg/3840px-View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/e/e4/View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=136725734",
+              "sha1": "0d61cc5977355ecd5984e17c30d4189aaaa9aaae",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-09-01 00:23:47",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "View of a dinosaur skeleton in a frame in the Viktor Wynd Museum of Curiosities - geograph.org.uk - 5363443",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Viktor Wynd Museum|Images from Geograph Britain and Ireland",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "51.535129",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-0.057866",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "View of a dinosaur skeleton in a frame in the Viktor Wynd Museum of Curiosities <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg#ooui-php-4\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-04-22",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/photo/5363443\">Geograph Britain and Ireland</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg#P7482\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/profile/26519\">Robert Lamb</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:View_of_a_dinosaur_skeleton_in_a_frame_in_the_Viktor_Wynd_Museum_of_Curiosities_-_geograph.org.uk_-_5363443.jpg#P170\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "<i>View of a dinosaur skeleton in a frame in the Viktor Wynd Museum of Curiosities</i> by Robert Lamb",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 160277976,
+          "ns": 6,
+          "title": "File:People in museum next to an articulated dinosaur skeleton (53013127060).jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 9755696,
+              "width": 4800,
+              "height": 3200,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg/1280px-People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg/3840px-People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg/1280px-People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg/3840px-People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/17/People_in_museum_next_to_an_articulated_dinosaur_skeleton_%2853013127060%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:People_in_museum_next_to_an_articulated_dinosaur_skeleton_(53013127060).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=160277976",
+              "sha1": "763202f4c496b82284adbe7b333da1bef798be1d",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-02-22 15:26:53",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "People in museum next to an articulated dinosaur skeleton (53013127060)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "PD US BLM|Flickr images reviewed by FlickreviewR 2|United States photographs taken on 2023-06-28|United States Bureau of Land Management images (review needed)|U.S. Bureau of Land Management Flickr files uploaded by OptimusPrimeBot|Files from the Bureau of Land Management Utah Flickr stream|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "People in museum next to an articulated dinosaur skeleton. A group of Earth Connections Camp 2023 Participants exploring the Museum of Ancient Life. Photo by Jonathan D. Mallory, BLM Utah.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken on 28 June 2023, 13:48:04",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/blmutah/53013127060\">People in museum next to an articulated dinosaur skeleton</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/blmutah/\">BLMUtah</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 166622138,
+          "ns": 6,
+          "title": "File:Cetiosaurus Dinosaur Skeleton, Leicester Museum - geograph.org.uk - 7771936.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2323092,
+              "width": 2000,
+              "height": 1334,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg/1280px-Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 854,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f7/Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg/1280px-Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 854,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Cetiosaurus_Dinosaur_Skeleton%2C_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Cetiosaurus_Dinosaur_Skeleton,_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=166622138",
+              "sha1": "d48788985fb5c92c306315b891698a97a3fa0169",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-06-02 10:39:25",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Cetiosaurus Dinosaur Skeleton, Leicester Museum - geograph.org.uk - 7771936",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Nelson Mandela Park, Leicester|Images from Geograph Britain and Ireland",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "52.628981",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-1.127925",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cetiosaurus Dinosaur Skeleton, Leicester Museum <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Cetiosaurus_Dinosaur_Skeleton,_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg#ooui-php-4\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2024-04-27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/photo/7771936\">Geograph Britain and Ireland</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Cetiosaurus_Dinosaur_Skeleton,_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg#P7482\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.geograph.org.uk/profile/123467\">Brian Deegan</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:Cetiosaurus_Dinosaur_Skeleton,_Leicester_Museum_-_geograph.org.uk_-_7771936.jpg#P170\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "<i>Cetiosaurus Dinosaur Skeleton, Leicester Museum</i> by Brian Deegan",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 170250094,
+          "ns": 6,
+          "title": "File:Duck-Billed Dinosaur skeletons at American Museum of Natural History.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3756462,
+              "width": 5712,
+              "height": 4284,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg/1280px-Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg/3840px-Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg/1280px-Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg/3840px-Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/31/Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Duck-Billed_Dinosaur_skeletons_at_American_Museum_of_Natural_History.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=170250094",
+              "sha1": "8bb057ddc830f88d3251ad488113ed76189b5cba",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-07-17 20:55:39",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Duck-Billed Dinosaur skeletons at American Museum of Natural History",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Hall of Ornithischian Dinosaurs at American Museum of Natural History",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Duck-Billed Dinosaur skeletons at American Museum of Natural History",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-07-16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Vicpeters\" title=\"User:Vicpeters\">Vicpeters</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 179383541,
+          "ns": 6,
+          "title": "File:PXL 20231218 111916909 Natural History Museum Exhibits 38 armored, dinosaur skeleton, such as an Ankylosaurus.jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 5438189,
+              "width": 4080,
+              "height": 3072,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg/1280px-PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 964,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg/3840px-PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg/1280px-PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 964,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7e/PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg/3840px-PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/7e/PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored%2C_dinosaur_skeleton%2C_such_as_an_Ankylosaurus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:PXL_20231218_111916909_Natural_History_Museum_Exhibits_38_armored,_dinosaur_skeleton,_such_as_an_Ankylosaurus.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=179383541",
+              "sha1": "7961ec324d0cfa41091daf001c9fe080e85fae6a",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-12-04 09:12:32",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "PXL 20231218 111916909 Natural History Museum Exhibits 38 armored, dinosaur skeleton, such as an Ankylosaurus",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Collections of the Natural History Museum, London|Files with coordinates missing SDC location of creation (51° N, 1° W)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "51.496075",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-0.176783",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Natural History Museum Exhibits armored, dinosaur skeleton, such as an Ankylosaurus",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-12-18 12:22:13",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Sourabh.biswas003\" title=\"User:Sourabh.biswas003\">Sourabh.biswas003</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 180764275,
+          "ns": 6,
+          "title": "File:PCZ830 45 Praha D National Museum Dinosaur skeleton 3D.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 5199210,
+              "width": 9216,
+              "height": 3456,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg/1280px-PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 480,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg/3840px-PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg/1280px-PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 480,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/75/PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg/3840px-PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/75/PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:PCZ830_45_Praha_D_National_Museum_Dinosaur_skeleton_3D.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=180764275",
+              "sha1": "d4d3768150aac616f0f6b9c78891f44fe10fb4e5",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-12-27 13:28:46",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "PCZ830 45 Praha D National Museum Dinosaur skeleton 3D",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Stereoscopic 3D files (side-by-side parallel)|Self-published work|Files (stereoscopic) by VasuVR|Palaeontological exhibition (NM Prague)|Stereo images of National Museum in Prague",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "3D view of Dinosaur skeleton exhibited in <a href=\"https://en.wikipedia.org/wiki/National_Museum_(Prague)\" class=\"extiw\" title=\"en:National Museum (Prague)\">National Museum</a> in <a href=\"https://en.wikipedia.org/wiki/Prague\" class=\"extiw\" title=\"en:Prague\">Prague (Praha)</a>, <a href=\"https://en.wikipedia.org/wiki/Czech_Republic\" class=\"extiw\" title=\"en:Czech Republic\">Czech Republic</a>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-08-30",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:VasuVR\" title=\"User:VasuVR\">VasuVR</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

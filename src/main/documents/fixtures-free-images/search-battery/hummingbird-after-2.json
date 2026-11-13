@@ -1,0 +1,1336 @@
+{
+  "capturedAt": "2026-11-13T17:48:49.118Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=hummingbird+flying+flowers+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "query": {
+      "pages": [
+        {
+          "pageid": 43184932,
+          "ns": 6,
+          "title": "File:Our native birds of song and beauty, being a complete history of all the songbirds, flycatchers, hummingbirds, swifts, goatsuckers, woodpeckers, kingfishers, trogons, cuckoos, and parrots, of North (14564200058).jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 392111,
+              "width": 1808,
+              "height": 1832,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9c/Our_native_birds_of_song_and_beauty%2C_being_a_complete_history_of_all_the_songbirds%2C_flycatchers%2C_hummingbirds%2C_swifts%2C_goatsuckers%2C_woodpeckers%2C_kingfishers%2C_trogons%2C_cuckoos%2C_and_parrots%2C_of_North_%2814564200058%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1297,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Our_native_birds_of_song_and_beauty%2C_being_a_complete_history_of_all_the_songbirds%2C_flycatchers%2C_hummingbirds%2C_swifts%2C_goatsuckers%2C_woodpeckers%2C_kingfishers%2C_trogons%2C_cuckoos%2C_and_parrots%2C_of_North_%2814564200058%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9c/Our_native_birds_of_song_and_beauty%2C_being_a_complete_history_of_all_the_songbirds%2C_flycatchers%2C_hummingbirds%2C_swifts%2C_goatsuckers%2C_woodpeckers%2C_kingfishers%2C_trogons%2C_cuckoos%2C_and_parrots%2C_of_North_%2814564200058%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1297,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Our_native_birds_of_song_and_beauty%2C_being_a_complete_history_of_all_the_songbirds%2C_flycatchers%2C_hummingbirds%2C_swifts%2C_goatsuckers%2C_woodpeckers%2C_kingfishers%2C_trogons%2C_cuckoos%2C_and_parrots%2C_of_North_%2814564200058%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Our_native_birds_of_song_and_beauty%2C_being_a_complete_history_of_all_the_songbirds%2C_flycatchers%2C_hummingbirds%2C_swifts%2C_goatsuckers%2C_woodpeckers%2C_kingfishers%2C_trogons%2C_cuckoos%2C_and_parrots%2C_of_North_%2814564200058%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Our_native_birds_of_song_and_beauty,_being_a_complete_history_of_all_the_songbirds,_flycatchers,_hummingbirds,_swifts,_goatsuckers,_woodpeckers,_kingfishers,_trogons,_cuckoos,_and_parrots,_of_North_(14564200058).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=43184932",
+              "sha1": "75c34f9dba224568d80bbe6eb267d6b72e1f5aed",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-09-13 15:02:59",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Our native birds of song and beauty, being a complete history of all the songbirds, flycatchers, hummingbirds, swifts, goatsuckers, woodpeckers, kingfishers, trogons, cuckoos, and parrots, of North (14564200058)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Photos uploaded from Flickr by Fæ using a script|Flickr images reviewed by FlickreviewR|Files from Internet Archive Book Images Flickr stream|Files from Flickr's 'The Commons'|Media needing category review as of 13 September 2015|Our native birds of song and beauty",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<br>\n<p><b>Identifier</b>: cu31924084820350 (<a class=\"external text\" href=\"https://commons.wikimedia.org/w/index.php?title=Special%3ASearch&amp;profile=default&amp;fulltext=Search&amp;search=insource%3A%2Fcu31924084820350%2F\">find matches</a>)<br>\n<b>Title</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookidcu31924084820350\">Our native birds of song and beauty, being a complete history of all the songbirds, flycatchers, hummingbirds, swifts, goatsuckers, woodpeckers, kingfishers, trogons, cuckoos, and parrots, of North America</a><br>\n<b>Year</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookyear1893\">1893</a> (<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookdecade1890\">1890s</a>)<br>\n<b>Authors</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookauthorNehrling__Henry_1853_1929\">Nehrling, Henry 1853-1929</a><br>\n<b>Subjects</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksubjectBirds\">Birds</a><br>\n<b>Publisher</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookpublisherMilwaukee__G__Brumder\">Milwaukee, G. Brumder</a><br>\n<b>Contributing Library</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookcontributorCornell_University_Library\">Cornell University Library</a><br>\n<b>Digitizing Sponsor</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksponsorMSN\">MSN</a><br>\n<br>\n<b>View Book Page</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/stream/cu31924084820350/cu31924084820350#page/n111/mode/1up\">Book Viewer</a><br>\n<b>About This Book</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/cu31924084820350\">Catalog Entry</a><br>\n<b>View All Images</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookidcu31924084820350\">All Images From Book</a><br>\nClick here to <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/stream/cu31924084820350/cu31924084820350#page/n111/mode/1up\"><b>view book online</b></a> to see this illustration in context in a browseable online version of this book.<br>\n<br>\n<b>Text Appearing Before Image:</b><br>\n<i>iansummer, and who does not welcome them back as dear friends when they return to usagain from their winter quarters in the sunnier South? Who has not enjoyed thefamiliar song of our beautiful Bluebird or the first whistle of our Robin, when in earlyMarch they come once more to tell us that winter must go and .spring is coming?Who has not learned to love the plainly colored little Hairbird, or Chippy, the modestand yet so attractive Snowbird and the admirable Song Sparrow, as they pick up thecrumbs at our feet? Or who has failed to admire the bright-colored Baltimore Oriole,as it weaves its purse-shaped hanging nest high over-head in the boughs of a beautifulwide-spreading elm, so safe from snakes and prowling cats? What can be moredelightful than our shady northern woods carpeted with fragrant trailing arbutus,checkerberry, wake-robins (Trillium), twin-flowers, partridge-ben-y, blood-root, terres-trial orchids, bellworts, ferns and club-mosses, and enlivened by a host of Warblers in.</i><br>\n<b>Text Appearing After Image:</b><br>\n<i>Vs GALEOSCOPTES CAROLINENSIS Cab. KATZENVOGEL. Catbird. CATBIRD. 53 Vireos, Titmice, Rose-breasted Grosbeaks, Chewinks and showy Scarlet Tanagers! Orwhat can be more charming than the song of our Thrasher! Have you ever listened tothe tinkling melodies of a number of Bobolinks flying over the grassy meadows adornedwith bright-colored wild lilies? Have you ever enjoyed a fine June evening in the woods,when the air was filled with the fragrance of flowering shrubs, when the sounds of theWhippoorwill fall upon your ear? Who will not admit that Nature is full to overflow-ing with the most delightful poetry? Of all the feathered visitors who return to us in spring and make their homeamong our ornamental shrubbery, the Catbird is my especial favorite. It is an oldacquaintance made in early childhood, and its reappearance with each coming springcalls up countless memories of happy days. And the Catbird deserves to be everybodysfavorite. True, its plumage is plain, but, says Olive Thome Mille</i><br>\n<br>\n<b>Note About Images</b><br>\n</p>\n<i>Please note that these images are extracted from scanned page images that may have been digitally enhanced for readability - coloration and appearance of these illustrations may not perfectly resemble the original work.</i>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1893",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p><a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/internetarchivebookimages/14564200058/\">https://www.flickr.com/photos/internetarchivebookimages/14564200058/</a>\n</p>\n<ul><li>Source book page: <a rel=\"nofollow\" class=\"external free\" href=\"https://archive.org/stream/cu31924084820350/cu31924084820350#page/n111/mode/1up\">https://archive.org/stream/cu31924084820350/cu31924084820350#page/n111/mode/1up</a></li></ul>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/126377022@N07\">Internet Archive Book Images</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "At the time of upload, the image license was automatically confirmed using the Flickr <a href=\"https://en.wikipedia.org/wiki/API\" class=\"extiw\" title=\"en:API\">API</a>. For more information see <a href=\"//commons.wikimedia.org/wiki/User:F%C3%A6/Flickr_API_detail\" title=\"User:Fæ/Flickr API detail\">Flickr API detail</a>.",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "No restrictions",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "No known copyright restrictions",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://www.flickr.com/commons/usage/",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 44079481,
+          "ns": 6,
+          "title": "File:A guide to the birds of New England and eastern New York; containing a key for each season and short descriptions of over 250 species, with particular reference to their appearance in the field (1904) (14748680992).jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 755526,
+              "width": 1444,
+              "height": 2348,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814748680992%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 2081,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/a/ab/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814748680992%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814748680992%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 2081,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/a/ab/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814748680992%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814748680992%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_guide_to_the_birds_of_New_England_and_eastern_New_York;_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species,_with_particular_reference_to_their_appearance_in_the_field_(1904)_(14748680992).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=44079481",
+              "sha1": "1a075c7acc711cc2c53c1524ebee2fe93e05a7a5",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-10-08 04:57:50",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "A guide to the birds of New England and eastern New York; containing a key for each season and short descriptions of over 250 species, with particular reference to their appearance in the field (1904) (14748680992)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Photos uploaded from Flickr by Fæ using a script|Flickr images reviewed by FlickreviewR|Files from Internet Archive Book Images Flickr stream|Files from Flickr's 'The Commons'|Media needing category review as of 8 October 2015|1904 books from the United States|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<br>\n<p><b>Identifier</b>: guidetobirdsofn00hoff (<a class=\"external text\" href=\"https://commons.wikimedia.org/w/index.php?title=Special%3ASearch&amp;profile=default&amp;fulltext=Search&amp;search=insource%3A%2Fguidetobirdsofn00hoff%2F\">find matches</a>)<br>\n<b>Title</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookidguidetobirdsofn00hoff\">A guide to the birds of New England and eastern New York; containing a key for each season and short descriptions of over 250 species, with particular reference to their appearance in the field</a><br>\n<b>Year</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookyear1904\">1904</a> (<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookdecade1900\">1900s</a>)<br>\n<b>Authors</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookauthorHoffmann__Ralph__1870_1932\">Hoffmann, Ralph, 1870-1932</a><br>\n<b>Subjects</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksubjectBirds\">Birds</a> <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksubjectBirds\">Birds</a><br>\n<b>Publisher</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookpublisherBoston_New_York_Houghton__Mifflin_and_company\">Boston New York Houghton, Mifflin and company</a><br>\n<b>Contributing Library</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookcontributorThe_Library_of_Congress\">The Library of Congress</a><br>\n<b>Digitizing Sponsor</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksponsorThe_Library_of_Congress\">The Library of Congress</a><br>\n<br>\n<b>View Book Page</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/stream/guidetobirdsofn00hoff/guidetobirdsofn00hoff#page/n230/mode/1up\">Book Viewer</a><br>\n<b>About This Book</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/guidetobirdsofn00hoff\">Catalog Entry</a><br>\n<b>View All Images</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookidguidetobirdsofn00hoff\">All Images From Book</a><br>\nClick here to <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/stream/guidetobirdsofn00hoff/guidetobirdsofn00hoff#page/n230/mode/1up\"><b>view book online</b></a> to see this illustration in context in a browseable online version of this book.<br>\n<br>\n<b>Text Appearing Before Image:</b><br>\n<i>the ruby throat.Certain sphinx moths, poising before the flowers in theafternoon, are often mistaken for hummingbirds. SWIFTS: FAMILY MICROPODID-ffi Chimney Swift. Chcetura pelagica5.43 Ad. — Entire bird sooty-brown, palest on throat; wings longand narrow; tail either cigar-shaped, or, when spread, fan-shaped. Nest, a shallow platform of sticks glued to the inside of achimney. Eggs, white. The Chimney Swift is an abundant summer residentthroughout New England and New York. It arrives to-Avard the end of April or early in May, and leaves towardthe end of August; small flocks, presumably migrants fromfarther north, are often seen, particularly along the valleysof large rivers, till late in September. The nest is made of short twigs broken off by the birdwhile flying. It is a moot point whether the bill or the feetare used for this purpose. These twigs are glued togetherand to the bricks in the chimney by saliva, and form a shal-low platform on which the eggs are laid. In northern New</i><br>\n<b>Text Appearing After Image:</b><br>\n<i>/gai^ Cf/tcrft ^u^rTef. CMIIMNKV SWIFT CHIMNEY SWIFT 211 England and New York the Swift still builds occasionallyin hollow trees, as all its ancestors once did, or ^ on theinner walls of barns and outbuildings (Brewster). Eainsometimes loosens the nest, which then falls to the bottom.The young, when fed, keep up an energetic crying, easilyheard through the walls of the chimney. The Swifts common note is either a loud staccato chii),chip, chip, or the same notes run rapidly together. Thischippering, heard from little groups high overhead, is oftenthe first intimation of the birds presence in spring, and itis continued constantly till mid-July, then less frequentlyor only rarely till the birds departure. Chimney Swifts resemble swallows in their appearance onthe wing and in their manner of feeding, but may be distin-guished after a little practice by the appearance of the tail,which is short and cigar-shaped, or fan-shaped when spread,but never notched, forked, or square. Their flight,</i><br>\n<br>\n<b>Note About Images</b><br>\n</p>\n<i>Please note that these images are extracted from scanned page images that may have been digitally enhanced for readability - coloration and appearance of these illustrations may not perfectly resemble the original work.</i>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1904",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p><a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/internetarchivebookimages/14748680992/\">https://www.flickr.com/photos/internetarchivebookimages/14748680992/</a>\n</p>\n<ul><li>Source book page: <a rel=\"nofollow\" class=\"external free\" href=\"https://archive.org/stream/guidetobirdsofn00hoff/guidetobirdsofn00hoff#page/n230/mode/1up\">https://archive.org/stream/guidetobirdsofn00hoff/guidetobirdsofn00hoff#page/n230/mode/1up</a></li></ul>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/126377022@N07\">Internet Archive Book Images</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "At the time of upload, the image license was automatically confirmed using the Flickr <a href=\"https://en.wikipedia.org/wiki/API\" class=\"extiw\" title=\"en:API\">API</a>. For more information see <a href=\"//commons.wikimedia.org/wiki/User:F%C3%A6/Flickr_API_detail\" title=\"User:Fæ/Flickr API detail\">Flickr API detail</a>.",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "No restrictions",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "No known copyright restrictions",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://www.flickr.com/commons/usage/",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 44079989,
+          "ns": 6,
+          "title": "File:A guide to the birds of New England and eastern New York; containing a key for each season and short descriptions of over 250 species, with particular reference to their appearance in the field (1904) (14568767259).jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 267501,
+              "width": 1524,
+              "height": 2292,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814568767259%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1925,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/f/f6/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814568767259%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814568767259%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1925,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/f/f6/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814568767259%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/A_guide_to_the_birds_of_New_England_and_eastern_New_York%3B_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species%2C_with_particular_reference_to_their_appearance_in_the_field_%281904%29_%2814568767259%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:A_guide_to_the_birds_of_New_England_and_eastern_New_York;_containing_a_key_for_each_season_and_short_descriptions_of_over_250_species,_with_particular_reference_to_their_appearance_in_the_field_(1904)_(14568767259).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=44079989",
+              "sha1": "fe039b0f135f9891cb2bdea909aa966bafc74ddd",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-10-08 05:34:10",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "A guide to the birds of New England and eastern New York; containing a key for each season and short descriptions of over 250 species, with particular reference to their appearance in the field (1904) (14568767259)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Photos uploaded from Flickr by Fæ using a script|Flickr images reviewed by FlickreviewR|Files from Internet Archive Book Images Flickr stream|Files from Flickr's 'The Commons'|Media needing category review as of 8 October 2015|1904 books from the United States|Internet Archive document guidetobirdsof00hoff|Flickr images missing SDC Flickr photo ID|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<br>\n<p><b>Identifier</b>: guidetobirdsof00hoff (<a class=\"external text\" href=\"https://commons.wikimedia.org/w/index.php?title=Special%3ASearch&amp;profile=default&amp;fulltext=Search&amp;search=insource%3A%2Fguidetobirdsof00hoff%2F\">find matches</a>)<br>\n<b>Title</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookidguidetobirdsof00hoff\">A guide to the birds of New England and eastern New York; containing a key for each season and short descriptions of over 250 species, with particular reference to their appearance in the field</a><br>\n<b>Year</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookyear1904\">1904</a> (<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookdecade1900\">1900s</a>)<br>\n<b>Authors</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookauthorHoffmann__Ralph__b__1870\">Hoffmann, Ralph, b. 1870</a><br>\n<b>Subjects</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksubjectBirds____New_England\">Birds -- New England</a> <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksubjectBirds____New_York__State_\">Birds -- New York (State)</a><br>\n<b>Publisher</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookpublisherBoston_New_York_Houghton__Mifflin_and_company\">Boston New York Houghton, Mifflin and company</a><br>\n<b>Contributing Library</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookcontributorAmerican_Museum_of_Natural_History_Library\">American Museum of Natural History Library</a><br>\n<b>Digitizing Sponsor</b>:  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/booksponsorBiodiversity_Heritage_Library\">Biodiversity Heritage Library</a><br>\n<br>\n<b>View Book Page</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/stream/guidetobirdsof00hoff/guidetobirdsof00hoff#page/n231/mode/1up\">Book Viewer</a><br>\n<b>About This Book</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/guidetobirdsof00hoff\">Catalog Entry</a><br>\n<b>View All Images</b>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/internetarchivebookimages/tags/bookidguidetobirdsof00hoff\">All Images From Book</a><br>\nClick here to <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/stream/guidetobirdsof00hoff/guidetobirdsof00hoff#page/n231/mode/1up\"><b>view book online</b></a> to see this illustration in context in a browseable online version of this book.<br>\n<br>\n<b>Text Appearing Before Image:</b><br>\n<i>has the ruby throat.Certain sphinx moths, poising before the flowers in theafternoon, are often mistaken for hummingbirds. SWIFTS: FAMILY MICROFODIDiE Chimney Swift. Chcetura pelagica5.43 Ad. — Entire bird sooty-brown, palest on throat; wings longand narrow; tail either cigar-shaped, or, when spread, fan-shaped. Nest, a shallow platform of sticks glued to the inside of achimney. Eggs, white. The Chimney Swift is an abundant summer residentthroughout New England and New York. It arrives to-ward the end of April or early in May, and leaves towardthe end of August; small flocks, presumably migrants fromfarther north, are often seen, particularly along the valleysof large rivers, till late in September. The nest is made of short twigs broken off by the birdwhile flying. It is a moot point whether the bill or the feetare used for this purpose. These twigs are glued togetherand to the bricks in the chimney by saliva, and form a shal-low platform on which the eggs are laid. In northern New</i><br>\n<b>Text Appearing After Image:</b><br>\n<i>£*** Gyircft tfuer/ei. CHIMNEY SWIFT CHIMNEY SWIFT 211 England and New York the Swift still builds occasionallyin hollow trees, as all its ancestors once did, or on theinner walls of barns and outbuildings (Brewster). Rainsometimes loosens the nest, which then falls to the bottom.The young, when fed, keep up an energetic crying, easilyheard through the walls of the chimney. The Swifts common note is either a loud staccato chip,chip, chip, or the same notes run rapidly together. Thischippering, heard from little groups high overhead, is oftenthe first intimation of the birds presence in spring, and itis continued constantly till mid-July, then less frequentlyor only rarely till the birds departure. Chimney Swifts resemble swallows in their appearance onthe wing and in their manner of feeding, but may be distin-guished after a little practice by the appearance of the tail,which is short and cigar-shaped, or fan-shaped when spread,but never notched, forked, or square. Their flight, too,</i><br>\n<br>\n<b>Note About Images</b><br>\n</p>\n<i>Please note that these images are extracted from scanned page images that may have been digitally enhanced for readability - coloration and appearance of these illustrations may not perfectly resemble the original work.</i>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1904",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p><a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/internetarchivebookimages/14568767259/\">https://www.flickr.com/photos/internetarchivebookimages/14568767259/</a>\n</p>\n<ul><li>Source book page: <a rel=\"nofollow\" class=\"external free\" href=\"https://archive.org/stream/guidetobirdsof00hoff/guidetobirdsof00hoff#page/n231/mode/1up\">https://archive.org/stream/guidetobirdsof00hoff/guidetobirdsof00hoff#page/n231/mode/1up</a></li></ul>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/126377022@N07\">Internet Archive Book Images</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "At the time of upload, the image license was automatically confirmed using the Flickr <a href=\"https://en.wikipedia.org/wiki/API\" class=\"extiw\" title=\"en:API\">API</a>. For more information see <a href=\"//commons.wikimedia.org/wiki/User:F%C3%A6/Flickr_API_detail\" title=\"User:Fæ/Flickr API detail\">Flickr API detail</a>.",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "No restrictions",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "No known copyright restrictions",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://www.flickr.com/commons/usage/",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 45059292,
+          "ns": 6,
+          "title": "File:Sharing nectar (2891336630).jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1017222,
+              "width": 2393,
+              "height": 2024,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/Sharing_nectar_%282891336630%29.jpg/1280px-Sharing_nectar_%282891336630%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1083,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/3/33/Sharing_nectar_%282891336630%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/33/Sharing_nectar_%282891336630%29.jpg/1280px-Sharing_nectar_%282891336630%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1083,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/3/33/Sharing_nectar_%282891336630%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/33/Sharing_nectar_%282891336630%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Sharing_nectar_(2891336630).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=45059292",
+              "sha1": "f67cb64d9ca297b2927b34cd5c459b9da3874ae4",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-11-17 15:40:16",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Sharing nectar (2891336630)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR|Photographs by John Flannery|Unidentified Lepidoptera of the United States|United States photographs taken on 2008-08-02|Sphingidae of North Carolina|Unidentified Carduoideae|Hesperiidae of North Carolina|Unidentified Hesperiinae|Hesperiidae on Carduoideae flowers|Hemaris thysbe in flight|Sphingidae on Carduoideae flowers|Photos of animals uploaded by Jkadavoor (Jee)|Hemaris on Asteraceae flowers|Lepidoptera of Richmond County, North Carolina",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<p>Seen here is a Fiery Skipper Butterfly feeding with the \"red guy,\"  also called a Snowberry Clearwing (hummingbird) Moth.  Marty calls these guys \"flying shrimp.\"    <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/martytdx/197907873/\">flickr.com/photos/martytdx/197907873/</a>   Both enjoyed the bounty of the thistle patch which has now gone to seed and crumbled away. \n</p>\nThe hummingbird moths are mistaken for hummingbirds because they can hover just like hummingbirds.  These moths are bumble bee mimics due to their black and yellow colors and can give quite a scare if they fly up on you suddenly.  <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/drphotomoto/2643807951/\">flickr.com/photos/drphotomoto/2643807951/</a>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2008-08-02 10:38",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/drphotomoto/2891336630/\">Sharing nectar</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/24135011@N08\">John Flannery</a> from Richmond County, North Carolina, USA",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 45100825,
+          "ns": 6,
+          "title": "File:African hummingbird moth - Macroglossum trochilus flying, from the front, very hard to photograph (5649085005).jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 313519,
+              "width": 1024,
+              "height": 724,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/d/df/African_hummingbird_moth_-_Macroglossum_trochilus_flying%2C_from_the_front%2C_very_hard_to_photograph_%285649085005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 905,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/African_hummingbird_moth_-_Macroglossum_trochilus_flying%2C_from_the_front%2C_very_hard_to_photograph_%285649085005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 905
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/df/African_hummingbird_moth_-_Macroglossum_trochilus_flying%2C_from_the_front%2C_very_hard_to_photograph_%285649085005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:African_hummingbird_moth_-_Macroglossum_trochilus_flying,_from_the_front,_very_hard_to_photograph_(5649085005).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=45100825",
+              "sha1": "31b3c6eb0e11266b562284e142e97141011652e9",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-11-19 09:23:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "African hummingbird moth - Macroglossum trochilus flying, from the front, very hard to photograph (5649085005)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Macroglossum trochilus|Flickr images reviewed by FlickreviewR|Sphingidae of Gauteng|Photographs by Derek Keats|Macroglossum on flowers|Insects of Walter Sisulu National Botanical Garden|Unidentified Dicliptera|Sphingidae on flowers in South Africa",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "African hummingbird moth - Macroglossum trochilus",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-04-24 13:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/dkeats/5649085005/\">African hummingbird moth - Macroglossum trochilus flying, from the front, very hard to photograph</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/93242958@N00\">Derek Keats</a> from Johannesburg, South Africa",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 73790594,
+          "ns": 6,
+          "title": "File:Gathering Nectar (170283589).jpeg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 809350,
+              "width": 2048,
+              "height": 1638,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Gathering_Nectar_%28170283589%29.jpeg/1280px-Gathering_Nectar_%28170283589%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Gathering_Nectar_%28170283589%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1f/Gathering_Nectar_%28170283589%29.jpeg/1280px-Gathering_Nectar_%28170283589%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Gathering_Nectar_%28170283589%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Gathering_Nectar_%28170283589%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Gathering_Nectar_(170283589).jpeg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=73790594",
+              "sha1": "cb32f1e79e2b3bff1a76d5077d34a12b6dfdd0d3",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2018-10-22 08:58:06",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\nGathering Nectar</div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Images with watermarks|Files with coordinates missing SDC location of creation|Photos imported with import-500px|Archilochus colubris feeding on flowers (female)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "42.553080",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-76.464844",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<div class=\"fn value\">\n<a rel=\"nofollow\" class=\"external text\" href=\"https://500px.com/sambones14012\">Sandra Wagner</a></div>",
+                  "source": "commons-desc-page"
+                },
+                "ImageDescription": {
+                  "value": "<div class=\"description\">\n500px provided description: I went to capture an image of a hummingbird moth at a place where I know they frequent, and also captured this image of a hummingbird. [#bird ,#flower ,#summer ,#animal ,#wildlife ,#wings ,#flying ,#hummingbird ,#ping]</div>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1 January 2000, 05:28:56 (UTC)",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "Imported from <a rel=\"nofollow\" class=\"external text\" href=\"https://500px.com/photo/170283589/gathering-nectar-by-sandra-wagner\">500px</a> (<a rel=\"nofollow\" class=\"external text\" href=\"https://web.archive.org/web/201807id_/https://drscdn.500px.org/photo/170283589/m%3D2048/v2?webp=true&amp;sig=5e9805d69698fb618c0850cb3a2840108ee9ae519a9473e9ada0b3678cbf208e\">archived version</a>) by <a rel=\"nofollow\" class=\"external text\" href=\"https://www.archiveteam.org/index.php?title=500px\">the Archive Team</a>. (<a href=\"https://iw.toolforge.org/import-500px/photo/170283589\" class=\"extiw\" title=\"toolforge:import-500px/photo/170283589\">detail page</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "<div class=\"responsive-license-cc layouttemplate licensetpl\" dir=\"ltr\" lang=\"en\"><div class=\"rlicense-icons\"><span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"w:en:Creative Commons\"><img alt=\"w:en:Creative Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/CC_some_rights_reserved.svg/120px-CC_some_rights_reserved.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"90\" height=\"36\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/CC_some_rights_reserved.svg/250px-CC_some_rights_reserved.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"744\" data-file-height=\"300\"></span></span><br>\n<span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"attribution\"><img alt=\"attribution\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Cc-by_new_white.svg/40px-Cc-by_new_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"24\" height=\"24\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Cc-by_new_white.svg/60px-Cc-by_new_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"64\" data-file-height=\"64\"></span></span> <span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"share alike\"><img alt=\"share alike\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Cc-sa_white.svg/40px-Cc-sa_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"24\" height=\"24\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/d/df/Cc-sa_white.svg/60px-Cc-sa_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"64\" data-file-height=\"64\"></span></span></div><div class=\"rlicense-text\"><div class=\"rlicense-declaration\">This file is licensed under the <a href=\"https://en.wikipedia.org/wiki/en:Creative_Commons\" class=\"extiw\" title=\"w:en:Creative Commons\">Creative Commons</a> <a href=\"//creativecommons.org/licenses/by-sa/3.0/deed.en\" class=\"extiw\" title=\"creativecommons:by-sa/3.0/deed.en\">Attribution-Share Alike 3.0 Unported</a> license.</div><div class=\"rlicense-desc\" style=\"text-align:start;\" lang=\"en\">\n<dl><dd>You are free:\n<ul><li><b>to share</b> – to copy, distribute and transmit the work</li>\n<li><b>to remix</b> – to adapt the work</li></ul></dd>\n<dd>Under the following conditions:\n<ul><li><b>attribution</b> – You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.</li>\n<li><b>share alike</b> – If you remix, transform, or build upon the material, you must distribute your contributions under the <a href=\"https://creativecommons.org/share-your-work/licensing-considerations/compatible-licenses\" class=\"extiw\" title=\"ccorg:share-your-work/licensing-considerations/compatible-licenses\">same or compatible license</a> as the original.</li></ul></dd></dl></div><span class=\"licensetpl_link\" style=\"display:none;\">https://creativecommons.org/licenses/by-sa/3.0</span><span class=\"licensetpl_short\" style=\"display:none;\">CC BY-SA 3.0 </span><span class=\"licensetpl_long\" style=\"display:none;\">Creative Commons Attribution-Share Alike 3.0 </span><span class=\"licensetpl_link_req\" style=\"display:none;\">true</span><span class=\"licensetpl_attr_req\" style=\"display:none;\">true</span></div></div>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 83562597,
+          "ns": 6,
+          "title": "File:Hummingbird Poo (209183175).jpeg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 851730,
+              "width": 2048,
+              "height": 1538,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Hummingbird_Poo_%28209183175%29.jpeg/1280px-Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 961,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/b/be/Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/Hummingbird_Poo_%28209183175%29.jpeg/1280px-Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 961,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/be/Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/be/Hummingbird_Poo_%28209183175%29.jpeg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_Poo_(209183175).jpeg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=83562597",
+              "sha1": "48d8fbb803f013eef9c90c9b77a6a6b4c44d53dc",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-11-01 08:51:35",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\nHummingbird Poo</div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Unidentified Trochilidae|Files with coordinates missing SDC location of creation|Photos imported with import-500px|Trochilidae of San Francisco|Birds defecating",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "37.798263",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-122.413453",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<div class=\"fn value\">\n<a rel=\"nofollow\" class=\"external text\" href=\"https://500px.com/momerath\">Michael Warnock</a></div>",
+                  "source": "commons-desc-page"
+                },
+                "ImageDescription": {
+                  "value": "<div class=\"description\">\n500px provided description: the cutest act of defecation I have photographed ;) [#bird ,#flower ,#flight ,#animal ,#california ,#green ,#wildlife ,#san francisco ,#flying ,#hummingbird]</div>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "24 April 2017, 11:19:14",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "Imported from <a rel=\"nofollow\" class=\"external text\" href=\"https://500px.com/photo/209183175/hummingbird-poo-by-michael-warnock\">500px</a> (<a rel=\"nofollow\" class=\"external text\" href=\"https://web.archive.org/web/201807id_/https://drscdn.500px.org/photo/209183175/m%3D2048/v2?webp=true&amp;sig=cd1da77f89a7868afb4f6671359eafc16dcfb6bc4971a1d0a2957ccf35230826\">archived version</a>) by <a rel=\"nofollow\" class=\"external text\" href=\"https://www.archiveteam.org/index.php?title=500px\">the Archive Team</a>. (<a href=\"https://iw.toolforge.org/import-500px/photo/209183175\" class=\"extiw\" title=\"toolforge:import-500px/photo/209183175\">detail page</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "<div class=\"responsive-license-cc layouttemplate licensetpl\" dir=\"ltr\" lang=\"en\"><div class=\"rlicense-icons\"><span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"w:en:Creative Commons\"><img alt=\"w:en:Creative Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/CC_some_rights_reserved.svg/120px-CC_some_rights_reserved.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"90\" height=\"36\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/79/CC_some_rights_reserved.svg/250px-CC_some_rights_reserved.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"744\" data-file-height=\"300\"></span></span><br>\n<span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"attribution\"><img alt=\"attribution\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Cc-by_new_white.svg/40px-Cc-by_new_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"24\" height=\"24\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/1/11/Cc-by_new_white.svg/60px-Cc-by_new_white.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"64\" data-file-height=\"64\"></span></span></div><div class=\"rlicense-text\"><div class=\"rlicense-declaration\">This file is licensed under the <a href=\"https://en.wikipedia.org/wiki/en:Creative_Commons\" class=\"extiw\" title=\"w:en:Creative Commons\">Creative Commons</a> <a href=\"//creativecommons.org/licenses/by/3.0/deed.en\" class=\"extiw\" title=\"creativecommons:by/3.0/deed.en\">Attribution 3.0 Unported</a> license.</div><div class=\"rlicense-desc\" style=\"text-align:start;\" dir=\"ltr\" lang=\"en\">\n<dl><dd>You are free:\n<ul><li><b>to share</b> – to copy, distribute and transmit the work</li>\n<li><b>to remix</b> – to adapt the work</li></ul></dd>\n<dd>Under the following conditions:\n<ul><li><b>attribution</b> – You must give appropriate credit, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.</li></ul></dd></dl>\n</div><span class=\"licensetpl_link\" style=\"display:none;\">https://creativecommons.org/licenses/by/3.0</span><span class=\"licensetpl_short\" style=\"display:none;\">CC BY 3.0 </span><span class=\"licensetpl_long\" style=\"display:none;\">Creative Commons Attribution 3.0 </span><span class=\"licensetpl_link_req\" style=\"display:none;\">true</span><span class=\"licensetpl_attr_req\" style=\"display:none;\">true</span></div></div>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 93053841,
+          "ns": 6,
+          "title": "File:Red throated hummingbird flying.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 5071647,
+              "width": 3199,
+              "height": 2133,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Red_throated_hummingbird_flying.jpg/1280px-Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b5/Red_throated_hummingbird_flying.jpg/1280px-Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Red_throated_hummingbird_flying.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Red_throated_hummingbird_flying.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=93053841",
+              "sha1": "27daaeb2b5702cc02aebb44b6e87f995cfe38019",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-08-11 18:22:26",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Red throated hummingbird flying",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Archilochus colubris feeding on flowers|Birds feeding on Stachytarpheta flowers",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Ruby throated hummingbird flying away from red flower",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2020-08-08 07:55:16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Jnevitt47&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Jnevitt47 (page does not exist)\">Jack Nevitt</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 106382144,
+          "ns": 6,
+          "title": "File:Hummingbird flower.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3910350,
+              "width": 3814,
+              "height": 2543,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Hummingbird_flower.jpg/1280px-Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/2/20/Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/20/Hummingbird_flower.jpg/1280px-Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/2/20/Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/20/Hummingbird_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_flower.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=106382144",
+              "sha1": "67b8a6d3ede2aee077020ffb64dc1657e6676ea9",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-06-08 10:10:03",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird flower",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Eupetomena macroura|Erythrina americana|Estação Ecológica Juréia-Itatins|Self-published work|Uploaded via Campaign:wle-br|Images from Wiki Loves Earth 2021|Images from Wiki Loves Earth 2021 in Brazil|Images from Wiki Loves Earth 2021 in Brazil - São Paulo|Birds at Erythrina flowers|Images from Wiki Loves Earth missing SDC depicts|Images from Wiki Loves Earth missing SDC location of creation|Images from Wiki Loves Earth with different SDC participant in|Best images from Wiki Loves Earth 2021 in Brazil - Living beings",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Estação Ecológica Juréia-Itatins de nível Estadual, localizado (a) em Iguape (SP), Itariri (SP), Miracatu (SP), Peruíbe (SP)",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-07-17 09:53:51",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Birdy_Flying&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Birdy Flying (page does not exist)\">Birdy Flying</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 118226433,
+          "ns": 6,
+          "title": "File:European honeysuckle, periclymenum, Vildkaprifol.tif",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 35807728,
+              "width": 4039,
+              "height": 2953,
+              "pagecount": 1,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif/lossy-page1-1280px-European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 936,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif/lossy-page1-3840px-European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif/lossy-page1-1280px-European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 936,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/be/European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif/lossy-page1-3840px-European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/be/European_honeysuckle%2C_periclymenum%2C_Vildkaprifol.tif?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:European_honeysuckle,_periclymenum,_Vildkaprifol.tif",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=118226433",
+              "sha1": "f6fa6cd64e91a1e089d8af2f101f8a064f8e0d96",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2022-05-21 23:09:59",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "European honeysuckle, periclymenum, Vildkaprifol",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Stenshuvud|Self-published work|Images from Wiki Loves Earth 2022 in Sweden|Sweden photographs taken on 2009-08-10|Protected areas of Sweden with known IDs|Images from Wiki Loves Earth 2022|Uploaded via Campaign:wle-se|Collection of Björn Söderlund WIKI LOVES EARTH Contest -22|Images from Wiki Loves Earth missing SDC depicts|Images from Wiki Loves Earth 2022 in Sweden - detail",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "European honeysuckle is a species of flowering plant in the family Caprifoliaceae native to much of Europe, North Africa, Turkey and the Caucasus. It is found as far north as southern Norway and Sweden. In the evening, they emit a strong, pleasant scent, while the flowering rests during the bright and warm part of the day. Night-flying moths such as the hummingbird hawk-moth can detect the scent of honeysuckle flowers up to a quarter of a mile away.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-08-10",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Sw3dPix\" class=\"mw-redirect\" title=\"User:Sw3dPix\">Sw3dPix</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/tiff"
+            }
+          ]
+        },
+        {
+          "pageid": 149321729,
+          "ns": 6,
+          "title": "File:Hummingbird Hawk Moth, Buskett Gardens.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3574763,
+              "width": 2711,
+              "height": 2169,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg/1280px-Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg/1280px-Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hummingbird_Hawk_Moth%2C_Buskett_Gardens.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_Hawk_Moth,_Buskett_Gardens.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=149321729",
+              "sha1": "f380231bc0db8ba24e1c061932f5bace19e73d94",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-06-12 21:45:41",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird Hawk Moth, Buskett Gardens",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Protected areas of Malta|Self-published work|Uploaded via Campaign:wle-mt|Images from Wiki Loves Earth 2024|Images from Wiki Loves Earth 2024 in Malta|Images from Wiki Loves Earth missing SDC depicts|Images from Wiki Loves Earth missing SDC location of creation|Macroglossum stellatarum on Lantana flowers|Images from Wiki Loves Earth 2024 Human Rights and Environment Special Nomination",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "With some patience and being at the right place, you can observe the agile hawk moth. They are among some of the fastest flying insects and can hover in mid-air while feeding with its long tongue sipping the nectar.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2024-01-20 12:58:16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:T3rRyCa&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:T3rRyCa (page does not exist)\">T3rRyCa</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 162810943,
+          "ns": 6,
+          "title": "File:Snowberry Clearwing Moth (29121966346).jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1643038,
+              "width": 2448,
+              "height": 3264,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Snowberry_Clearwing_Moth_%2829121966346%29.jpg/1280px-Snowberry_Clearwing_Moth_%2829121966346%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1707,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/4b/Snowberry_Clearwing_Moth_%2829121966346%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4b/Snowberry_Clearwing_Moth_%2829121966346%29.jpg/1280px-Snowberry_Clearwing_Moth_%2829121966346%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1707,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/4b/Snowberry_Clearwing_Moth_%2829121966346%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/4b/Snowberry_Clearwing_Moth_%2829121966346%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Snowberry_Clearwing_Moth_(29121966346).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=162810943",
+              "sha1": "9ceef063c7252829bf28dd8ca65126f0bf5d2ca7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-03-26 04:46:27",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Snowberry Clearwing Moth (29121966346)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Hemaris diffinis|PD US FWS|Kulm Wetland Management District|Flickr images missing SDC creator|United States photographs taken on 2016-06-22|Files from the United States Fish and Wildlife Service Mountain-Prairie Region Flickr stream|Flickr images reviewed by FlickreviewR 2|U.S. Fish and Wildlife Service Flickr files uploaded by OptimusPrimeBot|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "The snowberry clearwing moth (Hemaris diffinis) is known by several names including \"hummingbird moth\", \"flying lobster\", and \"lobster tail\". The caterpillars of this species need snowberry, honeysuckle, or dogbanes as host plants. Adults feed on nectar from thistles, snowberries, hawkweeds, lilacs, and violets, among other flowers. This moth was found while building fence on the Mayer Waterfowl Production Area in Logan County, North Dakota.\nPhoto Credit: Krista Lundgren/USFWS",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken on 22 June 2016, 11:54:06",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/usfwsmtnprairie/29121966346\">Snowberry Clearwing Moth</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/usfwsmtnprairie/\">USFWS Mountain Prairie</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

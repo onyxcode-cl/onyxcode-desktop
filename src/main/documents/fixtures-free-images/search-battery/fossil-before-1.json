@@ -1,0 +1,631 @@
+{
+  "capturedAt": "2026-11-13T17:48:32.926Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=f%C3%B3sil+dinosaurio+museo&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "query": {
+      "pages": [
+        {
+          "pageid": 26826740,
+          "ns": 6,
+          "title": "File:Poekilopleuron bucklandi.JPG",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 767706,
+              "width": 1175,
+              "height": 1466,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Poekilopleuron_bucklandi.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1597,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Poekilopleuron_bucklandi.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1597
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Poekilopleuron_bucklandi.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Poekilopleuron_bucklandi.JPG",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=26826740",
+              "sha1": "af8bf4d81150533eb103dbe7d4b85af44f448b79",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2013-06-23 09:59:31",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Poekilopleuron bucklandi",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Megalosauridae fossils|Poekilopleuron|Taken with Canon PowerShot SX240 HS|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Fossil of <i>Poekilopleuron</i>, an extinct dinosaur. Took the photo at <a href=\"https://en.wikipedia.org/wiki/National_Museum_of_Natural_History,_France\" class=\"extiw\" title=\"en:National Museum of Natural History, France\">Muséum national d'histoire naturelle</a>, Paris.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-05-18 10:30:41",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Ghedoghedo\" title=\"User:Ghedoghedo\">Ghedoghedo</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 81833941,
+          "ns": 6,
+          "title": "File:Velafrons coahuilensis skull.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2788339,
+              "width": 2592,
+              "height": 1944,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f2/Velafrons_coahuilensis_skull.jpg/1280px-Velafrons_coahuilensis_skull.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Velafrons_coahuilensis_skull.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f2/Velafrons_coahuilensis_skull.jpg/1280px-Velafrons_coahuilensis_skull.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Velafrons_coahuilensis_skull.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/f2/Velafrons_coahuilensis_skull.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Velafrons_coahuilensis_skull.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=81833941",
+              "sha1": "d9447e4c417dcaa485f732398e89955a0760acfe",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-09-03 06:25:36",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Velafrons coahuilensis skull",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Paleontology in Mexico|Self-published work|Lambeosaurinae skulls|Velafrons fossils|Fossils in Museo del Desierto",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Velafrons coahuilensis skull at Desert Museum in Saltillo Coahuila, Mexico.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2014-03-28 12:37:22",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Juan_Carlos_Fonseca_Mata\" title=\"User:Juan Carlos Fonseca Mata\">Juan Carlos Fonseca Mata</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 92076523,
+          "ns": 6,
+          "title": "File:Anales del Museo de La Plata. Paleontología argentina (IA analesdelmuseod4muse).pdf",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 5089317,
+              "width": 2577,
+              "height": 3652,
+              "pagecount": 32,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf/page1-1280px-Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1814,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf/page1-1920px-Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf/page1-1280px-Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1814,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf/page1-1920px-Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/10/Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_%28IA_analesdelmuseod4muse%29.pdf?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Anales_del_Museo_de_La_Plata._Paleontolog%C3%ADa_argentina_(IA_analesdelmuseod4muse).pdf",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=92076523",
+              "sha1": "f2d625970adad6f36e1b0780569e613cb5bc7eb1",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-07-10 05:44:15",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\nAnales del Museo de La Plata. Paleontología argentina</div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Scans from the Internet Archive/unverified|PD US expired|Files from the Biodiversity Heritage Library|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Books from the Biodiversity Heritage Library|Anales del Museo de La Plata",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<div class=\"fn value\">\nMuseo de La Plata</div>",
+                  "source": "commons-desc-page"
+                },
+                "ImageDescription": {
+                  "value": "<div class=\"description\">\n<dl><dd>4 v. : 41 cm</dd>\n<dd>Each issue has also a distinctive title</dd></dl>\n<br>Subjects: Paleontology; Periodicals; Paleontology -- Periodicals; Paleontology -- Argentina -- Periodicals</div>",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<dl><dd><a href=\"//archive.org/details/analesdelmuseod4muse\" class=\"extiw\" title=\"iarchive:analesdelmuseod4muse\"><bdi class=\"description en\" lang=\"en\" dir=\"ltr\">Internet Archive identifier:</bdi> analesdelmuseod4muse</a></dd>\n<dd><a rel=\"nofollow\" class=\"external free\" href=\"https://archive.org/download/analesdelmuseod4muse/analesdelmuseod4muse.pdf\">https://archive.org/download/analesdelmuseod4muse/analesdelmuseod4muse.pdf</a></dd></dl>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "application/pdf"
+            }
+          ]
+        },
+        {
+          "pageid": 95492168,
+          "ns": 6,
+          "title": "File:Origen de los indios de América. II. Origen y civilizaciones de los indígenas del Perú (IA origendelosindio00prin).pdf",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 39449524,
+              "width": 833,
+              "height": 1297,
+              "pagecount": 388,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilizaciones_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelosindio00prin%29.pdf/page1-500px-Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilizaciones_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelosindio00prin%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1993,
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilizaciones_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelosindio00prin%29.pdf/page1-500px-Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilizaciones_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelosindio00prin%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1993
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/55/Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilizaciones_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelosindio00prin%29.pdf?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilizaciones_de_los_ind%C3%ADgenas_del_Per%C3%BA_(IA_origendelosindio00prin).pdf",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=95492168",
+              "sha1": "d500bad44ee5cc5635b60bdd3c4cc3b0b6953cb6",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-10-26 15:02:36",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\nOrigen de los indios de América. II. Origen y civilizaciones de los indígenas del Perú</div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Books about Peru|1915 books|Carlos Prince|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Images from the Getty Research Institute|Books published in Lima",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<div class=\"fn value\">\n<dl><dd>Prince, Carlos, 1836-1919</dd>\n<dd>Prince, Carlos, 1836-1919. Origen y civilizaciones de los indígenas del Perú</dd></dl></div>",
+                  "source": "commons-desc-page"
+                },
+                "ImageDescription": {
+                  "value": "<div class=\"description\">\nSubjects: Indians; Indians of South America</div>",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<dl><dd><a href=\"//archive.org/details/origendelosindio00prin\" class=\"extiw\" title=\"iarchive:origendelosindio00prin\"><bdi class=\"description en\" lang=\"en\" dir=\"ltr\">Internet Archive identifier:</bdi> origendelosindio00prin</a></dd>\n<dd><a rel=\"nofollow\" class=\"external free\" href=\"https://archive.org/download/origendelosindio00prin/origendelosindio00prin.pdf\">https://archive.org/download/origendelosindio00prin/origendelosindio00prin.pdf</a></dd></dl>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "application/pdf"
+            }
+          ]
+        },
+        {
+          "pageid": 95925568,
+          "ns": 6,
+          "title": "File:I. Origen de los indios de América. II. Origen y civilization de los indígenas del Perú (IA origendelos00prinrich).pdf",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 30256137,
+              "width": 843,
+              "height": 1225,
+              "pagecount": 388,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/I._Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilization_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelos00prinrich%29.pdf/page1-500px-I._Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilization_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelos00prinrich%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1860,
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/I._Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilization_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelos00prinrich%29.pdf/page1-500px-I._Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilization_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelos00prinrich%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1860
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/73/I._Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilization_de_los_ind%C3%ADgenas_del_Per%C3%BA_%28IA_origendelos00prinrich%29.pdf?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:I._Origen_de_los_indios_de_Am%C3%A9rica._II._Origen_y_civilization_de_los_ind%C3%ADgenas_del_Per%C3%BA_(IA_origendelos00prinrich).pdf",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=95925568",
+              "sha1": "78d94ea4e9ff646513aae00c327ddd347d2d8995",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-11-08 15:19:34",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "I. Origen de los indios de América. II. Origen y civilization de los indígenas del Perú",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Books about Peru|Books with Wikidata item|Carlos Prince|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|California Digital Library|Books with Wikidata item missing accession number|Artworks digital representation of unclassified work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q19419033\" class=\"extiw\" title=\"d:Q19419033\">Carlos Prince</a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "ImageDescription": {
+                  "value": "<div class=\"description\">\nSubjects: Indians -- Origin; Indians of South America -- Peru; Peru -- Antiquities</div>",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<dl><dd><a href=\"//archive.org/details/origendelos00prinrich\" class=\"extiw\" title=\"iarchive:origendelos00prinrich\"><bdi class=\"description en\" lang=\"en\" dir=\"ltr\">Internet Archive identifier:</bdi> origendelos00prinrich</a></dd>\n<dd><a rel=\"nofollow\" class=\"external free\" href=\"https://archive.org/download/origendelos00prinrich/origendelos00prinrich.pdf\">https://archive.org/download/origendelos00prinrich/origendelos00prinrich.pdf</a></dd></dl>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "application/pdf"
+            }
+          ]
+        },
+        {
+          "pageid": 201162637,
+          "ns": 6,
+          "title": "File:Tronco fosil - (M.P.H.N La Pampa).jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3625951,
+              "width": 3000,
+              "height": 1993,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg/1280px-Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 850,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg/1280px-Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 850,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Tronco_fosil_-_%28M.P.H.N_La_Pampa%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Tronco_fosil_-_(M.P.H.N_La_Pampa).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=201162637",
+              "sha1": "3e155d76e28a33fe613967e33ec349103a4a1a92",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-10-06 14:43:28",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Tronco fosil - (M.P.H.N La Pampa)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Uploaded with OpenRefine|Items with VRTS permission confirmed|Files with PermissionTicket template but without P6305 SDC statement|Museo Provincial de Historia Natural|Files from Proyecto MIL (Argentina)|Files provided by the Museo Provincial de Historia Natural",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<br><b>Descripción:</b> Fragmento de tronco fosilizado perteneciente a la colección de Paleobotánica del Museo Provincial de Historia Natural. El ejemplar procede de la Cuenca Neuquina, en la zona de 25 de Mayo, provincia de La Pampa, y posee una antigüedad estimada de aproximadamente 65 millones de años, correspondiente a finales del período Cretácico, hacia el final de la Era Mesozoica y de la época de los dinosaurios. El tronco mide más de un metro de largo y supera los 50 centímetros de circunferencia. Por sus características, se asemejaría a las actuales araucarias, coníferas que habitan en la región cordillerana del norte de Neuquén y que son conocidas como pehuén. Los fósiles vegetales permiten conocer parte de la flora que existió en ambientes del pasado y aportan información sobre los ecosistemas que se desarrollaron hace millones de años. Este ejemplar corresponde a un fragmento de madera que fue preservado mediante procesos de fosilización durante millones de años hasta su posterior hallazgo. Forma parte del patrimonio paleontológico conservado por el museo y actualmente se encuentra exhibido en la sala de Paleontología, donde integra el recorrido destinado a divulgar la historia natural y geológica de la provincia de La Pampa. El ejemplar constituye un testimonio de la vegetación que habitó la región durante el Cretácico tardío.<br><b>Fecha del objeto/documento:</b> Aproximadamente 65 millones de años<br><b>Creador del objeto/documento:</b> Reynaldo Arabena<br><b>Lugar donde está el objeto/documento:</b> Museo Provincial de Historia Natural - La Pampa",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2020",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "Museo Provincial de Historia Natural - La Pampa",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Lucas Cheme Arriaga",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "<p><span class=\"layouttemplateargs\" style=\"display:none;speak:none;\" title=\"template=PermissionTicket 1%3Dhttps%3A%2F%2Fticket.wikimedia.org%2Fotrs%2Findex.pl%3FAction%3DAgentTicketZoom%26TicketNumber%3D2026100810007054 2%3D2026100810007054\"> </span>\n</p>\n<style data-mw-deduplicate=\"TemplateStyles:r1254222110\">.mw-parser-output .messagebox{margin:4px 0;width:auto;border-collapse:collapse;border:2px solid var(--border-color-progressive,#6485d1);background-color:var(--background-color-neutral-subtle,#fbfcff);color:var(--color-base,#202122);box-sizing:border-box;border-inline-start-width:8px}.mw-parser-output .messagebox.mbox-small{font-size:88%;line-height:1.25em}.mw-parser-output .mbox-warning,.mw-parser-output .mbox-speedy{border:2px solid var(--border-color-error,#b22222);background:var(--background-color-error-subtle,#ffdbdb);border-inline-start-width:8px}.mw-parser-output .mbox-serious,.mw-parser-output .mbox-delete,.mw-parser-output .mbox-stop{border:2px solid var(--border-color-error,#b22222);border-inline-start-width:8px}.mw-parser-output .mbox-issue,.mw-parser-output .mbox-content{border:2px solid #f28500;background:var(--background-color-warning-subtle,#ffe);border-inline-start-width:8px}.mw-parser-output .mbox-query,.mw-parser-output .mbox-style{border:2px solid #f4c430;background:var(--background-color-warning-subtle,#ffe);border-inline-start-width:8px}.mw-parser-output .mbox-shit{border:2px solid #960;border-inline-start-width:8px}.mw-parser-output .mbox-license{border:2px solid #88a;border-inline-start-width:initial}.mw-parser-output .mbox-legal{border:2px solid var(--border-color-notice,#666);background:var(--background-color-base,#fff);border-inline-start-width:8px}.mw-parser-output .mbox-honor{border:2px solid #ca3;background:var(--background-color-warning-subtle,#fcf4db);border-inline-start-width:8px}.mw-parser-output .mbox-growth{border:2px solid #8d4;background:var(--background-color-success-subtle,#d5fdf4);border-inline-start-width:8px}.mw-parser-output .mbox-move{border:2px solid #93c;border-inline-start-width:8px}.mw-parser-output .mbox-protection,.mw-parser-output .mbox-message{border:2px solid var(--border-color-base,#aaa);border-inline-start-width:8px}.mw-parser-output .messagebox .mbox-text{border:none;padding:0.25em 0.9em;width:100%}.mw-parser-output .messagebox .mbox-image{border:none;padding-top:2px;padding-bottom:2px;padding-inline-start:0.9em;padding-inline-end:0;text-align:center}.mw-parser-output .messagebox .mbox-imageright{border:none;padding-top:2px;padding-bottom:2px;padding-inline-start:0;padding-inline-end:0.9em;text-align:center}.mw-parser-output .messagebox .mbox-empty-cell{border:none;padding:0;width:1px}.mw-parser-output .messagebox .mbox-invalid-type{text-align:center}@media(min-width:720px){.mw-parser-output .messagebox{margin:4px 10%}.mw-parser-output .messagebox.mbox-small{clear:right;float:right;margin:4px 0 4px 1em;width:238px}}body.skin--responsive .mw-parser-output table.messagebox img{max-width:none!important}</style><table class=\"plainlinks messagebox mbox-notice layouttemplate\" role=\"presentation\" style=\"margin:0.3em 0;width:100%;\"><tbody><tr><td class=\"mbox-image\"><span typeof=\"mw:File\"><span title=\"VRT Wikimedia\"><img alt=\"VRT Wikimedia\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/Permission_logo_2021.svg/120px-Permission_logo_2021.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"75\" height=\"48\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/Permission_logo_2021.svg/250px-Permission_logo_2021.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"935\" data-file-height=\"600\"></span></span></td><td class=\"mbox-text\">This work is <a href=\"https://freedomdefined.org/Definition\" class=\"extiw\" title=\"freedomdefined:Definition\">free</a> and may be used by anyone for any purpose. If you wish to <b><a href=\"//commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia\" title=\"Commons:Reusing content outside Wikimedia\">use this content</a></b>, you do not need to request permission as long as you follow any licensing requirements mentioned on this page.\n<p>The Wikimedia Foundation has received an e-mail confirming that the copyright holder has approved publication under the terms mentioned on this page. This correspondence has been <strong style=\"color: var(--color-content-added, darkgreen);\">reviewed</strong> by a <a href=\"//commons.wikimedia.org/wiki/Template:PermissionTicket/Users\" title=\"Template:PermissionTicket/Users\">Volunteer Response Team (VRT) member</a> and stored in our <a href=\"//commons.wikimedia.org/wiki/Commons:Volunteer_Response_Team\" title=\"Commons:Volunteer Response Team\">permission archive</a>. The correspondence is available to trusted volunteers as <b><a href=\"https://ticket.wikimedia.org/otrs/index.pl?Action=AgentTicketZoom&amp;TicketNumber=2026100810007054\" class=\"extiw\" title=\"ticket:2026100810007054\">ticket #2026100810007054</a></b>.\n</p><p><small>If you have questions about the archived correspondence, please use the <a href=\"//commons.wikimedia.org/wiki/Commons:Volunteer_Response_Team/Noticeboard\" title=\"Commons:Volunteer Response Team/Noticeboard\">VRT noticeboard</a>.</small>\n<small>Ticket link: <a class=\"external free\" href=\"https://ticket.wikimedia.org/otrs/index.pl?Action=AgentTicketZoom&amp;TicketNumber=2026100810007054\">https://ticket.wikimedia.org/otrs/index.pl?Action=AgentTicketZoom&amp;TicketNumber=2026100810007054</a></small>\n<br><small>Find other files from the same ticket:</small> <span typeof=\"mw:File\"><a href=\"https://wcqs-beta.wmflabs.org/#%23defaultView%3AImageGrid%09%0ASELECT%20%3Fimage%20%20%20%7B%0A%20%20%3Ffile%20wdt%3AP6305%20%222026100810007054%22%20.%0A%20%20%3Ffile%20schema%3Aurl%20%3Fimage.%0A%7D%20%0A\" title=\"SDC query (SPARQL)\" rel=\"nofollow\"><img alt=\"SDC query (SPARQL)\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Wikimedia_Commons_Query_Service_Logo.svg/20px-Wikimedia_Commons_Query_Service_Logo.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"15\" height=\"20\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/7/77/Wikimedia_Commons_Query_Service_Logo.svg/40px-Wikimedia_Commons_Query_Service_Logo.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"512\" data-file-height=\"688\"></a></span>\n</p>\n<span id=\"field-otrs\" title=\"https://ticket.wikimedia.org/otrs/index.pl?Action=AgentTicketZoom&amp;TicketNumber=2026100810007054\"></span></td></tr></tbody></table>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

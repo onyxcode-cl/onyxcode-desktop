@@ -1,0 +1,44 @@
+[
+  {
+    "id": "cafe",
+    "label": "Cafetería de barrio",
+    "queries": ["cafetería de barrio interior", "neighborhood coffee shop interior"],
+    "fallback": ["coffee shop interior", "café interior"]
+  },
+  {
+    "id": "hummingbird",
+    "label": "Colibrí en vuelo junto a flores",
+    "queries": ["colibrí en vuelo flores", "hummingbird flying flowers"],
+    "fallback": ["hummingbird", "hummingbird flowers"]
+  },
+  {
+    "id": "penguin",
+    "label": "Pingüino de Humboldt en Chile",
+    "queries": ["pingüino de Humboldt Chile", "Humboldt penguin Chile"],
+    "fallback": ["Spheniscus humboldti Chile", "Humboldt penguin Chile coast"]
+  },
+  {
+    "id": "fossil",
+    "label": "Fósil de dinosaurio en museo",
+    "queries": ["fósil dinosaurio museo", "dinosaur fossil museum"],
+    "fallback": ["dinosaur skeleton museum", "dinosaur fossil"]
+  },
+  {
+    "id": "fruit",
+    "label": "Mercado de frutas",
+    "queries": ["mercado de frutas", "fruit market"],
+    "fallback": ["fruit market stall", "fruit stall"]
+  },
+  {
+    "id": "classroom",
+    "label": "Sala de clases",
+    "queries": ["sala de clases", "classroom interior"],
+    "fallback": ["school classroom", "classroom"]
+  },
+  {
+    "id": "port",
+    "label": "Puerto de Valparaíso",
+    "queries": ["puerto de Valparaíso", "Valparaíso harbor"],
+    "fallback": ["Valparaíso port", "Valparaíso harbour"]
+  }
+]

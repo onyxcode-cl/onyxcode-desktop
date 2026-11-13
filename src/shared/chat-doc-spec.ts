@@ -362,6 +362,8 @@ export interface PptxSlideSpec {
   speaker_notes?: string
   /** Imagen de la carpeta de la tarea — para portada (`cover`) o `image`; se conserva completa y el texto va al lado. */
   image?: DocImageRef
+  /** Pie de foto generado por el servicio, hasta dos líneas. */
+  imageCredit?: string
   /** Dos columnas con su propio encabezado — solo para `layout: "two-col"`; si no viene, se usan `bullets` repartidas mitad y mitad. */
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
@@ -644,6 +646,7 @@ function isSlide(v: unknown): v is PptxSlideSpec {
   if (s.eyebrow !== undefined && (typeof s.eyebrow !== 'string' || s.eyebrow.length > MAX_EYEBROW_CHARS)) return false
   if (s.note !== undefined && (typeof s.note !== 'string' || s.note.length > MAX_NOTE_CHARS)) return false
   if (s.image !== undefined && !isImageRef(s.image)) return false
+  if (s.imageCredit !== undefined && (typeof s.imageCredit !== 'string' || s.imageCredit.length > 240 || !s.image)) return false
   if (s.layout === 'image' && s.image === undefined) return false
   if (s.speaker_notes !== undefined && (typeof s.speaker_notes !== 'string' || s.speaker_notes.length > MAX_SPEAKER_NOTES_CHARS))
     return false
@@ -751,7 +754,7 @@ function isDocxBlock(v: unknown): v is DocxBlock {
         onlyKeys(b, ['type', 'path', 'alt', 'width_cm', 'caption']) &&
         isImagePath(b.path) &&
         docxOpt(b.alt) &&
-        docxOpt(b.caption) &&
+        docxOpt(b.caption, MAX_DOCX_TEXT_CHARS) &&
         (b.width_cm === undefined || (typeof b.width_cm === 'number' && b.width_cm >= 2 && b.width_cm <= 16))
       )
     case 'page_break':
