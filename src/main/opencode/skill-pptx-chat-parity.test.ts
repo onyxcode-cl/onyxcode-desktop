@@ -109,8 +109,18 @@ describe('skill pptx: build_chat_deck.py + .cjs empaquetado, de extremo a extrem
         writeFileSync(join(scripts, 'build_chat_deck.py'), readFileSync(py))
         writeFileSync(join(shared, 'render.py'), readFileSync(resolve(ROOT, 'resources/opencode/skills/_shared/render.py')))
         const fake = join(dir, 'deckcraft-cli')
-        // `deckcraft-cli run --save OUT --cmd …`: escribe OUT y deja constancia de lo recibido.
-        writeFileSync(fake, '#!/bin/sh\nprintf "%s\\n" "$@" > "$3.args"\nprintf FALSO > "$3"\n')
+        // `deckcraft-cli mcp`: recibe los comandos por la entrada estándar y escribe el archivo que pide `file.saveAs`.
+        writeFileSync(
+          fake,
+          `#!/bin/sh
+':' //; exec "${process.execPath}" "$0" "$@"
+const fs = require('node:fs');
+const messages = fs.readFileSync(0, 'utf8').trim().split('\\n').map(JSON.parse);
+const commands = messages.find(m => m.id === 2).params.arguments.commands;
+fs.writeFileSync(commands.find(c => c.command === 'file.saveAs').params.path, 'FALSO');
+console.log(JSON.stringify({id:2,result:{content:[{type:'text',text:JSON.stringify(commands.map(c=>({ok:true})))}]}}));
+`
+        )
         chmodSync(fake, 0o755)
         const spec = join(dir, 'spec.json')
         writeFileSync(
