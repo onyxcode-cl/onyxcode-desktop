@@ -4,6 +4,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.23] - 2026-11-12
+
+### Más rápido
+
+- **Los trabajos largos ya no se cortan a medio camino.** Antes, en pedidos grandes, la respuesta podía chocar con un tope y partir de nuevo, perdiendo un par de minutos. Ese tope se duplicó.
+- **Overdrive da menos vueltas.** La lista de pasos se arma junto con la primera acción en vez de ocupar un turno propio, y los pedidos simples ya no la necesitan.
+- **En Windows, abrir una tarea en una carpeta es más rápido:** Overdrive deja preparada la última carpeta usada al abrir la app.
+
+### Documentos
+
+- **Presentaciones más cuidadas:** láminas que ocupan el espacio, cifras clave en grande, tablas y gráficos de verdad cuando hay series de datos, y portada y cierre con diseño propio.
+- **Informes en Word mejor presentados:** portada proporcionada, títulos numerados, «Página X de Y» y tablas ordenadas.
+- **Al cambiar un texto en todo un Word o PowerPoint, la app avisa si quedó un punto doble o una abreviatura cortada,** para corregirlo antes de entregar.
+- **Mac y Windows usan las mismas bibliotecas para documentos,** también dentro de Overdrive en Windows (se actualiza su Linux interno).
+
 ## [1.8.22] - 2026-11-12
 
 ### Documentos en el modo Código
