@@ -81,6 +81,8 @@ async function readJson(res: Response, max: number): Promise<unknown> {
 export function createGuardInfoHandler(opts: {
   server: () => GuardServerRef | null
   fetchImpl?: typeof fetch
+  /** Solo main, para ligar el primer inventario a una sesión nueva; no se expone en el canal de lectura. */
+  includeCreated?: boolean
 }): (path: string, query: URLSearchParams) => Promise<GuardReply> {
   const doFetch = opts.fetchImpl ?? fetch
   const get = async (
@@ -149,7 +151,17 @@ export function createGuardInfoHandler(opts: {
         }
         const permission = info.permission === undefined ? [] : rulesOf(info.permission)
         if (!permission) return { status: 502, body: { error: 'upstream' } }
-        return { status: 200, body: { id, ...(parentID ? { parentID } : {}), ...(agent ? { agent } : {}), permission } }
+        const created = info.time && typeof info.time === 'object' ? (info.time as Record<string, unknown>).created : undefined
+        return {
+          status: 200,
+          body: {
+            id,
+            ...(parentID ? { parentID } : {}),
+            ...(agent ? { agent } : {}),
+            permission,
+            ...(opts.includeCreated && typeof created === 'number' ? { created } : {})
+          }
+        }
       }
       return { status: 404, body: { error: 'not found' } }
     } catch {

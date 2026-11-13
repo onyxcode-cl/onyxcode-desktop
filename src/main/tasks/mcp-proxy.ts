@@ -263,6 +263,7 @@ export class McpProxy {
   private server: Server | null = null
   private routes: Route[] = []
   private local: { prefix: string; hash: Buffer; handler: McpProxyLocalHandler } | null = null
+  private localPost: { path: string; hash: Buffer; handler: (body: unknown, signal: AbortSignal) => Promise<unknown> } | null = null
   private total = 0
   private readonly upstreams = new Set<ClientRequest>()
   port = 0
@@ -303,6 +304,7 @@ export class McpProxy {
     for (const r of this.routes) r.revoked = true
     this.routes = []
     this.local = null
+    this.localPost = null
     for (const u of this.upstreams) u.destroy()
     this.upstreams.clear()
     if (!server) return
@@ -372,6 +374,46 @@ export class McpProxy {
     if (issuedTokens.length > 512) issuedTokens.splice(0, issuedTokens.length - 512)
     this.local = { prefix, hash: sha256(token), handler }
     return { url: `http://${HOST}:${this.port}${prefix}`, token }
+  }
+
+  /** Mutación local acotada, con token DISTINTO del guardián de solo lectura. Sin destinos elegibles por el cliente. */
+  setLocalPostHandler(path: string, handler: (body: unknown, signal: AbortSignal) => Promise<unknown>): { url: string; token: string } {
+    if (!this.server || !/^\/[A-Za-z0-9_-]+$/.test(path)) throw new Error('Ruta local no válida.')
+    const token = randomBytes(32).toString('base64url')
+    this.localPost = { path, hash: sha256(token), handler }
+    issuedTokens.push(token)
+    if (issuedTokens.length > 512) issuedTokens.splice(0, issuedTokens.length - 512)
+    return { url: `http://${HOST}:${this.port}${path}`, token }
+  }
+
+  private async handleLocalPost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const local = this.localPost!
+    if (req.url !== local.path) return this.reply(res, 404, 'not found')
+    if (req.method !== 'POST') return this.reply(res, 405, 'method not allowed', { allow: 'POST' })
+    if (this.total >= this.limits.maxConcurrent) return this.reply(res, 429, 'too many requests')
+    this.total++
+    const chunks: Buffer[] = []
+    let size = 0
+    const controller = new AbortController()
+    req.once('aborted', () => controller.abort())
+    res.once('close', () => controller.abort())
+    req.setTimeout(5000, () => req.destroy())
+    try {
+      for await (const chunk of req) {
+        size += chunk.length
+        if (size > 20000) return this.reply(res, 413, 'too large')
+        chunks.push(Buffer.from(chunk))
+      }
+      const body = parseStrictJson(Buffer.concat(chunks).toString('utf8'))
+      if (this.localPost !== local) return this.reply(res, 401, 'unauthorized')
+      const result = await local.handler(body, controller.signal)
+      if (!res.destroyed)
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(result))
+    } catch {
+      this.reply(res, 502, 'cleanup failed')
+    } finally {
+      this.total--
+    }
   }
 
   private handleLocal(req: IncomingMessage, res: ServerResponse): void {
@@ -452,6 +494,10 @@ export class McpProxy {
     if (req.headers.origin !== undefined) return this.reply(res, 403, 'origin not allowed')
     const auth = req.headers.authorization
     const token = typeof auth === 'string' && /^Bearer /.test(auth) ? auth.slice(7) : undefined
+    if (this.localPost && token && timingSafeEqual(sha256(token), this.localPost.hash)) {
+      void this.handleLocalPost(req, res)
+      return
+    }
     // Manejador local (canal del guardián): mismo Host/Origin, su propio token en tiempo constante.
     if (this.local && token && timingSafeEqual(sha256(token), this.local.hash)) return this.handleLocal(req, res)
     const route = this.lookup(token)

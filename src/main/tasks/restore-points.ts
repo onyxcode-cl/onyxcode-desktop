@@ -42,6 +42,7 @@ import { basename, dirname, join, resolve, sep } from 'node:path'
 import { createTwoFilesPatch } from 'diff'
 import { LinkRefusedError } from './no-follow'
 import { SafeTempFile } from './safe-write'
+import type { DeleteBaseline } from './own-delete'
 import type { TasksRestoreChange, TasksRestorePoint } from '@shared/ipc-tasks'
 
 export interface RestoreLimits {
@@ -186,6 +187,7 @@ async function walk(root: string, maxFiles: number, expired?: () => boolean): Pr
       try {
         st = lstatSync(abs)
       } catch {
+        out.unreadableDirs.push(rel)
         continue
       }
       if (st.isSymbolicLink()) {
@@ -206,6 +208,8 @@ async function walk(root: string, maxFiles: number, expired?: () => boolean): Pr
           out.overLimit = true
           return out
         }
+      } else {
+        out.unreadableDirs.push(rel)
       }
       if (++n % 400 === 0) {
         await yieldLoop()
@@ -256,6 +260,7 @@ function countPatch(patch: string): { additions: number; deletions: number } {
 }
 
 export class RestorePoints {
+  private readonly ownershipEpoch = Date.now()
   private readonly limits: RestoreLimits
   private readonly now: () => number
   private readonly freeBytes: (path: string) => number
@@ -418,12 +423,67 @@ export class RestorePoints {
 
   // ───────────────────────────── crear ─────────────────────────────
 
-  async create(folder: string, sessionId: string, label: string): Promise<TasksRestorePoint> {
+  async create(folder: string, sessionId: string, label: string, pristine?: () => Promise<boolean>): Promise<TasksRestorePoint> {
     const real = this.realFolder(folder)
-    return this.serial(real, () => this.createLocked(real, sessionId, label))
+    return this.serial(real, async () => {
+      const dir = this.folderDir(real)
+      this.ensureDirs(dir)
+      const baselineFile = this.baselineFile(real, sessionId)
+      let first = false
+      try {
+        // Marcador persistente ANTES de recorrer: un fallo/omisión nunca se sustituye en otro turno.
+        writeFileSync(baselineFile, 'null', { flag: 'wx', mode: 0o600 })
+        first = !!pristine && !this.allMetas(dir).some((m) => m.sessionId === sessionId) && (await pristine())
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+      }
+      return this.createLocked(
+        real,
+        sessionId,
+        label,
+        undefined,
+        first
+          ? async (b) => {
+              if (await pristine!()) writeFileSync(baselineFile, JSON.stringify(b), { mode: 0o600 })
+            }
+          : undefined
+      )
+    })
   }
 
-  private async createLocked(real: string, sessionId: string, label: string, keepId?: string): Promise<TasksRestorePoint> {
+  private baselineFile(real: string, sessionId: string): string {
+    return join(this.folderDir(real), 'points', `.ownership-${createHash('sha256').update(sessionId).digest('hex')}.json`)
+  }
+
+  /** Solo una sesión nueva tiene un registro inicial demostrable; las anteriores a esta versión fallan cerrado. */
+  deleteBaseline(folder: string, sessionId: string, sessionCreated: number): DeleteBaseline | null {
+    try {
+      const b = JSON.parse(readFileSync(this.baselineFile(this.realFolder(folder), sessionId), 'utf8')) as DeleteBaseline | null
+      if (
+        !b ||
+        b.version !== 1 ||
+        !Number.isFinite(b.notBefore) ||
+        !Number.isFinite(sessionCreated) ||
+        sessionCreated < b.notBefore ||
+        !Array.isArray(b.paths) ||
+        !b.paths.every((p) => typeof p === 'string') ||
+        !Array.isArray(b.unknown) ||
+        !b.unknown.every((p) => typeof p === 'string')
+      )
+        return null
+      return b
+    } catch {
+      return null
+    }
+  }
+
+  private async createLocked(
+    real: string,
+    sessionId: string,
+    label: string,
+    keepId?: string,
+    saveBaseline?: (b: DeleteBaseline) => Promise<void>
+  ): Promise<TasksRestorePoint> {
     const dir = this.folderDir(real)
     this.ensureDirs(dir)
     const id = randomBytes(16).toString('hex')
@@ -444,6 +504,14 @@ export class RestorePoints {
     const w = await walk(real, this.limits.maxFiles, expired)
     if (w.timedOut) return skipped(SLOW)
     if (w.overLimit) return skipped(`la carpeta tiene más de ${this.limits.maxFiles.toLocaleString('es')} archivos`)
+    // Inventario de existencia, independiente de copias, hashes y retención de los puntos siguientes.
+    // Se registra incluso un archivo que desaparezca durante la copia; nunca pasa a ser «propio».
+    const baseline: DeleteBaseline = {
+      version: 1,
+      notBefore: this.ownershipEpoch,
+      paths: [...w.files.map((f) => f.rel), ...w.dirs, ...w.symlinks, ...w.cloudStubs],
+      unknown: w.unreadableDirs
+    }
     let total = 0
     for (const f of w.files) if (f.st.size <= this.limits.maxFileBytes) total += f.st.size
     if (total > this.limits.maxTotalBytes) return skipped('la carpeta ocupa más de 2 GB')
@@ -535,7 +603,9 @@ export class RestorePoints {
       ...(w.unreadableDirs.length ? { unreadableDirs: w.unreadableDirs } : {}),
       ...(w.cloudStubs.length ? { cloudStubs: w.cloudStubs } : {})
     }
-    return finish({ files: Object.keys(entries).length, bytes, status: 'ok', ...(notCopied ? { notCopied } : {}) }, man)
+    const result = finish({ files: Object.keys(entries).length, bytes, status: 'ok', ...(notCopied ? { notCopied } : {}) }, man)
+    await saveBaseline?.(baseline)
+    return result
   }
 
   // ───────────────────────────── listar ─────────────────────────────
@@ -803,6 +873,8 @@ export class RestorePoints {
     for (const d of dirs) {
       const dir = join(this.deps.root, d)
       let any = false
+      const baselineFile = join(dir, 'points', `.ownership-${createHash('sha256').update(sessionId).digest('hex')}.json`)
+      if (existsSync(baselineFile)) writeFileSync(baselineFile, 'null', { mode: 0o600 })
       for (const m of this.allMetas(dir)) {
         if (m.sessionId !== sessionId) continue
         this.removePoint(dir, m.id)
