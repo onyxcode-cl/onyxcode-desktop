@@ -100,6 +100,21 @@ describe('3. disco sin enlaces duros (memoria USB FAT): EISDIR entra al camino d
 describe('4. rename final con el archivo abierto por otro programa (solo Windows)', () => {
   const target = (): string => join(root, 'memoria.md')
 
+  it('reemplazo condicionado: no espera ni reintenta con la condición potencialmente caducada', () => {
+    safeWriteOps.isWindows = () => true
+    writeFileSync(target(), 'anterior')
+    let attempts = 0
+    safeWriteOps.rename = () => {
+      attempts++
+      throw fail('EBUSY')
+    }
+    expect(() => safeWriteFile(root, target(), 'nuevo', { replace: true, noRenameRetry: true })).toThrow('EBUSY')
+    expect(attempts).toBe(1)
+    expect(sleeps).toEqual([])
+    expect(tmps()).toEqual([])
+    expect(readFileSync(target(), 'utf8')).toBe('anterior')
+  })
+
   it.each(['EPERM', 'EBUSY', 'EACCES'])('Windows, %s dos veces y luego bien: reintenta con espera creciente y guarda', (code) => {
     safeWriteOps.isWindows = () => true
     let n = 0

@@ -428,8 +428,13 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private async documentsBlock(): Promise<Record<string, unknown> | null> {
     try {
       const { documentsMcp } = await import('../documents')
+      const { activeDocumentSession } = await import('../documents/mcp-server')
       this.documentsApi = documentsMcp
-      const block = await documentsMcp.configFor({ folder: CODE_BINDING_FOLDER, code: { roots: () => openCodeFolders() } })
+      const block = await documentsMcp.configFor({
+        folder: CODE_BINDING_FOLDER,
+        code: { roots: () => openCodeFolders() },
+        session: async (root) => (this.connection ? activeDocumentSession(this.connection, root) : null)
+      })
       this.documentsToken = bearerOf(block)
       return block
     } catch (err) {

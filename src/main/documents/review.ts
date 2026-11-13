@@ -156,17 +156,24 @@ async function reviewDocx(zip: JSZip): Promise<ReviewResult> {
       (m) => !textOf(m[0]).trim() && !/<w:br\b|<w:drawing|<w:pict|<w:sectPr/.test(m[0])
     )
   )
-  if (blanks)
-    r.note(`${blanks} sitio(s) con dos o más párrafos vacíos seguidos: usa el espacio del estilo en vez de varios Enter`)
+  if (blanks) r.note(`${blanks} sitio(s) con dos o más párrafos vacíos seguidos: usa el espacio del estilo en vez de varios Enter`)
   const runs = listRuns(paras.map((p) => p.numId)).filter((n) => n > 7)
   if (runs.length) r.note(`Lista de ${runs.join(' y ')} ítems seguidos (más de 7): divide la lista en grupos con un título o usa una tabla`)
   const wordy = paras.filter((p) => p.numbered && countWords(p.text) > 30)
   if (wordy.length)
-    r.note(`${wordy.length} ítem(s) de lista de más de 30 palabras (${short(wordy.map((p) => `«${p.text.trim().slice(0, 24)}…»`), 3)}): acórtalos o pásalos a párrafos`)
+    r.note(
+      `${wordy.length} ítem(s) de lista de más de 30 palabras (${short(
+        wordy.map((p) => `«${p.text.trim().slice(0, 24)}…»`),
+        3
+      )}): acórtalos o pásalos a párrafos`
+    )
   const long = paras.filter((p) => !/^(list|heading|title)/.test(p.key) && countWords(p.text) > 140)
   if (long.length)
     r.note(
-      `${long.length} párrafo(s) de más de 140 palabras (${short(long.map((p) => `«${p.text.trim().slice(0, 24)}…» ${countWords(p.text)} palabras`), 3)}): divídelos o pasa las ideas a una lista`
+      `${long.length} párrafo(s) de más de 140 palabras (${short(
+        long.map((p) => `«${p.text.trim().slice(0, 24)}…» ${countWords(p.text)} palabras`),
+        3
+      )}): divídelos o pasa las ideas a una lista`
     )
   for (const p of paras.filter((x) => x.key === 'title' || /^heading\d$/.test(x.key))) {
     const issue = headingStyleIssue(p.text)
@@ -269,6 +276,7 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const tight: string[] = []
   const lowContrast: ContrastProblem[] = []
   const titles: Array<string | null> = []
+  let lastSlideText = ''
   let allText = ''
   const TOL = 22860
   const EDGE = 274320 // 0,3 pulgadas: más cerca del borde que esto se ve apretado
@@ -277,6 +285,15 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     const xml = (await zip.file(name)!.async('string')) ?? ''
     const sps = xml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? []
     const textShapes = pptxTextShapes(xml)
+    if (i === names.length - 1)
+      lastSlideText = [
+        ...xml
+          .replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shape) => (/<p:ph[^>]*\stype="(?:ftr|sldNum|dt)"/.test(shape) ? '' : shape))
+          .matchAll(/<a:t(?:\s[^>]*)?>([^<]*)<\/a:t>/g)
+      ]
+        .map((match) => unescapeXml(match[1]))
+        .filter((text) => !/^\s*\d+(\s*\/\s*\d+)?\s*$/.test(text))
+        .join(' ')
     allText += ' ' + textOf(xml)
     for (const ts of textShapes) {
       if (ts.placeholder && FOOTER_PH.has(ts.placeholder)) continue
@@ -300,7 +317,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
         tight.push(`${i + 1} («${ts.name}»)`)
     }
     const boxed = textShapes.filter((t) => t.box && !(t.placeholder && FOOTER_PH.has(t.placeholder)))
-    for (const [a, c] of overlappingPairs(boxed.map((t) => textExtentBox(t)!))) stacked.push(`${i + 1} («${boxed[a].name}» con «${boxed[c].name}»)`)
+    for (const [a, c] of overlappingPairs(boxed.map((t) => textExtentBox(t)!)))
+      stacked.push(`${i + 1} («${boxed[a].name}» con «${boxed[c].name}»)`)
     lowContrast.push(...pptxContrastProblems(textShapes, await slideBackground(zip, name, xml), `diapositiva ${i + 1}`, pptxPanels(xml)))
     const hasTitle = sps.some((s) => /<p:ph[^>]*\stype="(title|ctrTitle)"/.test(s) && textOf(s).trim())
     if (!hasTitle) noTitle.push(String(i + 1))
@@ -358,18 +376,40 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   )
   checkTemplate(r, allText)
   const specSlides = spec && typeof spec === 'object' && Array.isArray((spec as PptxSpec).slides) ? (spec as PptxSpec).slides : null
+  // Se cuenta el texto que llegó al archivo, no el prometido en el spec. Pie, número y contacto no convierten «Gracias» en un cierre.
+  const lastSpec = specSlides?.at(-1)
+  if (names.length > 1 || lastSpec?.layout === 'closing' || /^\s*(gracias|preguntas)\b/i.test(lastSlideText)) {
+    const words = countWords(lastSlideText.replace(/\S+@\S+|https?:\/\/\S+/g, ' '))
+    r.check(
+      words >= 8,
+      'El cierre tiene contenido (al menos 8 palabras)',
+      `Cierre casi vacío (${words} palabras): la última lámina debe incluir la decisión o 2–3 mensajes clave; nunca solo «Gracias» ni un contacto`
+    )
+  }
   if (specSlides && monotonousLayouts(specSlides.map((s) => s.layout)))
     r.note(
       `Las ${specSlides.length - 1} láminas de contenido son todas de viñetas: varía el tipo de lámina (cifras, pasos, tarjetas, tabla o gráfico) donde el contenido lo pida`
     )
   const dense = (specSlides ?? []).flatMap((s, i) => (denseBullets(s.bullets) ? [i + 1] : []))
   if (dense.length)
-    r.note(`Láminas con más de 6 viñetas o más de 60 palabras de cuerpo (nº ${short(dense.map(String), 6)}): reparte el contenido en dos láminas`)
+    r.note(
+      `Láminas con más de 6 viñetas o más de 60 palabras de cuerpo (nº ${short(dense.map(String), 6)}): reparte el contenido en dos láminas`
+    )
   const titleIssues = slideTitleIssues(titles)
   if (titleIssues.repeated.length)
-    r.note(`Título repetido en varias diapositivas: ${short(titleIssues.repeated.map((t) => `«${t.slice(0, 30)}»`), 3)}: cada lámina necesita su propio título`)
+    r.note(
+      `Título repetido en varias diapositivas: ${short(
+        titleIssues.repeated.map((t) => `«${t.slice(0, 30)}»`),
+        3
+      )}: cada lámina necesita su propio título`
+    )
   if (titleIssues.dotted.length)
-    r.note(`Título que termina en punto: ${short(titleIssues.dotted.map((t) => `«${t.slice(0, 30)}»`), 3)}: los títulos no llevan punto final`)
+    r.note(
+      `Título que termina en punto: ${short(
+        titleIssues.dotted.map((t) => `«${t.slice(0, 30)}»`),
+        3
+      )}: los títulos no llevan punto final`
+    )
   if (tight.length)
     r.note(`Texto a menos de 0,3 pulgadas del borde en diapositiva ${short(tight)}: déjale al menos 0,5 pulgadas de margen si puedes`)
   return r.done()
@@ -481,11 +521,7 @@ async function reviewXlsx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   )
   checkTemplate(r, allText)
   if (naCells.length)
-    r.check(
-      false,
-      '',
-      `Celdas con «N/A» como texto de plantilla (${short(naCells)}): pon el valor real, «—» o quita la columna`
-    )
+    r.check(false, '', `Celdas con «N/A» como texto de plantilla (${short(naCells)}): pon el valor real, «—» o quita la columna`)
   if (isXlsxSpec(spec)) {
     const found = reviewFormulas(spec)
     const errs = found.filter((x) => x.severity === 'error')
@@ -589,14 +625,19 @@ export function reviewPdf(html: string, bytes: Buffer): ReviewResult {
     'Letra de al menos 10 px',
     `Hay letra de ${Math.round((min ?? 0) / 0.75)} px, ilegible impresa. Sube todo a 10 px o más (11 px o más en tablas): si una tabla no cabe, acorta las celdas o quita columnas en vez de achicar la letra`
   )
-  r.check(!/\b(?:src|href)\s*=\s*["']?\s*(?:https?:)?\/\//i.test(html) && !/url\(\s*["']?\s*https?:/i.test(html), 'Sin recursos de internet', 'Hay recursos de internet (src/href/url http): el PDF no tiene red; usa data: o quítalos')
+  r.check(
+    !/\b(?:src|href)\s*=\s*["']?\s*(?:https?:)?\/\//i.test(html) && !/url\(\s*["']?\s*https?:/i.test(html),
+    'Sin recursos de internet',
+    'Hay recursos de internet (src/href/url http): el PDF no tiene red; usa data: o quítalos'
+  )
   const longTables = (html.match(/<table\b[\s\S]*?<\/table>/gi) ?? []).filter((t) => (t.match(/<tr\b/gi) ?? []).length > 12)
   r.check(
     longTables.every((t) => /<thead\b/i.test(t)),
     'Las tablas largas tienen <thead> (se repite en cada página)',
     'Una tabla de más de 12 filas no tiene <thead>: sin él el encabezado no se repite en las páginas siguientes'
   )
-  const styleText = (html.match(/<style[\s\S]*?<\/style>/gi) ?? []).join(' ') + ' ' + (html.match(/\bstyle\s*=\s*"[^"]*"/gi) ?? []).join(' ')
+  const styleText =
+    (html.match(/<style[\s\S]*?<\/style>/gi) ?? []).join(' ') + ' ' + (html.match(/\bstyle\s*=\s*"[^"]*"/gi) ?? []).join(' ')
   const overlaps = /margin(?:-top|-bottom)?\s*:[^;}"]*-\d|translateY\(\s*-\d/i.test(styleText)
   r.check(
     !(overlaps && /overflow\s*:\s*hidden/i.test(styleText)),
@@ -621,7 +662,11 @@ export function reviewPdf(html: string, bytes: Buffer): ReviewResult {
     r.note(`Hay ${families.length} familias de letra distintas (${short(families, 4)}): con una o dos se ve más ordenado`)
   const wide = wideHeaderRows(html)
   if (wide) r.note(`${wide} fila(s) de tabla con más de 8 encabezados: se salen de la página; acorta los títulos o parte la tabla`)
-  r.check(/<html\b[^>]*\blang\s*=/i.test(html), 'Declara el idioma (<html lang>)', 'Falta <html lang="es"> (accesibilidad y separación de sílabas)')
+  r.check(
+    /<html\b[^>]*\blang\s*=/i.test(html),
+    'Declara el idioma (<html lang>)',
+    'Falta <html lang="es"> (accesibilidad y separación de sílabas)'
+  )
   const noAlt = (html.match(/<img\b[^>]*>/gi) ?? []).filter((t) => !/\balt\s*=/i.test(t)).length
   if (noAlt) r.note(`${noAlt} imagen${noAlt === 1 ? '' : 'es'} sin texto alternativo (alt)`)
   checkTemplate(r, html.replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' '))
@@ -653,7 +698,7 @@ export async function reviewSummary(
       `\nRevisión de calidad de la herramienta (salida de esta herramienta: puedes citarla en «Cómo se verificó»):\n${lines}\n` +
       (res.ok
         ? 'RESULTADO: OK'
-        : 'RESULTADO: hay puntos ✘. Corrígelos creando el documento de nuevo con OTRO nombre (todo de una vez) y en el cierre di qué corregiste.')
+        : 'RESULTADO: hay puntos ✘. Corrígelos creando el documento de nuevo con el MISMO nombre, tipo y subcarpeta (todo de una vez); solo se reemplaza el archivo propio sin cambios. En el cierre di qué corregiste.')
     )
   } catch {
     return '\nRevisión de calidad: NO corrida (no se pudo abrir el archivo creado para revisarlo). No la cites como hecha.'

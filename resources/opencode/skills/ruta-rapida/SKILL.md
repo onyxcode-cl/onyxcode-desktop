@@ -1,6 +1,6 @@
 ---
 name: ruta-rapida
-description: Úsala SIEMPRE al empezar una tarea en el Mac, antes de escribir el plan: elige para cada paso el mecanismo más rápido, barato y fiable (comandos, scripts, AppleScript, accesibilidad o pantalla) y trae recetas exactas.
+description: Úsala al empezar una tarea que implique manejar el ordenador (apps, accesibilidad o pantalla), antes de escribir el plan; no para tareas solo de documentos o archivos: elige para cada paso el mecanismo más rápido, barato y fiable (comandos, scripts, AppleScript, accesibilidad o pantalla) y trae recetas exactas.
 ---
 
 # Elegir la ruta más rápida (antes de planificar)

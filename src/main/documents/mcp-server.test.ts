@@ -185,7 +185,7 @@ describe('crear', () => {
       const t = textOf(await call(c.port, c.token, { tipo: 'docx', nombre: 'Doble', spec: DOCX }))
       expect(t).toContain('✔ Bien A')
       expect(t).toContain('✘ Mal B')
-      expect(t).toContain('OTRO nombre')
+      expect(t).toContain('MISMO nombre')
     } finally {
       await withReview.stop()
     }
@@ -215,11 +215,12 @@ describe('crear', () => {
     expect(readdirSync(folder2)).toEqual(['b.docx'])
   })
 
-  it('no pisa: el segundo con el mismo nombre queda « (2)»', async () => {
-    const { token, port } = await server.clientFor({ folder })
+  it('rehace el mismo archivo propio intacto de la misma sesión', async () => {
+    const { token, port } = await server.clientFor({ folder, session: async () => 'ses_prueba' })
     await call(port, token, { tipo: 'docx', nombre: 'x', spec: DOCX })
     const r = await call(port, token, { tipo: 'docx', nombre: 'x', spec: DOCX })
-    expect(textOf(r)).toContain('x (2).docx')
+    expect(textOf(r)).toContain('x.docx')
+    expect(readdirSync(folder)).toEqual(['x.docx'])
   })
 
   it.each([
@@ -492,6 +493,7 @@ describe('renderizar', () => {
     const { token, port } = await s2.clientFor({ folder })
     const created = await call(port, token, { tipo: 'docx', nombre: 'a', spec: DOCX })
     const ruta = textOf(created).match(/creado: (.+) \(/)![1]!
+    previews.length = 0 // crear ya devolvió su vista previa
     writeFileSync(ruta, 'MANIPULADO')
     const r = await call(port, token, { ruta }, 'renderizar')
     expect(r.body.result.isError).toBe(true)
@@ -511,7 +513,7 @@ describe('renderizar', () => {
       expect(r.body.result.isError).toBeUndefined()
       expect(r.body.result.content[1].type).toBe('image')
     }
-    expect(previews.map((p) => p.tipo)).toEqual(['xlsx', 'pdf'])
+    expect(previews.map((p) => p.tipo)).toEqual(['xlsx', 'xlsx', 'pdf', 'pdf'])
   })
 
   it('sin render disponible (falta ArtCraft) explica qué hacer', async () => {
@@ -545,14 +547,22 @@ describe('crear: argumentos con variantes y errores claros', () => {
   })
   it('el rechazo de pptx dice qué campo corregir', async () => {
     const { token, port } = await server.clientFor({ folder })
-    const r = await call(port, token, { tipo: 'pptx', nombre: 'x', spec: { slides: [{ title: 'ok' }, { title: 'mal', layout: 'inventado' }] } })
+    const r = await call(port, token, {
+      tipo: 'pptx',
+      nombre: 'x',
+      spec: { slides: [{ title: 'ok' }, { title: 'mal', layout: 'inventado' }] }
+    })
     expect(r.body.result.isError).toBe(true)
     expect(textOf(r)).toContain('slides[1]')
     expect(textOf(r)).toContain('layout')
   })
   it('rechaza «a definir» y celdas «pendiente»', async () => {
     const { token, port } = await server.clientFor({ folder })
-    const r = await call(port, token, { tipo: 'docx', nombre: 'y', spec: { blocks: [{ type: 'paragraph', text: 'Monto: a definir por Finanzas' }] } })
+    const r = await call(port, token, {
+      tipo: 'docx',
+      nombre: 'y',
+      spec: { blocks: [{ type: 'paragraph', text: 'Monto: a definir por Finanzas' }] }
+    })
     expect(r.body.result.isError).toBe(true)
   })
 })
@@ -560,14 +570,19 @@ describe('crear: argumentos con variantes y errores claros', () => {
 describe('crear: pase 4', () => {
   it('rechaza [PENDIENTE: …] largo en un caption de tabla y «en evaluación»', async () => {
     const { token, port } = await server.clientFor({ folder })
-    const long = '[PENDIENTE: montos reales de cada modalidad según la cotización vigente del proveedor de servicios, a confirmar con Finanzas el próximo mes]'
+    const long =
+      '[PENDIENTE: montos reales de cada modalidad según la cotización vigente del proveedor de servicios, a confirmar con Finanzas el próximo mes]'
     const t = (caption: string) => ({ blocks: [{ type: 'table', columns: ['A'], rows: [['1']], caption }] })
     expect((await call(port, token, { tipo: 'docx', nombre: 'a', spec: t(long) })).body.result.isError).toBe(true)
     expect((await call(port, token, { tipo: 'docx', nombre: 'b', spec: t('Montos en evaluación') })).body.result.isError).toBe(true)
   })
   it('rechaza una lámina de presupuesto sin ninguna cifra', async () => {
     const { token, port } = await server.clientFor({ folder })
-    const r = await call(port, token, { tipo: 'pptx', nombre: 'p', spec: { slides: [{ title: 'Presupuesto 2027', bullets: ['Personal', 'Tecnología'] }] } })
+    const r = await call(port, token, {
+      tipo: 'pptx',
+      nombre: 'p',
+      spec: { slides: [{ title: 'Presupuesto 2027', bullets: ['Personal', 'Tecnología'] }] }
+    })
     expect(r.body.result.isError).toBe(true)
     expect(textOf(r)).toContain('cifras de ejemplo')
   })
@@ -582,7 +597,8 @@ describe('crear: pase 4', () => {
 
 describe('pdf con imágenes de la carpeta', () => {
   it('localImageRefs encuentra rutas relativas y descarta data: y http (una ruta absoluta se deja pasar para que se rechace con mensaje)', () => {
-    const html = '<img src="logo.png"><img src="data:image/png;base64,xx"><img src="https://x/y.png"><div style="background:url(fondo.jpg)"></div><img src="/abs.png">'
+    const html =
+      '<img src="logo.png"><img src="data:image/png;base64,xx"><img src="https://x/y.png"><div style="background:url(fondo.jpg)"></div><img src="/abs.png">'
     expect(localImageRefs(html).sort()).toEqual(['/abs.png', 'fondo.jpg', 'logo.png'])
   })
 })
@@ -591,7 +607,11 @@ describe('errores de datos: mensaje accionable, no «Error interno»', () => {
   const bad: Array<[string, Record<string, unknown>, RegExp]> = [
     ['Word: blocks es un objeto', { tipo: 'docx', spec: { blocks: { item: [1] } } }, /`blocks` debe ser una lista[\s\S]*Ejemplo/],
     ['Word: blocks con un null', { tipo: 'docx', spec: { blocks: [null] } }, /blocks\[0\]/],
-    ['Word: tabla con filas de otro largo', { tipo: 'docx', spec: { blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['1']] }] } }, /rows\[0\][\s\S]*2 celdas/],
+    [
+      'Word: tabla con filas de otro largo',
+      { tipo: 'docx', spec: { blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['1']] }] } },
+      /rows\[0\][\s\S]*2 celdas/
+    ],
     ['Excel: sheets es un objeto', { tipo: 'xlsx', spec: { sheets: { a: 1 } } }, /`sheets` debe ser una lista[\s\S]*Ejemplo/],
     ['PowerPoint: slides es un objeto', { tipo: 'pptx', spec: { slides: { a: 1 } } }, /`slides` debe ser una lista[\s\S]*Ejemplo/],
     ['PowerPoint: lámina null', { tipo: 'pptx', spec: { slides: [null] } }, /slides\[0\]/],

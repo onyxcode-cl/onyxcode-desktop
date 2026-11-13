@@ -56,7 +56,7 @@ describe('skill pptx ⇄ Chat: misma guía de diseño', () => {
   })
 
   it('el camino principal es build_chat_deck.py y sigue habiendo respaldo (build_pptx, edit, inspect, check, código 3)', () => {
-    expect(skillMd).toContain('python3 scripts/build_chat_deck.py spec.json salida.pptx')
+    expect(skillMd).toContain('python3 scripts/build_chat_deck.py ./.lazunox/trabajo/spec.json ./.lazunox/trabajo/salida.pptx')
     expect(skillMd).toContain('camino principal')
     for (const k of ['build_pptx.py', 'edit_pptx.py', 'inspect_pptx.py', 'check_pptx.py', 'código de salida 3', 'Código de salida 3']) {
       expect(skillMd.toLowerCase()).toContain(k.toLowerCase())

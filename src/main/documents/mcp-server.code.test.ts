@@ -254,6 +254,6 @@ describe('renderizar en Code', () => {
     // El render falso devuelve bytes que no son un zip, pero `crear` ya lo registró: se renderiza sin pedir carpeta.
     const r = await call(port, token, { ruta }, 'renderizar')
     expect(isErr(r)).toBe(false)
-    expect(previews).toEqual(['docx'])
+    expect(previews).toEqual(['docx', 'docx'])
   })
 })

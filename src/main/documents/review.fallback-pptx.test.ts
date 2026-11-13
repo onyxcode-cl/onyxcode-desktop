@@ -23,7 +23,7 @@ describe('sin DeckCraft: el pptx del respaldo pasa la revisión', () => {
     slides: [
       { title: 'Ventas por región', subtitle: 'Resumen del año 2026' },
       { title: 'Puntos', bullets: ['uno', 'dos'] },
-      { title: 'Conclusiones', bullets: ['a', 'b'] }
+      { title: 'Conclusiones', bullets: ['Aprobar el piloto este mes', 'Revisar resultados con el comité en diciembre'] }
     ]
   } as unknown as PptxSpec
   it('marcador de título en cada diapositiva y subtítulo presente', async () => {

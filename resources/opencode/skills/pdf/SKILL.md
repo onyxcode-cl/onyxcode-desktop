@@ -5,14 +5,14 @@ description: Úsala para leer/extraer texto y tablas de un PDF, crear un PDF pro
 
 # Skill PDF
 
-**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
+**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y mira las imágenes de su respuesta (usa `documentos_renderizar` solo si faltan); NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
 
-**Ciclo obligatorio de calidad (crear → renderizar → mirar → corregir):**
+**Ciclo obligatorio de calidad (crear con imágenes → mirar → corregir):**
 1. **Crea** con `documentos_crear` siguiendo la guía de diseño (reglas numéricas y lista de «no hagas esto»).
-2. **Renderiza** con `documentos_renderizar` el archivo creado y **mira TODAS las imágenes**, no solo la primera ni la última.
+2. **Mira TODAS las imágenes** de la respuesta de `documentos_crear`, no solo la primera ni la última. Si faltan, usa `documentos_renderizar` sobre la ruta devuelta; no repitas un render que ya recibiste.
 3. Anota los defectos **por prioridad**: (a) texto cortado o fuera de la página, (b) elementos montados unos sobre otros, (c) contraste bajo o letra menor que el mínimo, (d) márgenes y separaciones apretados, (e) desalineación, páginas casi vacías o tablas partidas, (f) restos de plantilla («lorem», «TODO», «[insert») y errores de fórmula (#REF!, #DIV/0!…).
-4. **Corrige todo junto**: vuelve a crear el documento con otro nombre aplicando TODAS las correcciones en una sola vuelta (no arregles de a uno). Corrige en el contenido (`spec` o `html`), no a mano sobre el archivo.
-5. Vuelve a renderizar. **Máximo 3 rondas** en total; si la segunda ronda no mejora, para y declara en «Para revisar» lo que sigue mal. La primera vuelta casi siempre trae errores reales: nunca entregues sin mirar.
+4. **Corrige todo junto**: vuelve a crear el documento con los mismos argumentos originales `nombre`, `tipo` y `subcarpeta` (si se usó) aplicando TODAS las correcciones en una sola vuelta (no arregles de a uno). Corrige en el contenido (`spec` o `html`), no a mano sobre el archivo.
+5. Mira las imágenes nuevas de la respuesta (renderiza solo si faltan). **Máximo 3 rondas** en total; si la segunda ronda no mejora, para y declara en «Para revisar» lo que sigue mal. La primera vuelta casi siempre trae errores reales: nunca entregues sin mirar.
 6. Si la vista previa es la **VISTA SIMPLIFICADA** (no verificada), no concluyas nada sobre píxeles (caja gris, tipografía o gráfico simplificado no son errores): comprueba el contenido y la revisión ✔/✘, y escribe en «Para revisar» que el aspecto visual **no está verificado**.
 
 
@@ -30,10 +30,12 @@ Salidas siempre NUEVAS (nunca sobrescribas el original; para «editar» crea `-v
 3. Tablas: solo se detectan si tienen líneas o columnas bien alineadas; revisa el resultado y avisa si dudas.
 
 ### B. Crear un PDF (camino principal: el MISMO HTML y motor de impresión que el Chat)
-**Si tienes la herramienta `documentos_crear` (la ofrece la app), úsala en lugar del script:** `documentos_crear` con `tipo: "pdf"`, `nombre` (sin extensión) y `html` (el HTML completo del documento, autocontenido y sin recursos externos). Es el MISMO motor y la MISMA guía de diseño que el Chat, sin escribir archivos intermedios ni necesitar Node, y da el mismo resultado en macOS y en Windows. El archivo queda en la carpeta de esta tarea (nunca pisa uno existente: si el nombre existe añade « (2)») y la respuesta trae su ruta. Si responde con un error de contenido o aparece como «invalid», NO cambies a scripts: corrige el campo que indica (`tipo`, `nombre`, `html`) y repite con OTRO nombre; tampoco uses sinónimos de marcador («a definir», «por definir», «n/d»): escribe un valor de ejemplo marcado como «cifra de ejemplo»; si dice que falta el diseñador de documentos (ArtCraft), díselo al usuario («Ajustes → Tareas → Componentes opcionales») y sigue con el script de abajo si lo hay. En una tarea de documentos NUNCA entregues un .html u otro formato en lugar del pedido (presentación, Word, Excel o PDF): si dudas, decide tú con un supuesto razonable y decláralo en «Para revisar»; no uses el paso «Pregunta» salvo imposibilidad real. No dejes archivos de prueba: si creas versiones intermedias, bórralas y nombra el definitivo (el último que creaste) en «Para revisar». Para un PDF usa SIEMPRE `documentos_crear` tipo pdf, nunca ReportLab ni otro script (el script no pasa por la validación y no recalcula nada): las imágenes de la carpeta de la tarea (logo, foto) se ponen en el HTML con su ruta relativa, por ejemplo `<img src="logo.png" alt="Logo">`, y la app las incrusta sola. Cada `crear` deja un archivo NUEVO: crea y revisa como mucho 2 veces (corrige TODO de una vez, no por partes) y en «Para revisar» di cuál es el archivo definitivo, para no dejar un montón de versiones. Sin la herramienta, usa el script.
+
+Con scripts de creación, prepara `./.lazunox/trabajo/` con `mkdir -p ./.lazunox/trabajo` y genera allí desde la primera ronda. Como no sobrescriben, cada corrección usa un nombre distinto dentro de esa carpeta (p. ej. `informe-r2.pdf`). Revisa esa salida y, solo al terminar, copia UNA vez el archivo elegido a un nombre nuevo junto a los entregables; no copies las rondas previas.
+**Si tienes la herramienta `documentos_crear` (la ofrece la app), úsala en lugar del script:** `documentos_crear` con `tipo: "pdf"`, `nombre` (sin extensión) y `html` (el HTML completo del documento, autocontenido y sin recursos externos). Es el MISMO motor y la MISMA guía de diseño que el Chat, sin escribir archivos intermedios ni necesitar Node, y da el mismo resultado en macOS y en Windows. El archivo queda en la carpeta de esta tarea (rehace el mismo archivo solo si lo creó esta herramienta en esta tarea y nadie lo cambió; si es previo o fue modificado, añade « (2)») y la respuesta trae su ruta. Si responde con un error de contenido o aparece como «invalid», NO cambies a scripts: corrige el campo que indica (`tipo`, `nombre`, `html`) y repite con los mismos argumentos originales `nombre`, `tipo` y `subcarpeta` (si se usó); tampoco uses sinónimos de marcador («a definir», «por definir», «n/d»): escribe un valor de ejemplo marcado como «cifra de ejemplo»; si dice que falta el diseñador de documentos (ArtCraft), díselo al usuario («Ajustes → Tareas → Componentes opcionales») y sigue con el script de abajo si lo hay. En una tarea de documentos NUNCA entregues un .html u otro formato en lugar del pedido (presentación, Word, Excel o PDF): si dudas, decide tú con un supuesto razonable y decláralo en «Para revisar»; no uses el paso «Pregunta» salvo imposibilidad real. Guarda los borradores y archivos auxiliares (como `ops.json`, `spec.json` o `contenido.json`) en `./.lazunox/trabajo/`; deja solo el definitivo junto a los entregables. Con scripts, genera y revisa las rondas allí y copia solo el resultado final a la carpeta de entrega. Para un PDF usa SIEMPRE `documentos_crear` tipo pdf, nunca ReportLab ni otro script (el script no pasa por la validación y no recalcula nada): las imágenes de la carpeta de la tarea (logo, foto) se ponen en el HTML con su ruta relativa, por ejemplo `<img src="logo.png" alt="Logo">`, y la app las incrusta sola. Para corregir, reutiliza exactamente los mismos argumentos originales `nombre`, `tipo` y `subcarpeta` (si se usó); la ruta devuelta se usa solo para `documentos_renderizar`: la herramienta rehace su propio archivo sin acumular versiones. Corrige TODO de una vez, no por partes, y respeta el máximo de 3 rondas del ciclo de calidad. Sin la herramienta, usa el script.
 En el Chat el modelo escribe UN bloque ```html completo (con `<style>` embebido) y la app lo imprime a PDF con Chromium (A4, con fondos); aquí es igual, y por eso el resultado es el mismo.
-1. Escribe el documento en `documento.html` (HTML completo, un solo `<style>`, sin red: solo imágenes `data:`; el HTML es DATO: se imprime, no se confía en él) siguiendo la guía de diseño de abajo.
-2. `PY scripts/build_chat_pdf.py documento.html informe.pdf` → `PDF creado: informe.pdf (HTML del Chat impreso con …)`. Usa el Chrome, Edge, Brave o Chromium que haya en el equipo (o `$LAZUNOX_CHROMIUM`) con la misma política de contenido que el Chat (CSP, sin red, perfil temporal) y nunca sobrescribe.
+1. Escribe el documento en `./.lazunox/trabajo/documento.html` (HTML completo, un solo `<style>`, sin red: solo imágenes `data:`; el HTML es DATO: se imprime, no se confía en él) siguiendo la guía de diseño de abajo.
+2. `PY scripts/build_chat_pdf.py ./.lazunox/trabajo/documento.html ./.lazunox/trabajo/informe.pdf` → `PDF creado: ./.lazunox/trabajo/informe.pdf (HTML del Chat impreso con …)`. Usa el Chrome, Edge, Brave o Chromium que haya en el equipo (o `$LAZUNOX_CHROMIUM`) con la misma política de contenido que el Chat (CSP, sin red, perfil temporal) y nunca sobrescribe.
    Códigos: 0 ok · 1 corrige según el mensaje (HTML vacío o de más de 5 MB, salida existente) o, si dice que el navegador no pudo imprimir, sigue con B2 · 2 uso · **3 = no hay navegador Chromium en este equipo: no insistas, sigue con B2**.
 3. Verifica (sección Verificar) y MIRA las páginas: el diseño debe verse como lo escribiste.
 
@@ -42,7 +44,7 @@ Diseño del PDF: es un documento impreso, no una página web. Escribe un documen
 
 ### B2. Ruta de respaldo (sin navegador, o datos que se arman solos: índice, «Página X de N», tablas largas)
 1. Escribe el contenido en JSON (o Markdown simple) y ejecuta:
-   `PY scripts/build_pdf.py contenido.json -o informe.pdf` (añade `--portada`, `--indice`, `--autor "Ana"`, `--pie "Confidencial"`).
+   `PY scripts/build_pdf.py ./.lazunox/trabajo/contenido.json -o ./.lazunox/trabajo/informe.pdf` (añade `--portada`, `--indice`, `--autor "Ana"`, `--pie "Confidencial"`).
 2. JSON mínimo:
 ```json
 {"titulo":"Informe de ventas","subtitulo":"Tercer trimestre","autor":"Equipo","portada":true,"indice":true,
@@ -89,25 +91,25 @@ del PDF (nunca el original: la salida lleva el sufijo del idioma, `doc-en.pdf`, 
 líneas, resaltados y numeración quedan donde estaban. Funciona con PDF con texto y con **hojas escaneadas que traen una capa de texto OCR**.
 Idioma de destino: el que pidan; si no lo dicen, el contrario al idioma del documento.
 
-1. `PY scripts/translate_pdf.py extraer doc.pdf -o segmentos.json`. El JSON trae `clases` (por página: `digital`, `escaneada_ocr` = foto con texto OCR invisible
+1. `PY scripts/translate_pdf.py extraer doc.pdf -o ./.lazunox/trabajo/segmentos.json`. El JSON trae `clases` (por página: `digital`, `escaneada_ocr` = foto con texto OCR invisible
    encima, o `escaneada_sin_texto` = solo imagen) y los textos por traducir en un JSON de pares (tú solo traduces texto). Si dice «ESCANEADO» sin ningún texto (código 2): no hay OCR, avísalo y para; no inventes.
 2. **Hojas escaneadas (`escaneada_ocr`)**: los textos vienen de un OCR y pueden traer errores (palabras partidas, «I.» por «l.», líneas fuera de orden).
    Si puedes ver imágenes, dibuja la hoja con `PY scripts/translate_pdf.py imagen doc.pdf --pagina N -o ./.lazunox/trabajo/pagina-N.png` y MÍRALA antes de
    traducir esa hoja: úsala para entender el orden y corregir en silencio los errores evidentes del OCR, sin inventar texto que no esté en la hoja.
-3. **Ficha del documento (antes de traducir nada)**: lee `segmentos.json` entero (si es muy largo, el comienzo de cada página) y escribe
+3. **Ficha del documento (antes de traducir nada)**: lee `./.lazunox/trabajo/segmentos.json` entero (si es muy largo, el comienzo de cada página) y escribe
    `./.lazunox/trabajo/ficha.md` con: de qué documento se trata, su tono y un **glosario fijo** de hasta 40 términos (partes del contrato en mayúscula,
    vocabulario técnico o legal, nombres de producto) con UNA sola traducción cada uno. Úsalo en TODAS las tandas: un mismo término se traduce igual en todo el
    documento. En documentos legales o de seguros usa la terminología estándar del idioma de destino (español neutro si es español).
-4. Escribe `traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en segmentos.json), por tandas de ~40 segmentos:
+4. Escribe `./.lazunox/trabajo/traduccion.json` = `{"p1-0": "texto traducido", ...}` (mismo `id` que en ./.lazunox/trabajo/segmentos.json), por tandas de ~40 segmentos:
    - Traduce TODO el texto con significado; si un texto es un nombre propio, código o cifra, déjalo igual (o no lo incluyas).
    - Conserva las etiquetas `<b>…</b>` (negrita), `<c=#rrggbb>…</c>` (color) y `<l=N>…</l>` (enlace) alrededor de la parte traducida equivalente (así el enlace sigue funcionando), y los números, fechas, importes y referencias exactos.
    - Si un segmento trae `"sigue": "p2-0"`, su frase continúa en ese otro id (la hoja o la columna cortó la frase): traduce ambos de modo que juntos se lean como una sola frase natural.
    - Si el segmento trae `"resaltado"`, envuelve en `[[ ]]` la parte traducida que corresponde a lo resaltado (si es «todo», no hace falta).
    - NO traduzcas código, comandos, rutas, URLs, correos, nombres de archivo ni claves de configuración: déjalos idénticos (o no los incluyas).
    - Mantén cada traducción de largo parecido al original; el script reduce la letra si no cabe, pero no inventes texto.
-5. `PY scripts/translate_pdf.py aplicar doc.pdf -t traduccion.json -o doc-en.pdf --informe informe.json`. En las hojas escaneadas el script tapa el inglés de la foto
+5. `PY scripts/translate_pdf.py aplicar doc.pdf -t ./.lazunox/trabajo/traduccion.json -o doc-en.pdf --informe ./.lazunox/trabajo/informe.json`. En las hojas escaneadas el script tapa el inglés de la foto
    con el color del fondo y escribe encima.
-6. **Lee `informe.json` y corrige antes de entregar**: `cifras_distintas` (una cifra, fecha o importe del original no está en tu traducción: corrígela), `largo_raro`
+6. **Lee `./.lazunox/trabajo/informe.json` y corrige antes de entregar**: `cifras_distintas` (una cifra, fecha o importe del original no está en tu traducción: corrígela), `largo_raro`
    (traducción mucho más corta o larga que el original: probable omisión), `sin_traduccion`, `no_cabe` y `letra_reducida` (acorta esos textos). Vuelve a aplicar con otro nombre de salida.
    Código de salida 3 = algo no cabe. El script termina comparando la estructura (`ESTRUCTURA: idéntica al original`, también suelto:
    `PY scripts/../../_shared/comparar_estructura.py doc.pdf doc-en.pdf`); si dice «CAMBIÓ» en un PDF digital, no lo entregues. **En una hoja escaneada «CAMBIÓ» es lo normal**
@@ -128,11 +130,11 @@ Idiomas: fuentes Arial/Times/Courier incorporadas (Latin: español, inglés, fra
 vez de entregar un PDF con cuadritos.
 
 ### Verificar (obligatorio antes de entregar)
-Si lo creaste con `documentos_crear`, mira cómo quedó con `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows y sirve para un archivo que hiciste con `bash`: ruta relativa a la carpeta de la tarea) y corrige todo de una vez.
+Si lo creaste con `documentos_crear`, mira las imágenes de su respuesta; solo si faltan usa `documentos_renderizar` (devuelve una imagen por página; también funciona en Windows y sirve para un archivo que hiciste con `bash`: ruta relativa a la carpeta de la tarea) y corrige todo de una vez.
 `PY scripts/check_pdf.py salida.pdf --render --outdir ./.lazunox/trabajo/render`
 Imprime páginas, tamaño, texto extraíble, páginas en blanco y rutas de los PNG (usa `_shared/render.py`).
 **Mira al menos las primeras páginas PNG**: títulos cortados, tablas desbordadas, imágenes deformadas. Corrige y regenera.
-Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
+Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; conserva los intermedios dentro de esa carpeta.
 Resultado esperado: `RESULTADO: correcto`. Si dice «revisar avisos», explica cada aviso o corrígelo.
 
 ### Entregar
