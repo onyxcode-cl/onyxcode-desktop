@@ -182,6 +182,7 @@ export interface RealSetupOptions {
   /** Archivos de imagen/opencode incluidos en el instalador (`<resources>/wsl/images`); sin esto se descarga. */
   localSource?: (kind: 'rootfs' | 'opencode') => string | null
   log?: (msg: string) => void
+  debug?: (msg: string) => void
 }
 
 /** `WslDeps.setup` con todo real. */
@@ -217,6 +218,7 @@ export function createRealWslDeps(o: RealWslDepsOptions): WslDeps {
     listen: realListen,
     policyDisabled: o.policyDisabled,
     setup: createRealSetupExtras(o),
+    debug: o.debug,
     ensureDir: (p) => {
       try {
         mkdirSync(p, { recursive: true })

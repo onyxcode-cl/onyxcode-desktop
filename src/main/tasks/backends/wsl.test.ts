@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import { Duplex, PassThrough, Readable } from 'node:stream'
 import { describe, expect, it } from 'vitest'
 import { FrameDecoder, FrameType, decodeError, encodeExit, encodeFrame, encodePort, type Frame } from './bridge-protocol'
-import { createWslBackend, type WslDeps, type WslProcess, type WslSetupExtras } from './wsl'
+import { createWslBackend, WSL_VERSION_CACHE_MS, type WslDeps, type WslProcess, type WslSetupExtras } from './wsl'
 import { encodeLzpk } from './wsl-payload'
 import { parseWslPin, wslRootfsUrl } from './wsl-pin'
 import { WslSetupError, wslSetupPaths, type SetupPin } from './wsl-setup'
@@ -156,6 +156,64 @@ describe('WslBackend con wsl.exe simulado', () => {
       run: async (spec) => (spec.args[0] === '-l' ? ok(u16('  NAME STATE VERSION\r\n* Ubuntu Running 2\r\n')) : ok(u16('2.4\r\n')))
     })
     expect((await createWslBackend(t.d).status()).state).toBe('needsSetup')
+  })
+
+  it('cachea solo versión durante cinco minutos: lista y aislamiento se consultan en cada carpeta', async () => {
+    let now = 0
+    const logs: string[] = []
+    const t = deps({ now: () => now, debug: (message) => logs.push(message) })
+    const b = createWslBackend(t.d)
+    await b.status()
+    now = WSL_VERSION_CACHE_MS - 1
+    await b.status()
+    expect(t.runs.filter((args) => args[0] === '--version')).toHaveLength(1)
+    expect(t.runs.filter((args) => args[0] === '-l')).toHaveLength(2)
+    expect(t.runs.filter((args) => args.at(-1) === '--probe')).toHaveLength(2)
+    expect(logs.some((line) => line.includes('"stage":"wsl.version"') && line.includes('"cached":true'))).toBe(true)
+    now++
+    await b.status()
+    expect(t.runs.filter((args) => args[0] === '--version')).toHaveLength(2)
+    expect(logs.join('\n')).not.toContain('sk-real')
+    expect(logs.join('\n')).not.toContain('Users')
+  })
+
+  it('un probe inseguro invalida versión y no reutiliza nunca ready', async () => {
+    const t = deps()
+    const original = t.d.run
+    let unsafe = false
+    t.d.run = (spec, ms) =>
+      spec.args.at(-1) === '--probe' && unsafe
+        ? Promise.resolve(ok(JSON.stringify({ interop: true, driveMounts: [], landlockAbi: 4, kernel: '6.6', uid: 0 })))
+        : original(spec, ms)
+    const b = createWslBackend(t.d)
+    expect((await b.status()).state).toBe('ready')
+    unsafe = true
+    expect(await b.status()).toEqual({ state: 'broken', detail: 'interop' })
+    unsafe = false
+    expect((await b.status()).state).toBe('ready')
+    expect(t.runs.filter((args) => args[0] === '--version')).toHaveLength(2)
+  })
+
+  it('versión y lista se lanzan en paralelo y una versión fallida se vuelve a consultar', async () => {
+    let release!: (r: RunResult) => void
+    let versions = 0
+    const t = deps()
+    const original = t.d.run
+    t.d.run = (spec, ms) => {
+      if (spec.args[0] === '--version' && versions++ === 0)
+        return new Promise((resolve) => {
+          release = resolve
+        })
+      return original(spec, ms)
+    }
+    const b = createWslBackend(t.d)
+    const pending = b.status()
+    await tick()
+    expect(t.runs.some((args) => args[0] === '-l')).toBe(true)
+    release({ code: 1, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0) })
+    expect((await pending).state).toBe('needsWsl2')
+    expect((await b.status()).state).toBe('ready')
+    expect(versions).toBe(2)
   })
 
   it('launch: crea la carpeta de trabajo del agente en el anfitrión antes de lanzar (Landlock exige que exista)', async () => {
@@ -434,6 +492,33 @@ describe('WslBackend con setup()/remove() integrados', () => {
     expect(progress.at(-1)).toBe(100)
     expect((await b.status()).state).toBe('ready')
     expect(w.runs.some((r) => /shutdown|--unregister/.test(r))).toBe(false)
+  })
+
+  it('setup y remove invalidan la versión memorizada', async () => {
+    const w = world(GOOD)
+    const b = createWslBackend(w.t.d)
+    await b.status()
+    await b.status()
+    expect(w.runs.filter((r) => r === '--version')).toHaveLength(1)
+    await b.setup!(() => {}, { kind: 'update' })
+    const afterSetup = w.runs.filter((r) => r === '--version').length
+    await b.status()
+    expect(w.runs.filter((r) => r === '--version')).toHaveLength(afterSetup + 1)
+    await b.remove!()
+    await b.status()
+    expect(w.runs.filter((r) => r === '--version')).toHaveLength(afterSetup + 2)
+  })
+
+  it('un setup o remove fallido también obliga a releer la versión', async () => {
+    const w = world(GOOD)
+    const b = createWslBackend({ ...w.t.d, setup: { ...w.t.d.setup!, localAppData: '\\\\srv\\share' } })
+    await b.status()
+    await expect(b.setup!(() => {})).rejects.toBeInstanceOf(WslSetupError)
+    await b.status()
+    expect(w.runs.filter((r) => r === '--version')).toHaveLength(2)
+    await expect(b.remove!()).rejects.toBeInstanceOf(WslSetupError)
+    await b.status()
+    expect(w.runs.filter((r) => r === '--version')).toHaveLength(3)
   })
 
   it('remove(): terminate + unregister solo de Lazunox-Tareas', async () => {

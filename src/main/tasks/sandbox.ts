@@ -140,6 +140,18 @@ export interface StartTasksServerOptions {
  */
 export async function startTasksServer(folder: string, options: StartTasksServerOptions = {}): Promise<TasksServerHandle> {
   const platform = options.platform ?? process.platform
+  const startedAt = performance.now()
+  let previous = startedAt
+  const timed = (stage: string): void => {
+    if (platform !== 'win32') return
+    const now = performance.now()
+    try {
+      console.debug('[tasks-startup]', JSON.stringify({ stage: `server.${stage}`, ms: Math.round(now - previous) }))
+    } catch {
+      /* el diagnóstico no cambia el resultado */
+    }
+    previous = now
+  }
   // Windows: jamás sin aislamiento (A18). Se decide ANTES de resolver el binario o de abrir ningún puerto.
   if (platform === 'win32' && options.noSandbox) {
     if (options.winFullAccess !== true) throw new Error(t('merr.task.winNoUnsandboxed'))
@@ -153,20 +165,24 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     if (elevated !== false) throw new WinBackendUnavailable('elevated')
   }
   const bin = (await resolveOpencodeAsync())?.path
+  timed('resolve-binary')
   if (!bin) throw new Error(t('merr.engine.noBinaryShort'))
   if (!existsSync(folder)) throw new Error(t('merr.task.noFolder', { folder }))
 
   const backend: SandboxBackend = options.noSandbox
     ? noneBackend
     : await selectBackend(platform, { tasksWin: options.tasksWin, win: options.winBackend })
+  timed('select-backend')
   if (platform === 'win32' && !options.noSandbox) {
     // Invariante: en Windows solo existe el backend de la distro, y solo con la distro lista (instalada, sana y al día).
     if (backend.id !== 'wsl') throw new Error(t('merr.task.winNoUnsandboxed'))
     const st = await backend.status()
+    timed('backend-status')
     if (st.state !== 'ready') throw new TasksSandboxNotReady(st)
   }
   const sandboxed = backend.id !== 'none'
   const port = await getFreePort()
+  timed('port')
   const username = 'tasks'
   const password = randomBytes(24).toString('base64url')
   const authorization = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
@@ -246,6 +262,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     }
   }
 
+  timed('proxies-config')
   const launched: LaunchedSandbox = await backend.launch({
     folder,
     onDenialControl: options.onDenialControl,
@@ -273,6 +290,7 @@ export async function startTasksServer(folder: string, options: StartTasksServer
     proxyEnv: isolatedEnv,
     extraEnv: options.extraEnv
   })
+  timed('launch')
   const child = launched.child
   trackPid(child.pid, sandboxed ? 'tasks' : 'tasks-full')
 
@@ -318,12 +336,15 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   }
 
   let version: string | undefined
+  timed('health-setup')
   try {
     version = await waitForHealth(baseUrl, authorization, child, {
       label: 'opencode (tareas)',
       timeoutMs: HEALTH_TIMEOUT_MS
     })
+    timed('health')
   } catch (err) {
+    timed('health-failed')
     await stop()
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(`${msg}\n${tail.slice(-5).join('').trim()}`)
@@ -333,6 +354,14 @@ export async function startTasksServer(folder: string, options: StartTasksServer
   // el diálogo de Code, la app la declara en cuanto el servidor responde y ANTES de que nadie le pida nada. En WSL la carpeta es la ruta de la distro.
   const engineDirectory = launched.mounts ? launched.toSandboxPath(folder) : folder
   const declared = await engineTrust.declareOn({ baseUrl, authorization }, engineDirectory)
+  timed('declare-trust')
+  if (platform === 'win32') {
+    try {
+      console.debug('[tasks-startup]', JSON.stringify({ stage: 'server.total', ms: Math.round(performance.now() - startedAt) }))
+    } catch {
+      /* diagnóstico */
+    }
+  }
   if (declared === 'failed') console.warn(`[tasks] no se pudo declarar la carpeta de confianza al servidor (${folder})`)
 
   return {

@@ -335,4 +335,61 @@ describe('createWinBackendProvider', () => {
     expect(b?.id).toBe('wsl')
     expect(typeof b?.setup).toBe('function')
   })
+  it('reutiliza backend entre carpetas y lo invalida al cambiar pin o perder sus requisitos', () => {
+    writeAll()
+    const p = make()
+    const first = p.create()
+    expect(p.create()).toBe(first)
+    writeFileSync(
+      dirs.pinJson,
+      JSON.stringify({
+        ...pinJson,
+        version: '1.18.34',
+        assets: {
+          'linux-x64': { ...pinJson.assets['linux-x64'], url: pinJson.assets['linux-x64'].url.replaceAll('1.18.33', '1.18.34') }
+        }
+      })
+    )
+    const changed = p.create()
+    expect(changed?.id).toBe('wsl')
+    expect(changed).not.toBe(first)
+    rmSync(join(dirs.payloadDir, 'launcher.py'))
+    expect(p.create()).toBeNull()
+    writeAll()
+    expect(p.create()).not.toBe(first)
+  })
+  it('una puerta cerrada descarta backend memorizado; ni state ni política se cachean', async () => {
+    writeAll()
+    const p = make()
+    const first = p.create()
+    expect((await p.gate()).ok).toBe(true)
+    state = undefined
+    expect(await p.gate()).toEqual({ ok: false, reason: 'state' })
+    state = goodState()
+    expect(p.create()).not.toBe(first)
+    policy = true
+    expect(await p.gate()).toEqual({ ok: false, reason: 'policy' })
+  })
+  it('registra tiempos por eslabón sin rutas ni credenciales; un logger defectuoso no cambia el resultado', async () => {
+    writeAll()
+    const logs: string[] = []
+    expect(await make({ debug: (line) => logs.push(line) }).gate()).toEqual({ ok: true })
+    expect(logs.map((line) => JSON.parse(line.slice('[tasks-startup] '.length)).stage)).toEqual([
+      'win.gate.elevated',
+      'win.gate.pin',
+      'win.gate.bundle',
+      'win.gate.payload',
+      'win.gate.state',
+      'win.gate.policy',
+      'win.gate.total'
+    ])
+    expect(logs.join('\n')).not.toContain(root)
+    expect(
+      await make({
+        debug: () => {
+          throw new Error('logger')
+        }
+      }).gate()
+    ).toEqual({ ok: true })
+  })
 })

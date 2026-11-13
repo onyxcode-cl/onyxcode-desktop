@@ -60,6 +60,8 @@ export type MonitorWindowState = 'none' | 'visible' | 'focused'
 export interface MonitorDeps {
   servers: () => MonitorServer[]
   stop: (folder: string, fullAccess: boolean) => Promise<void>
+  /** Exime del apagado por inactividad a un servidor en espera (no del límite de capacidad). */
+  keepWarm?: (folder: string, fullAccess: boolean) => boolean
   prefs: { get(): TasksPrefs }
   tasks: { list(): TasksTaskMeta[] }
   /** Ya filtrada por `prefs.notify` y por "lo estás mirando". El ajuste global lo aplica quien la implementa. */
@@ -688,7 +690,7 @@ export class TasksMonitor {
     const minutes = prefs.idleStopMinutes
     if (minutes <= 0 || st.stopping) return
     if (!st.ok || st.busy > 0 || st.pending > 0 || st.idlePolls < IDLE_POLLS_TO_STOP) return
-    if (this.isViewed(st)) return
+    if (this.isViewed(st) || this.deps.keepWarm?.(st.folder, st.fullAccess)) return
     const since = Math.max(st.idleSince ?? now, st.lastStartCallAt)
     if (now - since < minutes * 60_000) return
     this.stopServer(st, 'inactividad')

@@ -59,13 +59,63 @@ export interface WslDeps {
    * Nunca debe lanzar; si lo hace, se ignora.
    */
   seedModels?: (configDir: string) => string | null
+  /** Tiempos de arranque, sin rutas ni contenido de la sesión. */
+  debug?: (message: string) => void
+  now?: () => number
 }
 
 const STATUS_TIMEOUT_MS = 20_000
 const KILL_GRACE_MS = 2_000
+/** Solo versión del ejecutable WSL; el estado de la distro y su aislamiento se releen SIEMPRE. */
+export const WSL_VERSION_CACHE_MS = 5 * 60_000
 
 export function createWslBackend(deps: WslDeps): SandboxBackend {
-  const run = (cmd: WslCommand, ms = STATUS_TIMEOUT_MS): Promise<RunResult> => deps.run(buildWslSpawn(cmd, deps.hostEnv), ms)
+  const now = deps.now ?? (() => performance.now())
+  const debug = (stage: string, start: number, extra: Record<string, unknown> = {}): void => {
+    try {
+      deps.debug?.(`[tasks-startup] ${JSON.stringify({ stage, ms: Math.round(now() - start), ...extra })}`)
+    } catch {
+      /* la medición no cambia el arranque */
+    }
+  }
+  let version: { at: number; result: RunResult } | undefined
+  let versionPending: Promise<RunResult> | undefined
+  let generation = 0
+  const invalidate = (): void => {
+    generation++
+    version = undefined
+    versionPending = undefined
+  }
+  const run = async (cmd: WslCommand, ms = STATUS_TIMEOUT_MS): Promise<RunResult> => {
+    const start = now()
+    if (cmd.kind === 'version' && version && start - version.at < WSL_VERSION_CACHE_MS) {
+      debug('wsl.version', start, { cached: true })
+      return version.result
+    }
+    if (cmd.kind === 'version' && versionPending) return versionPending
+    const startedGeneration = generation
+    const work = async (): Promise<RunResult> => {
+      try {
+        const result = await deps.run(buildWslSpawn(cmd, deps.hostEnv), ms)
+        if (result.code !== 0 || result.error) invalidate()
+        else if (cmd.kind === 'version' && generation === startedGeneration) version = { at: now(), result }
+        debug(`wsl.${cmd.kind}`, start, { cached: false, ok: result.code === 0 && !result.error })
+        return result
+      } catch (error) {
+        invalidate()
+        debug(`wsl.${cmd.kind}`, start, { cached: false, ok: false })
+        throw error
+      }
+    }
+    if (cmd.kind !== 'version') return work()
+    const pending = work()
+    versionPending = pending
+    try {
+      return await pending
+    } finally {
+      if (versionPending === pending) versionPending = undefined
+    }
+  }
   const core = deps.setup
     ? createWslSetup({
         platform: deps.platform,
@@ -79,16 +129,39 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
   return {
     id: 'wsl',
     async status() {
-      if (core) return core.status()
-      return (await readWslStatus(run, { platform: deps.platform, policyDisabled: deps.policyDisabled })).status
+      try {
+        const state = core
+          ? await core.status()
+          : (await readWslStatus(run, { platform: deps.platform, policyDisabled: deps.policyDisabled })).status
+        if (state.state !== 'ready') invalidate()
+        return state
+      } catch (error) {
+        invalidate()
+        throw error
+      }
     },
     ...(core
       ? {
-          setup: (onProgress: (pct: number, phase: string) => void, opts?: SandboxSetupOptions) => core.setup(onProgress, opts),
-          remove: () => core.remove()
+          setup: async (onProgress: (pct: number, phase: string) => void, opts?: SandboxSetupOptions) => {
+            invalidate()
+            try {
+              await core.setup(onProgress, opts)
+            } finally {
+              invalidate()
+            }
+          },
+          remove: async () => {
+            invalidate()
+            try {
+              await core.remove()
+            } finally {
+              invalidate()
+            }
+          }
         }
       : {}),
     async launch(spec: SandboxLaunchSpec): Promise<LaunchedSandbox> {
+      const start = now()
       if (!spec.isolation) throw new Error('falta el directorio privado del sandbox')
       const sandboxKey = win32.basename(spec.isolation.privateDir)
       deps.ensureDir?.(win32.join(spec.folder, '.lazunox', 'trabajo'))
@@ -112,6 +185,8 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
         relayPorts: spec.outboundPorts
       })
       const proc = deps.spawn(buildWslSpawn({ kind: 'launch' }, deps.hostEnv))
+      const spawnedAt = now()
+      debug('wsl.launch.prepare', start)
       const bridge = new WslBridgeHost({
         input: proc.stdout,
         output: proc.stdin,
@@ -122,6 +197,13 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
         listen: deps.listen,
         onReject: deps.onReject
       })
+      void bridge.ready.then(
+        () => debug('wsl.launch.ready', spawnedAt, { ok: true }),
+        () => {
+          invalidate()
+          debug('wsl.launch.ready', spawnedAt, { ok: false })
+        }
+      )
 
       // `child` que ve sandbox.ts: stderr = el del servidor (vía wsl.exe), stdout vacío (en wsl.exe viaja el puente).
       const facade = new EventEmitter() as EventEmitter & {
@@ -145,6 +227,7 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
         return proc.kill(typeof sig === 'string' ? sig : 'SIGTERM')
       }
       proc.once('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+        if (code !== 0 || signal) invalidate()
         if (killTimer) clearTimeout(killTimer)
         void bridge.close()
         facade.exitCode = code ?? (signal ? null : 0)
@@ -155,6 +238,7 @@ export function createWslBackend(deps: WslDeps): SandboxBackend {
 
       try {
         await bridge.start()
+        debug('wsl.launch.listen', spawnedAt)
       } catch (e) {
         proc.kill('SIGKILL')
         throw e

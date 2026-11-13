@@ -157,7 +157,8 @@ async function createWinBackend(): Promise<import('./tasks/backends').WinBackend
     fetch: createManualFetch(net as unknown as NetLike),
     hostEnv: process.env,
     policyDisabled: () => loadManagedPolicy()?.disableWslTasks === true,
-    log: (m) => console.log('[tasks-win]', m)
+    log: (m) => console.log('[tasks-win]', m),
+    debug: (m) => console.debug(m)
   })
 }
 

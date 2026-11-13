@@ -350,12 +350,14 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   ]
 
   scheduler.start()
+  tasks.startBackgroundWarmup()
 
   return {
     tasks,
     computer,
     scheduler,
     shutdown: async () => {
+      tasks.stopBackgroundWarmup()
       scheduler.stop()
       // Los submódulos (p.ej. el monitor) se detienen antes de parar los servidores.
       await Promise.all(submodules.map((m) => Promise.resolve(m.dispose?.()).catch((err) => console.error('[tasks] dispose:', err))))

@@ -4316,3 +4316,11 @@ Incluye F8-B248 a F8-B260 (revisión en la tarjeta del archivo, vista del docume
 
 - `buildWslInit` sustituye cualquier `LAZUNOX_PYTHON` del anfitrión por `/usr/bin/python3`, también si no llega la variable. Chat/Código nativos y Mac mantienen su Python incluido. No cambian permisos, prefijos, montajes ni aislamiento.
 - Pruebas: `wsl-spec.test.ts`, `wsl.test.ts`, vector compartido y unittest de `resources/wsl`. Revisión independiente aprobada, sin hallazgos bloqueantes (agente `review_wsl_python`, 2026-11-12).
+
+
+## F8-B277 — Arranque anticipado y reutilización de Tareas en Windows
+
+- **Comprobaciones.** Versión de WSL en memoria durante cinco minutos, versión/listado en paralelo y backend reutilizado por pin y ubicación. Listado de distros, probe de aislamiento, elevación, pin, huellas, estado y política se revalidan; preparar, eliminar, cambiar pin o fallar invalida la caché. Sin persistir resultados de seguridad.
+- **Unidades.** `DriveInfo` de .NET sustituye CIM; se comparte la consulta concurrente y se renueva en segundo plano cada 25 s, con la caché de 30 s intacta y cierre ante fallos. Evita bloquear la apertura con PowerShell cuando ya existe una lectura fresca.
+- **Motor en espera.** Dos segundos después de iniciar la app se prepara solo la última carpeta aislada autorizada. Una apertura de la persona tiene prioridad; cierre, ruta revocada y enlaces cancelan/rechazan la precarga. Solo el último motor aislado queda exento del apagado por inactividad; los demás conservan su plazo y el límite de capacidad aún puede desalojar cualquiera ocioso. Control total no se precarga. Mac conserva su comportamiento.
+- **Medición y pruebas.** Debug `[tasks-startup]` por tramo hasta salud HTTP y confianza; guion manual `scripts/win/measure-tasks-startup.mjs` sin mensajes al modelo ni impresión de credenciales. Vitest dirigido de backend, unidades, gestor, monitor y sandbox; casos de invalidación, carrera de aperturas, cierre y capacidad. Revisión independiente aprobada por el agente `independent_review` (2026-11-12), sin hallazgos pendientes; ahorro real y memoria pendientes del PC.

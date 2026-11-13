@@ -16,11 +16,11 @@
     "src/main/tasks/backends/wsl-paths.ts": "653cf49ce6be0862778d921815217cbae46ee15b18f49d06b73a68ba3b858a00",
     "src/main/tasks/backends/wsl-payload.ts": "0160dcdda7781f75e828851a8fcf048aca7ee0e73136eec5cae86b323ec86093",
     "src/main/tasks/backends/wsl-pin.ts": "8c1286980ab18b750f78e2e0f0227c91030e9ce302ff1fbd2cc1b621c23c7f4b",
-    "src/main/tasks/backends/wsl-real-deps.ts": "92aacede0d53d2577d4821d639ee59e346b1f6ce77a398d6f41977e6e1123f2b",
-    "src/main/tasks/backends/wsl-setup.ts": "a0db831101365ddb022d295542ad3c2b7d38fb3a501c6c66ab0a9edf3eca4dc1",
+    "src/main/tasks/backends/wsl-real-deps.ts": "ee91a93789a1b04fda74a555b9484e7319c493a78339bf68f7b275a315a71f0d",
+    "src/main/tasks/backends/wsl-setup.ts": "ca84f6ebf31112afc0fc7b5792f7b86c1208661b9dd0ca51a5d4db8389215048",
     "src/main/tasks/backends/wsl-spec.ts": "d018d7134432233e2a9cd4c551115a3d8d4827727e0f0613a562cd23d5e3e493",
     "src/main/tasks/backends/wsl-status.ts": "bc00f8de1b51952a7f467cd7bc465f4508b55aa4a070ba450887ae16ffd6c969",
-    "src/main/tasks/backends/wsl.ts": "f88cff85590d03109263cddc9fc5002f7660d75220e62dc34c0c01e24fc5e36e",
+    "src/main/tasks/backends/wsl.ts": "5ecefa80bc2c1b30a73779faf3f66997aa80404267c27ddaf20849ca0bae46c5",
     "src/main/tasks/folder-policy-win.ts": "5483ac4eedc3a8ac1c38a30b87a936995a8ac85bda6cb6ef4225d1cfabb52f41",
     "src/main/tasks/folder-policy.ts": "e88ab3a59150aaa6fdc72762136c9195a578e60f9c1c3d3572cf03230c63262f",
     "src/main/tasks/opencode-config.ts": "34b6ca47d4924360b902db64d99dc2ec0535c3ff793eed2d545092c502864373",
@@ -28,9 +28,9 @@
     "src/main/tasks/proxy-policy.ts": "af8f39d6172c0f187af542162ab790382f232d0ffc869d5d4cd567f2c1afa3f3",
     "src/main/tasks/proxy.ts": "f568b7cfd6c003d834f142efbfe0a3c0984126681d085b406c56db0b4c918f39",
     "src/main/tasks/sandbox-profile.ts": "ed04821ddff1b9c9897bc114e88b005303a5029aace4025b0a954ddd896665c2",
-    "src/main/tasks/sandbox.ts": "0dfba6f0b1c115928db1f704088307f868a3f2f6e4a62e8ec321268dc28a53c0",
+    "src/main/tasks/sandbox.ts": "1a6b2a707221b997336fc210896316130ad72a6c2174c84d06ff1244b673a84e",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
-    "src/main/tasks/win-context.ts": "baadaa16b2127ec3157591474ff35ee173cd38e4fef91265774f556fa567c0f3",
+    "src/main/tasks/win-context.ts": "09b15f6cd08a92fb3e60020596d6d2936c3b68350c30a0b13ff9523d1c8127da",
     "src/preload/assist.ts": "b51cbf39a22698cc16d9a4b2a2dc830b9806a652b71c5b498bc65261fa1147fc",
     "src/preload/browser-host.ts": "e93723b3eae93e3a0f7771a55835f3ab4ec492a34550776a1ad739d7e6aa314a",
     "src/preload/overlay.ts": "c53499ee83abda4d434aa1831124b7a5cf35767ca00868dd84ef4bb5ff0e4d51",
@@ -283,6 +283,19 @@
       "cambiados": [
         "resources/wsl/vectors.json",
         "src/main/tasks/backends/wsl-spec.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-13",
+      "motivo": "F8-B277: caché de versión WSL, renovación de unidades y tiempos de arranque; revisión independiente aprobada sin hallazgos (independent_review, 2026-11-12)",
+      "cambiados": [
+        "src/main/tasks/backends/wsl-real-deps.ts",
+        "src/main/tasks/backends/wsl-setup.ts",
+        "src/main/tasks/backends/wsl.ts",
+        "src/main/tasks/sandbox.ts",
+        "src/main/tasks/win-context.ts"
       ],
       "nuevos": [],
       "desaparecidos": []
