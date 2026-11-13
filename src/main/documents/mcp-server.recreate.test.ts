@@ -18,6 +18,8 @@ import JSZip from 'jszip'
 import { activeDocumentSession, DocumentsMcpServer, type DocumentsBinding, type DocumentsDeps } from './mcp-server'
 import type { McpToolResult } from '../util/loopback-mcp'
 import { safeWriteOps } from '../tasks/safe-write'
+import { renderPreview } from './preview'
+import { CraftTimeoutError } from '../office/craft/craft-run'
 
 class Server extends DocumentsMcpServer {
   invoke(binding: DocumentsBinding, args: Record<string, unknown>, tool = 'crear', signal?: AbortSignal): Promise<McpToolResult> {
@@ -209,6 +211,76 @@ describe('documentos: correcciones sobre archivos reales', () => {
 })
 
 describe('documentos: imágenes en la misma respuesta', () => {
+  it.each(['error', 'timeout'] as const)('crear y renderizar informan una vista parcial por %s sin inventar el total', async (failure) => {
+    deps.preview = (tipo, bytes, range) =>
+      renderPreview(
+        tipo,
+        bytes,
+        { deckcraft: null, wordcraft: '/fake/w' },
+        {
+          range,
+          run: async (_bin, argv) => {
+            const page = Number(argv[argv.indexOf('--page') + 1])
+            if (page === 3) throw failure === 'timeout' ? new CraftTimeoutError() : new Error('ruta/privada falló')
+            writeFileSync(argv[2], `PNG-${page}`)
+          }
+        }
+      )
+    const created = await server.invoke(binding, args)
+    expect(created.isError).toBeUndefined()
+    const preview = await server.invoke(binding, { ruta: join(folder, 'Informe.docx') }, 'renderizar')
+    for (const result of [created, preview]) {
+      expect(text(result)).toContain('total de páginas desconocido')
+      expect(text(result)).toContain('VISTA PREVIA PARCIAL')
+      expect(text(result)).toContain(failure === 'timeout' ? 'agotó el tiempo' : 'falló el renderizado')
+      expect(text(result)).toContain('desde_pagina=3')
+      expect(text(result)).not.toContain('ruta/privada')
+      expect(result.content.filter((c) => c.type === 'image')).toHaveLength(2)
+    }
+  })
+
+  it('renderizar permite continuar en páginas 13–14 y comunica su numeración real', async () => {
+    await server.invoke(binding, args)
+    const calls: number[] = []
+    deps.preview = (tipo, bytes, range) =>
+      renderPreview(
+        tipo,
+        bytes,
+        { deckcraft: null, wordcraft: '/fake/w' },
+        {
+          range,
+          run: async (_bin, argv) => {
+            const page = Number(argv[argv.indexOf('--page') + 1])
+            calls.push(page)
+            if (page === 15) throw new Error('bad parameters: no page 15')
+            writeFileSync(argv[2], `PNG-${page}`)
+          }
+        }
+      )
+    const result = await server.invoke(binding, { ruta: join(folder, 'Informe.docx'), desde_pagina: 13, hasta_pagina: 14 }, 'renderizar')
+    expect(calls).toEqual([13, 14, 15])
+    expect(text(result)).toContain('14 página(s)')
+    expect(text(result)).toContain('páginas 13–14')
+    expect(result.content.filter((c) => c.type === 'image')).toHaveLength(2)
+  })
+
+  it('rechaza intervalos inválidos sin tocar el motor', async () => {
+    deps.preview = vi.fn(async () => null)
+    for (const range of [
+      { desde_pagina: 1 },
+      { desde_pagina: 0, hasta_pagina: 2 },
+      { desde_pagina: 3, hasta_pagina: 2 },
+      { desde_pagina: 1, hasta_pagina: 13 },
+      { desde_pagina: Number.MAX_SAFE_INTEGER, hasta_pagina: Number.MAX_SAFE_INTEGER },
+      { desde_pagina: '1', hasta_pagina: 2 }
+    ]) {
+      const result = await server.invoke(binding, { ruta: 'Informe.docx', ...range }, 'renderizar')
+      expect(result.isError).toBe(true)
+      expect(text(result)).toContain('enteros positivos')
+    }
+    expect(deps.preview).not.toHaveBeenCalled()
+  })
+
   it.each(['docx', 'pptx', 'xlsx', 'pdf'])('crear %s incluye imágenes y revisión', async (tipo) => {
     deps.preview = vi.fn(async () => ({ images: [Buffer.from('PNG1'), Buffer.from('PNG2')], pages: 2, truncated: false }))
     const result = await server.invoke(binding, {

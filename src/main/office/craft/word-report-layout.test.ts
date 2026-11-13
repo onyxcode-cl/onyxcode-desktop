@@ -5,6 +5,17 @@ import type { DocxSpec } from '@shared/chat-doc-spec'
 import { prepareWordReport, reportColumnWidths, WORD_REPORT } from './word-report-layout'
 
 describe('plantilla de informes', () => {
+  it('respeta portada explícita y aplica el umbral solo cuando falta', () => {
+    for (const words of [0, 1199, 1200, 2000]) {
+      for (const cover of [true, false, undefined]) {
+        const spec: DocxSpec = { title: 'Informe', cover, blocks: [{ type: 'paragraph', text: 'palabra '.repeat(words) }] }
+        expect(prepareWordReport(spec).cover).toBe(cover ?? words >= WORD_REPORT.long_units)
+        expect(spec.cover).toBe(cover)
+      }
+    }
+    expect(prepareWordReport({ cover: true, blocks: [] }).cover).toBe(false)
+  })
+
   it('respeta la exclusión de índice y conserva la portada de informes largos', () => {
     const spec: DocxSpec = { title: 'Informe', cover: true, toc: false, blocks: [{ type: 'paragraph', text: 'palabra '.repeat(2000) }] }
     expect(prepareWordReport(spec)).toMatchObject({ cover: true, toc: false })
@@ -22,19 +33,24 @@ describe('plantilla de informes', () => {
 
   const python = process.env.LAZUNOX_PYTHON
   it.skipIf(!python)('Python y Chat producen la misma jerarquía y las mismas decisiones en los umbrales', () => {
-    const cases: DocxSpec[] = [0, 1199, 1200, 1790, 1800, 2000].map((words) => ({
-      title: 'Informe',
-      cover: true,
-      toc: true,
-      blocks: [
-        { type: 'heading', level: 3, text: '9.2 Resumen' },
-        { type: 'heading', level: 1, text: '2027 Proyección' },
-        { type: 'heading', level: 1, text: 'Segundo' },
-        { type: 'heading', level: 1, text: 'Tercero' },
-        { type: 'heading', level: 1, text: 'Cuarto' },
-        { type: 'paragraph', text: 'palabra '.repeat(words) }
-      ]
-    }))
+    const cases: DocxSpec[] = [0, 1199, 1200, 1790, 1800, 2000].flatMap((words) =>
+      [true, false, undefined].map(
+        (cover) =>
+          ({
+            title: 'Informe',
+            cover,
+            toc: true,
+            blocks: [
+              { type: 'heading', level: 3, text: '9.2 Resumen' },
+              { type: 'heading', level: 1, text: '2027 Proyección' },
+              { type: 'heading', level: 1, text: 'Segundo' },
+              { type: 'heading', level: 1, text: 'Tercero' },
+              { type: 'heading', level: 1, text: 'Cuarto' },
+              { type: 'paragraph', text: 'palabra '.repeat(words) }
+            ]
+          }) as DocxSpec
+      )
+    )
     const py = spawnSync(
       python!,
       [

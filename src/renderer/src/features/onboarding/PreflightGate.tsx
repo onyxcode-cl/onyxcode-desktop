@@ -38,7 +38,7 @@ import { raceReport, type ReportRace } from './preflight-late'
 import { PREFLIGHT_OPEN_EVENT } from './preflight-open'
 import { AutoInstallPill } from './AutoInstallPill'
 import {
-  autoAttempted,
+  autoCompleted,
   autoBusy,
   autoPhase,
   clearAutoIfIdle,
@@ -102,10 +102,11 @@ function buildInstallApi(alive: () => boolean): InstallApi {
  * No descarga sin conexión ni si no alcanza el disco (regla `DISK_FACTOR`); entonces solo deja el aviso discreto. `after` vuelve a revisar.
  */
 function maybeStartAuto(r: PreflightReport, alive: () => boolean, after: () => void): void {
-  const plan = autoInstallPlan(r).filter((c) => !autoAttempted().has(c.id))
+  const failed = useAutoInstall.getState().failed
+  const plan = autoInstallPlan(r).filter((c) => !autoCompleted().has(c.id) && !failed[c.id])
   if (plan.length === 0) return clearAutoIfIdle()
   const ph = autoPhase()
-  if (ph === 'running' || ph === 'waiting' || ph === 'failed') return
+  if (ph === 'running' || ph === 'waiting') return
   const ids = plan.map((c) => c.id)
   if (!autoDiskEnough(r, plan)) return markAutoBlocked('nodisk', ids)
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return markAutoBlocked('offline', ids)

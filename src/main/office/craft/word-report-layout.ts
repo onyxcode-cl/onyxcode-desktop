@@ -28,7 +28,7 @@ export function prepareWordReport(input: DocxSpec): DocxSpec {
     if ('text' in b) units += b.text.trim().split(/\s+/).filter(Boolean).length
     if (b.type === 'bullets' || b.type === 'numbered') units += b.items.flat().join(' ').trim().split(/\s+/).filter(Boolean).length
   }
-  spec.cover = !!(spec.cover && spec.title && units >= template.long_units)
+  spec.cover = !!(spec.title && (spec.cover ?? units >= template.long_units))
   spec.toc = !!((spec.toc ?? true) && units >= template.toc_units && sections >= template.toc_sections)
   return spec
 }

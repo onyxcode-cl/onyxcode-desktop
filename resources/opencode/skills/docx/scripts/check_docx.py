@@ -108,13 +108,15 @@ def structural(path, spec=None):
         instructions = footer._element.xpath(".//w:instrText/text() | .//w:fldSimple/@w:instr")
         return any(re.match(r"^\s*PAGE(?:\s|$)", ins, re.I) for ins in instructions)
 
+    report_cover = False
+    if spec is not None:
+        from _report_layout import prepare
+        report_cover = prepare(spec).get("cover", False)
+
     for i, section in enumerate(doc.sections, 1):
         footers = [section.footer]
-        # Una portada solicitada y larga conserva la primera página sin pie.
-        cover = False
-        if i == 1 and spec:
-            from _report_layout import prepare
-            cover = prepare(spec).get("cover", False)
+        # Una portada solicitada explícitamente o decidida por extensión conserva la primera página sin pie.
+        cover = i == 1 and report_cover
         if section.different_first_page_header_footer and not cover:
             footers.append(section.first_page_footer)
         if doc.settings.odd_and_even_pages_header_footer:
@@ -134,7 +136,7 @@ def structural(path, spec=None):
         parts = re.split(r'(<w:br\b[^>]*w:type="page"[^>]*/>)', e.xml)
         for part in parts:
             if part.startswith("<w:br") or (part == parts[0] and e.xpath("./w:pPr/w:pageBreakBefore[not(@w:val='0' or @w:val='false')]") ):
-                allowed_cover = page_index == 0 and total_words >= 1200 and any(n == "Title" for n, _ in headings)
+                allowed_cover = page_index == 0 and (report_cover if spec is not None else total_words >= 1200) and any(n == "Title" for n, _ in headings)
                 if page_words < 80 and not visual and not allowed_cover:
                     probs.append("página explícita %d casi vacía: quite el salto o una el contenido con la página siguiente" % (page_index + 1))
                 page_words, visual = 0, False

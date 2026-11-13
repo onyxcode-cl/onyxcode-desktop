@@ -19,6 +19,7 @@ const c = (id: PreflightComponent['id'], o: Partial<PreflightComponent> = {}): P
 let platform: 'darwin' | 'win32' = 'darwin'
 let trustResult: { ok: boolean; error?: string } = { ok: true }
 let craftResult: { ok: boolean; error?: string } = { ok: true }
+let craftRun: (() => Promise<typeof craftResult>) | undefined
 let freeBytes = 50e9
 const report = (): PreflightReport => ({
   at: 1,
@@ -44,7 +45,7 @@ vi.mock('../tasks/impl/bridge', () => ({
     calls.push(channel)
     if (channel === 'preflight:run') return report()
     if (channel === 'preflight:trust') return trustResult
-    if (channel === 'craft:install') return craftResult
+    if (channel === 'craft:install') return craftRun ? craftRun() : craftResult
     if (channel === 'tasks:sandbox:status') return { state: 'ready', setup: null }
     return undefined
   })
@@ -88,6 +89,7 @@ beforeEach(() => {
   runtimesInstall.mockClear()
   trustResult = { ok: true }
   craftResult = { ok: true }
+  craftRun = undefined
   freeBytes = 50e9
   Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   resetAutoInstall()
@@ -264,6 +266,42 @@ describe('instalación automática en segundo plano', () => {
     await flush()
     expect(calls).toContain('craft:install')
   })
+
+  it.each(['darwin', 'win32'] as const)(
+    '%s: falla una descarga, el aviso sigue sin red y al reconectar termina solo lo pendiente',
+    async (os) => {
+      craftRun = async () => {
+        Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+        return { ok: false, error: 'offline' }
+      }
+      await mount(true, os)
+      await flush()
+      await flush()
+      expect(calls.filter((channel) => channel === 'craft:install')).toHaveLength(1)
+      expect(q('autoinstall-pill')?.getAttribute('data-phase')).toBe('offline')
+      expect(runtimesInstall).toHaveBeenCalledTimes(1)
+      // La revisión posterior al fallo y otra revisión manual no deben borrar el aviso ni descargar sin conexión.
+      await act(async () => openPreflight())
+      await flush()
+      expect(q('autoinstall-pill')?.textContent).toContain('Sin internet')
+      expect(calls.filter((channel) => channel === 'craft:install')).toHaveLength(1)
+
+      let finish!: (result: typeof craftResult) => void
+      craftRun = () => new Promise((resolve) => (finish = resolve))
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+      await act(async () => window.dispatchEvent(new Event('online')))
+      await flush()
+      expect(calls.filter((channel) => channel === 'craft:install')).toHaveLength(2)
+      expect(q('autoinstall-pill')?.getAttribute('data-phase')).toBe('running')
+      expect(runtimesInstall).toHaveBeenCalledTimes(1)
+      if (os === 'win32') expect(calls.filter((channel) => channel === 'tasks:sandbox:setup')).toHaveLength(1)
+
+      await act(async () => finish({ ok: true }))
+      await flush()
+      expect(q('autoinstall-pill')).toBeNull()
+      expect(calls.filter((channel) => channel === 'craft:install')).toHaveLength(2)
+    }
+  )
 
   it('sin espacio suficiente (regla del disco) no instala nada y avisa con «Reintentar»', async () => {
     freeBytes = 100e6

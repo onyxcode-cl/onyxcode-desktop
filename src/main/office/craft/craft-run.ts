@@ -8,6 +8,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { privateTmp } from './private-tmp'
 
+export class CraftTimeoutError extends Error {
+  constructor() {
+    super('ArtCraft: tiempo agotado')
+    this.name = 'CraftTimeoutError'
+  }
+}
+
 /** Entorno mínimo para ejecutar un programa de ArtCraft con todo apuntando a `home`. */
 export function craftEnv(home: string, platform: string = process.platform): NodeJS.ProcessEnv {
   if (platform === 'win32') {
@@ -36,6 +43,8 @@ export async function runCraft(binary: string, args: string[], timeoutMs: number
         args,
         { timeout: timeoutMs, maxBuffer: 16 << 20, env: craftEnv(home), cwd: home, windowsHide: true },
         (err, stdout, stderr) => {
+          if (err?.killed && err.signal === 'SIGTERM' && err.code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER')
+            return fail(new CraftTimeoutError())
           if (err) return fail(new Error(String(stderr || err.message).slice(0, 300)))
           try {
             if (input !== undefined) checkCraftBatch(stdout, input)

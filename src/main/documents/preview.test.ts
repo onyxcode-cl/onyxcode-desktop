@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MAX_PREVIEW_PAGES, renderPreview } from './preview'
+import { CraftTimeoutError } from '../office/craft/craft-run'
 
 const png = (n: number): Buffer => Buffer.from(`png-${n}`)
 const tools = { deckcraft: '/fake/deckcraft-cli', wordcraft: '/fake/wordcraft-cli' }
@@ -35,6 +36,8 @@ describe('renderPreview', () => {
     })
     expect(res!.pages).toBe(2)
     expect(res!.images.length).toBe(2)
+    expect(res!.status).toBe('complete')
+    expect(res!.truncated).toBe(false)
   })
 
   it('docx: nunca más de 12 páginas', async () => {
@@ -45,16 +48,75 @@ describe('renderPreview', () => {
     })
     expect(res!.images.length).toBe(MAX_PREVIEW_PAGES)
     expect(res!.truncated).toBe(true)
+    expect(res!.pages).toBeNull()
+    expect(res!.nextPage).toBe(13)
   })
 
-  it('docx: si ni la primera página sale, falla', async () => {
-    await expect(
-      renderPreview('docx', Buffer.from('x'), tools, {
+  it('docx: si ni la primera página sale, informa el fallo y el total desconocido', async () => {
+    expect(
+      await renderPreview('docx', Buffer.from('x'), tools, {
         run: async () => {
           throw new Error('roto')
         }
       })
-    ).rejects.toThrow()
+    ).toMatchObject({ status: 'error', pages: null, truncated: true, images: [], nextPage: 1 })
+  })
+
+  it.each(['error', 'timeout'] as const)('docx: un %s en página 3 no se confunde con un final de 2 páginas', async (status) => {
+    const res = await renderPreview('docx', Buffer.from('x'), tools, {
+      run: async (_bin, args) => {
+        const page = Number(args[args.indexOf('--page') + 1])
+        if (page === 3) throw status === 'timeout' ? new CraftTimeoutError() : new Error('motor roto')
+        writeFileSync(args[2]!, png(page))
+      }
+    })
+    expect(res).toMatchObject({ status, pages: null, truncated: true, nextPage: 3 })
+    expect(res!.images).toHaveLength(2)
+  })
+
+  it('docx: vencimiento total entre páginas conserva las imágenes y marca tiempo agotado', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(0)
+    try {
+      const res = await renderPreview('docx', Buffer.from('x'), tools, {
+        totalMs: 100,
+        run: async (_bin, args) => {
+          writeFileSync(args[2]!, png(1))
+          now.mockReturnValue(101)
+        }
+      })
+      expect(res).toMatchObject({ status: 'timeout', pages: null, truncated: true, nextPage: 2 })
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it('docx: un intervalo posterior empieza allí, no vuelve a renderizar las primeras páginas', async () => {
+    const calls: number[] = []
+    const res = await renderPreview('docx', Buffer.from('x'), tools, {
+      range: { firstPage: 13, lastPage: 15 },
+      run: async (_bin, args) => {
+        const page = Number(args[args.indexOf('--page') + 1])
+        calls.push(page)
+        if (page === 16) throw new Error('bad parameters: no page 16')
+        writeFileSync(args[2]!, png(page))
+      }
+    })
+    expect(calls).toEqual([13, 14, 15, 16])
+    expect(res).toMatchObject({ pages: 15, status: 'complete', firstPage: 13, truncated: true })
+    expect(res!.images.map(String)).toEqual(['png-13', 'png-14', 'png-15'])
+  })
+
+  it('docx: rechaza intervalos inválidos antes de ejecutar', async () => {
+    const run = vi.fn()
+    for (const range of [
+      { firstPage: 0, lastPage: 1 },
+      { firstPage: 4, lastPage: 3 },
+      { firstPage: 1, lastPage: 13 },
+      { firstPage: Number.MAX_SAFE_INTEGER, lastPage: Number.MAX_SAFE_INTEGER },
+      { firstPage: 1.5, lastPage: 2 }
+    ])
+      await expect(renderPreview('docx', Buffer.from('x'), tools, { run, range })).rejects.toThrow('intervalo')
+    expect(run).not.toHaveBeenCalled()
   })
 
   it('sin rasterizador o sin programa instalado → null', async () => {
@@ -178,6 +240,37 @@ describe('renderPreview: tiempo total, memoria y carpeta privada', () => {
 
 describe('renderPreview: Word sin ArtCraft usa el visor de la app', () => {
   const PNG = Buffer.from('PNG')
+  it.each(['timeout', 'error'] as const)('distingue %s al fallar la captura alternativa', async (status) => {
+    const res = await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      {
+        captureDocx: async () => {
+          throw new Error(status === 'timeout' ? 'timeout' : 'fallo del visor')
+        }
+      }
+    )
+    expect(res).toMatchObject({ status, pages: null, truncated: true, images: [] })
+  })
+  it('una captura incompleta conserva el total conocido pero se marca error', async () => {
+    const res = await renderPreview(
+      'docx',
+      Buffer.from('zip'),
+      { deckcraft: null, wordcraft: null },
+      {
+        captureDocx: async () => ({ images: [PNG], pages: 4 })
+      }
+    )
+    expect(res).toMatchObject({ status: 'error', pages: 4, truncated: true, nextPage: 2 })
+  })
+  it('pasa el intervalo al visor y conserva la numeración, sin llamarlas primeras páginas', async () => {
+    const captureDocx = vi.fn(async () => ({ images: [PNG, PNG], pages: 20 }))
+    const range = { firstPage: 13, lastPage: 14 }
+    const res = await renderPreview('docx', Buffer.from('zip'), { deckcraft: null, wordcraft: null }, { range, captureDocx })
+    expect(captureDocx).toHaveBeenCalledWith(Buffer.from('zip'), expect.any(Number), range)
+    expect(res).toMatchObject({ pages: 20, status: 'range', firstPage: 13, nextPage: 15, viaViewer: true, truncated: true })
+  })
   it('sin WordCraft, devuelve lo que captura el visor (con el tope de páginas)', async () => {
     const { renderPreview } = await import('./preview')
     const res = await renderPreview(
@@ -244,7 +337,7 @@ describe('renderPreview: el respaldo del visor respeta el tiempo total', () => {
         }
       }
     )
-    expect(res).toBeNull()
+    expect(res).toMatchObject({ status: 'timeout', pages: null, truncated: true })
     expect(used).toBe(false)
   })
   it('le pasa al visor lo que queda del tiempo', async () => {

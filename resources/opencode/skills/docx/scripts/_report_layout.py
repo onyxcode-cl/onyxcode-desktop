@@ -34,7 +34,7 @@ def count_items(items):
 
 
 def prepare(spec):
-    """Decisiones deterministas: sin portada/índice cortos, títulos y tablas coherentes."""
+    """Portada explícita o por extensión; índice, títulos y tablas coherentes."""
     s = copy.deepcopy(spec)
     if not isinstance(s, dict) or not isinstance(s.get("blocks"), list):
         raise ValueError("blocks: indique una lista de bloques")
@@ -67,6 +67,6 @@ def prepare(spec):
         units += len(str(b.get("text", "")).split())
         if b.get("type") in ("bullets", "numbered"):
             units += count_items(b.get("items", []))
-    s["cover"] = bool(s.get("cover") and s.get("title") and units >= TEMPLATE["long_units"])
+    s["cover"] = bool(s.get("title") and s.get("cover", units >= TEMPLATE["long_units"]))
     s["toc"] = bool(s.get("toc", True) and units >= TEMPLATE["toc_units"] and sections >= TEMPLATE["toc_sections"])
     return s

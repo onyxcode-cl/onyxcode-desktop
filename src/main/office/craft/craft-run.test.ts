@@ -1,19 +1,36 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { craftBatch, runCraft } from './craft-run'
+import { CraftTimeoutError, craftBatch, runCraft } from './craft-run'
 import { renderChatDocx } from './chat-word'
 import { renderChatDeck } from './chat-deck'
 import { renderChatGrid } from './chat-grid'
 import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 
-const state = vi.hoisted(() => ({ seen: [] as Array<{ args: string[]; env: NodeJS.ProcessEnv; content: string }>, failure: false }))
+const state = vi.hoisted(() => ({
+  seen: [] as Array<{ args: string[]; env: NodeJS.ProcessEnv; content: string }>,
+  failure: false,
+  timeout: false,
+  maxBuffer: false
+}))
 vi.mock('node:child_process', () => ({
-  execFile: (_binary: string, args: string[], opts: { env: NodeJS.ProcessEnv }, done: (err: null, out: string, stderr: string) => void) => {
+  execFile: (
+    _binary: string,
+    args: string[],
+    opts: { env: NodeJS.ProcessEnv },
+    done: (err: Error | null, out: string, stderr: string) => void
+  ) => {
     if (process.platform === 'win32' && args.join(' ').length > 32_767) throw new Error('spawn ENAMETOOLONG')
     return {
       stdin: {
         on: () => {},
         end: (input?: string) => {
+          if (state.timeout) return done(Object.assign(new Error('killed'), { killed: true, signal: 'SIGTERM' }), '', 'mensaje del motor')
+          if (state.maxBuffer)
+            return done(
+              Object.assign(new Error('buffer lleno'), { killed: true, signal: 'SIGTERM', code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' }),
+              '',
+              ''
+            )
           let content: string
           let results: Array<{ command: string; ok: boolean }>
           if (args[0] === 'mcp') {
@@ -40,10 +57,20 @@ afterEach(() => {
   vi.unstubAllGlobals()
   state.seen = []
   state.failure = false
+  state.timeout = false
+  state.maxBuffer = false
   rmSync('/private/tmp/v23d-fake.docx', { force: true })
 })
 
 describe('contenido grande fuera de argv y del entorno', () => {
+  it('conserva un timeout tipado aunque el programa haya escrito en stderr', async () => {
+    state.timeout = true
+    await expect(runCraft('/wordcraft', ['render'], 1000)).rejects.toBeInstanceOf(CraftTimeoutError)
+  })
+  it('no confunde el límite de salida con un timeout aunque execFile mate el proceso', async () => {
+    state.maxBuffer = true
+    await expect(runCraft('/wordcraft', ['render'], 1000)).rejects.toThrow('buffer lleno')
+  })
   it.each(['win32', 'darwin'])('Word, presentación y planilla con 60.000 caracteres en %s', async (platform) => {
     vi.stubGlobal('process', { ...process, platform })
     const text = 'á'.repeat(5000)
