@@ -265,6 +265,9 @@ export function dropScript(base64: string, fileName: string, mime: string, waitM
       addEventListener('TrunkApplicationStarted', () => { clearTimeout(timer); ok(true) }, { once: true })
     })
     if (!ready) return false
+    // El lienzo existe antes de que el motor acepte archivos (muestra su pantalla de inicio o un ejemplo): se mantiene la espera
+    // mínima de la versión anterior y después se exige el lienzo con tamaño.
+    await new Promise((ok) => setTimeout(ok, 700))
     const canvasReady = await new Promise((ok) => {
       let frame = 0
       const finish = (canvas) => { clearTimeout(timer); cancelAnimationFrame(frame); ok(canvas) }
