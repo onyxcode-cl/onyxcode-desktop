@@ -10,6 +10,11 @@ const routes = vi.hoisted(() => [] as string[])
 const stops = vi.hoisted(() => [] as string[])
 const starts = vi.hoisted(() => ({ before: null as null | ((folder: string) => Promise<void>) }))
 const nextPaths = vi.hoisted(() => ({ value: null as null | { map: unknown; directory: string } }))
+const documentState = vi.hoisted(() => ({
+  enabled: false,
+  binding: null as null | { session: (root: string) => Promise<string | null> },
+  timeout: 0
+}))
 
 vi.mock('../project-profile', () => ({ projectProfiles: () => ({ accessOf: () => 'comandos' }) }))
 vi.mock('electron', () => ({
@@ -23,7 +28,16 @@ vi.mock('./opencode-config', async (orig) => {
   const real = await orig<typeof import('./opencode-config')>()
   return { ...real, getOpencodeConfigDir: () => state.cfgDir || real.getOpencodeConfigDir() }
 })
-vi.mock('../documents', () => ({ documentsMcp: { configFor: async () => null, revokeToken: () => undefined } }))
+vi.mock('../documents', () => ({
+  documentsMcp: {
+    configFor: async (binding: { session: (root: string) => Promise<string | null> }) => {
+      if (!documentState.enabled) return null
+      documentState.binding = binding
+      return { url: 'http://127.0.0.1:2/mcp', headers: { Authorization: 'Bearer documento-prueba' } }
+    },
+    revokeToken: () => undefined
+  }
+}))
 vi.mock('../host-exec', () => ({ hostExecMcp: { configFor: async () => null, revokeToken: () => undefined } }))
 vi.mock('./policy', () => ({ loadManagedPolicy: () => state.policy, isHostCommandsDisabled: () => false }))
 vi.mock('./mcp-proxy', () => ({
@@ -31,8 +45,12 @@ vi.mock('./mcp-proxy', () => ({
     port = 1
     async start(): Promise<void> {}
     async stop(): Promise<void> {}
-    addRoute(spec?: { name?: string }): never {
+    addRoute(spec?: { name?: string; headersTimeoutMs?: number }) {
       routes.push(String(spec?.name))
+      if (documentState.enabled && spec?.name === 'documentos') {
+        documentState.timeout = spec.headersTimeoutMs ?? 0
+        return { url: 'http://127.0.0.1:1/documentos', token: 'proxy-prueba', headers: { Authorization: 'Bearer proxy-prueba' } }
+      }
       throw new Error('sin rutas')
     }
     // Canal del guardián de subagentes (F8-B208).
@@ -134,6 +152,9 @@ beforeEach(() => {
   starts.before = null
   stops.length = 0
   nextPaths.value = null
+  documentState.enabled = false
+  documentState.binding = null
+  documentState.timeout = 0
   f = fakeHost()
   for (const d of [
     'C:\\lzx',
@@ -171,6 +192,27 @@ async function advanceWarmup(): Promise<void> {
 }
 
 describe('Windows: un solo motor aislado en espera', () => {
+  it('documentos conserva el plazo combinado y obtiene la sesión del motor propio', async () => {
+    seed()
+    documentState.enabled = true
+    const m = mk({ tasksWin: true, winBackend })
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ses_prueba: { type: 'busy' } })))
+    vi.stubGlobal('fetch', fetcher)
+    try {
+      await m.start(A)
+      expect(documentState.timeout).toBe(255_000)
+      expect(await documentState.binding!.session(A)).toBe('ses_prueba')
+      expect(fetcher).toHaveBeenCalledWith(
+        expect.stringContaining('/session/status?directory='),
+        expect.objectContaining({ headers: { authorization: 'x' } })
+      )
+      await m.stopAll()
+      expect(await documentState.binding!.session(A)).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+      await m.stopAll()
+    }
+  })
   it('restaura la última carpeta, conserva permisos y reutiliza el motor al abrirla', async () => {
     seed()
     const m = mk({ tasksWin: true, winBackend })

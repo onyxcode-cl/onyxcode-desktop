@@ -68,7 +68,7 @@ describe('revisión de calidad de documentos_crear', () => {
     expect(ok).toContain('RESULTADO: OK')
     const mal = await reviewSummary('docx', fx('malo.docx'))
     expect(mal).toContain('✘')
-    expect(mal).toContain('OTRO nombre')
+    expect(mal).toContain('MISMO nombre')
     expect(await reviewSummary('docx', Buffer.from('no es un zip'))).toContain('NO corrida')
     expect(await reviewSummary('pdf', Buffer.from('%PDF'))).toContain('NO corrida')
   })

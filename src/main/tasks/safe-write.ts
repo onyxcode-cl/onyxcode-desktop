@@ -109,6 +109,8 @@ export interface SafeWriteOptions {
   replace?: boolean
   /** Con `replace`: si el destino es un enlace simbólico, falla (`LinkRefusedError`) en vez de reemplazar el enlace. */
   refuseLinkTarget?: boolean
+  /** Reemplazo condicionado a una comprobación externa: no esperar para reintentar con una condición que podría haber caducado. */
+  noRenameRetry?: boolean
   /** Solo pruebas. */
   hooks?: SafeWriteHooks
 }
@@ -270,7 +272,7 @@ export class SafeTempFile {
    * Termina con el nombre `name` en la misma carpeta. Devuelve la ruta final (con la carpeta tal como se pasó), o null si `replace` es false y el nombre ya existe (para
    * que quien llama pruebe otro). Lanza `LinkRefusedError` si algo no cuadra.
    */
-  commit(name: string, opts: Pick<SafeWriteOptions, 'replace' | 'refuseLinkTarget'> = {}): string | null {
+  commit(name: string, opts: Pick<SafeWriteOptions, 'replace' | 'refuseLinkTarget' | 'noRenameRetry'> = {}): string | null {
     if (!name || name !== basename(name) || name === '.' || name === '..') throw new LinkRefusedError(name, 'outside')
     const fd = this.openFd
     fchmodSync(fd, this.mode)
@@ -279,7 +281,7 @@ export class SafeTempFile {
     const final = join(this.dir, name)
     if (opts.replace) {
       if (opts.refuseLinkTarget && lstatOrNull(final)?.isSymbolicLink()) throw new LinkRefusedError(final, 'link')
-      this.renameFinal(final) // mismo directorio: si la carpeta cambió por un enlace, ENOENT (el temporal no está allí)
+      this.renameFinal(final, opts.noRenameRetry) // mismo directorio: si la carpeta cambió por un enlace, ENOENT (el temporal no está allí)
     } else {
       let linked = false
       try {
@@ -337,14 +339,14 @@ export class SafeTempFile {
    * con el destino abierto) se reintenta unas pocas veces con espera corta creciente (5 intentos, ~1 s en total); si sigue fallando,
    * error claro y `discard` (de quien llama) borra el temporal. En el resto de casos el error sale tal cual.
    */
-  private renameFinal(final: string): void {
+  private renameFinal(final: string, noRetry = false): void {
     for (let i = 0; ; i++) {
       try {
         safeWriteOps.rename(this.tmpPath, final)
         return
       } catch (e) {
         const code = errno(e)
-        if (!safeWriteOps.isWindows() || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e
+        if (noRetry || !safeWriteOps.isWindows() || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) throw e
         if (i >= RENAME_WAITS.length) throw new Error(t('merr.task.fileBusy', { path: basename(final) }))
         safeWriteOps.sleep(RENAME_WAITS[i])
       }

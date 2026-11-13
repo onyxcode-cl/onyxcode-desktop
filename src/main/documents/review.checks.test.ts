@@ -28,6 +28,47 @@ async function pptx(shapes: string[], bg = ''): Promise<Buffer> {
 
 describe('PowerPoint: chequeos de aspecto', () => {
   const T = sp('Título', 914400, 914400, 8000000, 800000, 'Ventas del trimestre', 40)
+  it('cierre casi vacío: ignora contacto, pie y número; exige 8 palabras de contenido real', async () => {
+    const closing = sp('Título', 914400, 914400, 8000000, 800000, 'Gracias', 40)
+    const contact = sp('Contacto', 914400, 3000000, 8000000, 800000, 'ana@empresa.cl', 18, '', '')
+    const footer = sp('Pie', 914400, 6000000, 8000000, 300000, 'Un pie muy largo con muchas palabras que no son contenido', 10, '', 'ftr')
+    const bytes = await pptx([closing, contact, footer])
+    expect(bad(await reviewDocument('pptx', bytes, { slides: [{ layout: 'closing', title: 'Gracias' }] }))).toContain(
+      'Cierre casi vacío (1 palabras)'
+    )
+    const substantive = await pptx([
+      T,
+      sp('Cuerpo', 914400, 2500000, 8000000, 1500000, 'Aprobar el piloto este mes y revisar resultados en diciembre', 18, '', '')
+    ])
+    const result = await reviewDocument('pptx', substantive, { slides: [{ layout: 'closing', title: 'Ventas del trimestre' }] })
+    expect(bad(result)).toBe('')
+  })
+  it('el cierre cuenta el contenido de una tabla nativa y verifica el archivo aunque el spec prometa más texto', async () => {
+    const bytes = await pptx([T])
+    const zip = await JSZip.loadAsync(bytes)
+    const first = await zip.file('ppt/slides/slide1.xml')!.async('string')
+    zip.file('ppt/slides/slide2.xml', first)
+    const empty = await zip.generateAsync({ type: 'nodebuffer' })
+    expect(
+      bad(
+        await reviewDocument('pptx', empty, {
+          slides: [
+            { title: 'Portada' },
+            { title: 'Final', bullets: ['Mucho contenido que no está realmente dentro del archivo exportado'] }
+          ]
+        })
+      )
+    ).toContain('Cierre casi vacío')
+    zip.file(
+      'ppt/slides/slide2.xml',
+      first.replace(
+        '</p:spTree>',
+        '<p:graphicFrame><a:tbl><a:tr><a:tc><a:txBody><a:p><a:r><a:t>Aprobar piloto en noviembre y revisar resultados en diciembre</a:t></a:r></a:p></a:txBody></a:tc></a:tr></a:tbl></p:graphicFrame></p:spTree>'
+      )
+    )
+    const result = await reviewDocument('pptx', await zip.generateAsync({ type: 'nodebuffer' }))
+    expect(bad(result)).toBe('')
+  })
   it('un título bien puesto pasa limpio', async () => {
     const r = await reviewDocument('pptx', await pptx([T, sp('Cuerpo', 914400, 2000000, 8000000, 2000000, 'Subieron 12 %', 18, '', '')]))
     expect(bad(r)).toBe('')
@@ -250,23 +291,27 @@ async function pptxSlides(slides: string[][]): Promise<Buffer> {
 
 describe('R6 en PowerPoint: título repetido o con punto (ℹ)', () => {
   const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
+  const B = sp('Cuerpo', 914400, 2500000, 8000000, 1500000, 'Aprobar el piloto este mes y revisar resultados en diciembre', 18, '', '')
   it('el mismo título en dos diapositivas → ℹ', async () => {
-    const r = await reviewDocument('pptx', await pptxSlides([[T('Resumen')], [T('Resumen')]]))
+    const r = await reviewDocument('pptx', await pptxSlides([[T('Resumen')], [T('Resumen'), B]]))
     expect(bad(r)).toBe('')
     expect(notes(r)).toContain('Título repetido en varias diapositivas: «Resumen»')
   })
   it('título que termina en punto → ℹ; títulos distintos sin punto no avisan', async () => {
-    const r = await reviewDocument('pptx', await pptxSlides([[T('Ventas del trimestre.')], [T('Costos')]]))
+    const r = await reviewDocument('pptx', await pptxSlides([[T('Ventas del trimestre.')], [T('Costos'), B]]))
     expect(bad(r)).toBe('')
     expect(notes(r)).toContain('Título que termina en punto: «Ventas del trimestre.»')
-    const limpio = await reviewDocument('pptx', await pptxSlides([[T('Ventas')], [T('Costos')]]))
+    const limpio = await reviewDocument('pptx', await pptxSlides([[T('Ventas')], [T('Costos'), B]]))
     expect(notes(limpio)).not.toContain('Título')
   })
 })
 
 describe('R7 en PowerPoint: todas las láminas de viñetas (ℹ)', () => {
   const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
-  const slides = Array.from({ length: 5 }, (_, i) => [T(`Lámina ${i + 1}`)])
+  const slides = Array.from({ length: 5 }, (_, i) => [
+    T(`Lámina ${i + 1}`),
+    sp('Cuerpo', 914400, 2500000, 8000000, 1500000, 'Aprobar el piloto este mes y revisar resultados en diciembre', 18, '', '')
+  ])
   it('cuatro láminas de contenido sin variar el tipo → ℹ', async () => {
     // La portada sin viñetas (si no, la exigencia del subtítulo de portada se aplicaría al archivo de prueba).
     const spec = { slides: Array.from({ length: 5 }, (_, i) => ({ title: `Lámina ${i + 1}`, ...(i ? { bullets: ['Punto'] } : {}) })) }
@@ -404,7 +449,14 @@ describe('R9 en Excel: porcentaje con cifra entera (✘)', () => {
 describe('R8 en PowerPoint: lámina cargada (ℹ)', () => {
   const T = (text: string) => sp('Título', 914400, 914400, 8000000, 800000, text, 40)
   it('una lámina con 7 viñetas → ℹ con su número; con 6 no', async () => {
-    const slides = [[T('Portada')], [T('Carga')], [T('Bien')]]
+    const slides = [
+      [T('Portada')],
+      [T('Carga')],
+      [
+        T('Bien'),
+        sp('Cuerpo', 914400, 2500000, 8000000, 1500000, 'Aprobar el piloto este mes y revisar resultados en diciembre', 18, '', '')
+      ]
+    ]
     const spec = {
       slides: [
         { title: 'Portada' },

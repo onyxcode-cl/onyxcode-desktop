@@ -5,23 +5,24 @@ description: Crear, editar, inspeccionar y verificar presentaciones PowerPoint (
 
 # Skill pptx (PowerPoint)
 
-**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y míralo con `documentos_renderizar`; NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
+**Regla 0 (lo primero): si tienes la herramienta `documentos_crear`, crea el documento NUEVO con ella y mira las imágenes de su respuesta (usa `documentos_renderizar` solo si faltan); NO uses los scripts `build_chat_*` ni armes el archivo a mano.** Es el mismo motor del Chat, funciona igual en macOS y en Windows y deja el archivo en la carpeta de la tarea. Los scripts de abajo son solo el respaldo cuando la herramienta no existe (editar un archivo que ya existe, traducir y revisar siguen con las secciones de más abajo).
 
 En láminas, la letra mínima es 12 pt (14 pt o más para el cuerpo): si una tabla o lista no cabe, pon menos filas o divídela en dos láminas, nunca achiques la letra; la revisión lo cuenta como defecto.
 
-Nunca dejes «[PENDIENTE…]», «[TODO]» ni «[…]» dentro del documento entregado: si falta un dato, usa un valor de ejemplo plausible marcado como ficticio o estimado («cifras de ejemplo» en una nota o el pie) o redacta sin la cifra; nunca inventes datos reales del usuario (nombres, montos de contratos). `documentos_crear` RECHAZA el documento si trae marcadores («[PENDIENTE…]», «[TODO]», «lorem», «xxx»); solo para una plantilla o formulario que el usuario pidió con campos vacíos, pasa `allow_placeholders: true`. Tampoco sirven los sinónimos («a definir», «por definir», «por confirmar», «n/d», «pendiente» como único contenido de una celda): si falta una cifra, escribe un valor de ejemplo plausible y márcalo como «cifra de ejemplo» en una nota o el pie; quitar la tabla o la cifra solo si no aporta. Si `documentos_crear` rechaza el documento o aparece como «invalid», NO cambies a python ni a scripts: lee el mensaje, corrige el campo que indica (los argumentos son `tipo`, `nombre` y `spec`, un objeto JSON) y vuelve a llamarla. Un script solo si la herramienta dice que falta el motor; esos archivos también se revisan al renderizarlos. En una tarea de documentos NUNCA entregues un .html u otro formato en lugar del pedido (presentación, Word, Excel o PDF): si dudas, decide tú con un supuesto razonable y decláralo en «Para revisar»; no uses el paso «Pregunta» salvo imposibilidad real. No dejes archivos de prueba: si creas versiones intermedias, bórralas y nombra el definitivo (el último que creaste) en «Para revisar». Si te piden un número de páginas, pásalo en `paginas_objetivo` (por ejemplo «4-5») y respétalo: ≈400 palabras por página, menos con tablas. Un presupuesto o inversión SIEMPRE lleva cifras (de ejemplo, marcadas); «en evaluación» o quitar la tabla no vale. Revisa todos los textos, también pies de tabla, notas y encabezados: ahí también se rechazan los marcadores.
+Nunca dejes «[PENDIENTE…]», «[TODO]» ni «[…]» dentro del documento entregado: si falta un dato, usa un valor de ejemplo plausible marcado como ficticio o estimado («cifras de ejemplo» en una nota o el pie) o redacta sin la cifra; nunca inventes datos reales del usuario (nombres, montos de contratos). `documentos_crear` RECHAZA el documento si trae marcadores («[PENDIENTE…]», «[TODO]», «lorem», «xxx»); solo para una plantilla o formulario que el usuario pidió con campos vacíos, pasa `allow_placeholders: true`. Tampoco sirven los sinónimos («a definir», «por definir», «por confirmar», «n/d», «pendiente» como único contenido de una celda): si falta una cifra, escribe un valor de ejemplo plausible y márcalo como «cifra de ejemplo» en una nota o el pie; quitar la tabla o la cifra solo si no aporta. Si `documentos_crear` rechaza el documento o aparece como «invalid», NO cambies a python ni a scripts: lee el mensaje, corrige el campo que indica (los argumentos son `tipo`, `nombre` y `spec`, un objeto JSON) y vuelve a llamarla. Un script solo si la herramienta dice que falta el motor; esos archivos también se revisan al renderizarlos. En una tarea de documentos NUNCA entregues un .html u otro formato en lugar del pedido (presentación, Word, Excel o PDF): si dudas, decide tú con un supuesto razonable y decláralo en «Para revisar»; no uses el paso «Pregunta» salvo imposibilidad real. Guarda los borradores y archivos auxiliares (como `ops.json`, `spec.json` o `contenido.json`) en `./.lazunox/trabajo/`; deja solo el definitivo junto a los entregables. Con scripts, genera y revisa las rondas allí y copia solo el resultado final a la carpeta de entrega. Si te piden un número de páginas, pásalo en `paginas_objetivo` (por ejemplo «4-5») y respétalo: ≈400 palabras por página, menos con tablas. Un presupuesto o inversión SIEMPRE lleva cifras (de ejemplo, marcadas); «en evaluación» o quitar la tabla no vale. Revisa todos los textos, también pies de tabla, notas y encabezados: ahí también se rechazan los marcadores.
 
-**Ciclo obligatorio de calidad (crear → renderizar → mirar → corregir):**
+**Ciclo obligatorio de calidad (crear con imágenes → mirar → corregir):**
 1. **Crea** con `documentos_crear` siguiendo la guía de diseño (reglas numéricas y lista de «no hagas esto»).
-2. **Renderiza** con `documentos_renderizar` el archivo creado y **mira TODAS las imágenes**, no solo la primera ni la última.
+2. **Mira TODAS las imágenes** de la respuesta de `documentos_crear`, no solo la primera ni la última. Si faltan, usa `documentos_renderizar` sobre la ruta devuelta; no repitas un render que ya recibiste.
 3. Anota los defectos **por prioridad**: (a) texto cortado o fuera de la página, (b) elementos montados unos sobre otros, (c) contraste bajo o letra menor que el mínimo, (d) márgenes y separaciones apretados, (e) desalineación, páginas casi vacías o tablas partidas, (f) restos de plantilla («lorem», «TODO», «[insert») y errores de fórmula (#REF!, #DIV/0!…).
-4. **Corrige todo junto**: vuelve a crear el documento con otro nombre aplicando TODAS las correcciones en una sola vuelta (no arregles de a uno). Corrige en el contenido (`spec` o `html`), no a mano sobre el archivo.
-5. Vuelve a renderizar. **Máximo 3 rondas** en total; si la segunda ronda no mejora, para y declara en «Para revisar» lo que sigue mal. La primera vuelta casi siempre trae errores reales: nunca entregues sin mirar.
+4. **Corrige todo junto**: vuelve a crear el documento con los mismos argumentos originales `nombre`, `tipo` y `subcarpeta` (si se usó) aplicando TODAS las correcciones en una sola vuelta (no arregles de a uno). Corrige en el contenido (`spec` o `html`), no a mano sobre el archivo.
+5. Mira las imágenes nuevas de la respuesta (renderiza solo si faltan). **Máximo 3 rondas** en total; si la segunda ronda no mejora, para y declara en «Para revisar» lo que sigue mal. La primera vuelta casi siempre trae errores reales: nunca entregues sin mirar.
 6. Si la vista previa es la **VISTA SIMPLIFICADA** (no verificada), no concluyas nada sobre píxeles (caja gris, tipografía o gráfico simplificado no son errores): comprueba el contenido y la revisión ✔/✘, y escribe en «Para revisar» que el aspecto visual **no está verificado**.
 
 
 Intérprete: `$LAZUNOX_PYTHON` si existe, si no `python3`. Scripts en `scripts/` (usa python-pptx y Pillow; `build_chat_deck.py` usa además Node y DeckCraft).
-Todos los archivos de salida deben ser NUEVOS (nunca sobrescribas el original del usuario).
+Nunca sobrescribas el original del usuario; las ediciones se entregan en una copia NUEVA. `documentos_crear` sí puede rehacer su propio archivo sin cambios ajenos.
+El cierre lleva la decisión que se solicita o 2–3 mensajes clave con contenido concreto; nunca solo «Gracias» o un contacto.
 
 ## Antes de empezar: pregunta el formato (obligatorio)
 Si te piden una presentación (diapositivas, slides, PowerPoint, PPT, deck, charla) y NO dijeron claramente el formato, PREGUNTA con la herramienta `question` ANTES de crear nada, con dos opciones: **«Editable (.pptx)»** (un archivo que se abre y se cambia después en PowerPoint, Keynote o Google Slides; el diseño se limita a lo que PowerPoint puede representar) y **«Diseño libre (HTML)»** (una página que se presenta en el navegador, con mucha más libertad de diseño y animación; los textos se cambian editando el archivo, y se puede imprimir a PDF). Decir solo «PowerPoint», «PPT» o «PPTX» NO alcanza para elegir. No preguntes si ya está claro: «editable», «para editar», «.pptx» ⇒ .pptx; «HTML», «web», «lo más lindo», «no hace falta editarla» ⇒ HTML; o si ya eligieron antes en esta conversación. Si no puedes preguntar, usa .pptx y dilo en «Para revisar».
@@ -36,11 +37,13 @@ Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el
 - **Diseño «dots» (oscuro, con círculos)**: es solo UNA opción más, para cuando encaje con el tono; no la uses como primera opción ni dos veces seguidas (detalle en §0.2).
 
 ## 0.1 Camino principal: el JSON del Chat + `build_chat_deck.py`
-**Si tienes la herramienta `documentos_crear` (la ofrece la app), úsala en lugar del script:** `documentos_crear` con `tipo: "pptx"`, `nombre` (sin extensión) y `spec` (el JSON de la guía de abajo: theme, style, palette, fonts, slides…). Es el MISMO motor y la MISMA guía de diseño que el Chat, sin escribir archivos intermedios ni necesitar Node, y da el mismo resultado en macOS y en Windows. El archivo queda en la carpeta de esta tarea (nunca pisa uno existente: si el nombre existe añade « (2)») y la respuesta trae su ruta. Si responde con un error de contenido, corrige y repite con OTRO nombre; si dice que falta el diseñador de documentos (ArtCraft), díselo al usuario («Ajustes → Tareas → Componentes opcionales») y sigue con el script de abajo si lo hay. Cada `crear` deja un archivo NUEVO: crea y revisa como mucho 2 veces (corrige TODO de una vez, no por partes) y en «Para revisar» di cuál es el archivo definitivo, para no dejar un montón de versiones. Sin la herramienta, usa el script.
-1. Escribe `spec.json` en la carpeta de la tarea con el esquema de la guía de abajo (es EXACTAMENTE el JSON del bloque ```pptx del Chat: `{"theme":…,"style":…,"palette":…,"fonts":…,"footer":…,"slides":[…]}`; nada de comandos ni rutas, todo es texto).
-2. Genera: `python3 scripts/build_chat_deck.py spec.json salida.pptx` (la salida debe ser un archivo NUEVO: no sobrescribe). Imprime `Presentación creada: …`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
+
+Con scripts de creación, prepara `./.lazunox/trabajo/` con `mkdir -p ./.lazunox/trabajo` y genera allí desde la primera ronda. Como no sobrescriben, cada corrección usa un nombre distinto dentro de esa carpeta (p. ej. `informe-r2.pptx`). Revisa esa salida y, solo al terminar, copia UNA vez el archivo elegido a un nombre nuevo junto a los entregables; no copies las rondas previas.
+**Si tienes la herramienta `documentos_crear` (la ofrece la app), úsala en lugar del script:** `documentos_crear` con `tipo: "pptx"`, `nombre` (sin extensión) y `spec` (el JSON de la guía de abajo: theme, style, palette, fonts, slides…). Es el MISMO motor y la MISMA guía de diseño que el Chat, sin escribir archivos intermedios ni necesitar Node, y da el mismo resultado en macOS y en Windows. El archivo queda en la carpeta de esta tarea (rehace el mismo archivo solo si lo creó esta herramienta en esta tarea y nadie lo cambió; si es previo o fue modificado, añade « (2)») y la respuesta trae su ruta. Si responde con un error de contenido, corrige y repite con los mismos argumentos originales `nombre`, `tipo` y `subcarpeta` (si se usó); si dice que falta el diseñador de documentos (ArtCraft), díselo al usuario («Ajustes → Tareas → Componentes opcionales») y sigue con el script de abajo si lo hay. Para corregir, reutiliza exactamente los mismos argumentos originales `nombre`, `tipo` y `subcarpeta` (si se usó); la ruta devuelta se usa solo para `documentos_renderizar`: la herramienta rehace su propio archivo sin acumular versiones. Corrige TODO de una vez, no por partes, y respeta el máximo de 3 rondas del ciclo de calidad. Sin la herramienta, usa el script.
+1. Escribe `./.lazunox/trabajo/spec.json` con el esquema de la guía de abajo (es EXACTAMENTE el JSON del bloque ```pptx del Chat: `{"theme":…,"style":…,"palette":…,"fonts":…,"footer":…,"slides":[…]}`; nada de comandos ni rutas, todo es texto).
+2. Genera: `python3 scripts/build_chat_deck.py ./.lazunox/trabajo/spec.json ./.lazunox/trabajo/salida.pptx` (la salida debe ser un archivo NUEVO: no sobrescribe). Imprime `Presentación creada: …`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
 3. **Código de salida 3** = falta DeckCraft, Node o el motor en este equipo: no insistas, sigue con el §1 (`build_pptx.py`) y dilo en «Para revisar». Aquí NO hay versión simplificada de las diapositivas libres: sin motor no se arma esta ruta.
-4. Verifica como siempre (§2): mira las imágenes. Corrige editando `spec.json` y regenerando con otro nombre de salida.
+4. Verifica como siempre (§2): mira las imágenes. Con el script, corrige editando `./.lazunox/trabajo/spec.json` y genera las rondas dentro de `./.lazunox/trabajo/`; copia solo la definitiva a la carpeta de entrega.
 Límites de este motor: no inserta imágenes propias (si las piden, usa el §1 o un script a medida). Las notas del orador SÍ van: `speaker_notes` en cada diapositiva (ver la guía de abajo); si piden notas, sigue con `documentos_crear` y NO cambies a python-pptx, porque entonces pierdes la revisión automática y el gráfico con la paleta. El subtítulo de la portada va como `subtitle` de la primera diapositiva o como su primera viñeta (`bullets[0]`): el motor acepta las dos y la revisión de `documentos_crear` avisa si no aparece en el archivo.
 
 ### Guía de diseño (la misma que usa el Chat)
@@ -144,7 +147,7 @@ propias (fotos, íconos) — si piden eso, avisa que todavía no se puede.
 
 ## 0.2 Diseño «dots» (opcional)
 Si lo usas:
-1. Escribe `contenido.json` con SOLO texto (nada de comandos ni rutas): `{"slides":[...]}`. Tipos de diapositiva y sus campos:
+1. Escribe `./.lazunox/trabajo/contenido.json` con SOLO texto (nada de comandos ni rutas): `{"slides":[...]}`. Tipos de diapositiva y sus campos:
    - `cover` {title (una palabra o dos cortas), subtitle, note, badge}
    - `stat` {kicker, title, stat («4.000+»), statLabel, items:[2 × {title, body}]}
    - `timeline` {kicker, title, items:[3 × {title, body}], callout}
@@ -156,14 +159,14 @@ Si lo usas:
    - `stats` {kicker, title, stat, statLabel, items:[3 × {value (1–2 caracteres), label}]}
    - `closing` {title, text, sources}
    Empieza con `cover`, termina con `closing`, mezcla tipos. Título ≤ 60 caracteres, cuerpos ≤ 90. Usa SOLO datos reales (de la investigación o de lo que pidió la persona): no inventes cifras ni fechas.
-2. Genera: `python3 scripts/build_dots.py contenido.json salida.pptx`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
+2. Genera: `python3 scripts/build_dots.py ./.lazunox/trabajo/contenido.json ./.lazunox/trabajo/salida.pptx`. Si imprime `ERROR`, corrige el JSON según el mensaje y repite.
 3. Si sale con **código 3** (el programa del diseño no está instalado en este equipo), no insistas: sigue con el §1 normal.
 4. Verifica como siempre (§2).
 
 ## 1. Crear una presentación con `build_pptx.py` (respaldo y casos con imágenes)
-1. Escribe un JSON (esquema abajo) en la carpeta de la tarea, p. ej. `deck.json`.
-2. Genera: `python3 scripts/build_pptx.py deck.json informe.pptx --theme sobrio`
-   (temas: `sobrio` azul/dorado, `oscuro`, `claro` crema/verde). Salida: `Presentación creada: informe.pptx (12 diapositivas, tema sobrio)`.
+1. Escribe un JSON (esquema abajo) en `./.lazunox/trabajo/deck.json`.
+2. Genera: `python3 scripts/build_pptx.py ./.lazunox/trabajo/deck.json ./.lazunox/trabajo/informe.pptx --theme sobrio`
+   (temas: `sobrio` azul/dorado, `oscuro`, `claro` crema/verde). Salida: `Presentación creada: ./.lazunox/trabajo/informe.pptx (12 diapositivas, tema sobrio)`.
 3. Si el script imprime `Aviso:` (título largo, texto largo) corrige el JSON y vuelve a generar.
    Las listas largas se dividen solas en «Título (1/3)», «(2/3)»… y las tablas de más de 9 filas también.
 
@@ -174,9 +177,9 @@ Si lo usas:
   imágenes diminutas/de baja resolución. Código de salida 1 = hay PROBLEMAS: corrige todo de una vez (ver «Presupuesto de revisión») y repite.
 - Renderiza con DeckCraft (ArtCraft) y crea `.lazunox/trabajo/chk/miniaturas.png` (todas las diapositivas en una imagen):
   MÍRALA con la herramienta de imágenes y comprueba que nada se corta ni se superpone.
-- Si creaste la presentación con `documentos_crear`, mírala con `documentos_renderizar` (devuelve una imagen por diapositiva; también sirve para un .pptx que hiciste o editaste con `bash`: pasa su ruta relativa a la carpeta de la tarea) y corrige todo de una vez. Es la forma de verla también en Windows.
+- Si creaste la presentación con `documentos_crear`, mira las imágenes de su respuesta; solo si faltan usa `documentos_renderizar` (devuelve una imagen por diapositiva; también sirve para un .pptx que hiciste o editaste con `bash`: pasa su ruta relativa a la carpeta de la tarea) y corrige todo de una vez. Es la forma de verla también en Windows.
 - Solo si no obtuviste ninguna imagen (ni de `documentos_renderizar` ni de DeckCraft) avisa «solo hay verificación estructural» en «Para revisar» y pide que la persona mire la vista previa de la app; si viste las imágenes, no lo escribas.
-- Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; no uses `rm`: cada borrado pide permiso al usuario.
+- Para volver a renderizar usa otra carpeta DENTRO de `./.lazunox/trabajo/` (`render2`, `render3`…; nunca `mktemp`, `/tmp` ni `$TMPDIR`: quedan fuera de la tarea y piden un permiso que no se puede conceder) o el script de render; conserva los intermedios dentro de esa carpeta.
 
 ## 3. Entregar
 Indica la ruta del .pptx y, en «Para revisar», lo que no pudiste comprobar (render, fuentes, animaciones).
@@ -210,7 +213,7 @@ Rutas de imágenes relativas al JSON. `notes` (notas del orador) es opcional en 
      "y_title": "M$", "caption": "Cifras en millones de pesos"},
     {"type": "stat", "title": "Crecimiento", "value": "+34 %", "label": "Ingresos", "text": "Frente a 2025"},
     {"type": "quote", "text": "La calidad es hacer bien las cosas", "author": "Autor"},
-    {"type": "closing", "title": "Gracias", "subtitle": "ana@empresa.cl"}
+    {"type": "closing", "title": "Aprobar la apertura de la nueva sede", "subtitle": "Priorizar capacidad y servicio; revisar los avances cada mes"}
   ]
 }
 ```
@@ -234,7 +237,7 @@ python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx move --slide 4 --to 2
 python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx add-slide --layout "Title and Content" --title "Nueva" --bullets "a|b|c" --at 3
 python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx add-image --slide 2 --image logo.png --left 10 --top 0.4 --width 2
 python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx notes --slide 1 --text "Texto de las notas"
-python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx batch --ops ops.json   # [{"op":"replace","find":"a","replace":"b"}, ...]
+python3 scripts/edit_pptx.py orig.pptx orig-v2.pptx batch --ops ./.lazunox/trabajo/ops.json   # [{"op":"replace","find":"a","replace":"b"}, ...]
 ```
 - `replace` conserva el formato (negrita, color, tamaño) y recorre cuadros, tablas y grupos; falla con aviso si no encuentra el texto.
 - Los números de diapositiva se cuentan desde 1 y, en `batch`, se aplican a medida que cambian las operaciones.

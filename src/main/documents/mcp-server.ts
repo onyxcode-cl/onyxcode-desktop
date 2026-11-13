@@ -9,7 +9,8 @@
  * añade el token real (el sandbox solo ve un token de sesión). No importa `electron`: el motor se inyecta (`render`), para probarlo.
  *
  * Seguridad (ver `docs/PLAN-DOCUMENTOS-EN-LA-APP.md` §3): la carpeta sale de la atadura del token, nunca de lo que diga el agente; el
- * nombre y la subcarpeta pasan por `output-path.ts` (sin enlaces, sin pisar, sin salir de la carpeta); el contenido es DATO (los
+ * nombre y la subcarpeta pasan por `output-path.ts` (sin enlaces ni salir de la carpeta); solo se reemplaza un archivo propio intacto
+ * de la misma sesión comprobada por main. El contenido es DATO (los
  * mismos validadores del Chat, con sus topes); no hay red (en el PDF, sin imágenes de internet); una operación a la vez por atadura,
  * dos en toda la app y un tope por hora; el registro de auditoría no lleva contenido.
  */
@@ -22,9 +23,11 @@ import { isPptxSpec, isXlsxSpec, isDocxSpec } from '@shared/chat-doc-spec'
 import { explainDocx, explainPptx, explainXlsx } from '../office/craft/doc-explain'
 import type { ChatDocInput } from './engine'
 import { createHash } from 'node:crypto'
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs'
 import { lstat, readFile, realpath } from 'node:fs/promises'
-import { dirname, isAbsolute } from 'node:path'
-import { OutputPathError, isInside, writeNewFile } from './output-path'
+import { basename, dirname, isAbsolute } from 'node:path'
+import { OutputPathError, cleanName, isInside, parseSubfolder, writeNewFile, type WrittenFile } from './output-path'
+import { SafeTempFile } from '../tasks/safe-write'
 import { imagePathsOf } from '@shared/chat-doc-spec'
 import { prepareImages, type ImageMap, type PreparedImages } from './image-files'
 import { readTaskFile, type TaskFile } from './input-path'
@@ -37,6 +40,7 @@ export const MAX_PER_BINDING_PER_HOUR = 60
 export const MAX_CONCURRENT_GLOBAL = 2
 export const MAX_PREVIEWS_PER_HOUR = 30
 export const RENDER_TIMEOUT_MS = 120_000
+export const DOCUMENTS_RESPONSE_TIMEOUT_MS = RENDER_TIMEOUT_MS * 2 + 15_000
 export const SERVER_NAME = 'documentos'
 export { CODE_BINDING_FOLDER }
 export const CODE_MSG_MISSING = 'Falta `carpeta`: pasa la ruta absoluta de la carpeta del proyecto abierto en Code.'
@@ -61,6 +65,47 @@ export interface DocumentsBinding {
   code?: { roots: () => readonly string[] }
   /** Ruta del equipo → ruta que ve el agente (Windows: `C:\x` → `/win/c/x`). Ausente = la misma. */
   toAgentPath?: (hostPath: string) => string
+  /** Sesión activa comprobada por main. Ausente, ambigua o sin motor = nunca reemplazar un archivo. */
+  session?: (root: string) => Promise<string | null>
+}
+
+/** El servidor de una carpeta vive más que una tarea: la propiedad se acota además a UNA sesión ocupada, leída del motor por main. */
+export async function activeDocumentSession(
+  connection: { baseUrl: string; authorization: string },
+  directory: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<string | null> {
+  try {
+    const res = await fetchImpl(`${connection.baseUrl}/session/status?directory=${encodeURIComponent(directory)}`, {
+      headers: { authorization: connection.authorization },
+      redirect: 'error',
+      signal: AbortSignal.timeout(3000)
+    })
+    if (!res.ok) {
+      await res.body?.cancel()
+      return null
+    }
+    const reader = res.body?.getReader()
+    if (!reader) return null
+    const chunks: Uint8Array[] = []
+    let size = 0
+    for (;;) {
+      const next = await reader.read()
+      if (next.done) break
+      size += next.value.byteLength
+      if (size > 64 * 1024) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(next.value)
+    }
+    const statuses: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    if (!statuses || typeof statuses !== 'object' || Array.isArray(statuses)) return null
+    const active = Object.entries(statuses).filter(([, v]) => v && typeof v === 'object' && (v.type === 'busy' || v.type === 'retry'))
+    return active.length === 1 && /^ses_[A-Za-z0-9]+$/.test(active[0][0]) ? active[0][0] : null
+  } catch {
+    return null
+  }
 }
 
 export interface DocumentsDeps {
@@ -99,8 +144,10 @@ export const DOCUMENT_TOOLS = [
       'ANTES de usarla carga la skill del formato (`docx`, `xlsx`, `pptx` o `pdf`) con la herramienta `skill`: ahí está el esquema de `spec` y la guía de diseño. ' +
       'Crea un documento NUEVO (PowerPoint .pptx, Word .docx, Excel .xlsx o PDF) con el mismo motor y la misma guía de diseño que el Chat, ' +
       'y lo guarda en la carpeta de esta tarea. Para pptx, docx y xlsx pasa `spec` (el mismo JSON que documentan las skills pptx, docx y xlsx); ' +
-      'para pdf pasa `html` (documento autocontenido, sin recursos externos). `nombre` va sin extensión. Nunca sobrescribe: si el nombre existe, ' +
-      'añade « (2)». Devuelve la ruta del archivo creado y la revisión de calidad automática (lista ✔/✘). Ciclo obligatorio: crea → `renderizar` → mira TODAS las imágenes → corrige todo junto (si hay puntos ✘ o defectos, vuelve a crear con otro nombre aplicando todas las correcciones) → máximo 3 rondas.',
+      'para pdf pasa `html` (documento autocontenido, sin recursos externos). `nombre` va sin extensión. Si repites nombre, tipo y subcarpeta, ' +
+      'rehace el archivo que creó esta herramienta en esta tarea solo si nadie lo cambió; si es previo o cambió, añade « (2)». ' +
+      'Devuelve la ruta, la revisión automática (lista ✔/✘) y las imágenes disponibles. Ciclo obligatorio: crea → mira TODAS las imágenes devueltas ' +
+      '(usa `renderizar` solo si faltan) → corrige todo junto y vuelve a crear con el MISMO nombre, tipo y subcarpeta → máximo 3 rondas.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -257,6 +304,56 @@ export async function resolveCodeRoot(carpeta: unknown, roots: readonly string[]
 }
 
 /** Concurrencia y cuota por atadura. */
+interface CreatedFile {
+  abs: string
+  rel: string
+  tipo: Tipo
+  sha: string
+}
+
+/**
+ * Reemplaza solo el archivo propio cuya huella sigue intacta. Temporal y publicación usan las mismas comprobaciones contra enlaces y
+ * carreras que la escritura nueva. La lectura final y el commit son síncronos: no se cede el turno entre comprobar y publicar. Un enlace
+ * duro, simbólico, archivo cambiado o desaparecido pierde la posibilidad de reemplazo y se vuelve al nombre nuevo sin tocarlo.
+ */
+function rewriteCreated(root: string, entry: CreatedFile, bytes: Buffer): WrittenFile | null {
+  if (bytes.length > MAX_OUTPUT_BYTES) throw new OutputPathError('size', 'El documento es demasiado grande.')
+  let tmp: SafeTempFile | undefined
+  let fd: number | undefined
+  try {
+    // `entry.abs` ya es la ruta real; la raíz puede llegar por un enlace del sistema (/var → /private/var en macOS).
+    tmp = SafeTempFile.create(realpathSync(root), dirname(entry.abs), { create: false })
+    tmp.writeAll(bytes)
+    const st = lstatSync(entry.abs)
+    if (!st.isFile() || st.isSymbolicLink() || st.nlink !== 1 || st.size > MAX_OUTPUT_BYTES) return null
+    fd = openSync(entry.abs, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+    const opened = fstatSync(fd)
+    if (opened.dev !== st.dev || opened.ino !== st.ino || opened.nlink !== 1 || opened.size > MAX_OUTPUT_BYTES) return null
+    const previous = Buffer.alloc(opened.size)
+    let offset = 0
+    while (offset < previous.length) {
+      const n = readSync(fd, previous, offset, previous.length - offset, offset)
+      if (!n) return null
+      offset += n
+    }
+    const read = fstatSync(fd)
+    if (read.size !== opened.size || read.mtimeMs !== opened.mtimeMs || read.nlink !== 1) return null
+    if (createHash('sha256').update(previous).digest('hex') !== entry.sha) return null
+    const after = lstatSync(entry.abs)
+    if (after.isSymbolicLink() || after.dev !== opened.dev || after.ino !== opened.ino || after.nlink !== 1) return null
+    closeSync(fd)
+    fd = undefined
+    // En un reemplazo condicionado no se reintenta tras esperar: una edición durante la espera invalidaría la huella comprobada.
+    const abs = tmp.commit(basename(entry.abs), { replace: true, refuseLinkTarget: true, noRenameRetry: true })
+    return abs ? { abs, rel: entry.rel, bytes: bytes.length } : null
+  } catch {
+    return null
+  } finally {
+    if (fd !== undefined) closeSync(fd)
+    tmp?.discard()
+  }
+}
+
 interface Quota {
   busy: boolean
   stamps: number[]
@@ -264,7 +361,9 @@ interface Quota {
   /** Rechazos seguidos de una presentación por letra de menos de 12 pt. */
   smallFont?: number
   /** Archivos creados por `crear` en esta atadura: ruta que vio el agente (y la del equipo) → ruta del equipo y huella. */
-  created: Map<string, { abs: string; tipo: Tipo; sha: string }>
+  created: Map<string, CreatedFile>
+  /** Petición normalizada → último archivo creado para ella (incluido un sufijo por colisión). */
+  outputs: Map<string, CreatedFile>
 }
 
 export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
@@ -285,7 +384,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
   }
 
   protected configTimeoutMs(): number {
-    return this.deps.renderTimeoutMs ? this.deps.renderTimeoutMs + 10_000 : RENDER_TIMEOUT_MS + 15_000
+    return this.deps.renderTimeoutMs ? this.deps.renderTimeoutMs * 2 + 15_000 : DOCUMENTS_RESPONSE_TIMEOUT_MS
   }
 
   private text(
@@ -404,7 +503,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
   private quotaOf(binding: DocumentsBinding): Quota {
     let quota = this.quotas.get(binding)
     if (!quota) {
-      quota = { busy: false, stamps: [], previews: [], created: new Map() }
+      quota = { busy: false, stamps: [], previews: [], created: new Map(), outputs: new Map() }
       this.quotas.set(binding, quota)
     }
     return quota
@@ -540,9 +639,14 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
    * Cualquier fallo inesperado se vuelve un resultado de herramienta (no un error de protocolo «Error interno» sin texto): el agente recibe un
    * aviso claro de que NO es un problema de su contenido, y el detalle técnico (con la traza) queda solo en el registro de la app.
    */
-  protected async callTool(binding: DocumentsBinding, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+  protected async callTool(
+    binding: DocumentsBinding,
+    name: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal
+  ): Promise<McpToolResult> {
     try {
-      return await this.callToolInner(binding, name, args)
+      return await this.callToolInner(binding, name, args, signal)
     } catch (err) {
       console.warn(`[documentos-mcp] fallo inesperado en ${name}:`, err instanceof Error ? (err.stack ?? err.message) : String(err))
       return this.text(
@@ -552,7 +656,12 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     }
   }
 
-  private async callToolInner(binding: DocumentsBinding, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+  private async callToolInner(
+    binding: DocumentsBinding,
+    name: string,
+    args: Record<string, unknown>,
+    signal?: AbortSignal
+  ): Promise<McpToolResult> {
     const now = this.deps.now ?? Date.now
     const t0 = now()
     if (name === 'renderizar' && this.deps.preview) return this.callPreview(binding, args)
@@ -585,6 +694,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     quota.stamps.push(t0)
     let prepared: PreparedImages | null = null
     try {
+      const initialSession = await binding.session?.(root).catch(() => null)
       const title = typeof args.nombre === 'string' ? args.nombre : 'Documento'
       // Imágenes de la carpeta de la tarea (solo pptx y docx): se leen con las comprobaciones de ruta, firma y tamaño y se copian a un temporal
       // propio; ArtCraft solo ve esa copia. Un error aquí (ruta con «..», enlace, archivo que no es imagen, imagen enorme) rechaza el documento entero.
@@ -629,17 +739,28 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
           /* la revisión final avisará */
         }
       }
-      const written = await writeNewFile(root, {
-        name: args.nombre,
-        ext: built.tipo,
-        subfolder: args.subcarpeta,
-        bytes,
-        maxBytes: MAX_OUTPUT_BYTES
-      })
+      const finalSession = await binding.session?.(root).catch(() => null)
+      const session = initialSession && initialSession === finalSession ? initialSession : null
+      const outputKey = JSON.stringify([session, await realpath(root), cleanName(args.nombre), built.tipo, parseSubfolder(args.subcarpeta)])
+      if (signal?.aborted) return this.text('La creación se canceló antes de guardar el documento.', true)
+      const previous = session ? quota.outputs.get(outputKey) : undefined
+      const rewritten = previous ? rewriteCreated(root, previous, bytes) : null
+      const written =
+        rewritten ??
+        (await writeNewFile(root, {
+          name: args.nombre,
+          ext: built.tipo,
+          subfolder: args.subcarpeta,
+          bytes,
+          maxBytes: MAX_OUTPUT_BYTES
+        }))
       const agentPath = binding.toAgentPath ? binding.toAgentPath(written.abs) : written.abs
       const sha = createHash('sha256').update(bytes).digest('hex')
-      quota.created.set(agentPath, { abs: written.abs, tipo: built.tipo, sha })
-      quota.created.set(written.abs, { abs: written.abs, tipo: built.tipo, sha })
+      const entry = { abs: written.abs, rel: written.rel, tipo: built.tipo, sha }
+      quota.created.set(agentPath, entry)
+      quota.created.set(written.abs, entry)
+      if (session) quota.outputs.set(outputKey, entry)
+      if (quota.outputs.size > 200) quota.outputs.delete(quota.outputs.keys().next().value as string)
       if (quota.created.size > 400) quota.created.delete(quota.created.keys().next().value as string)
       this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'ok', bytes: written.bytes, rel: written.rel, ms: now() - t0 })
       const revision = await reviewSummary(
@@ -653,7 +774,41 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
             : undefined
       )
       const pagesNote = built.input.kind === 'docx' ? pageBudgetNote(args.paginas_objetivo, built.input.data) : ''
-      return this.text(`Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${pagesNote}`)
+      const result = this.text(
+        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${pagesNote}`
+      )
+      // Se usan los mismos bytes guardados: no se relee una ruta que podría cambiar. Fallar al dibujar nunca invalida un archivo creado.
+      if (this.deps.preview) {
+        try {
+          const preview = await withTimeout(this.deps.preview(built.tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
+          if (preview?.images.length) {
+            const unit = built.tipo === 'pptx' ? 'diapositiva(s)' : built.tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
+            const note =
+              (preview.truncated ? ` Se muestran las primeras ${preview.images.length}.` : '') + (preview.viaViewer ? SIMPLIFIED_NOTE : '')
+            result.content.push({
+              type: 'text',
+              text: `Vista previa: ${preview.pages} ${unit}.${note} Mira TODAS las imágenes y corrige todo de una vez con el mismo nombre, tipo y subcarpeta. Si no pudiste ver alguna, dilo en «Para revisar».`
+            })
+            result.content.push(
+              ...preview.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))
+            )
+          } else
+            result.content.push({
+              type: 'text',
+              text: 'Vista previa NO disponible. El archivo se guardó; usa `renderizar` si necesitas reintentar y declara lo visual pendiente en «Para revisar».'
+            })
+        } catch {
+          result.content.push({
+            type: 'text',
+            text: 'No se pudo generar la vista previa. El archivo se guardó; usa `renderizar` para reintentar y declara lo visual pendiente en «Para revisar».'
+          })
+        }
+      } else
+        result.content.push({
+          type: 'text',
+          text: 'Vista previa NO corrida: no hay motor de imágenes disponible. Declara lo visual pendiente en «Para revisar».'
+        })
+      return result
     } catch (err) {
       if (err instanceof OutputPathError) {
         this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: err.code, ms: now() - t0 })

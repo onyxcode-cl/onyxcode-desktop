@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
   spawnEnv: null as Record<string, string> | null,
   configFor: null as
     null | ((binding: { folder: string; code?: { roots: () => readonly string[] } }) => Promise<Record<string, unknown> | null>),
-  bindings: [] as Array<{ folder: string; code?: { roots: () => readonly string[] } }>,
+  bindings: [] as Array<{ folder: string; code?: { roots: () => readonly string[] }; session?: (root: string) => Promise<string | null> }>,
   revoked: [] as string[],
   tokens: 0,
   instructions: [] as string[]
@@ -118,6 +118,26 @@ describe('sidecar principal: documentos en Code', () => {
     expect(state.bindings[0]!.code!.roots()).toEqual(['/tmp/proyecto-a'])
     state.settings = { ...state.settings, recentFolders: ['/tmp/proyecto-b'] }
     expect(state.bindings[0]!.code!.roots()).toEqual(['/tmp/proyecto-b'])
+  })
+
+  it('el ámbito de correcciones de Code viene de su motor vivo y desaparece al detenerlo', async () => {
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    await server.start()
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ses_prueba: { type: 'busy' } })))
+    vi.stubGlobal('fetch', fetcher)
+    try {
+      const session = state.bindings[0]!.session!
+      expect(await session('/tmp/proyecto-a')).toBe('ses_prueba')
+      expect(fetcher).toHaveBeenCalledWith(
+        expect.stringContaining('/session/status?directory=%2Ftmp%2Fproyecto-a'),
+        expect.objectContaining({ headers: { authorization: expect.stringMatching(/^Basic /) } })
+      )
+      await server.stop()
+      expect(await session('/tmp/proyecto-a')).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+      await server.stop()
+    }
   })
 
   it('si el MCP no arranca el motor arranca igual, sin documentos y sin instrucciones', async () => {

@@ -62,6 +62,7 @@ import {
 import { embeddedBrowser } from '../embedded-browser/service'
 import { embeddedBrowserMcp } from '../embedded-browser/mcp-server'
 import { documentsMcp } from '../documents'
+import { activeDocumentSession, DOCUMENTS_RESPONSE_TIMEOUT_MS } from '../documents/mcp-server'
 import { DOCUMENTS_ROUTE_NAME } from '../documents/names'
 import { hostExecMcp } from '../host-exec'
 import { HOST_ROUTE_NAME } from '../host-exec/names'
@@ -1527,7 +1528,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     if (mcpProxy && !fullAccess) {
       try {
         const real = await documentsMcp
-          .configFor({ folder, toAgentPath: this.win ? (p: string) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined })
+          .configFor({
+            folder,
+            toAgentPath: this.win ? (p: string) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined,
+            session: async () => {
+              const handle = this.servers.get(key)?.handle
+              return handle ? activeDocumentSession(handle, handle.paths.directory) : null
+            }
+          })
           .catch(() => null)
         realDocumentsToken = bearerOfMcpConfig(real)
         if (real && typeof real.url === 'string' && realDocumentsToken) {
@@ -1535,6 +1543,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             name: DOCUMENTS_ROUTE_NAME,
             url: real.url,
             exactPath: true,
+            headersTimeoutMs: DOCUMENTS_RESPONSE_TIMEOUT_MS,
             headers: { Authorization: `Bearer ${realDocumentsToken}` }
           })
           documentsCfg = { ...real, url: route.url, headers: route.headers }
