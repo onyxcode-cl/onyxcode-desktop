@@ -1062,6 +1062,19 @@
       ],
       "nota": "Windows simulado en Mac: rutas C: y /win/c, URL por token, .exe, carga de respaldo, superficie antes de wasm, cierre al vencer ocho segundos y registro sin carpetas padre. Falta comprobar pintura, GPU, DPI y programa del sistema en Windows real.",
       "comprobacion": null
+    },
+    {
+      "id": "N16",
+      "funcion": "Arranque anticipado de Tareas en Windows (motor precargado, caché de comprobaciones de WSL, unidades sin PowerShell lento) y Python de la app dentro de Tareas",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/manager.warmup.test.ts:1",
+        "src/main/tasks/monitor.warmup.test.ts:1",
+        "src/main/tasks/win-drives.test.ts:1",
+        "src/main/tasks/backends/wsl.test.ts:1"
+      ],
+      "nota": "Propio de Windows: en Mac no hay WSL y abrir una tarea ya tarda 0,8 s. Probado con Windows simulado en Mac. Falta medir en el PC real el tiempo de apertura (antes 5–6 s) y la memoria del motor en espera.",
+      "comprobacion": null
     }
   ]
 }

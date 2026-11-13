@@ -17,7 +17,7 @@
       "win32": 3
     },
     "src/main/compare/git.ts": {
-      "win32": 2
+      "win32": 1
     },
     "src/main/computer/adhoc.ts": {
       "darwin": 1,
@@ -301,6 +301,9 @@
     "src/main/tasks/backends/wsl-setup.ts": {
       "win32": 3
     },
+    "src/main/tasks/backends/wsl-spec.ts": {
+      "usrBin": 1
+    },
     "src/main/tasks/backends/wsl.ts": {
       "win32": 1
     },
@@ -353,7 +356,7 @@
       "win32": 1
     },
     "src/main/tasks/sandbox.ts": {
-      "win32": 2
+      "win32": 4
     },
     "src/main/tasks/storage.ts": {
       "win32": 1,
