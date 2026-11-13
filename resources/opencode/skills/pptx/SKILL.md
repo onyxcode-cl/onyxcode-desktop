@@ -37,7 +37,7 @@ Si te piden una presentación (diapositivas, slides, PowerPoint, PPT, deck, char
 No hay una plantilla por defecto. Cada presentación debe tener su propia identidad, pensada para su tema y su público: no repitas la paleta, la tipografía ni la composición de la anterior, ni por inercia ni porque «funcionó». Antes de armar nada decide en una frase el concepto visual (tono, paleta de 3–5 colores con contraste legible, par de tipografías, forma de las tarjetas, ritmo entre diapositivas) y que sea distinto del último que hiciste en esta conversación. Si la persona rechaza un estilo, cambia de concepto de verdad (otra paleta, otra estructura), no solo de tema.
 Caminos, de más libre a más guiado (elige el que dé el mejor resultado, no el más corto):
 - **Motor del Chat (`build_chat_deck.py`, §0.1) — camino principal.** El MISMO motor y el MISMO vocabulario de diseño que el Chat: escribes un JSON (theme, style, palette propia, fonts, background, lienzo libre `layout:"free"`, stat, steps, cards, chart, kpis…) y la app arma el archivo. Es el que da el mejor resultado en la mayoría de las presentaciones.
-- **A medida con python-pptx** (script propio, p. ej. `make_deck.py`): solo cuando necesites algo que el motor del Chat no hace (imágenes propias o tablas muy específicas); las notas del orador SÍ las hace el motor (`speaker_notes`), no es motivo para dejar `documentos_crear`; verifica igual con §2.
+- **A medida con python-pptx** (script propio, p. ej. `make_deck.py`): solo cuando necesites algo que el motor del Chat no hace (composiciones o tablas que el esquema no representa); las notas del orador SÍ las hace el motor (`speaker_notes`), no es motivo para dejar `documentos_crear`; verifica igual con §2.
 - **Constructor `build_pptx.py` (§1)**: respaldo cuando no hay DeckCraft (código de salida 3) y para presentaciones con imágenes propias o tablas muy específicas; elige tema o define tu propia paleta, no dejes el mismo por inercia.
 - **Diseño «dots» (oscuro, con círculos)**: es solo UNA opción más, para cuando encaje con el tono; no la uses como primera opción ni dos veces seguidas (detalle en §0.2).
 
@@ -52,20 +52,18 @@ Con scripts de creación, prepara `./.lazunox/trabajo/` con `mkdir -p ./.lazunox
 Imágenes locales: con `documentos_crear` puedes usar `image:{"path":"img/foto.jpg","alt":"Descripción"}` en portada (`layout:"cover"`) y en láminas `layout:"image"`. Las notas del orador SÍ van: `speaker_notes` en cada diapositiva (ver la guía de abajo); si piden notas, sigue con `documentos_crear` y NO cambies a python-pptx, porque entonces pierdes la revisión automática y el gráfico con la paleta. El subtítulo de la portada va como `subtitle` de la primera diapositiva o como su primera viñeta (`bullets[0]`): el motor acepta las dos y la revisión de `documentos_crear` avisa si no aparece en el archivo.
 
 ### Guía de diseño (la misma que usa el Chat)
-Lo que sigue es la guía del Chat, palabra por palabra (una prueba comprueba que no se desvíe de `resources/opencode/agents/chat.md`). Elige `theme` y `style` o inventa tu propia `palette` según el tono del contenido, y varía todo entre presentaciones.
+Lo que sigue es la guía del Chat, palabra por palabra (una prueba comprueba que no se desvíe de `resources/opencode/agents/chat.md`). Decide primero `identity.concept` y aplica su paleta, fuentes y composición; los temas nombrados son ejemplos, no un menú.
 
-- `theme` (opcional, por defecto `"blue"`) elige la paleta de color de TODA la presentación: `"blue"`,
-  `"green"`, `"dark"` (fondo oscuro), `"warm"` (tonos cálidos) o `"mono"` (gris neutro).
-- `style` (opcional, por defecto `"classic"`) elige la FORMA de TODA la presentación — tarjetas,
-  decoración, tipografía de forma — un eje DISTINTO del color: `"classic"` (el look de siempre: un
-  círculo sutil de textura, tarjetas redondeadas con borde), `"editorial"` (una línea fina de acento
-  en vez del círculo, tarjetas de esquina recta sin relleno — tono revista/sobrio), `"geometric"`
-  (una barra diagonal de acento, tarjetas bien redondeadas tipo "pill" — tono gráfico/audaz) o
-  `"minimal"` (sin ninguna decoración, tarjetas de esquina recta solo con borde fino — tono informe
-  ejecutivo ultra limpio). Elige AMBOS (`theme` y `style`) según el TONO del contenido, y varía los
-  dos entre presentaciones: no dejes ni `"blue"` ni `"classic"` por inercia — un informe financiero
-  serio puede pedir `"mono"`+`"minimal"`, un pitch de producto `"warm"`+`"geometric"`, una nota de
-  prensa `"blue"`+`"editorial"`.
+- Antes del contenido, decide la identidad en una línea y guárdala en `identity.concept`: tema,
+  público y tono. Aplica esa decisión con `identity`: `palette` (bg/text/accent en hex con #;
+  muted/accent2/panel/edge opcionales), `fonts` (title/body de la lista permitida), `titles`
+  (editorial/plain/bold), `cards` (square/rounded/outline), `background` (plain/panel/split),
+  `rhythm` (calm/balanced/dynamic) y `photos` (contain/wide/portrait). Conserva ese bloque al
+  corregir datos; la marca aportada manda. Si falta, el motor deriva una identidad estable del contenido.
+- `theme` (opcional) y `style` son ejemplos de partida, no un menú que debas elegir:
+  temas `blue`, `green`, `dark`, `warm`, `mono`; estilos `classic`, `editorial`, `geometric`,
+  `minimal`. Prefiere una identidad adecuada al pedido; puedes conservar `palette` y `fonts`
+  en la raíz por compatibilidad. Sin elecciones explícitas no hay un tema azul fijo.
 - `footer` (opcional, del deck entero) es una línea chica al pie, p.ej. el nombre de la empresa o el
   período — solo si hay algo real que poner ahí, NUNCA inventes algo tipo "Datos ilustrativos".
 - Cada diapositiva puede traer `eyebrow` (una etiqueta corta en mayúsculas arriba del título, p.ej.
@@ -105,8 +103,7 @@ Lo que sigue es la guía del Chat, palabra por palabra (una prueba comprueba que
   `"table"` (`"table":{"columns":["Plan","Precio"],"rows":[["Básico","$9.990"]]}`, de 2 a 6 columnas y hasta 8
   filas, todo texto ya formateado). `transition` (opcional, del deck entero): `"fade"`, `"push"` o `"wipe"` —
   úsala en presentaciones formales.
-- **Libertad de diseño (opcional, y animada: no hace falta que todas las presentaciones se vean
-  iguales).** Además de `theme` y `style` puedes:
+- **Composición propia.** Además de la identidad aplicada puedes:
   - Inventar tu propia **`palette`** de TODA la presentación (en vez de `theme`):
     `{"bg":"#0E2A2F","text":"#F4F1EA","accent":"#F2B544"}` — colores SIEMPRE en hex con `#` de 6
     dígitos; `muted`, `accent2`, `panel` y `edge` son opcionales (si faltan se derivan solos). Elige

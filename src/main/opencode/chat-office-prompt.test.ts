@@ -26,18 +26,39 @@ it.each([
   {
     path: 'resources/opencode/agents/chat.md',
     end: '- Si eligen la opción HTML/CSS',
-    sha256: 'a962107c3a12a57212b018bd8751c750c34980fd8328707a2c53e42a70f9689a'
+    sha256: 'a12f124f213ee1af45104f588a3eebd536de4929190df226f30151429411ccdf'
   },
   {
     path: 'src/main/opencode/config.ts',
     end: "          'Si eligen la opción HTML/CSS",
-    sha256: '6fb78743dc2a2a61f43105e194bc6b9e650b7974809a205ce608ad039014d42e'
+    sha256: '2218fc74e8d4de948ec41a5d4c2db99ddbcab081501e82efa920322259703a70'
   }
-])('$path: conserva los bytes de 1.8.21 hasta el final de la regla de formato, sin inserciones previas', ({ path, end, sha256 }) => {
+])('$path: conserva el prefijo de guía aprobado en V26 y la regla de formato', ({ path, end, sha256 }) => {
   const source = readFileSync(resolve(root, path), 'utf8')
   const endIndex = source.indexOf(end)
   expect(endIndex).toBeGreaterThan(source.indexOf('REGLA OBLIGATORIA'))
-  // Huellas obtenidas de `git show eb0c7a56:<path>`: incluyen TODO el prefijo y la regla completa,
-  // no solo palabras clave; no se necesita Git ni lanzar un modelo para detectar una regresión.
+  // V26 autoriza identidad propia en las guías. Huellas del prefijo actualizado;
+  // la pregunta original de formato se congela además por separado abajo.
   expect(createHash('sha256').update(source.slice(0, endIndex)).digest('hex')).toBe(sha256)
+})
+
+// Esta pregunta no está autorizada a cambiar en V26.
+it.each([
+  {
+    path: 'resources/opencode/agents/chat.md',
+    end: '- Si eligen la opción HTML/CSS',
+    sha256: '36a2050fcd4a0e845d762257a2d3279f8a3f4d8558492887cbd1226415d73c97'
+  },
+  {
+    path: 'src/main/opencode/config.ts',
+    end: "          'Si eligen la opción HTML/CSS",
+    sha256: '7f00d2ee0cccfee38053e0efb3de7ad9f1a7951bf6ed58d561d2452e97f3efbe'
+  }
+])('$path: pregunta de formato idéntica a la anterior', ({ path, end, sha256 }) => {
+  const source = readFileSync(resolve(root, path), 'utf8')
+  expect(
+    createHash('sha256')
+      .update(source.slice(source.indexOf('REGLA OBLIGATORIA'), source.indexOf(end)))
+      .digest('hex')
+  ).toBe(sha256)
 })

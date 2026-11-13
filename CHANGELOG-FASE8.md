@@ -4421,3 +4421,11 @@ Incluye F8-B248 a F8-B260 (revisión en la tarjeta del archivo, vista del docume
 - JPEG con orientación EXIF: comparación de dimensiones visibles y normalización acotada antes de ampliar/insertar. Un lote fallido o una ampliación cancelada no autoriza una selección visual cuyos píxeles no se entregaron.
 - Word: pies breves sin URLs largas, interlineado simple y unión de sus líneas; el título siguiente restablece el interlineado. Prueba de dos fotos distintas de 6 cm y créditos, con dos páginas renderizadas por WordCraft CLI real. El contador de WordCraft web de h2 sigue pendiente de comprobación en la app.
 - Pruebas: `free-image-credit`, `free-images`, `free-images-orientation`, `jpeg-orientation`, `free-images-visual`, `free-images-webp`, `image-credits`, `mcp-server.free-images`, `mcp-server`, `review.checks`, `chat-word` y `chat-word.pagination`.
+
+## F8-B290 — Identidad documental aplicada y banco visual (V26)
+
+PowerPoint y Word aceptan una identidad visual compacta y derivan una estable del contenido cuando falta. Los armadores aplican fuentes, colores y tratamientos; PowerPoint incorpora variantes geométricas de portada, cifras, comparación, cierre e imagen, elimina la línea forzada bajo títulos y conserva paleta/fuentes en el respaldo. Word permite títulos, tablas, portada y encabezados propios. La normalización conserva la identidad durante correcciones. Las guías presentan temas nombrados como ejemplos y conservan intacta la pregunta de formato.
+
+Banco `scripts/design-bench/`: diez temas, tres formatos, ejecución con modelo solo por activación explícita y huella visual de archivos finales con texto excluido. `scripts/design-samples.mjs` genera muestras sintéticas con los CLI reales, sin app ni modelo. La métrica es exploratoria: no sustituye preferencia a ciegas ni validación en Office Windows.
+
+Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word; variantes geométricas, contraste y fuentes/paleta del respaldo PowerPoint; paridad de guías y pregunta de formato; banco sintético. Evidencia y límites en el informe V26 externo; no se ejecuta el banco con modelo.

@@ -15,7 +15,7 @@ const skill = norm(skillMd)
 /** La guía de diseño de presentaciones del Chat: de `theme` hasta el gráfico (antes de la regla de preguntar el formato). */
 function chatDesignGuide(): string {
   const raw = readFileSync(resolve(ROOT, 'resources/opencode/agents/chat.md'), 'utf8')
-  const a = raw.indexOf('  - `theme` (opcional')
+  const a = raw.indexOf('  - Antes del contenido')
   const b = raw.indexOf('- REGLA OBLIGATORIA')
   expect(a).toBeGreaterThan(0)
   expect(b).toBeGreaterThan(a)

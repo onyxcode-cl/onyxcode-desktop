@@ -3,6 +3,7 @@ import { chartCategory, numericCell, numericSeries, prepareSlide } from './deck-
 import { chatDeckCommands, renderChatDeck } from './chat-deck'
 import JSZip from 'jszip'
 import type { PptxSpec } from '@shared/chat-doc-spec'
+import { resolveDocumentIdentity } from '@shared/document-identity'
 
 describe('datos que el modelo ya entrega', () => {
   it('lee cifras completas locales sin interpretar fechas, rangos ni prosa', () => {
@@ -179,7 +180,7 @@ describe('ocupación por defecto y objetos editables', () => {
     expect(slides[0]).not.toContain('<a:tbl>')
     expect(slides.join('')).toContain('Conservar evidencia')
     const enero = [...slides[1].matchAll(/<a:tc>[\s\S]*?<\/a:tc>/g)].find((cell) => cell[0].includes('Enero'))![0]
-    expect(enero).toContain('val="0F172A"') // cuerpo legible; format.color del encabezado no debe teñirlo de blanco
+    expect(enero).toContain(`val="${resolveDocumentIdentity({ slides: [{ title: 'Cobertura' }] }).palette.text.slice(1)}"`) // cuerpo legible; format.color del encabezado no debe teñirlo de blanco
     const boxes = [...slides[3].matchAll(/<p:sp>[\s\S]*?<\/p:sp>/g)].flatMap((shape): Box[] => {
       if (!/<a:t>[^<]+<\/a:t>/.test(shape[0])) return []
       const off = /<a:off x="(-?\d+)" y="(-?\d+)"/.exec(shape[0])
@@ -250,17 +251,24 @@ describe('ocupación por defecto y objetos editables', () => {
     expect(rect[1]).toBeGreaterThan(200)
     expect(rect[1] + rect[3] / 2).toBeCloseTo(315)
     expect(commands).toContain('table.options={"headerRow":true,"bandedRows":false}')
-    expect(commands.some((c) => c.startsWith('table.cellFill=') && c.includes('#F6F9FE'))).toBe(true)
+    expect(
+      commands.some(
+        (c) => c.startsWith('table.cellFill=') && c.includes(resolveDocumentIdentity({ slides: [{ title: 'Calendario' }] }).palette.bg)
+      )
+    ).toBe(true)
   })
 
-  it('el tema se aplica sin opciones y el texto breve crece y queda centrado en su espacio', () => {
-    const commands = chatDeckCommands({
+  it('la identidad se deriva sin opciones y el texto breve crece y queda centrado en su espacio', () => {
+    const spec: PptxSpec = {
       slides: [{ title: 'Portada' }, { title: 'Decisión', layout: 'bullets', bullets: ['Aprobar depósitos'] }]
-    })
-    expect(commands).toContain('design.background={"color":"#F6F9FE"}')
-    expect(commands.some((c) => c.startsWith('design.colors=') && c.includes('#1F4E79'))).toBe(true)
+    }
+    const commands = chatDeckCommands(spec)
+    const palette = resolveDocumentIdentity(spec).palette
+    expect(commands).toContain(`design.background={"color":"${palette.bg}"}`)
+    expect(commands.some((c) => c.startsWith('design.colors=') && c.includes(palette.accent))).toBe(true)
     const index = commands.findIndex((c) => c.startsWith('insert.textBox=') && c.includes('Aprobar depósitos'))
     expect(JSON.parse(commands[index + 1].split('=')[1]).size).toBeGreaterThanOrEqual(50)
-    expect(commands.slice(index, index + 8)).toContain('format.anchor={"anchor":"middle"}')
+    const next = commands.findIndex((command, i) => i > index && /^(insert\.|slide\.)/.test(command))
+    expect(commands.slice(index, next < 0 ? undefined : next)).toContain('format.anchor={"anchor":"middle"}')
   })
 })

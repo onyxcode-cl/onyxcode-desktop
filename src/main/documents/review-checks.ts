@@ -17,7 +17,10 @@ const TEMPLATE_LEFTOVERS: Array<[RegExp, string]> = [
   [/\[\s*(pendiente|por definir|por completar|completar|a confirmar|sin dato|falta dato|dato faltante|n\/d)\b/i, '[PENDIENTE…]'],
   [/\[\s*(\.{3}|…)\s*\]/, '[…]'],
   [/\b(a|por) (definir|determinar|confirmar|validar|revisar|estimar)\b|\ben revisi[oó]n\b/i, '«a definir»'],
-  [/\ben evaluaci[oó]n\b|\bsujet[oa]s? a (confirmaci[oó]n|definici[oó]n|aprobaci[oó]n de (finanzas|presupuesto))\b|\bmontos? (por|a) (confirmar|definir|estimar)\b/i, '«en evaluación»'],
+  [
+    /\ben evaluaci[oó]n\b|\bsujet[oa]s? a (confirmaci[oó]n|definici[oó]n|aprobaci[oó]n de (finanzas|presupuesto))\b|\bmontos? (por|a) (confirmar|definir|estimar)\b/i,
+    '«en evaluación»'
+  ],
   [/^\s*(pendiente|n\/d|s\/d|n\.d\.|tbd)\s*$/im, 'celda «pendiente»'],
   [/texto de (ejemplo|relleno)|placeholder text|your text here|escribe aquí|escriba aquí/i, 'texto de relleno'],
   [/haga clic para|haz clic para|click to (add|edit)/i, 'texto de plantilla'],
@@ -205,7 +208,8 @@ export function pptxContrastProblems(
 /** Contraste de los tramos de Word con color explícito: contra el sombreado de su celda o párrafo, o contra el blanco de la página. */
 export function docxContrastProblems(documentXml: string): ContrastProblem[] {
   const out: ContrastProblem[] = []
-  const scan = (xml: string, bg: string | null): void => {
+  const shading = (props: string): string | null => /<w:shd\b[^>]*w:fill="([0-9a-fA-F]{6})"/.exec(props)?.[1] ?? null
+  const scanRuns = (xml: string, bg: string | null): void => {
     for (const r of xml.match(/<w:r>[\s\S]*?<\/w:r>/g) ?? []) {
       const color = /<w:color w:val="([0-9a-fA-F]{6})"/.exec(r)?.[1]
       if (!color) continue
@@ -213,16 +217,27 @@ export function docxContrastProblems(documentXml: string): ContrastProblem[] {
       if (!text.trim()) continue
       const half = /<w:sz w:val="(\d+)"/.exec(r)?.[1]
       const sizePt = half ? Number(half) / 2 : null
-      const shd = /<w:shd\b[^>]*w:fill="([0-9a-fA-F]{6})"/.exec(r)?.[1]
+      const shd = shading(/<w:rPr\b[^>]*>[\s\S]*?<\/w:rPr>/.exec(r)?.[0] ?? '')
       const ratio = contrastRatio(color, shd ?? bg ?? 'FFFFFF')
       if (ratio == null) continue
       const need = requiredContrast(sizePt, /<w:b\/>|<w:b w:val="(1|true)"/.test(r))
       if (ratio < need) out.push({ where: `«${text.trim().slice(0, 24)}»`, ratio, need })
     }
   }
+  const scan = (xml: string, bg: string | null): void => {
+    let rest = xml
+    for (const paragraph of xml.match(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g) ?? []) {
+      // Solo propiedades del párrafo: un sombreado del primer tramo no es el fondo de los demás.
+      const props = /<w:pPr\b[^>]*>[\s\S]*?<\/w:pPr>/.exec(paragraph)?.[0] ?? ''
+      const ownFill = shading(props.replace(/<w:rPr\b[^>]*>[\s\S]*?<\/w:rPr>/g, ''))
+      scanRuns(paragraph, ownFill ?? bg)
+      rest = rest.replace(paragraph, '')
+    }
+    scanRuns(rest, bg)
+  }
   let rest = documentXml
   for (const tc of documentXml.match(/<w:tc>[\s\S]*?<\/w:tc>/g) ?? []) {
-    const fill = /<w:tcPr>[\s\S]*?<w:shd\b[^>]*w:fill="([0-9a-fA-F]{6})"/.exec(tc)?.[1] ?? null
+    const fill = shading(/<w:tcPr\b[^>]*>[\s\S]*?<\/w:tcPr>/.exec(tc)?.[0] ?? '')
     scan(tc, fill)
     rest = rest.replace(tc, '')
   }
@@ -311,7 +326,8 @@ export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): strin
   if (kind === 'pptx') {
     for (const [i, sl] of (s.slides ?? []).entries()) {
       const title = typeof sl.title === 'string' ? sl.title : ''
-      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && texts({ ...sl, title: '' }).filter((t) => /\d/.test(t)).length < 3) out.push(`lámina ${i + 1} «${title.slice(0, 40)}»`)
+      if (MONEY_TOPIC.test(title) && sl.layout !== 'timeline' && texts({ ...sl, title: '' }).filter((t) => /\d/.test(t)).length < 3)
+        out.push(`lámina ${i + 1} «${title.slice(0, 40)}»`)
     }
   } else {
     for (const [i, b] of (s.blocks ?? []).entries()) {
@@ -329,31 +345,54 @@ export function moneyWithoutNumbers(kind: 'pptx' | 'docx', spec: unknown): strin
  */
 export function gapCells(columns: unknown[], rows: unknown[][]): string[] {
   const out: string[] = []
-  const numeric = (v: unknown): boolean => typeof v === 'number' || (typeof v === 'string' && /\d/.test(v)) || (!!v && typeof v === 'object')
+  const numeric = (v: unknown): boolean =>
+    typeof v === 'number' || (typeof v === 'string' && /\d/.test(v)) || (!!v && typeof v === 'object')
   const gap = (v: unknown): boolean =>
-    typeof v === 'string' && v.trim().length > 0 && v.trim().length <= 28 && !/\d/.test(v) && !/^[\s—–-]+$/.test(v) && v.trim().split(/\s+/).length <= 4
+    typeof v === 'string' &&
+    v.trim().length > 0 &&
+    v.trim().length <= 28 &&
+    !/\d/.test(v) &&
+    !/^[\s—–-]+$/.test(v) &&
+    v.trim().split(/\s+/).length <= 4
   const cols = Math.max(columns.length, ...rows.map((r) => r.length))
   for (let c = 1; c < cols; c++) {
     const cells = rows.map((r) => r[c])
     const nums = cells.filter(numeric).length
     const gaps = cells.filter(gap)
-    if (gaps.length > 0 && nums >= 2 && nums > gaps.length) out.push(`«${String(gaps[0]).trim()}» en la columna ${String(columns[c] ?? c + 1)}`)
+    if (gaps.length > 0 && nums >= 2 && nums > gaps.length)
+      out.push(`«${String(gaps[0]).trim()}» en la columna ${String(columns[c] ?? c + 1)}`)
   }
   return out
 }
 
 /** Tablas de un spec (pptx: `slides[].table`, docx: bloques `table`, xlsx: filas de cada hoja) con celdas de texto donde van cifras. */
 export function specGapCells(kind: 'pptx' | 'docx' | 'xlsx', spec: unknown): string[] {
-  const s = spec as { slides?: Array<{ table?: { columns?: unknown[]; rows?: unknown[][] } }>; blocks?: Array<Record<string, unknown>>; sheets?: Array<{ rows?: unknown[][] }> }
+  const s = spec as {
+    slides?: Array<{ table?: { columns?: unknown[]; rows?: unknown[][] } }>
+    blocks?: Array<Record<string, unknown>>
+    sheets?: Array<{ rows?: unknown[][] }>
+  }
   const found: string[] = []
   const run = (cols: unknown[], rows: unknown[][], where: string): void => {
     for (const g of gapCells(cols, rows)) found.push(`${where}: ${g}`)
   }
   const arr = <T>(v: T[] | undefined): T[] => (Array.isArray(v) ? v : [])
-  if (kind === 'pptx') arr(s.slides).forEach((sl, i) => sl?.table && Array.isArray(sl.table.rows) && run(sl.table.columns ?? [], sl.table.rows, `lámina ${i + 1}`))
+  if (kind === 'pptx')
+    arr(s.slides).forEach(
+      (sl, i) => sl?.table && Array.isArray(sl.table.rows) && run(sl.table.columns ?? [], sl.table.rows, `lámina ${i + 1}`)
+    )
   else if (kind === 'docx')
-    arr(s.blocks).forEach((b, i) => b && b.type === 'table' && Array.isArray(b.rows) && run((b.columns as unknown[]) ?? [], b.rows as unknown[][], `tabla del bloque ${i + 1}`))
-  else arr(s.sheets).forEach((sh, i) => sh && Array.isArray(sh.rows) && sh.rows.length > 1 && run(sh.rows[0] ?? [], sh.rows.slice(1), `hoja ${i + 1}`))
+    arr(s.blocks).forEach(
+      (b, i) =>
+        b &&
+        b.type === 'table' &&
+        Array.isArray(b.rows) &&
+        run((b.columns as unknown[]) ?? [], b.rows as unknown[][], `tabla del bloque ${i + 1}`)
+    )
+  else
+    arr(s.sheets).forEach(
+      (sh, i) => sh && Array.isArray(sh.rows) && sh.rows.length > 1 && run(sh.rows[0] ?? [], sh.rows.slice(1), `hoja ${i + 1}`)
+    )
   return found
 }
 
@@ -423,7 +462,10 @@ export function percentMisfits(sheets: Array<{ name: string; columnFormats?: Arr
   for (const sh of sheets)
     (sh.columnFormats ?? []).forEach((fmt, c) => {
       if (fmt !== 'percent') return
-      const big = sh.rows.slice(1).map((r) => r[c]).filter((v): v is number => typeof v === 'number' && v > 1.5)
+      const big = sh.rows
+        .slice(1)
+        .map((r) => r[c])
+        .filter((v): v is number => typeof v === 'number' && v > 1.5)
       if (big.length) out.push(`${sh.name}, columna ${c + 1} (${big[0]})`)
     })
   return out
@@ -433,7 +475,11 @@ export function percentMisfits(sheets: Array<{ name: string; columnFormats?: Arr
  * Forma de las hojas (la primera fila es el encabezado): hojas con solo el encabezado (✘), encabezados de más de 25 caracteres y hojas de
  * más de 12 columnas (avisos). Devuelve los nombres o textos afectados.
  */
-export function sheetShapeIssues(sheets: Array<{ name: string; rows: unknown[][] }>): { empty: string[]; longHeader: string[]; wide: string[] } {
+export function sheetShapeIssues(sheets: Array<{ name: string; rows: unknown[][] }>): {
+  empty: string[]
+  longHeader: string[]
+  wide: string[]
+} {
   const out = { empty: [] as string[], longHeader: [] as string[], wide: [] as string[] }
   for (const sh of sheets) {
     if (sh.rows.length <= 1) out.empty.push(sh.name)
@@ -449,7 +495,11 @@ export function fontFamilies(css: string): string[] {
   const out = new Set<string>()
   for (const m of css.matchAll(/font-family\s*:\s*([^;}]+)/gi))
     for (const part of m[1].split(',')) {
-      const f = part.trim().replace(/^['"]+|['"]+$/g, '').trim().toLowerCase()
+      const f = part
+        .trim()
+        .replace(/^['"]+|['"]+$/g, '')
+        .trim()
+        .toLowerCase()
       if (f && !['inherit', 'initial', 'unset'].includes(f)) out.add(f)
     }
   return [...out]

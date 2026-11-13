@@ -64,7 +64,13 @@ describe('R10: forma de las hojas', () => {
   it('hoja con solo encabezado → vacía; encabezado de 26 caracteres → largo; 13 columnas → ancha', () => {
     const r = sheetShapeIssues([
       { name: 'Vacía', rows: [['a', 'b']] },
-      { name: 'Larga', rows: [['x'.repeat(26), 'b'], [1, 2]] },
+      {
+        name: 'Larga',
+        rows: [
+          ['x'.repeat(26), 'b'],
+          [1, 2]
+        ]
+      },
       { name: 'Ancha', rows: [Array(13).fill('c'), Array(13).fill(1)] }
     ])
     expect(r.empty).toEqual(['Vacía'])
@@ -82,11 +88,44 @@ describe('R10: forma de las hojas', () => {
 describe('R9: porcentaje escrito como entero', () => {
   it('0,22 con formato porcentaje pasa; 22 no; una fórmula o un texto no se juzgan', () => {
     const sh = (rows: unknown[][]) => [{ name: 'Datos', columnFormats: [null, 'percent'], rows }]
-    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', 0.22]]))).toEqual([])
-    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', 22]]))).toEqual(['Datos, columna 2 (22)'])
-    expect(percentMisfits(sh([['Región', 'Cuota'], ['Norte', { formula: 'B3*2', value: 44 }], ['Sur', '22']]))).toEqual([])
+    expect(
+      percentMisfits(
+        sh([
+          ['Región', 'Cuota'],
+          ['Norte', 0.22]
+        ])
+      )
+    ).toEqual([])
+    expect(
+      percentMisfits(
+        sh([
+          ['Región', 'Cuota'],
+          ['Norte', 22]
+        ])
+      )
+    ).toEqual(['Datos, columna 2 (22)'])
+    expect(
+      percentMisfits(
+        sh([
+          ['Región', 'Cuota'],
+          ['Norte', { formula: 'B3*2', value: 44 }],
+          ['Sur', '22']
+        ])
+      )
+    ).toEqual([])
     // sin formato de porcentaje, un 22 es normal
-    expect(percentMisfits([{ name: 'Datos', columnFormats: [null, 'integer'], rows: [['a', 'b'], ['x', 22]] }])).toEqual([])
+    expect(
+      percentMisfits([
+        {
+          name: 'Datos',
+          columnFormats: [null, 'integer'],
+          rows: [
+            ['a', 'b'],
+            ['x', 22]
+          ]
+        }
+      ])
+    ).toEqual([])
   })
 })
 
@@ -266,13 +305,22 @@ describe('PowerPoint: formas con texto', () => {
   })
   it('textos montados: dos cajas que se tocan pero cuyo texto no se toca no se avisan; si el texto sí llega, sí', () => {
     // Título de 30 pt en una línea dentro de una caja de 1,2 pulgadas, con una etiqueta que empieza a 1,05 pulgadas de su borde alto.
-    const title = pptxTextShapes(sp('Title 1', 731520, 914400, 10698480, 1097280, run('Del piloto en Santiago a 1.200 locales en 12 meses', 30)))[0]
+    const title = pptxTextShapes(
+      sp('Title 1', 731520, 914400, 10698480, 1097280, run('Del piloto en Santiago a 1.200 locales en 12 meses', 30))
+    )[0]
     const label = pptxTextShapes(sp('Etiqueta', 731520, 1874520, 3291840, 274320, run('MES 1–2', 12)))[0]
     expect(overlappingPairs([title.box!, label.box!])).toHaveLength(1) // por cajas: aviso falso
     expect(overlappingPairs([textExtentBox(title)!, textExtentBox(label)!])).toHaveLength(0) // por texto: bien
     // Un título largo que sí ocupa 3 líneas llega hasta la etiqueta: se sigue avisando.
     const long = pptxTextShapes(
-      sp('Title 1', 731520, 914400, 3000000, 1097280, run('Un título larguísimo que se parte en varias líneas y termina pisando lo de abajo del todo', 30))
+      sp(
+        'Title 1',
+        731520,
+        914400,
+        3000000,
+        1097280,
+        run('Un título larguísimo que se parte en varias líneas y termina pisando lo de abajo del todo', 30)
+      )
     )[0]
     const under = pptxTextShapes(sp('Etiqueta', 731520, 1874520, 3000000, 274320, run('MES 1–2', 12)))[0]
     expect(overlappingPairs([textExtentBox(long)!, textExtentBox(under)!])).toHaveLength(1)
@@ -295,6 +343,26 @@ describe('Word', () => {
   it('letra chica', () => {
     const doc = `<w:p>${r('pie', '000000', 14)}${r('cuerpo', '000000', 22)}</w:p>`
     expect(docxSmallRuns(doc, 8)).toEqual([{ text: 'pie', sizePt: 7 }])
+  })
+  it('banda de párrafo: evalúa blanco sobre la banda, sin ocultar un fallo en el párrafo siguiente', () => {
+    const doc = `<w:p><w:pPr><w:shd w:fill="155B52"/></w:pPr>${r('título', 'FFFFFF', 48)}</w:p><w:p>${r('ilegible', 'FFFFFF')}</w:p>`
+    const problems = docxContrastProblems(doc)
+    expect(problems).toHaveLength(1)
+    expect(problems[0].where).toContain('ilegible')
+    expect(problems[0].ratio).toBe(1)
+  })
+  it('un párrafo claro dentro de una celda oscura sustituye el fondo de la celda', () => {
+    const doc = `<w:tc><w:tcPr><w:shd w:fill="155B52"/></w:tcPr><w:p><w:pPr><w:shd w:fill="FFFFFF"/></w:pPr>${r('ilegible', 'FFFFFF')}</w:p><w:p>${r('legible', 'FFFFFF')}</w:p></w:tc>`
+    expect(docxContrastProblems(doc).map((p) => p.where)).toEqual(['«ilegible»'])
+  })
+  it('el sombreado de tramo prevalece sobre el párrafo sin extenderse a otros tramos', () => {
+    const run = r('legible', 'FFFFFF').replace('</w:rPr>', '<w:shd w:fill="155B52"/></w:rPr>')
+    const doc = `<w:p><w:pPr><w:shd w:fill="FFFFFF"/></w:pPr>${run}${r('ilegible', 'FFFFFF')}</w:p>`
+    expect(docxContrastProblems(doc).map((p) => p.where)).toEqual(['«ilegible»'])
+  })
+  it('no confunde un fondo de párrafo con el de toda la celda', () => {
+    const doc = `<w:tc><w:tcPr><w:tcW w:w="200"/></w:tcPr><w:p><w:pPr><w:shd w:fill="155B52"/></w:pPr>${r('legible', 'FFFFFF')}</w:p><w:p>${r('ilegible', 'FFFFFF')}</w:p></w:tc>`
+    expect(docxContrastProblems(doc).map((p) => p.where)).toEqual(['«ilegible»'])
   })
 })
 
@@ -332,14 +400,62 @@ describe('texto cerca del borde: se mide el texto, no la caja entera', () => {
 
 describe('cifras que faltan, por estructura', () => {
   it('una celda de texto en una columna de números es una cifra esquivada', () => {
-    const r = specGapCells('pptx', { slides: [{ table: { columns: ['Ítem', 'Monto'], rows: [['A', '$100'], ['B', '$200'], ['C', 'Por validar']] } }] })
+    const r = specGapCells('pptx', {
+      slides: [
+        {
+          table: {
+            columns: ['Ítem', 'Monto'],
+            rows: [
+              ['A', '$100'],
+              ['B', '$200'],
+              ['C', 'Por validar']
+            ]
+          }
+        }
+      ]
+    })
     expect(r.join()).toContain('Por validar')
   })
   it('no marca columnas de texto ni guiones', () => {
-    expect(specGapCells('docx', { blocks: [{ type: 'table', columns: ['A', 'B'], rows: [['x', 'sí'], ['y', 'no']] }] })).toEqual([])
-    expect(gapCells(['A', 'B'], [['x', 1], ['y', 2], ['z', '—']])).toEqual([])
+    expect(
+      specGapCells('docx', {
+        blocks: [
+          {
+            type: 'table',
+            columns: ['A', 'B'],
+            rows: [
+              ['x', 'sí'],
+              ['y', 'no']
+            ]
+          }
+        ]
+      })
+    ).toEqual([])
+    expect(
+      gapCells(
+        ['A', 'B'],
+        [
+          ['x', 1],
+          ['y', 2],
+          ['z', '—']
+        ]
+      )
+    ).toEqual([])
   })
   it('xlsx: la primera fila es el encabezado', () => {
-    expect(specGapCells('xlsx', { sheets: [{ rows: [['Mes', 'Venta'], ['Ene', 10], ['Feb', 20], ['Mar', 'TBD']] }] }).length).toBe(1)
+    expect(
+      specGapCells('xlsx', {
+        sheets: [
+          {
+            rows: [
+              ['Mes', 'Venta'],
+              ['Ene', 10],
+              ['Feb', 20],
+              ['Mar', 'TBD']
+            ]
+          }
+        ]
+      }).length
+    ).toBe(1)
   })
 })

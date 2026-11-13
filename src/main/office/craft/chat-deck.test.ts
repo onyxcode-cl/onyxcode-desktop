@@ -1,3 +1,4 @@
+import { resolveDocumentIdentity } from '@shared/document-identity'
 import { describe, expect, it } from 'vitest'
 import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -126,8 +127,10 @@ describe('chatDeckCommands (prueba Craft)', () => {
   it('el tema cambia el color de acento', () => {
     const blue = chatDeckCommands({ theme: 'blue', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).join('\n')
     const warm = chatDeckCommands({ theme: 'warm', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).join('\n')
-    expect(blue).toContain('#3B82F6')
-    expect(warm).toContain('#F59E0B')
+    expect(blue).toContain('#2563EB')
+    expect(warm).toContain(
+      resolveDocumentIdentity({ theme: 'warm', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).palette.accent
+    )
   })
 
   it('portada: tamaño según el largo del título', () => {
@@ -286,12 +289,12 @@ describe('pie, nota y numeración legibles sobre un background propio', () => {
   })
   it('legibleInk/contrastRatio', () => {
     expect(contrastRatio('000000', 'FFFFFF')).toBeCloseTo(21, 0)
-    expect(legibleInk('8A8A8A', 'F4F1EA', 'FFFFFF')).toBe('111111')
+    expect(legibleInk('8A8A8A', 'F4F1EA', 'FFFFFF')).toBe('000000')
     expect(legibleInk('222222', 'F4F1EA', 'FFFFFF')).toBe('222222')
   })
 })
 
-const customMuted = (spec: PptxSpec): string => '#' + customPalette(spec.palette!).muted
+const customMuted = (spec: PptxSpec): string => resolveDocumentIdentity(spec).palette.muted!
 
 describe('189: arreglos de PowerPoint medidos', () => {
   const j = (c: string): Record<string, unknown> => JSON.parse(c.slice(c.indexOf('=') + 1))
@@ -324,7 +327,7 @@ describe('189: arreglos de PowerPoint medidos', () => {
     const c = cmds.find((x) => x.startsWith('design.colors='))
     expect(c).toBeTruthy()
     const colors = (j(c!).colors ?? {}) as Record<string, string>
-    expect(colors.accent1).toBe('#16A34A')
+    expect(colors.accent1).toBe('#15803D')
     expect(Object.keys(colors)).toHaveLength(6)
     expect(Object.values(colors).every((v) => /^#[0-9A-F]{6}$/.test(v))).toBe(true)
     // no es el azul de siempre
@@ -356,13 +359,12 @@ describe('189: arreglos de PowerPoint medidos', () => {
     expect(j(bar.find((x) => x.startsWith('insert.chart='))!).categories).toEqual(['A', 'B'])
   })
 
-  it('el cierre muestra hasta 3 líneas, no solo la primera', () => {
+  it('el cierre conserva todas las líneas, sin descartar la cuarta', () => {
     const cmds = chatDeckCommands({
       slides: [{ title: 'Gracias', layout: 'closing', bullets: ['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl', 'cuarta'] }]
     })
     const texts = cmds.filter((c) => c.startsWith('insert.textBox=')).map((c) => j(c).text)
-    expect(texts).toEqual(expect.arrayContaining(['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl']))
-    expect(texts).not.toContain('cuarta')
+    for (const text of ['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl', 'cuarta']) expect(texts.join('\n')).toContain(text)
   })
 
   it('KPI: todas las cifras de la fila con el mismo tamaño', () => {
@@ -479,30 +481,29 @@ describe('189: notas del orador', () => {
 
 describe('acento legible', () => {
   const j = (command: string): Record<string, unknown> => JSON.parse(command.slice(command.indexOf('=') + 1))
-  it('sin tema usa azul profundo AA en títulos, filete, cifras y cabecera de tabla; mono también lleva acento azul', () => {
-    const pal = paletteFor(undefined)
-    expect(pal.accent).toBe('1F4E79')
-    for (const bg of [pal.bg, pal.panel, 'FFFFFF']) expect(contrastRatio(pal.accent, bg)).toBeGreaterThanOrEqual(4.5)
-    expect(paletteFor('mono').accent).toBe('1D4E89')
-    const cmds = chatDeckCommands({
+  it('sin tema deriva un acento AA y lo aplica a títulos, cifras y tablas sin filete', () => {
+    const spec: PptxSpec = {
       slides: [
         { title: 'Resumen', layout: 'kpis', kpis: [{ label: 'Cobertura', value: '91 %' }] },
         { title: 'Resultados', table: { columns: ['Concepto', 'Valor'], rows: [['Meta', '91 %']] } }
       ]
-    })
-    expect(cmds).toContain('shape.fill={"color":"#1F4E79"}')
-    expect(cmds.some((c) => c.startsWith('table.cellFill=') && c.includes('#1F4E79'))).toBe(true)
+    }
+    const pal = resolveDocumentIdentity(spec).palette
+    for (const bg of [pal.bg, pal.panel!]) expect(contrastRatio(pal.accent.slice(1), bg.slice(1))).toBeGreaterThanOrEqual(4.5)
+    const cmds = chatDeckCommands(spec)
+    expect(cmds.some((c) => c.startsWith('table.cellFill=') && c.includes(pal.accent))).toBe(true)
     for (const title of ['Resumen', 'Resultados', '91 %']) {
       const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === title)
-      expect(cmds[i + 2]).toBe('format.color={"color":"#1F4E79"}')
+      expect(cmds[i + 2]).toBe(`format.color={"color":"${pal.accent}"}`)
     }
+    expect(cmds).not.toContain('shape.insert={"preset":"rect","rect":[60,128,840,4]}')
   })
 
   it.each(['Gracias', 'Preguntas'])('centra y agranda el cierre %s aunque el layout sea bullets sin contenido', (title) => {
     const cmds = chatDeckCommands({ slides: [{ title: 'Inicio' }, { title, layout: 'bullets', note: 'equipo@example.test' }] })
     const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === title)
-    expect(j(cmds[i]).rect).toEqual([60, 152, 840, 240])
-    expect(j(cmds[i + 1]).size).toBeGreaterThanOrEqual(100)
+    expect(j(cmds[i]).rect).toEqual([100, 124, 760, 222])
+    expect(j(cmds[i + 1]).size).toBeGreaterThanOrEqual(80)
     expect(cmds.slice(i, i + 10)).toContain('format.align={"align":"center"}')
     expect(cmds.some((c) => c.startsWith('insert.textBox=') && j(c).text === 'equipo@example.test')).toBe(true)
   })
