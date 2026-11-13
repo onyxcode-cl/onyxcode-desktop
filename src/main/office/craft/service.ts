@@ -28,6 +28,7 @@ type Progress = NonNullable<CraftUiSnapshot['progress']>
 
 class CraftService {
   private installing: AbortController | null = null
+  private installPromise: Promise<CraftInstallResult> | null = null
   private progress: Progress | undefined
   private error: string | undefined
 
@@ -69,26 +70,31 @@ class CraftService {
     return { status, installing: this.installing !== null, progress: this.installing ? this.progress : undefined, error: this.error }
   }
 
-  async installNow(): Promise<CraftInstallResult> {
-    if (this.installing) return { ok: false, error: 'busy', message: 'Ya hay una instalación en curso' }
+  installNow(): Promise<CraftInstallResult> {
+    if (this.installPromise) return this.installPromise
     this.error = undefined
     const ac = new AbortController()
     this.installing = ac
     this.mark('started')
-    try {
-      await installCraft(this.deps(), (p) => (this.progress = p), ac.signal)
-      this.mark('ok')
-      return { ok: true }
-    } catch (e) {
-      const code = toOfficeError(e).code
-      this.error = code
-      this.mark(code === 'cancelled' ? 'cancelled' : 'failed')
-      recordCraftProblem('instalación', e)
-      return { ok: false, error: code, message: e instanceof Error ? e.message : String(e) }
-    } finally {
-      this.installing = null
-      this.progress = undefined
-    }
+    const promise = (async (): Promise<CraftInstallResult> => {
+      try {
+        await installCraft(this.deps(), (p) => (this.progress = p), ac.signal)
+        this.mark('ok')
+        return { ok: true }
+      } catch (e) {
+        const code = toOfficeError(e).code
+        this.error = code
+        this.mark(code === 'cancelled' ? 'cancelled' : 'failed')
+        recordCraftProblem('instalación', e)
+        return { ok: false, error: code, message: e instanceof Error ? e.message : String(e) }
+      } finally {
+        this.installing = null
+        this.installPromise = null
+        this.progress = undefined
+      }
+    })()
+    this.installPromise = promise
+    return promise
   }
 
   /** Al arrancar: reintenta en silencio una instalación incompleta (máx. una vez cada 24 h; ver `craft-retry.ts`). Nunca lanza. */

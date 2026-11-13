@@ -6,7 +6,7 @@ import { app } from 'electron'
 import { execFile } from 'node:child_process'
 import { existsSync, rmSync, statfsSync, writeFileSync } from 'node:fs'
 import { mkdtemp, readFile } from 'node:fs/promises'
-import { arch, homedir, tmpdir } from 'node:os'
+import { arch, freemem, homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PreflightId, PreflightReport } from '@shared/preflight'
 import { blocking, ordered } from '@shared/preflight'
@@ -28,7 +28,7 @@ export interface PreflightSources {
   /** Ausente si esta plataforma no ofrece Control del PC. */
   computer?: ComputerService
   /** Estado del entorno aislado; ausente si no aplica (solo Windows con WSL). */
-  sandboxStatus?: () => Promise<TasksSandboxStatus>
+  sandboxStatus?: (force?: boolean) => Promise<TasksSandboxStatus>
 }
 
 let sources: PreflightSources = {}
@@ -121,7 +121,20 @@ function realDeps(): PreflightDeps {
       }
     },
     sandbox: sandboxStatus
-      ? async () => sandboxStatus().then((s) => (s.backend === 'wsl' ? { state: s.state, detail: s.detail } : null))
+      ? async () => {
+          let s = await sandboxStatus()
+          if (s.backend === 'wsl' && s.state === 'broken' && s.detail === 'probe') {
+            recordProblem({
+              source: 'main',
+              level: 'warn',
+              message: 'Revisión de arranque: reintentando la comprobación de WSL en 3 s',
+              detail: { componente: 'sandbox', motivo: 'probe', memoriaLibreBytes: freemem() }
+            })
+            await new Promise((resolve) => setTimeout(resolve, 3_000))
+            s = await sandboxStatus(true)
+          }
+          return s.backend === 'wsl' ? { state: s.state, detail: s.detail } : null
+        }
       : undefined,
     trust: process.platform === 'darwin' ? () => trustState(trustDeps()) : undefined,
     helperPresent: computer ? () => computer.helperPath() !== null : undefined,
