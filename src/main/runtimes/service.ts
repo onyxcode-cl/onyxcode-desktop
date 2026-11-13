@@ -41,6 +41,7 @@ const uiState = (s: RuntimeState): 'installed' | 'missing' | 'broken' | 'unsuppo
 
 class RuntimesService {
   private installing: AbortController | null = null
+  private installPromise: Promise<RuntimesInstallResult> | null = null
   private progress: RuntimesSnapshot['progress']
   private error: string | undefined
   private pin: RuntimePin | null | undefined
@@ -87,32 +88,37 @@ class RuntimesService {
     }
   }
 
-  async installNow(): Promise<RuntimesInstallResult> {
-    if (this.installing) return { ok: false, error: 'busy', message: 'Ya hay una instalación en curso' }
+  installNow(): Promise<RuntimesInstallResult> {
+    if (this.installPromise) return this.installPromise
     this.error = undefined
     const ac = new AbortController()
     this.installing = ac
-    try {
-      await installRuntimes(this.deps(), (p) => (this.progress = { phase: p.phase, done: p.done, total: p.total }), ac.signal)
-      return { ok: true }
-    } catch (e) {
-      const code = toRuntimeError(e).code
-      this.error = code
-      if (code !== 'cancelled') {
-        const { message, stack } = describeError(e)
-        recordProblem({
-          source: 'main',
-          level: 'warn',
-          message: `Node.js y uv: no se pudieron preparar (${code})`,
-          stack,
-          detail: { codigo: code, mensaje: message.slice(0, 300), plataforma: process.platform, arquitectura: process.arch }
-        })
+    const promise = (async (): Promise<RuntimesInstallResult> => {
+      try {
+        await installRuntimes(this.deps(), (p) => (this.progress = { phase: p.phase, done: p.done, total: p.total }), ac.signal)
+        return { ok: true }
+      } catch (e) {
+        const code = toRuntimeError(e).code
+        this.error = code
+        if (code !== 'cancelled') {
+          const { message, stack } = describeError(e)
+          recordProblem({
+            source: 'main',
+            level: 'warn',
+            message: `Node.js y uv: no se pudieron preparar (${code})`,
+            stack,
+            detail: { codigo: code, mensaje: message.slice(0, 300), plataforma: process.platform, arquitectura: process.arch }
+          })
+        }
+        return { ok: false, error: code, message: e instanceof Error ? e.message : String(e) }
+      } finally {
+        this.installing = null
+        this.installPromise = null
+        this.progress = undefined
       }
-      return { ok: false, error: code, message: e instanceof Error ? e.message : String(e) }
-    } finally {
-      this.installing = null
-      this.progress = undefined
-    }
+    })()
+    this.installPromise = promise
+    return promise
   }
 
   cancel(): void {

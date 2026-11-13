@@ -68,6 +68,8 @@ export interface MonitorDeps {
   notify: (ev: MonitorNotifyEvent) => void
   /** Se llama tras archivar una tarea (p.ej. revocar su plan aprobado). */
   onArchived?: (sessionId: string) => void
+  /** Se llama una vez al confirmar el fin de una tarea raíz, antes del apagado por inactividad. */
+  onTurnEnded?: (turn: { folder: string; fullAccess: boolean; sessionId: string; since: number }) => void | Promise<void>
   /** Recibe la instantánea cuando cambia. */
   onActivity?: (snap: TasksActivitySnapshot) => void
   /**
@@ -622,7 +624,15 @@ export class TasksMonitor {
       r.missing += 1
       if (r.missing < FINISH_AFTER_MISSES) continue
       st.roots.delete(rootId)
-      if (!r.routine) await this.finishRoot(st, rootId, r.title)
+      if (!r.routine) {
+        try {
+          const finished = this.deps.onTurnEnded?.({ folder: st.folder, fullAccess: st.fullAccess, sessionId: rootId, since: r.since })
+          if (finished) void Promise.resolve(finished).catch((err) => this.deps.log?.('[monitor] onTurnEnded:', err))
+        } catch (err) {
+          this.deps.log?.('[monitor] onTurnEnded:', err)
+        }
+        await this.finishRoot(st, rootId, r.title)
+      }
     }
   }
 

@@ -7,7 +7,7 @@
  * parada de servidores, revocar planes al archivar) y reenvía su actividad al renderer.
  */
 import { app, Notification } from 'electron'
-import { realpathSync } from 'node:fs'
+import { lstatSync, realpathSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { TasksActivitySnapshot } from '@shared/ipc-tasks'
 import { TasksMonitor, type MonitorWindowState } from '../tasks/monitor'
@@ -17,6 +17,7 @@ import { TasksPrefsStore } from '../tasks/prefs'
 import { TasksTasksStore } from '../tasks/tasks-meta'
 import { storageClean, storageReport, type StorageEnv } from '../tasks/storage'
 import { tasksUsageSummary } from '../tasks/usage-summary'
+import { cacheXlsxFormulaValues } from '../tasks/review-file'
 import { loadManagedPolicy } from '../tasks/policy'
 import { sandboxKey } from '../tasks/sandbox'
 import { extrasPrefs } from '../extras/prefs'
@@ -94,6 +95,19 @@ export function registerTasksLifecycleHandlers(ctx: TasksIpcContext): TasksSubmo
     notify,
     // Archivada = sin plan aprobado (la puerta de Control total vuelve a pedirlo).
     onArchived: (sessionId) => computer?.revokePlan(sessionId),
+    onTurnEnded: async ({ folder, since }) => {
+      for (const file of tasksManager.deliverables(folder, Math.max(0, since - 1_000))) {
+        if (!/\.xlsx$/i.test(file.path) || file.size > 25 * 1024 * 1024) continue
+        try {
+          if (!lstatSync(file.path).isFile()) continue
+          const real = realpathSync(file.path)
+          tasksManager.assertInsideApproved(real)
+          await cacheXlsxFormulaValues(real)
+        } catch {
+          // Un enlace, una ruta que salió del espacio aprobado o un archivo que desapareció no se modifica.
+        }
+      }
+    },
     onActivity: (snap: TasksActivitySnapshot) => {
       send('tasks:activity', snap)
       syncScreenshotCleanup()

@@ -10,6 +10,8 @@ import { permsStage } from '@shared/mac-permissions'
 import type { CraftPart } from '../office/craft/craft-install'
 
 export const CHECK_TIMEOUT_MS = 1500
+/** El ejecutable embebido de Windows pesa más de 150 MB y puede tardar varios segundos en cargar. */
+export const ENGINE_CHECK_TIMEOUT_MS = 5_500
 
 export type AppPlacement = 'translocated' | 'volume' | 'elsewhere' | null
 
@@ -139,7 +141,7 @@ export async function runPreflightChecks(d: PreflightDeps): Promise<PreflightRep
   }
 
   const [engine, craft, runtimes, sandbox, trust, mac, free, writable] = await Promise.all([
-    guard('engine', d.engine),
+    guard('engine', d.engine, d.timeoutMs === undefined ? ENGINE_CHECK_TIMEOUT_MS : ms),
     guard('craft', d.craft),
     d.runtimes ? guard('runtimes', d.runtimes) : Promise.resolve(null),
     d.sandbox ? guard('sandbox', d.sandbox, Math.max(ms, SANDBOX_TIMEOUT_MS)) : Promise.resolve(null),

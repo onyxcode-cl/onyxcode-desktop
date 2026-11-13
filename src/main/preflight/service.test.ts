@@ -86,6 +86,19 @@ describe('Node.js y uv (conectores locales, F8-B195)', () => {
 })
 
 describe('motor', () => {
+  it('deja al ejecutable pesado completar su prueba de hasta 5 s aunque el resto use 1,5 s', async () => {
+    const onCheckError = vi.fn()
+    const engine = await get(
+      {
+        engine: () => new Promise((resolve) => setTimeout(() => resolve({ found: true, version: '1.2.3' }), 1_600)),
+        onCheckError
+      },
+      'engine'
+    )
+    expect(engine).toMatchObject({ ok: true, version: '1.2.3' })
+    expect(onCheckError).not.toHaveBeenCalledWith('engine', expect.any(Error))
+  })
+
   it('ausente: esencial y no instalable', async () => {
     expect(await get({ engine: async () => ({ found: false, version: null }) }, 'engine')).toMatchObject({
       ok: false,
