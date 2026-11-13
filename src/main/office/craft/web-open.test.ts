@@ -18,6 +18,7 @@ const recordCraftProblem = vi.fn()
 vi.mock('./craft-problems', () => ({ recordCraftProblem: (...a: unknown[]) => recordCraftProblem(...a) }))
 vi.mock('../../viewer/view', () => ({ attach: vi.fn(), closeView: vi.fn() }))
 
+import { WEB_OPEN_TIMEOUT_MS, WEB_RENDER_TIMEOUT_MS } from './web-timeout'
 import { closeWeb } from './web-view'
 import { WEB_PROGRAM, openInCraftWeb, panelAttach, panelClose } from './web-open'
 import { attachWeb } from './web-view'
@@ -142,7 +143,18 @@ describe('web-open (prueba Craft)', () => {
     expect(recordCraftProblem).toHaveBeenCalledTimes(2)
   })
 
-  it('a los cinco segundos cierra la web y devuelve false para mostrar el visor clásico', async () => {
+  it('conserva el margen visual después de una carga de 3 s para poder comprobar a los 4 s', async () => {
+    webDir.mockReturnValue('/web/x')
+    vi.useFakeTimers()
+    openWebDoc.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve(true), 7000)))
+    const opening = openInCraftWeb('docx', file(), 'T')
+    await vi.waitFor(() => expect(openWebDoc).toHaveBeenCalledOnce())
+    await vi.advanceTimersByTimeAsync(7000)
+    expect(await opening).toBe(true)
+    expect(recordCraftProblem).not.toHaveBeenCalled()
+  })
+
+  it('al agotar carga y comprobación visual cierra la web y devuelve false para el visor clásico', async () => {
     webDir.mockReturnValue('/web/x')
     let done!: (ok: boolean) => void
     openWebDoc.mockImplementation(
@@ -154,7 +166,7 @@ describe('web-open (prueba Craft)', () => {
     vi.useFakeTimers()
     const second = openInCraftWeb('docx', file(), 'T')
     await vi.waitFor(() => expect(openWebDoc).toHaveBeenCalledOnce())
-    await vi.advanceTimersByTimeAsync(5000)
+    await vi.advanceTimersByTimeAsync(WEB_OPEN_TIMEOUT_MS + WEB_RENDER_TIMEOUT_MS)
     expect(await second).toBe(false)
     expect(closeWeb).toHaveBeenCalled()
     done(true)

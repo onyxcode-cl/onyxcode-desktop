@@ -55,7 +55,9 @@ export function useViewerViewport(panelVisible: boolean, ready = false): ViewerV
       if (!usable && shouldShowNative) retry = setTimeout(sync, 100)
       void cw('tasks:viewer:attach', {
         rect: { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) },
-        visible: shouldShowNative && ready && usable
+        // Adjunta la vista al panel mientras carga. Esperar a `ready` hacía que el motor
+        // recibiera el drop con una WebContentsView que aún no formaba parte de la ventana.
+        visible: shouldShowNative && usable
       }).then(
         (attached) => {
           if (!disposed && seq === measurement) setHasViewport(usable && attached)
