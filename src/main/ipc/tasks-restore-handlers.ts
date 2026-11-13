@@ -50,7 +50,7 @@ export function registerTasksRestoreHandlers(ctx: TasksIpcContext): TasksSubmodu
         reason: t('merr.restore.homeSkipped')
       }
     }
-    return restore.create(real, sessionId, label)
+    return restore.create(real, sessionId, label, () => tasks.isPristineSession(real, sessionId))
   })
   handle('tasks:restore:list', ({ folder, sessionId }) => restore.list(tasks.assertInsideApproved(folder), sessionId))
   handle('tasks:restore:changes', ({ folder, pointId }) => restore.changes(tasks.assertInsideApproved(folder), pointId))

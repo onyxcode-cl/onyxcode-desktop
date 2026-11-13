@@ -74,6 +74,9 @@ import { NetworkPolicy, type NetworkPolicyState, type NetworkToggleKey } from '.
 import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
+import { createOwnDeleteHandler } from './own-delete-handler'
+import { deleteEngineMessages } from './own-delete-engine'
+import type { DeleteBaseline } from './own-delete'
 import { getBridgeSecret } from './bridge-secret'
 import { writeUnifiedAppsPrompt } from './unified-apps-prompt'
 import { detectElevated } from './win-elevation'
@@ -279,9 +282,22 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
   private readonly win: WinHost | null
   private readonly winChatFs: WinChatFs | null
 
+  /** El baseline solo se toma cuando el motor confirma que la sesión aún no tiene mensajes. */
+  async isPristineSession(folder: string, sessionId: string): Promise<boolean> {
+    if (!/^ses_[A-Za-z0-9]{8,64}$/.test(sessionId)) return false
+    const h = this.servers.get(serverKey(this.nf(folder), false))?.handle
+    if (!h) return false
+    const messages = await deleteEngineMessages(
+      { baseUrl: h.baseUrl, authorization: h.authorization, directory: h.paths.directory },
+      sessionId
+    )
+    return messages?.length === 0 && this.servers.get(serverKey(this.nf(folder), false))?.handle === h
+  }
+
   constructor(
     private readonly opts: {
       corsOrigins?: string[]
+      deleteBaseline?: (folder: string, sessionId: string, created: number) => DeleteBaseline | null
       computer?: TasksComputerDeps
       platform?: NodeJS.Platform
       /** Contexto de Windows (pruebas); por defecto el real. */
@@ -1723,6 +1739,23 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             })
           )
         : null
+      const ownDelete =
+        mcpProxy && !fullAccess && this.opts.deleteBaseline && !this.hasDeleteGrant(folder)
+          ? mcpProxy.setLocalPostHandler(
+              '/__lazunox-own-delete',
+              createOwnDeleteHandler({
+                folder,
+                platform: this.platform,
+                excluded: extras.map((e) => e.path),
+                server: () => {
+                  const h = this.servers.get(key)?.handle
+                  return h ? { baseUrl: h.baseUrl, authorization: h.authorization, directory: h.paths.directory } : null
+                },
+                enabled: () => !!this.servers.get(key)?.handle && !this.hasDeleteGrant(folder),
+                baseline: this.opts.deleteBaseline
+              })
+            )
+          : null
       const privateIso = {
         privateDir: join(app.getPath('userData'), 'tasks-sandbox', sandboxKey(folder)),
         userData: app.getPath('userData')
@@ -1781,6 +1814,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           ...(this.bridgeServers.has(key) ? { LAZUNOX_UNIFIED_BRIDGE: '1' } : {}),
           // Canal del guardián (solo sandbox); `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
           ...(guard ? { LAZUNOX_GUARD_URL: guard.url, LAZUNOX_GUARD_TOKEN: guard.token } : {}),
+          ...(ownDelete ? { LAZUNOX_OWN_DELETE_URL: ownDelete.url, LAZUNOX_OWN_DELETE_TOKEN: ownDelete.token } : {}),
           // Solo sandbox: sin esto la búsqueda web de OpenCode alterna entre mcp.exa.ai y
           // search.parallel.ai según el hash de la sesión. Fijar el proveedor deja UN único host
           // (`WEB_SEARCH_HOSTS`) que la lista blanca del proxy de egress puede permitir.

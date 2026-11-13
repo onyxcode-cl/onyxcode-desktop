@@ -1075,6 +1075,18 @@
       ],
       "nota": "Propio de Windows: en Mac no hay WSL y abrir una tarea ya tarda 0,8 s. Probado con Windows simulado en Mac. Falta medir en el PC real el tiempo de apertura (antes 5–6 s) y la memoria del motor en espera.",
       "comprobacion": null
+    },
+    {
+      "id": "N17",
+      "funcion": "Overdrive borra sin tarjeta los temporales que él mismo creó en la tarea (rm, rmdir y unlink simples); lo demás sigue con tarjeta",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/own-delete.test.ts:1",
+        "src/main/tasks/own-delete-paths.test.ts:1",
+        "src/main/tasks/own-delete-handler.test.ts:1"
+      ],
+      "nota": "Mismo código en Mac y Windows; en Windows las rutas /win/<unidad>/… se traducen al archivo NTFS del anfitrión (probado con C: y D: simulados). Falta verlo en la app real en Mac y en el PC.",
+      "comprobacion": null
     }
   ]
 }

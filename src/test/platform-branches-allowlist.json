@@ -328,6 +328,12 @@
       "win32": 1,
       "usrBin": 2
     },
+    "src/main/tasks/own-delete-paths.ts": {
+      "win32": 1
+    },
+    "src/main/tasks/own-delete.ts": {
+      "usrBin": 3
+    },
     "src/main/tasks/policy.ts": {
       "win32": 4
     },

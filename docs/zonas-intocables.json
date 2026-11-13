@@ -23,7 +23,7 @@
     "src/main/tasks/backends/wsl.ts": "5ecefa80bc2c1b30a73779faf3f66997aa80404267c27ddaf20849ca0bae46c5",
     "src/main/tasks/folder-policy-win.ts": "5483ac4eedc3a8ac1c38a30b87a936995a8ac85bda6cb6ef4225d1cfabb52f41",
     "src/main/tasks/folder-policy.ts": "e88ab3a59150aaa6fdc72762136c9195a578e60f9c1c3d3572cf03230c63262f",
-    "src/main/tasks/opencode-config.ts": "34b6ca47d4924360b902db64d99dc2ec0535c3ff793eed2d545092c502864373",
+    "src/main/tasks/opencode-config.ts": "020238bef02b12ece1b440fadb6f9c4b83759aa2826d34618608a281d88dbc72",
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "af8f39d6172c0f187af542162ab790382f232d0ffc869d5d4cd567f2c1afa3f3",
     "src/main/tasks/proxy.ts": "f568b7cfd6c003d834f142efbfe0a3c0984126681d085b406c56db0b4c918f39",
@@ -296,6 +296,15 @@
         "src/main/tasks/backends/wsl.ts",
         "src/main/tasks/sandbox.ts",
         "src/main/tasks/win-context.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-13",
+      "motivo": "F8-B279: gancho acotado de limpieza propia revisado independientemente; decisión del dueño 2026-11-12",
+      "cambiados": [
+        "src/main/tasks/opencode-config.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

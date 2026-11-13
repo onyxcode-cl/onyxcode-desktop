@@ -96,7 +96,9 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   const keepAwake = new KeepAwakeService()
   const cu = deps.computer === false ? null : createComputerParts()
   const computer = cu?.computer
+  const restore = createRestorePoints()
   const tasks = new TasksManager({
+    deleteBaseline: (folder, sessionId, created) => restore.deleteBaseline(folder, sessionId, created),
     corsOrigins: deps.corsOrigins,
     computer: computer
       ? { mcpConfig: () => computer.mcpConfig(), info: () => computer.info(), planGateUrl: () => computer.planGateUrl() }
@@ -151,7 +153,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     scheduler,
     projects,
     keepAwake,
-    restore: createRestorePoints(),
+    restore,
     isFolderBusy: () => false,
     busyTaskCount: () => 0
   }

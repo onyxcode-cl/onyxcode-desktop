@@ -58,6 +58,7 @@ import { bundledPythonEnv } from './python-runtime'
 import { officeService } from '../office/service'
 import { readPersonalizacionState } from '../personalizacion/store'
 import { subagentGuardPluginSource } from '../opencode/subagent-guard'
+import { ownDeletePluginSource } from './own-delete-plugin'
 
 // Ids únicos compartidos con el renderer (`src/shared/agents.ts`).
 export { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from '@shared/agents'
@@ -329,6 +330,7 @@ export function prepareOpencodeConfigDir(): string {
   mkdirSync(agentsDest, { recursive: true })
   mkdirSync(skillsDest, { recursive: true })
   mkdirSync(pluginsDest, { recursive: true })
+  writeFileSync(join(pluginsDest, 'lazunox-z-own-delete.js'), ownDeletePluginSource(), 'utf8')
   const stampPath = join(dest, STAMP_FILE)
   const version = app.getVersion()
   let stamp = ''
