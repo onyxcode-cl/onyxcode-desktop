@@ -39,15 +39,15 @@ export interface AutoState {
 const INITIAL: AutoState = { phase: 'idle', ids: [], done: [], pct: null, failed: {}, details: {} }
 
 export const useAutoInstall = create<AutoState>(() => ({ ...INITIAL }))
-/** Piezas que ya se intentaron en esta sesión: una instalación «correcta» que la revisión sigue viendo como faltante NO se repite en bucle. */
-const attempted = new Set<PreflightId>()
-export const autoAttempted = (): ReadonlySet<PreflightId> => attempted
+/** Solo éxitos confirmados: intentar descargar no equivale a tener la pieza instalada. Evita repetir éxitos ante un informe atrasado. */
+const completed = new Set<PreflightId>()
+export const autoCompleted = (): ReadonlySet<PreflightId> => completed
 
 const set = (p: Partial<AutoState>): void => useAutoInstall.setState(p)
 
 /** Vuelve al estado inicial (pruebas y «Revisar de nuevo»). */
 export function resetAutoInstall(): void {
-  attempted.clear()
+  completed.clear()
   set({ ...INITIAL })
 }
 
@@ -80,11 +80,15 @@ export function startAutoInstall(ids: readonly PreflightId[], deps: AutoDeps): P
   if (running || ids.length === 0) return running ?? Promise.resolve()
   running = (async () => {
     const delays = deps.delays ?? AUTO_RETRY_DELAYS_MS
-    for (const id of ids) attempted.add(id)
-    set({ phase: 'running', ids: [...ids], done: [], pct: null, failed: {}, details: {} })
+    const finalFailed = { ...useAutoInstall.getState().failed }
+    const details = { ...useAutoInstall.getState().details }
+    for (const id of ids) {
+      delete finalFailed[id]
+      delete details[id]
+    }
+    set({ phase: 'running', ids: [...ids], done: [], pct: null, failed: finalFailed, details })
     let pending: PreflightId[] = [...ids]
     const lastFail: Partial<Record<PreflightId, { code?: string; message?: string }>> = {}
-    const finalFailed: Partial<Record<PreflightId, string>> = {}
     // Los fallos de una pasada no se anotan en el registro de problemas hasta ser definitivos (sin ruido por cada reintento).
     const api: InstallApi = {
       ...deps.api,
@@ -107,10 +111,16 @@ export function startAutoInstall(ids: readonly PreflightId[], deps: AutoDeps): P
         },
         onDetail: () => undefined
       })
+      for (const outcome of outcomes) if (outcome.ok) completed.add(outcome.id)
       const bad = outcomes.filter((o) => !o.ok && o.code !== 'cancelled')
       pending = bad.filter((o) => retryableCode(o.code)).map((o) => o.id)
       for (const o of bad) if (!retryableCode(o.code)) finalFailed[o.id] = o.code ?? 'generic'
       if (pending.length === 0) break
+      // Un corte de red conserva las piezas pendientes incluso si ocurrió en el último intento permitido.
+      if (!deps.online()) {
+        set({ phase: 'offline', pct: null })
+        break
+      }
       if (attempt >= delays.length) {
         for (const o of bad) if (pending.includes(o.id)) finalFailed[o.id] = o.code ?? 'download'
         pending = []
@@ -120,13 +130,13 @@ export function startAutoInstall(ids: readonly PreflightId[], deps: AutoDeps): P
       await deps.wait(delays[attempt])
     }
     if (Object.keys(finalFailed).length > 0) {
-      const details: Partial<Record<PreflightId, string>> = {}
       for (const id of Object.keys(finalFailed) as PreflightId[]) {
+        if (details[id]) continue
         const f = lastFail[id]
         const d = await deps.api.fail(id, finalFailed[id] ?? f?.code, f?.message).catch(() => null)
         if (d) details[id] = d.detail
       }
-      set({ phase: 'failed', failed: finalFailed, details, pct: null })
+      set({ phase: pending.length > 0 && !deps.online() ? 'offline' : 'failed', failed: finalFailed, details, pct: null })
     } else if (useAutoInstall.getState().phase !== 'offline') set({ phase: 'idle', pct: null })
   })().finally(() => {
     running = null
@@ -137,14 +147,17 @@ export function startAutoInstall(ids: readonly PreflightId[], deps: AutoDeps): P
 /** Sin conexión sin empezar (o sin espacio): se anota el estado para el aviso; no se descarga nada. */
 export function markAutoBlocked(phase: 'offline' | 'nodisk', ids: readonly PreflightId[]): void {
   if (running) return
-  set({ phase, ids: [...ids], done: [], pct: null, failed: {}, details: {} })
+  set({ phase, ids: [...ids], done: [], pct: null })
 }
 
 /** El plan ya no tiene nada pendiente: se limpia el aviso (salvo un fallo real, que se queda hasta «Reintentar»). */
 export function clearAutoIfIdle(): void {
   if (running) return
   const s = useAutoInstall.getState()
-  if (s.phase === 'offline' || s.phase === 'nodisk') set({ ...INITIAL })
+  if (s.phase === 'offline' || s.phase === 'nodisk') {
+    if (Object.keys(s.failed).length > 0) set({ phase: 'failed' })
+    else set({ ...INITIAL })
+  }
 }
 
 /** Estado actual sin suscribirse (para decidir si arrancar). */

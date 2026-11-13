@@ -101,6 +101,11 @@ beforeEach(() => {
 })
 
 describe('planSlices', () => {
+  it('empieza en la página solicitada y mantiene el total sin capturar las anteriores', () => {
+    const r = planSlices([{ width: 794, height: 30 * 1123, pageHeight: 1123 }], 2, 13)
+    expect(r.total).toBe(30)
+    expect(r.slots.map((s) => s.offset)).toEqual([12 * 1123, 13 * 1123])
+  })
   it('una sección alta (Word de varias páginas sin saltos explícitos) se trocea en hojas', () => {
     const r = planSlices([{ width: 794, height: 5000, pageHeight: 1123 }], 12)
     expect(r.total).toBe(5)

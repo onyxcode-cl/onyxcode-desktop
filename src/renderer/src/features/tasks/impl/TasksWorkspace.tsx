@@ -1,3 +1,4 @@
+import { RejectionNotices } from '../../../components/conversation/RejectionNotices'
 /**
  * Modo Tareas: tareas autónomas sobre una carpeta de Tareas, ejecutadas por el agente
  * `tasks` en un `opencode serve` dedicado y sandboxeado (sandbox-exec), o por el agente
@@ -855,6 +856,7 @@ export function TasksWorkspace(): React.JSX.Element {
               permissions={pendingForTask}
               footer={
                 <>
+                  {activeId && folder && <RejectionNotices mode="tasks" directory={folder} sessionID={activeId} />}
                   {activeId && busy && <StallNotice taskId={activeId} />}
                   {activeId && !busy && <InterruptedNotice taskId={activeId} />}
                   {activeId && <RestoreNotices taskId={activeId} />}

@@ -72,7 +72,7 @@ class Report(unittest.TestCase):
                 toc = d.element.body.xpath(".//w:instrText[contains(text(),'TOC')]")
                 self.assertEqual(bool(toc), spec is not None and spec["title"].startswith("Informe ampliado"))
         short, _ = examples()
-        self.assertFalse(prepare(short)["cover"])
+        self.assertTrue(prepare(short)["cover"])
         self.assertEqual(prepare(short)["blocks"][2]["text"], "1.1 Medidas acordadas")
 
     def test_missing_table_and_missing_rows_fail_cli(self):
@@ -168,6 +168,25 @@ class Report(unittest.TestCase):
         widths = [c.width.cm for c in Document(self.out).tables[-1].columns]
         self.assertAlmostEqual(sum(widths), 16.59, places=1)
         self.assertAlmostEqual(widths[0] / widths[1], 3, places=1)
+
+    def test_cover_explicit_and_automatic(self):
+        for words in (0, 1199, 1200, 2000):
+            for cover in (True, False, None):
+                with self.subTest(words=words, cover=cover):
+                    spec = {"title": "Informe", "blocks": [{"type": "paragraph", "text": "palabra " * words}]}
+                    if cover is not None:
+                        spec["cover"] = cover
+                    self.assertEqual(prepare(spec)["cover"], cover if cover is not None else words >= 1200)
+        self.assertFalse(prepare({"cover": True, "blocks": []})["cover"])
+
+    def test_short_explicit_cover_has_page_break(self):
+        spec = {"title": "Informe breve", "cover": True, "blocks": [{"type": "paragraph", "text": "Contenido breve."}]}
+        build(spec, str(self.out), self.temp.name)
+        d = Document(self.out)
+        self.assertTrue(d.element.body.xpath(".//w:br[@w:type='page']"))
+        self.assertIn("Contenido breve.", [p.text for p in d.paragraphs])
+        self.assertEqual(structural(str(self.out), spec)[0], [])
+        self.assertTrue(any("casi vacía" in error for error in structural(str(self.out), {**spec, "cover": False})[0]))
 
 
 if __name__ == "__main__":

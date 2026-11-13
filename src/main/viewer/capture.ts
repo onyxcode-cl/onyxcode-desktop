@@ -52,7 +52,7 @@ export interface Slot {
 }
 
 /** Reparte las secciones en «páginas» de alto de hoja y cuenta cuántas hay EN TOTAL (las que pasan del tope no se capturan, pero se cuentan). */
-export function planSlices(sections: SectionInfo[], maxPages: number): { slots: Slot[]; total: number } {
+export function planSlices(sections: SectionInfo[], maxPages: number, firstPage = 1): { slots: Slot[]; total: number } {
   const slots: Slot[] = []
   let total = 0
   sections.forEach((sec, i) => {
@@ -62,7 +62,8 @@ export function planSlices(sections: SectionInfo[], maxPages: number): { slots: 
     const count = Math.max(1, Math.ceil((sec.height - 24) / page))
     for (let k = 0; k < count; k++) {
       total++
-      if (slots.length < maxPages) slots.push({ section: i, offset: k * page, height: Math.min(page, sec.height - k * page) })
+      if (total >= firstPage && slots.length < maxPages)
+        slots.push({ section: i, offset: k * page, height: Math.min(page, sec.height - k * page) })
     }
   })
   return { slots, total }
@@ -182,7 +183,12 @@ async function withCaptureWindow(
 }
 
 /** PNG de cada página (hasta `maxPages`) de un .docx ya validado. `null` si el visor no lo pudo pintar. */
-export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAGES, timeoutMs = TIMEOUT_MS): Promise<CaptureResult | null> {
+export async function captureDocxPages(
+  bytes: Buffer,
+  maxPages = CAPTURE_MAX_PAGES,
+  timeoutMs = TIMEOUT_MS,
+  firstPage = 1
+): Promise<CaptureResult | null> {
   return withCaptureWindow('docx', bytes, timeoutMs, { width: 1000, height: 1300 }, async ({ win: w, wc }) => {
     if ((await waitReady(wc)) < 1) return null
     // `docx-preview` solo corta hojas en los saltos de página EXPLÍCITOS: un Word de varias páginas llega como una sola sección alta.
@@ -191,7 +197,7 @@ export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAG
       `(() => Array.from(document.querySelectorAll('section.docx')).map((s) => { const r = s.getBoundingClientRect(); const mh = s.style.minHeight || ''; const v = parseFloat(mh) || 0; return { width: r.width, height: r.height, pageHeight: v ? (/pt$/.test(mh) ? (v * 96) / 72 : v) : 0 } }))()`,
       true
     )) as SectionInfo[]
-    const { slots, total } = planSlices(sections, Math.max(1, Math.floor(maxPages)))
+    const { slots, total } = planSlices(sections, Math.max(1, Math.min(CAPTURE_MAX_PAGES, Math.floor(maxPages))), firstPage)
     if (slots.length === 0) return null
     const maxH = Math.max(...slots.map((x) => x.height))
     const maxW = Math.max(...sections.map((x) => x.width))
@@ -204,14 +210,15 @@ export async function captureDocxPages(bytes: Buffer, maxPages = CAPTURE_MAX_PAG
         true
       )) as { x: number; y: number; width: number }
       const [cw, ch] = w.getContentSize()
-      if (pos.y < 0 || pos.y + slot.height > ch || pos.x < 0 || pos.x + pos.width > cw) continue
+      if (pos.y < 0 || pos.y + slot.height > ch || pos.x < 0 || pos.x + pos.width > cw) break
       const shot = await captureSettled(wc, {
         x: Math.round(pos.x),
         y: Math.round(pos.y),
         width: Math.round(pos.width),
         height: Math.round(slot.height)
       })
-      if (shot) images.push(toPng(shot))
+      if (!shot) break
+      images.push(toPng(shot))
     }
     return images.length ? { images, pages: total } : null
   })

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { InstallApi } from './preflight-run'
-import { autoPercent, resetAutoInstall, startAutoInstall, useAutoInstall } from './auto-install'
+import { autoCompleted, autoPercent, resetAutoInstall, startAutoInstall, useAutoInstall } from './auto-install'
 
 function apiWith(over: Partial<InstallApi> = {}): InstallApi {
   return {
@@ -85,6 +85,49 @@ describe('instalación automática en segundo plano', () => {
     await startAutoInstall(['craft'], base(api, { online: () => false }))
     expect(api.craftInstall).not.toHaveBeenCalled()
     expect(useAutoInstall.getState().phase).toBe('offline')
+    expect(autoCompleted().has('craft')).toBe(false)
+  })
+
+  it('solo registra como terminadas las instalaciones correctas, no las fallidas', async () => {
+    await startAutoInstall(['craft', 'runtimes'], base(apiWith({ craftInstall: async () => ({ ok: false, error: 'hash' }) })))
+    expect([...autoCompleted()]).toEqual(['runtimes'])
+  })
+
+  it('un corte en el último intento conserva el estado sin conexión en lugar de agotar los reintentos', async () => {
+    let online = true
+    const api = apiWith({
+      craftInstall: async () => {
+        online = false
+        return { ok: false, error: 'offline' }
+      }
+    })
+    await startAutoInstall(['craft'], base(api, { online: () => online, delays: [] }))
+    expect(useAutoInstall.getState().phase).toBe('offline')
+    expect(useAutoInstall.getState().failed).toEqual({})
+    expect(autoCompleted().has('craft')).toBe(false)
+    expect(api.fail).not.toHaveBeenCalled()
+  })
+
+  it('retoma lo pendiente de red sin perder el fallo de integridad de otra pieza', async () => {
+    let online = true
+    await startAutoInstall(
+      ['craft', 'runtimes'],
+      base(
+        apiWith({
+          craftInstall: async () => ({ ok: false, error: 'hash' }),
+          runtimesInstall: async () => {
+            online = false
+            return { ok: false, error: 'offline' }
+          }
+        }),
+        { online: () => online }
+      )
+    )
+    expect(useAutoInstall.getState().phase).toBe('offline')
+    await startAutoInstall(['runtimes'], base(apiWith()))
+    expect(useAutoInstall.getState().phase).toBe('failed')
+    expect(useAutoInstall.getState().failed).toEqual({ craft: 'hash' })
+    expect(autoCompleted().has('runtimes')).toBe(true)
   })
 
   it('una sola tanda a la vez', async () => {

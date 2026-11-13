@@ -4,10 +4,19 @@
  * Mantiene su propio reductor de eventos (idempotente por id de evento) para no depender
  * de quién más esté aplicando eventos al store genérico de sesiones.
  */
+import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import { create } from 'zustand'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
-import { isVerifying, projectAskOf, refreshGlobalConfigRules, rulesetForState, sessionRulesUpToDate, noteRulesReplaced, setVerifying } from './permission-rules'
+import {
+  isVerifying,
+  projectAskOf,
+  refreshGlobalConfigRules,
+  rulesetForState,
+  sessionRulesUpToDate,
+  noteRulesReplaced,
+  setVerifying
+} from './permission-rules'
 
 /**
  * Carpetas que la persona añadió al proyecto (Ficha): las reglas de la sesión las dejan pasar sin preguntar. Se lee lo ya cargado (sin esperar
@@ -327,7 +336,7 @@ export interface CodeState {
   clearRewoundFiles: (sessionID: string) => void
   /** El motor contestó 404 a una ruta de rebobinar: se recuerda y se vuelve al flujo antiguo. */
   markRewindUnavailable: (sessionID: string) => void
-  replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject') => Promise<void>
+  replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject', quiet?: boolean) => Promise<void>
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
   rejectQuestion: (q: PendingQuestion) => Promise<void>
   /** Contesta la pregunta del plan con la respuesta exacta del botón. `false` si la pregunta aún no llegó o no cuadra (no se responde a ciegas). */
@@ -1428,7 +1437,7 @@ export const useCode = create<CodeState>((set, get) => {
         await Promise.allSettled(
           Object.values(get().permissions)
             .filter((p) => stopped.has(p.sessionID))
-            .map((p) => get().replyPermission(p, 'reject'))
+            .map((p) => get().replyPermission(p, 'reject', true))
         )
         // Lo mismo con los formularios de conectores: el motor ya los cancela al abortar la llamada, pero aquí se piden explícitamente
         // (`cancel`) para no depender de él ni dejar una tarjeta a la que se podría contestar tras «Detenido».
@@ -1667,7 +1676,7 @@ export const useCode = create<CodeState>((set, get) => {
 
     markRewindUnavailable: (sessionID) => set((s) => ({ rewindSupport: { ...s.rewindSupport, [sessionID]: false }, rewindDialog: null })),
 
-    replyPermission: async (p, requested) => {
+    replyPermission: async (p, requested, quiet = false) => {
       try {
         const client = requireClient()
         const dir = get().sessionProject[p.sessionID] ?? get().directory ?? undefined
@@ -1678,6 +1687,7 @@ export const useCode = create<CodeState>((set, get) => {
           (isProtectedPermission(p.metadata) || isChildRequest(get().sessions, p.sessionID, get().activeSessionID))
             ? 'once'
             : requested
+        const root = get().sessions[p.sessionID] ? rootSessionID(get().sessions, p.sessionID) : (get().activeSessionID ?? p.sessionID)
         if (p.api === 'v2') {
           sdkData(await client.v2.session.permission.reply({ sessionID: p.sessionID, requestID: p.id, reply }))
         } else {
@@ -1688,6 +1698,18 @@ export const useCode = create<CodeState>((set, get) => {
           delete permissions[p.id]
           return reply === 'reject' ? { permissions, permissionRejectedAt: Date.now() } : { permissions }
         })
+        if (reply === 'reject' && !quiet && dir) {
+          useRejectionNotices
+            .getState()
+            .add({
+              mode: 'code',
+              directory: dir,
+              sessionID: root,
+              requestID: p.id,
+              kind: 'permission',
+              detail: rejectedPermissionDetail(p)
+            })
+        }
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }
@@ -1726,12 +1748,24 @@ export const useCode = create<CodeState>((set, get) => {
       try {
         const client = requireClient()
         const dir = get().sessionProject[q.sessionID] ?? get().directory ?? undefined
+        const root = get().sessions[q.sessionID] ? rootSessionID(get().sessions, q.sessionID) : (get().activeSessionID ?? q.sessionID)
         sdkData(await client.question.reject({ requestID: q.id, directory: dir }))
         set((s) => {
           const questions = { ...s.questions }
           delete questions[q.id]
           return { questions }
         })
+        if (dir)
+          useRejectionNotices
+            .getState()
+            .add({
+              mode: 'code',
+              directory: dir,
+              sessionID: root,
+              requestID: q.id,
+              kind: 'question',
+              detail: q.questions.map((question) => question.question).join('\n')
+            })
       } catch (err) {
         set({ globalError: errorMessage(err) })
       }

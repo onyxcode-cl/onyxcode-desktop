@@ -8,7 +8,7 @@
 import { constants } from 'node:fs'
 import { mkdtemp, open, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { runCraft } from '../office/craft/craft-run'
+import { CraftTimeoutError, runCraft } from '../office/craft/craft-run'
 import { privateTmp } from '../office/craft/private-tmp'
 
 export const MAX_PREVIEW_PAGES = 12
@@ -39,15 +39,23 @@ export interface PreviewTools {
 export type Rasterize = (pdf: Buffer) => Promise<{ images: Buffer[]; pages: number } | null>
 
 /** Render del Word con el visor de la app (sin ArtCraft): se inyecta desde `documents/index.ts` para poder probar sin Electron. */
-export type CaptureDocx = (bytes: Buffer, timeoutMs: number) => Promise<{ images: Buffer[]; pages: number } | null>
+export type CaptureDocx = (bytes: Buffer, timeoutMs: number, range?: PreviewRange) => Promise<{ images: Buffer[]; pages: number } | null>
 /** Igual para las diapositivas: la vista simplificada del visor de la app. */
 export type CaptureDeck = CaptureDocx
 
+export interface PreviewRange {
+  firstPage: number
+  lastPage: number
+}
+
 export interface PreviewResult {
   images: Buffer[]
-  /** Páginas o diapositivas que se pudieron renderizar (puede haber más que `images` si se aplicó un tope). */
-  pages: number
+  /** Total del documento, solo si se conoce; nunca el número de imágenes como sustituto del total. */
+  pages: number | null
   truncated: boolean
+  status?: 'complete' | 'range' | 'limit' | 'error' | 'timeout'
+  firstPage?: number
+  nextPage?: number
   /** Las imágenes salen de la VISTA SIMPLIFICADA del visor de la app (no de ArtCraft): la herramienta se lo avisa a la IA. */
   viaViewer?: boolean
 }
@@ -75,23 +83,67 @@ export async function renderPreview(
     rasterize?: Rasterize
     captureDocx?: CaptureDocx
     captureDeck?: CaptureDeck
+    range?: PreviewRange
   } = {}
 ): Promise<PreviewResult | null> {
   const run = opts.run ?? runCraft
+  const firstPage = opts.range?.firstPage ?? 1
+  const lastPage = opts.range?.lastPage ?? firstPage + MAX_PREVIEW_PAGES - 1
+  if (
+    !Number.isSafeInteger(firstPage) ||
+    !Number.isSafeInteger(lastPage) ||
+    firstPage < 1 ||
+    lastPage >= Number.MAX_SAFE_INTEGER ||
+    lastPage < firstPage ||
+    lastPage - firstPage >= MAX_PREVIEW_PAGES
+  )
+    throw new Error('El intervalo debe contener entre 1 y 12 páginas, con números enteros positivos.')
+  if (opts.range && tipo !== 'docx') throw new Error('El intervalo de páginas solo está disponible para Word.')
   const perRun = opts.timeoutMs ?? 90_000
   const deadline = Date.now() + (opts.totalMs ?? PREVIEW_TOTAL_MS)
   const left = (): number => deadline - Date.now()
   /** Cada programa recibe como máximo lo que queda del tiempo total: ninguno sigue después de vencido. */
   const timeoutMs = (): number => Math.max(1, Math.min(perRun, left()))
+  const failed = (status: 'error' | 'timeout'): PreviewResult => ({
+    images: [],
+    pages: null,
+    truncated: true,
+    status,
+    firstPage,
+    nextPage: firstPage
+  })
   // Sin WordCraft/DeckCraft (no hay ArtCraft, o en WSL): el mismo visor que ve la persona, en una ventana oculta.
   const viaViewer = async (): Promise<PreviewResult | null> => {
     // Respeta el tiempo total: sin al menos 5 s no se abre otra ventana (el cerrojo se libera al vencer y no debe quedar nada trabajando).
-    if (left() < 5_000) return null
     const capture = tipo === 'pptx' ? opts.captureDeck : opts.captureDocx
-    const r = capture ? await capture(bytes, left()) : null
+    if (!capture) return null
+    if (left() < 5_000) return failed('timeout')
+    let r: Awaited<ReturnType<CaptureDocx>>
+    try {
+      r = await capture(bytes, left(), opts.range)
+    } catch (err) {
+      return failed(err instanceof Error && err.message === 'timeout' ? 'timeout' : 'error')
+    }
     if (!r || r.images.length === 0) return null
     const capped = capImages(r.images)
-    return { images: capped.images, pages: r.pages, truncated: capped.truncated || r.pages > capped.images.length, viaViewer: true }
+    const nextPage = firstPage + capped.images.length
+    const truncated = capped.truncated || firstPage > 1 || r.pages >= nextPage
+    return {
+      images: capped.images,
+      pages: r.pages,
+      truncated,
+      viaViewer: true,
+      firstPage,
+      status:
+        tipo === 'docx' && r.images.length < Math.min(lastPage, r.pages) - firstPage + 1
+          ? 'error'
+          : nextPage > r.pages
+            ? 'complete'
+            : opts.range
+              ? 'range'
+              : 'limit',
+      ...(nextPage <= r.pages ? { nextPage } : {})
+    }
   }
   if (tipo === 'pptx' && !tools.deckcraft) return viaViewer()
   if (tipo === 'pptx' && tools.deckcraft) {
@@ -130,24 +182,45 @@ export async function renderPreview(
       const src = join(dir, 'doc.docx')
       await writeFile(src, bytes)
       const all: Buffer[] = []
-      // WordCraft renderiza una página por llamada y falla al pasarse del final: se pide hasta que falle o se llegue al tope.
-      for (let page = 1; page <= MAX_PREVIEW_PAGES + 1; page++) {
+      let pages: number | null = null
+      let status: NonNullable<PreviewResult['status']> = opts.range ? 'range' : 'limit'
+      // Solo un error explícito de página inexistente confirma el final. Cualquier otro fallo conserva un total desconocido.
+      for (let page = firstPage; page <= lastPage + 1; page++) {
         const out = join(dir, `p${page}.png`)
-        if (left() <= 0) break
+        if (left() <= 0) {
+          status = 'timeout'
+          break
+        }
         try {
           await run(tools.wordcraft, ['render', src, out, '--page', String(page), '--scale', PREVIEW_SCALE], timeoutMs())
-          all.push(await readOutput(out))
-        } catch {
-          if (page === 1) {
+          const image = await readOutput(out)
+          if (page <= lastPage) all.push(image)
+        } catch (err) {
+          const message = err instanceof Error ? err.message.trim() : ''
+          const missing = message.match(/^(?:bad parameters:\s*)?no page (\d+)\.?$/i)
+          if (missing && Number(missing[1]) === page && all.length > 0) {
+            pages = page - 1
+            status = 'complete'
+            break
+          }
+          status = err instanceof CraftTimeoutError || left() <= 0 ? 'timeout' : 'error'
+          if (page === 1 && status === 'error') {
             const alt = await viaViewer().catch(() => null)
             if (alt) return alt
-            throw new Error('No se pudo renderizar la primera página.')
           }
           break
         }
       }
       const capped = capImages(all)
-      return { images: capped.images, pages: all.length, truncated: capped.truncated || all.length > MAX_PREVIEW_PAGES }
+      const nextPage = firstPage + capped.images.length
+      return {
+        images: capped.images,
+        pages,
+        status,
+        firstPage,
+        truncated: capped.truncated || firstPage > 1 || status !== 'complete',
+        ...(pages === null || nextPage <= pages ? { nextPage } : {})
+      }
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

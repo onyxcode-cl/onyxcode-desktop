@@ -12,7 +12,7 @@ import { t } from '@shared/i18n'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
-import { downloadHtmlAsPdf, openArtifact, presentSlides } from '../extras/artifact-window'
+import { openArtifact, presentSlides } from '../extras/artifact-window'
 import { exportConversation } from '../extras/export-conversation'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
@@ -23,6 +23,7 @@ import {
   cleanChatDocuments,
   downloadChatDoc,
   generateChatDoc,
+  prepareChatDocPreview,
   writeChatDocForExternal,
   type ChatDocInput
 } from '../extras/chat-docs'
@@ -146,7 +147,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   handle(ipcMain, 'extras:downloadHtmlAsPdf', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     const title = String(payload.title ?? '')
-    return recordSaved(await downloadHtmlAsPdf({ title, html: payload.html }, windowOfSender(event.sender)), title)
+    return recordSaved(await downloadChatDoc({ kind: 'pdf', html: payload.html }, title, windowOfSender(event.sender)), title)
   })
   handle(ipcMain, 'extras:downloadSlidesAsPptx', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
@@ -178,8 +179,9 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
         .then((s) => s.size)
         .catch(() => undefined)
       if (await openInCraftWeb(input.kind, doc.file, title)) return { ok: true, bytes }
+      const preview = await prepareChatDocPreview(doc)
       installViewerScheme()
-      openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${doc.token}&kind=${doc.kind}&lang=${lang}&theme=${theme}`)
+      openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${preview.token}&kind=${preview.kind}&lang=${lang}&theme=${theme}`)
       useClassicViewer()
       return { ok: true, bytes }
     } catch (e) {

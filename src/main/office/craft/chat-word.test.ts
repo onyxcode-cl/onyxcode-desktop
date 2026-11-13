@@ -252,11 +252,21 @@ describe('portada', () => {
     expect(c).toContain('text.pageBreak')
     expect(c.indexOf('text.pageBreak')).toBeGreaterThan(c.indexOf('para.borders'))
   })
-  it('sin cover, o con cover en un informe corto: título integrado y sin salto', () => {
+  it('sin cover en un informe corto: título integrado y sin salto', () => {
     const c = names(spec({}))
     expect(c).not.toContain('text.pageBreak')
     expect(c).not.toContain('layout.differentFirstPage')
-    expect(names(spec({ cover: true }))).not.toContain('text.pageBreak')
+    expect(names(spec({ cover: false }))).not.toContain('text.pageBreak')
+  })
+  it('cover explícito en un informe corto conserva la portada y su salto', () => {
+    const c = names(spec({ cover: true }))
+    expect(c).toContain('layout.differentFirstPage')
+    expect(c).toContain('text.pageBreak')
+    expect(c.indexOf('text.pageBreak')).toBeGreaterThan(c.indexOf('para.borders'))
+  })
+  it('solo decide por extensión si no se especificó cover', () => {
+    expect(names(longReport())).toContain('text.pageBreak')
+    expect(names({ ...longReport(), cover: false })).not.toContain('text.pageBreak')
   })
   it('cover exige título y ser booleano', () => {
     expect(isDocxSpec(spec({ cover: true }))).toBe(true)

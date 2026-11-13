@@ -31,7 +31,7 @@ import { SafeTempFile } from '../tasks/safe-write'
 import { imagePathsOf } from '@shared/chat-doc-spec'
 import { prepareImages, type ImageMap, type PreparedImages } from './image-files'
 import { readTaskFile, type TaskFile } from './input-path'
-import type { PreviewResult } from './preview'
+import { MAX_PREVIEW_PAGES, type PreviewRange, type PreviewResult } from './preview'
 
 export const MAX_SPEC_BYTES = 1_000_000
 export const MAX_HTML_BYTES = 5 * 1024 * 1024
@@ -49,6 +49,23 @@ export const CODE_MSG_NOT_OPEN = 'Esa carpeta no es un proyecto abierto en Code;
 /** Aviso cuando las imágenes salen del visor de la app y no de ArtCraft. */
 const SIMPLIFIED_NOTE =
   ' VISTA NO VERIFICADA: estas imágenes son la VISTA SIMPLIFICADA del visor de la app, no un render fiel de PowerPoint/Word: una caja gris rayada, un gráfico dibujado como barras sencillas o una tipografía de respaldo NO son errores del archivo; fíjate en textos cortados, orden, contenido que falta y cosas fuera de su sitio. NO concluyas nada sobre píxeles (colores, tamaños, márgenes exactos) y escribe en «Para revisar» que el aspecto visual NO está verificado.'
+
+function previewSummary(res: PreviewResult, tipo: Tipo): string {
+  const unit = tipo === 'pptx' ? 'diapositiva(s)' : tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
+  const total = res.pages === null ? 'total de páginas desconocido' : `${res.pages} ${unit}`
+  let note =
+    res.firstPage !== undefined && res.images.length
+      ? ` Se muestran las páginas ${res.firstPage}–${res.firstPage + res.images.length - 1}.`
+      : res.truncated
+        ? ` Se muestran las primeras ${res.images.length}.`
+        : ''
+  if (res.status === 'error') note += ' VISTA PREVIA PARCIAL: falló el renderizado; no se ha verificado todo el documento.'
+  else if (res.status === 'timeout') note += ' VISTA PREVIA PARCIAL: se agotó el tiempo; no se ha verificado todo el documento.'
+  else if (res.truncated) note += ' VISTA PREVIA PARCIAL: quedan páginas fuera de esta vista.'
+  if (tipo === 'docx' && res.nextPage !== undefined)
+    note += ` Continúa con renderizar desde_pagina=${res.nextPage} hasta_pagina=${res.nextPage + MAX_PREVIEW_PAGES - 1}.`
+  return `Vista previa: ${total}.${note}${res.viaViewer ? SIMPLIFIED_NOTE : ''}`
+}
 
 function log(...a: unknown[]): void {
   console.log('[documentos-mcp]', ...a.map(String))
@@ -112,7 +129,7 @@ export interface DocumentsDeps {
   /** El motor del Chat (`engine.renderBytes`); se inyecta para poder probar sin Electron. */
   render: (input: ChatDocInput, title: string, opts: { remoteImages: false; images?: ImageMap }) => Promise<Buffer>
   /** Vista previa en imágenes (PowerPoint y Word). `null` = ese tipo no se puede renderizar. Ausente = la herramienta `renderizar` no existe. */
-  preview?: (tipo: Tipo, bytes: Buffer) => Promise<PreviewResult | null>
+  preview?: (tipo: Tipo, bytes: Buffer, range?: PreviewRange) => Promise<PreviewResult | null>
   now?: () => number
   /** Registro de auditoría (por defecto, consola). Nunca recibe contenido del documento. */
   audit?: (entry: AuditEntry) => void
@@ -263,6 +280,16 @@ export const PREVIEW_TOOL = {
     type: 'object',
     properties: {
       ruta: { type: 'string', description: 'Ruta devuelta por `crear`, o ruta relativa a la carpeta de la tarea.' },
+      desde_pagina: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Solo Word: primera página del intervalo (inclusive, base 1). Requiere hasta_pagina.'
+      },
+      hasta_pagina: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Solo Word: última página del intervalo (inclusive, máximo 12 por pedido). Requiere desde_pagina.'
+      },
       carpeta: { type: 'string', description: CARPETA_DESC }
     },
     required: ['ruta'],
@@ -518,6 +545,23 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     const now = this.deps.now ?? Date.now
     const t0 = now()
     const quota = this.quotaOf(binding)
+    let range: PreviewRange | undefined
+    if (args.desde_pagina !== undefined || args.hasta_pagina !== undefined) {
+      const first = args.desde_pagina
+      const last = args.hasta_pagina
+      if (
+        typeof first !== 'number' ||
+        typeof last !== 'number' ||
+        !Number.isSafeInteger(first) ||
+        !Number.isSafeInteger(last) ||
+        first < 1 ||
+        last >= Number.MAX_SAFE_INTEGER ||
+        last < first ||
+        last - first >= MAX_PREVIEW_PAGES
+      )
+        return this.text('Pasa desde_pagina y hasta_pagina como enteros positivos, en orden y con un máximo de 12 páginas.', true)
+      range = { firstPage: first, lastPage: last }
+    }
     const ruta = typeof args.ruta === 'string' ? args.ruta : ''
     const entry = quota.created.get(ruta)
     quota.previews = quota.previews.filter((x) => t0 - x < 3_600_000)
@@ -573,11 +617,15 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         bytes = file.bytes
         tipo = file.tipo
       }
-      const res = await withTimeout(this.deps.preview!(tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
+      if (range && tipo !== 'docx') return this.text('El intervalo de páginas solo está disponible para Word.', true)
+      const res = await withTimeout(
+        range ? this.deps.preview!(tipo, bytes, range) : this.deps.preview!(tipo, bytes),
+        this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS
+      )
       if (!res || res.images.length === 0) {
         this.audit({ at: t0, tool: 'renderizar', tipo: tipo, result: 'error', detail: 'sin-render', ms: now() - t0 })
         return this.text(
-          'No hay vista previa disponible (falta el diseñador de documentos o no pudo renderizar). Revisa el contenido con la skill y dilo en «Para revisar».',
+          `${res?.status === 'timeout' ? 'La vista previa agotó el tiempo.' : res?.status === 'error' ? 'Falló la vista previa.' : 'No hay vista previa disponible (falta el diseñador de documentos o no pudo renderizar).'} Revisa el contenido con la skill y dilo en «Para revisar».`,
           true
         )
       }
@@ -585,7 +633,8 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         at: t0,
         tool: 'renderizar',
         tipo: tipo,
-        result: 'ok',
+        result: res.status === 'error' || res.status === 'timeout' ? 'error' : 'ok',
+        ...(res.status === 'error' || res.status === 'timeout' ? { detail: res.status === 'timeout' ? 'tiempo' : 'motor' } : {}),
         bytes: res.images.reduce((n, b) => n + b.length, 0),
         ms: now() - t0
       })
@@ -609,13 +658,11 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
           reviewText = ''
         }
       }
-      const unit = tipo === 'pptx' ? 'diapositiva(s)' : tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
-      const note = (res.truncated ? ` Se muestran las primeras ${res.images.length}.` : '') + (res.viaViewer ? SIMPLIFIED_NOTE : '')
       return {
         content: [
           {
             type: 'text' as const,
-            text: `Vista previa: ${res.pages} ${unit}.${note} Las imágenes son del documento (una por página): mira TODAS, no solo las últimas, y revisa que nada se corte ni se superponga; corrige todo de una vez. Si no pudiste ver alguna, dilo en «Para revisar».${reviewText}`
+            text: `${previewSummary(res, tipo)} Las imágenes son del documento (una por página): mira TODAS, no solo las últimas, y revisa que nada se corte ni se superponga; corrige todo de una vez. Si no pudiste ver alguna, dilo en «Para revisar».${reviewText}`
           },
           ...res.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))
         ]
@@ -782,12 +829,9 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         try {
           const preview = await withTimeout(this.deps.preview(built.tipo, bytes), this.deps.renderTimeoutMs ?? RENDER_TIMEOUT_MS)
           if (preview?.images.length) {
-            const unit = built.tipo === 'pptx' ? 'diapositiva(s)' : built.tipo === 'xlsx' ? 'página(s) del libro impreso' : 'página(s)'
-            const note =
-              (preview.truncated ? ` Se muestran las primeras ${preview.images.length}.` : '') + (preview.viaViewer ? SIMPLIFIED_NOTE : '')
             result.content.push({
               type: 'text',
-              text: `Vista previa: ${preview.pages} ${unit}.${note} Mira TODAS las imágenes y corrige todo de una vez con el mismo nombre, tipo y subcarpeta. Si no pudiste ver alguna, dilo en «Para revisar».`
+              text: `${previewSummary(preview, built.tipo)} Mira TODAS las imágenes y corrige todo de una vez con el mismo nombre, tipo y subcarpeta. Si no pudiste ver alguna, dilo en «Para revisar».`
             })
             result.content.push(
               ...preview.images.map((img) => ({ type: 'image' as const, data: img.toString('base64'), mimeType: 'image/png' }))

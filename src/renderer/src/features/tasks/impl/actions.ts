@@ -1,4 +1,5 @@
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
+import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import type { PasteRejected } from '@shared/paste-files'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { getLang, t } from '@shared/i18n'
@@ -954,8 +955,20 @@ export async function abortTask(): Promise<void> {
   await Promise.allSettled(kids.map((sessionID) => client.session.abort({ sessionID, directory: sdkDir(folder) })))
 }
 
-export async function replyPermission(requestID: string, reply: 'once' | 'always' | 'reject', message?: string): Promise<void> {
+export async function replyPermission(
+  requestID: string,
+  reply: 'once' | 'always' | 'reject',
+  message?: string,
+  quiet = false
+): Promise<void> {
   const { client, folder } = ctx()
+  const request = useTasks.getState().permissions[requestID]
+  const root = request
+    ? useSessions.getState().sessions[request.sessionID]
+      ? rootTaskId(request.sessionID)
+      : (useTasks.getState().activeTaskId ?? request.sessionID)
+    : undefined
+  const detail = request ? showPath(rejectedPermissionDetail(request)) : ''
   const res = await client.permission.reply({ requestID, directory: sdkDir(folder), reply, ...(message ? { message } : {}) })
   if (res.error) throw new Error(errorMessage(res.error))
   useTasks.setState((s) => {
@@ -963,6 +976,9 @@ export async function replyPermission(requestID: string, reply: 'once' | 'always
     delete permissions[requestID]
     return { permissions }
   })
+  if (reply === 'reject' && !quiet && request && root) {
+    useRejectionNotices.getState().add({ mode: 'tasks', directory: folder, sessionID: root, requestID, kind: 'permission', detail })
+  }
 }
 
 /** Responde una pregunta estructurada (una respuesta -array de labels seleccionados o texto libre- por pregunta). */
@@ -979,6 +995,12 @@ export async function replyQuestion(requestID: string, answers: string[][]): Pro
 
 export async function rejectQuestion(requestID: string): Promise<void> {
   const { client, folder } = ctx()
+  const request = useTasks.getState().questions[requestID]
+  const root = request
+    ? useSessions.getState().sessions[request.sessionID]
+      ? rootTaskId(request.sessionID)
+      : (useTasks.getState().activeTaskId ?? request.sessionID)
+    : undefined
   const res = await client.question.reject({ requestID, directory: sdkDir(folder) })
   if (res.error) throw new Error(errorMessage(res.error))
   useTasks.setState((s) => {
@@ -986,6 +1008,17 @@ export async function rejectQuestion(requestID: string): Promise<void> {
     delete questions[requestID]
     return { questions }
   })
+  if (request && root)
+    useRejectionNotices
+      .getState()
+      .add({
+        mode: 'tasks',
+        directory: folder,
+        sessionID: root,
+        requestID,
+        kind: 'question',
+        detail: request.questions.map((question) => question.question).join('\n')
+      })
 }
 
 export async function archiveTask(sessionID: string): Promise<void> {
@@ -1217,7 +1250,7 @@ export async function answerFolderRequest(req: PermissionRequest, d: FolderReque
     if (!(await confirmInterruptRunning(taskId))) return
     const chk = await cw('tasks:folders:check', { path: d.path })
     if (!chk.ok) throw new Error(chk.reason ?? t('tasks.act.cannotAddFolder'))
-    await replyPermission(req.id, 'reject', 'Se está concediendo acceso; la tarea se reanudará sola.') // i18n-ignore: prompt al agente (se queda en español)
+    await replyPermission(req.id, 'reject', 'Se está concediendo acceso; la tarea se reanudará sola.', true) // i18n-ignore: prompt al agente (se queda en español)
     const res = await cw('tasks:folders:link', { folder, path: chk.normalized, mode: d.mode, trust: d.trust, restart: true })
     setFolderSetFrom(folder, res)
     if (res.restarted) {

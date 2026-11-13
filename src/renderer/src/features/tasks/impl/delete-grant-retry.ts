@@ -20,7 +20,7 @@ export async function enableDeleteAndRetry(request: PermissionRequest | ToolPart
     if (now.folder !== folder || now.conn !== conn || (failedTool ? now.activeTaskId !== taskId : !now.permissions[request.id]))
       throw new Error(t('tasksComputer.delete.changed'))
     // Cierra la pregunta antigua sin conceder «once» ni «always». El servidor nuevo tendrá otro perfil.
-    if (!failedTool) await replyPermission(request.id, 'reject', t('tasksComputer.delete.enableRetry'))
+    if (!failedTool) await replyPermission(request.id, 'reject', t('tasksComputer.delete.enableRetry'), true)
     for (const sessionID of new Set([request.sessionID, taskId])) {
       const res = await client.session.abort({ sessionID, directory: sdkDir(folder) })
       if (res.error) throw new Error(t('tasksComputer.delete.changed'))

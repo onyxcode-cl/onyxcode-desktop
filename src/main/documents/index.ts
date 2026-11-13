@@ -18,7 +18,7 @@ try {
 
 export const documentsMcp = new DocumentsMcpServer({
   render: (input, title, opts) => renderBytes(input, title, opts),
-  preview: async (tipo, bytes) => {
+  preview: async (tipo, bytes, range) => {
     // PDF no usa ArtCraft; el resto sí: se instala bajo demanda si falta, para no mirar la vista simplificada sin necesidad.
     if (tipo !== 'pdf') await ensureCraft()
     return renderPreview(
@@ -26,8 +26,10 @@ export const documentsMcp = new DocumentsMcpServer({
       bytes,
       { deckcraft: craftBinary('deckcraft'), wordcraft: craftBinary('wordcraft'), gridcraft: craftBinary('gridcraft') },
       {
+        range,
         rasterize: (pdf) => rasterizePdf(pdf),
-        captureDocx: (bytes, timeoutMs) => captureDocxPages(bytes, undefined, timeoutMs),
+        captureDocx: (bytes, timeoutMs, range) =>
+          captureDocxPages(bytes, range ? range.lastPage - range.firstPage + 1 : undefined, timeoutMs, range?.firstPage),
         captureDeck: (bytes, timeoutMs) => captureDeckSlides(bytes, undefined, timeoutMs)
       }
     )

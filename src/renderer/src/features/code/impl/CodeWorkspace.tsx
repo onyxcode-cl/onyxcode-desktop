@@ -1,3 +1,4 @@
+import { RejectionNotices } from '../../../components/conversation/RejectionNotices'
 /**
  * Modo Code: agente de programación sobre una carpeta (sesiones OpenCode con `directory` = proyecto).
  *
@@ -949,6 +950,11 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           }}
         />
       </div>
+      {sid && (
+        <div className={`mx-auto max-h-60 w-full max-w-3xl overflow-y-auto desk:max-w-[var(--measure-prose)] ${gutter()}`}>
+          <RejectionNotices mode="code" directory={directory} sessionID={sid} />
+        </div>
+      )}
       {sid && <StalePlanNotice sessionID={sid} />}
       <Composer busy={busy} disabled={!client || aiGate.gate.blocked} />
     </div>
