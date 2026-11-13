@@ -9,6 +9,8 @@ import { renderPreview } from './preview'
 import { DocumentsMcpServer } from './mcp-server'
 import { FreeImageRegistry } from './free-image-registry'
 import { exportDocumentPdf } from './export-pdf'
+import { hasPreparedPhotoReferences } from './html-photos'
+import { ChatPhotosMcpServer } from './chat-photos'
 
 export { DOCUMENTS_ROUTE_NAME, RESERVED_MCP_NAMES } from './names'
 // Temporales de la vista previa fuera del alcance del agente aislado (en `$TMPDIR` el sandbox sí escribe).
@@ -42,3 +44,9 @@ export const documentsMcp = new DocumentsMcpServer({
     )
   }
 })
+
+export const chatPhotosMcp = new ChatPhotosMcpServer(documentsMcp, join(app.getPath('userData'), 'chat-fotos'))
+export async function resolveChatHtmlPhotos(html: string, sessionId: string): Promise<string> {
+  if (!hasPreparedPhotoReferences(html)) return documentsMcp.resolveHtmlPhotos(html)
+  return documentsMcp.resolveHtmlPhotos(html, { root: await chatPhotosMcp.rootFor(sessionId) })
+}

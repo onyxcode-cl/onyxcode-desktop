@@ -36,6 +36,7 @@ import { prepareImages, type ImageMap, type PreparedImages } from './image-files
 import { readTaskFile, relativeInputPath, type TaskFile } from './input-path'
 import { FreeImageError, FreeImagesService, type FreeImageSearch, type FreeImageEvaluation } from './free-images'
 import type { FreeImageRegistry } from './free-image-registry'
+import { resolvePreparedHtml, type HtmlPhotoScope } from './html-photos'
 import { htmlHasFreeImagePreview } from './free-image-preview'
 import { htmlImageSources, mapHtmlImageSources } from './html-images'
 import { protectFreeImagePreview } from './free-images-visual'
@@ -587,6 +588,19 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       ...(this.deps.preview ? [PREVIEW_TOOL] : []),
       ...IMAGE_TOOLS
     ]
+  }
+
+  photoTools(): readonly unknown[] {
+    return IMAGE_TOOLS
+  }
+
+  callPhotoTool(binding: DocumentsBinding, name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpToolResult> {
+    if (!IMAGE_TOOLS.some((tool) => tool.name === name)) throw new Error('Herramienta de fotos no admitida.')
+    return this.callImages(binding, name, args, signal)
+  }
+
+  resolveHtmlPhotos(html: string, scope?: HtmlPhotoScope): Promise<string> {
+    return resolvePreparedHtml(html, scope, this.deps.photoRegistry)
   }
 
   protected configTimeoutMs(): number {

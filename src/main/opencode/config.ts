@@ -15,7 +15,7 @@
 import { modelFallbackInline } from '@shared/model-fallback'
 import { CHAT_AGENT } from '@shared/types'
 import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
-import { DOCUMENTS_SERVER } from '@shared/documents-permissions'
+import { DOCUMENTS_SERVER, CHAT_PHOTOS_SERVER, chatPhotoPermissions } from '@shared/documents-permissions'
 
 /**
  * Patrón de `read` que no corresponde a ningún archivo real (ver `permission.read` del agente `chat`). Debe
@@ -46,6 +46,8 @@ export interface InlineConfigOptions {
    * El agente `chat` conserva `'*': deny`, así que no la puede usar.
    */
   documentsMcp?: Record<string, unknown> | null
+  /** MCP propio con solo tres herramientas de fotos, atado a la conversación activa por main. */
+  chatPhotosMcp?: Record<string, unknown> | null
   /**
    * Archivos de instrucciones extra (clave `instructions` del motor, rutas absolutas) que el motor añade al prompt de todos los agentes del
    * proceso. Vacío o ausente = no se escribe la clave. Los textos deben ser condicionales («solo si tienes la herramienta…»): también los
@@ -93,12 +95,13 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
-    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp
+    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp || opts.chatPhotosMcp
       ? {
           mcp: {
             ...(opts.browserMcp ? { browser: opts.browserMcp } : {}),
             ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {}),
-            ...(opts.documentsMcp ? { [DOCUMENTS_SERVER]: opts.documentsMcp } : {})
+            ...(opts.documentsMcp ? { [DOCUMENTS_SERVER]: opts.documentsMcp } : {}),
+            ...(opts.chatPhotosMcp ? { [CHAT_PHOTOS_SERVER]: opts.chatPhotosMcp } : {})
           }
         }
       : {}),
@@ -311,14 +314,14 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'un documento HTML completo (con su propio <style>, sin imágenes/fuentes de internet — no hay red, igual ' +
           'que con ```html): un <section class="slide"> por diapositiva, con esta base de CSS para que cada ' +
           '<section> salga como una página aparte, panorámica, sin márgenes — ' +
-          '@page { size: 960px 540px landscape; margin: 0; } .slide { width: 960px; height: 540px; ' +
+          '@page { size: 960px 540px; margin: 0; } html, body { margin: 0; } .slide { width: 960px; height: 540px; box-sizing: border-box; margin: 0; ' +
           'page-break-after: always; overflow: hidden; position: relative; } .slide:last-child { ' +
           'page-break-after: auto; } — y a partir de ahí, diseño libre dentro de cada <section> (tu propio padding, ' +
           'tipografía, color, posicionamiento). Mismas reglas que para que una presentación no se vea "hecha por IA": ' +
           'varía el layout entre diapositivas (no repitas el mismo molde de título+lista siempre), un color de acento ' +
           'intencional (no el típico celeste genérico salvo que el tema lo pida), un elemento visual real por ' +
           'diapositiva de contenido (no solo texto corrido), texto del cuerpo alineado a la izquierda (nunca centrado ' +
-          'en bloques largos), y los títulos sin punto final. ' +
+          'en bloques largos), y los títulos sin punto final. Decide primero la idea y qué debe mirar el público: el animal, el producto o la gente. En temas visuales (infantil, producto, turismo, música, comida, eventos), busca una foto libre pertinente aunque no la pidan. Usa imagenes_buscar → imagenes_ver → imagenes_usar y coloca el identificador corto en src="imagen:ID" o url("imagen:ID"); reserva 44 px inferiores para el crédito automático dentro de su lámina. Nunca URLs de internet ni vistas previas MUESTRA NO USAR. Nada de vacíos ni adornos sin función. Para «lo más lindo» sin edición, HTML con fotos y exportación PowerPoint 4K fija (3840×2160 por lámina). ' +
           'Si te piden CAMBIAR un documento que ya hiciste en la conversación (más corto, otro color, agregar una fila, ' +
           'otra diapositiva…), sea HTML, slides, Excel o PowerPoint, NUNCA describas el cambio en prosa ni mandes solo la parte ' +
           'que cambió: vuelve a escribir el documento COMPLETO, de nuevo como UN bloque entero del mismo tipo — la vista ' +
@@ -333,6 +336,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'Si piden editar un Word, Excel o PowerPoint adjunto, no lo reconstruyas ni lo sustituyas por uno nuevo: indica que la edición del original se hace en Overdrive.',
         permission: {
           '*': 'deny',
+          ...chatPhotoPermissions(opts.chatPhotosMcp ? 'allow' : 'deny'),
           webfetch: 'allow',
           websearch: 'allow',
           question: 'allow', // preguntas con opciones (tarjeta de botones); el resto sigue denegado

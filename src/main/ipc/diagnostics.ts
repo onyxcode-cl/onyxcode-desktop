@@ -1,4 +1,4 @@
-import { documentsMcp } from '../documents'
+import { chatPhotosMcp, documentsMcp } from '../documents'
 import { hostExecMcp } from '../host-exec'
 import { app, BrowserWindow, clipboard, dialog, type IpcMain } from 'electron'
 import { t } from '@shared/i18n'
@@ -56,6 +56,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     extraSecrets: () => [
       ...embeddedBrowserMcp.knownTokens(),
       ...documentsMcp.knownTokens(),
+      ...chatPhotosMcp.knownTokens(),
       ...hostExecMcp.knownTokens(),
       ...knownMcpProxyTokens()
     ],
@@ -95,7 +96,11 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
     try {
       return { saved: ratings.set(input) }
     } catch (e) {
-      recordProblem({ source: 'main', level: 'warn', message: t('merr.rating.saveFailed', { detail: e instanceof Error ? e.message : String(e) }) })
+      recordProblem({
+        source: 'main',
+        level: 'warn',
+        message: t('merr.rating.saveFailed', { detail: e instanceof Error ? e.message : String(e) })
+      })
       return { saved: false }
     }
   })

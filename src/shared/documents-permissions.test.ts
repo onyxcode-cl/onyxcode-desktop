@@ -59,6 +59,10 @@ describe('documents-permissions', () => {
 
   it('el suelo de la config pregunta al crear y deja mirar', () => {
     expect(documentsConfigPermission()).toEqual({
+      'chat_fotos_*': 'deny',
+      chat_fotos_imagenes_buscar: 'deny',
+      chat_fotos_imagenes_ver: 'deny',
+      chat_fotos_imagenes_usar: 'deny',
       documentos_crear: 'ask',
       documentos_renderizar: 'allow',
       documentos_imagenes_buscar: 'ask',

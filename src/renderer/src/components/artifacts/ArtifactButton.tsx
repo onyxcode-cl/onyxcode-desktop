@@ -1,3 +1,6 @@
+import { useT } from '../../lib/i18n'
+import type { ArtifactContext } from '@shared/ipc-extras'
+import { hasHtmlSlides } from '@shared/slides-html'
 /**
  * Artifacts: detectar bloques ```html en respuestas del modelo y abrirlos en una ventana aislada.
  *
@@ -10,7 +13,7 @@
 import { useState } from 'react'
 import { AppWindow, Download, Loader2, MonitorPlay, Presentation } from 'lucide-react'
 import { getExtras } from '../../lib/extrasApi'
-import { previewInChatDocPanel } from '../../lib/chatDocPreview'
+import { currentArtifactContext, previewInChatDocPanel } from '../../lib/chatDocPreview'
 import { UI_LABELS } from '@shared/labels'
 
 export interface HtmlArtifact {
@@ -37,7 +40,7 @@ export function extractHtmlArtifacts(markdown: string): HtmlArtifact[] {
   while ((m = FENCE.exec(markdown))) {
     const html = m[4]
     if (!html.trim()) continue
-    const isSlides = m[3].toLowerCase() === 'slides'
+    const isSlides = m[3].toLowerCase() === 'slides' || hasHtmlSlides(html)
     const fallback = isSlides ? 'Presentación' : 'Vista previa'
     out.push({ index: m.index, html, title: guessTitle(html, out.length + 1, fallback), isSlides })
   }
@@ -66,6 +69,7 @@ export function looksRenderable(html: string): boolean {
 
 interface Props {
   html: string
+  context?: ArtifactContext
   title?: string
   className?: string
   /** Variante compacta (sólo icono) para cabeceras de bloque de código. */
@@ -74,7 +78,7 @@ interface Props {
   isSlides?: boolean
 }
 
-export function ArtifactButton({ html, title, className = '', compact, isSlides }: Props): React.JSX.Element | null {
+export function ArtifactButton({ html, title, className = '', compact, isSlides, context }: Props): React.JSX.Element | null {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const extras = getExtras()
@@ -87,8 +91,8 @@ export function ArtifactButton({ html, title, className = '', compact, isSlides 
       const resolvedTitle = title ?? guessTitle(html)
       // En Chat hay un panel registrado: mostrarlo ahí (como Claude), no en una ventana aparte.
       // Fuera de Chat (Tareas, Code…) no hay nadie registrado y se mantiene la ventana aislada de siempre.
-      if (previewInChatDocPanel('html', html, resolvedTitle, isSlides)) return
-      await extras.openArtifact({ title: resolvedTitle, html })
+      if (previewInChatDocPanel('html', html, resolvedTitle, isSlides || hasHtmlSlides(html), context)) return
+      await extras.openArtifact({ title: resolvedTitle, html, context: context ?? currentArtifactContext() })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -116,7 +120,7 @@ export function ArtifactButton({ html, title, className = '', compact, isSlides 
  * aislada sin red (`renderHtmlToPdf`) y un diálogo nativo "Guardar como" — el destino lo elige
  * SIEMPRE la persona, nunca el agente. Mismo guardado que `ArtifactButton` si `extras` no existe.
  */
-export function DownloadPdfButton({ html, title, className = '', compact }: Props): React.JSX.Element | null {
+export function DownloadPdfButton({ html, title, className = '', compact, context }: Props): React.JSX.Element | null {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const extras = getExtras()
@@ -126,7 +130,7 @@ export function DownloadPdfButton({ html, title, className = '', compact }: Prop
     setBusy(true)
     setError(null)
     try {
-      await extras.downloadHtmlAsPdf({ title: title ?? guessTitle(html), html })
+      await extras.downloadHtmlAsPdf({ title: title ?? guessTitle(html), html, context: context ?? currentArtifactContext() })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -155,7 +159,7 @@ export function DownloadPdfButton({ html, title, className = '', compact }: Prop
  * perfecto en PowerPoint/Keynote, pero el texto NO queda editable ahí (es una foto, a propósito — ver
  * CHANGELOG F8-B135). Alternativa a `DownloadPdfButton`, nunca lo reemplaza: ambos quedan disponibles.
  */
-export function DownloadSlidesPptxButton({ html, title, className = '', compact }: Props): React.JSX.Element | null {
+export function DownloadSlidesPptxButton({ html, title, className = '', compact, context }: Props): React.JSX.Element | null {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const extras = getExtras()
@@ -165,7 +169,11 @@ export function DownloadSlidesPptxButton({ html, title, className = '', compact 
     setBusy(true)
     setError(null)
     try {
-      await extras.downloadSlidesAsPptx({ title: title ?? guessTitle(html, 1, 'Presentación'), html })
+      await extras.downloadSlidesAsPptx({
+        title: title ?? guessTitle(html, 1, 'Presentación'),
+        html,
+        context: context ?? currentArtifactContext()
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -197,7 +205,7 @@ export function DownloadSlidesPptxButton({ html, title, className = '', compact 
  * los controles del visor seguían ahí adentro, nunca se iba a ver como una presentación de verdad.
  * Sale con Escape o con los controles de pantalla completa del propio sistema.
  */
-export function PresentSlidesButton({ html, title, className = '', compact }: Props): React.JSX.Element | null {
+export function PresentSlidesButton({ html, title, className = '', compact, context }: Props): React.JSX.Element | null {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const extras = getExtras()
@@ -207,7 +215,11 @@ export function PresentSlidesButton({ html, title, className = '', compact }: Pr
     setBusy(true)
     setError(null)
     try {
-      await extras.presentSlides({ title: title ?? guessTitle(html, 1, 'Presentación'), html })
+      await extras.presentSlides({
+        title: title ?? guessTitle(html, 1, 'Presentación'),
+        html,
+        context: context ?? currentArtifactContext()
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -226,6 +238,39 @@ export function PresentSlidesButton({ html, title, className = '', compact }: Pr
     >
       {busy ? <Loader2 size={13} className="animate-spin" /> : <Presentation size={13} />}
       {!compact && (error ? 'Error al presentar' : UI_LABELS.presentSlides)}
+    </button>
+  )
+}
+
+/** Guarda la misma fuente autónoma y acreditada que usan las vistas y las exportaciones. */
+export function DownloadHtmlButton({ html, title, className = '', compact, context }: Props): React.JSX.Element | null {
+  const t = useT()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const extras = getExtras()
+  if (!extras) return null
+  const save = async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    try {
+      await extras.downloadHtml({ html, title: title ?? guessTitle(html), context: context ?? currentArtifactContext() })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => void save()}
+      disabled={busy}
+      title={error ?? t('chat.doc.saveHtml')}
+      aria-label={t('chat.doc.saveHtml')}
+      className={`no-drag inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${error ? 'border-danger/40 text-danger' : 'border-border bg-elevated text-muted hover:bg-hover hover:text-fg'} ${className}`}
+    >
+      {busy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+      {!compact && t(error ? 'chat.doc.card.downloadFailed' : 'chat.doc.saveHtml')}
     </button>
   )
 }

@@ -1,3 +1,4 @@
+import { MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Esquema del payload de CADA canal IPC invoke (renderer → main) y qué ventanas pueden usarlo.
  *
@@ -951,7 +952,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:importFiles': folderReq,
   'tasks:pasteFromClipboard': folderReq,
   'tasks:reviewFile': pathReq,
-  'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: 20 * 1024 * 1024 })) }),
+  'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: MAX_ARTIFACT_HTML_BYTES })) }),
   'tasks:project:get': folderReq,
   'tasks:project:save': obj({
     folder: absPath,
@@ -1217,6 +1218,11 @@ const exportConversationReq = obj({
   options: obj({ reasoning: bool, tools: bool, attachments: bool }),
   lang: literal('es', 'en')
 })
+const artifactContext = tagged('kind', {
+  chat: obj({ kind: literal('chat'), sessionId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }) }),
+  file: obj({ kind: literal('file'), path: absPath, root: optional(absPath) })
+})
+const artifactPayload = obj({ title: str({ max: 500 }), html: str({ max: MAX_ARTIFACT_HTML_BYTES }), context: optional(artifactContext) })
 type ExtrasReq<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
 const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> } = {
   'extras:getPrefs': none,
@@ -1230,16 +1236,18 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     keybindings: record(nullable(str({ max: 60 })), 100)
   }),
   'extras:versions': none,
-  'extras:openArtifact': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
-  'extras:downloadHtmlAsPdf': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
-  'extras:downloadSlidesAsPptx': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
-  'extras:presentSlides': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+  'extras:openArtifact': artifactPayload,
+  'extras:downloadHtml': artifactPayload,
+  'extras:downloadHtmlAsPdf': artifactPayload,
+  'extras:downloadSlidesAsPptx': artifactPayload,
+  'extras:presentSlides': artifactPayload,
   'extras:transcribeAudio': obj({ samples: audioSamples }),
   'extras:chatDoc:open': tagged('kind', {
     pdf: obj({
       kind: literal('pdf'),
       title: str({ max: 500 }),
-      html: str({ max: 5 * 1024 * 1024 }),
+      html: str({ max: MAX_ARTIFACT_HTML_BYTES }),
+      context: optional(artifactContext),
       sessionId: str({ max: 200 }),
       lang: literal('es', 'en'),
       theme: literal('light', 'dark')
@@ -1272,7 +1280,12 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:chatDoc:attach': obj({ rect: browserRect, visible: bool }),
   'extras:chatDoc:close': obj({ sessionId: str({ max: 200 }) }),
   'extras:chatDoc:openExternal': tagged('kind', {
-    pdf: obj({ kind: literal('pdf'), title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+    pdf: obj({
+      kind: literal('pdf'),
+      title: str({ max: 500 }),
+      html: str({ max: MAX_ARTIFACT_HTML_BYTES }),
+      context: optional(artifactContext)
+    }),
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
     docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })

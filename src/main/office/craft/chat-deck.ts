@@ -114,7 +114,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   const identity = resolveDocumentIdentity(spec)
   const pal = customPalette(identity.palette)
   const look = spec.style ?? 'classic'
-  const { c, a, bgslide, rect, dot, dotrow, txt, panel, header, titleFont, setBg, footInk } = createKit(
+  const { c, a, bgslide, rect, dot, txt, panel, header, titleFont, setBg, footInk } = createKit(
     pal,
     look,
     pal.accent,
@@ -247,7 +247,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
   }
   const renderIdentitySlide = (s: PptxSlideSpec, idx: number): boolean => {
     const kind = layoutOf(s, idx)
-    if (!['cover', 'closing', 'stat', 'kpis', 'two-col', 'image'].includes(kind)) return false
+    if (!['cover', 'closing', 'stat', 'kpis', 'two-col', 'image'].includes(kind) && !(kind === 'bullets' && s.image)) return false
     const bullets = s.bullets ?? []
     const title = s.title ?? ''
     const v = variant(s, idx)
@@ -281,7 +281,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         }
       } else if (!spec.identity?.cover && (playful || rock || technical || editorial)) {
         if (playful) {
-          rect(0, 0, 960, 308, accent)
+          if (title.trim()) rect(0, 0, 960, 308, accent)
           txt(60, 70, 840, 210, title, 90, pal.bg, true, 'left', -1, titleFont)
           if (s.eyebrow) txt(60, 24, 840, 32, s.eyebrow, 16, pal.bg, true)
           if (bullets.length) txt(170, 344, 730, 130, bullets.join(' · '), 30, pal.text)
@@ -321,9 +321,15 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
       foot(s)
       return true
     }
-    head(idx + 1, kind === 'stat' ? { ...s, title: '' } : s)
+    head(idx + 1, kind === 'stat' ? { ...s, title: '', ...(s.image && images?.has(s.image.path) ? { eyebrow: undefined } : {}) } : s)
     if (kind === 'stat') {
-      if (v === 0) {
+      if (s.image && images?.has(s.image.path)) {
+        // La foto explica la cifra: dos zonas claras, sin decorar una cabecera vacía.
+        picture(s, [500, 48, 400, 430], true)
+        if (s.eyebrow) txt(60, 50, 390, 40, s.eyebrow, 18, accent, true)
+        txt(60, 124, 390, 184, title, 114, accent, true, 'left', -1, titleFont)
+        adaptiveList(bullets, 32, 326, 418, 152, 1, 30)
+      } else if (v === 0) {
         txt(60, 150, 430, 250, title, 140, accent, true, 'left', -2, titleFont)
         adaptiveList(bullets, 510, 160, 390, 310, 1, 38)
       } else if (v === 1) {
@@ -388,7 +394,7 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         }
       })
       if (bullets.length) adaptiveList(bullets, 60, 403, 840, 77, bullets.length > 1 ? 2 : 1, 22)
-    } else if (kind === 'image') {
+    } else if (kind === 'image' || kind === 'bullets') {
       const img = s.image ? images?.get(s.image.path) : undefined
       if (!img) {
         adaptiveList(bullets)
@@ -421,7 +427,6 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
           if (!s.eyebrow && !bullets.length) {
             bgslide()
             txt(60, 70, 840, 32, String(sectionN).padStart(2, '0'), 16, accent, true, 'center')
-            rect(360, 124, 240, 6, accent)
             txt(60, 152, 840, 240, title, fitSize(title, 110, 22), accent, true, 'center', -2, titleFont)
             a('format.anchor', { anchor: 'middle' })
             foot(s)
@@ -431,7 +436,6 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
             [380, -300, 900, pal.dark ? '2E1D66' : pal.glow],
             [-220, 300, 560, g2]
           ])
-          dotrow(60, 88, 20, 14)
           txt(54, 130, 700, 160, s.eyebrow ?? String(sectionN).padStart(2, '0'), 120, accent, true, 'left', -4)
           txt(60, 300, 840, 140, title, fitSize(title, 54, 28), accent, true, 'left', -1, titleFont)
           foot(s)
@@ -440,17 +444,21 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         case 'steps': {
           head(n, s)
           const items = bullets.slice(0, 6)
-          const k = Math.max(items.length, 1)
-          const w = Math.floor(840 / k)
-          rect(60, 286, 840, 2, pal.edge)
-          // Un solo tamaño para todos los pasos, según el texto más largo (la caja deja sitio para 5 líneas).
-          const longest = Math.max(0, ...items.map((t) => t.length))
-          const size = longest <= 60 ? 18 : longest <= 100 ? 16 : 14
-          items.forEach((t, i) => {
-            const x = 60 + i * w
-            txt(x - 4, 160, w, 100, String(i + 1).padStart(2, '0'), 72, DOTS[i % DOTS.length], true, 'left', -2)
-            dot(x, 279, 16, DOTS[i % DOTS.length])
-            txt(x, 326, w - 16, 130, t, size, pal.text, true)
+          // El contenido domina: hasta tres pasos en columnas; cuatro a seis en dos filas.
+          // La numeración orienta la lectura, sin competir con la explicación.
+          const cols = items.length === 4 ? 2 : items.length <= 3 ? Math.max(items.length, 1) : 3
+          const rows = Math.ceil(items.length / cols)
+          const gap = 24
+          const w = (840 - gap * (cols - 1)) / cols
+          const h = rows > 1 ? 150 : 306
+          const textH = h - 46
+          const size = Math.min(30, ...items.map((text) => autoFitSize(text, 30, w, textH, false)))
+          if (size < 22) throw new DeckTextFitError('Los pasos necesitan demasiado texto: divídelos en más láminas para mantener 22 pt.')
+          items.forEach((text, i) => {
+            const x = 60 + (i % cols) * (w + gap)
+            const y = 156 + Math.floor(i / cols) * 174
+            txt(x, y, w, 36, String(i + 1).padStart(2, '0'), 26, accent, true)
+            txt(x, y + 46, w, textH, text, size, pal.text)
           })
           break
         }

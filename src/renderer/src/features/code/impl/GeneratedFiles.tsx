@@ -66,7 +66,7 @@ async function viewFile(cwd: string, path: string, isCurrent: () => boolean): Pr
   if (!isCurrent() || !valid.some((f) => f.path === path)) return false
   const infos = await extras.invoke('extras:chatFile:info', { paths: [path] })
   const info = infos.find((f) => f.path === path && f.canView)
-  return info && isCurrent() ? viewChatFile(info) : false
+  return info && isCurrent() ? viewChatFile(info, { kind: 'file', path: info.path, root: cwd }) : false
 }
 
 function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.Element {
@@ -82,7 +82,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
     },
     [cwd, file.path]
   )
-  const canView = platformCaps().docViewer && /\.(pdf|docx|xlsx|pptx)$/i.test(file.name)
+  const canView = platformCaps().docViewer && /\.(pdf|docx|xlsx|pptx|html|htm)$/i.test(file.name)
   const kind = t(KIND_KEY[type])
   const meta = [kind, formatFileSize(file.bytes, getLang())].filter(Boolean).join(' · ')
   const actions = fileCardActions(nativeCode('dialogs')?.files, cwd, file.path)

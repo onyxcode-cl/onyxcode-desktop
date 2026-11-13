@@ -1,3 +1,4 @@
+import { hasHtmlSlides, MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Entregables de la tarea: lista con iconos, vista previa (md / csv / imágenes / texto / docx),
  * acciones (abrir, Vista rápida, Finder), «Descargar todo» (zip), y para HTML «Abrir como artifact»
@@ -26,13 +27,18 @@ import {
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
-import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
+import {
+  ArtifactButton,
+  DownloadHtmlButton,
+  DownloadSlidesPptxButton,
+  PresentSlidesButton
+} from '../../../components/artifacts/ArtifactButton'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
 import { FileReview } from './FileReview'
 import { cw } from './bridge'
-import { requestViewerOpen } from './store'
+import { requestViewerOpen, useTasks } from './store'
 import { baseName, extOf, formatSize, isViewerExt, relTime } from './util'
 
 const IMAGE = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
@@ -43,7 +49,7 @@ const TEXT = new Set(['txt', 'json', 'html', 'htm', 'xml', 'yaml', 'yml', 'log',
 const DOCUMENT = new Set(['docx', 'doc', 'odt'])
 const HTML = new Set(['html', 'htm'])
 /** Un HTML mayor que esto no se ofrece como artifact (límite de la ventana de artifacts: 5 MB). */
-const ARTIFACT_MAX_BYTES = 2 * 1024 * 1024
+const ARTIFACT_MAX_BYTES = MAX_ARTIFACT_HTML_BYTES
 
 export function canPreview(path: string): boolean {
   const e = extOf(path)
@@ -271,14 +277,27 @@ const ACTION_BTN =
 
 /** «Abrir como artifact» para un HTML entregable: carga su contenido y usa el `ArtifactButton` de siempre. */
 function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Element | null {
-  const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES + 1)
+  const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES)
+  const folder = useTasks((s) => s.folder)
   if (!data || data.kind !== 'text' || data.truncated || !data.content?.trim()) return null
+  const props = {
+    html: data.content,
+    title: baseName(file.path).replace(/\.[^.]+$/, ''),
+    context: { kind: 'file' as const, path: file.path, root: file.root ?? folder ?? undefined },
+    className: '!border-transparent !bg-transparent !px-1.5 !py-0.5 !text-[11px] desk:text-meta'
+  }
+  const slides = hasHtmlSlides(data.content)
   return (
-    <ArtifactButton
-      html={data.content}
-      title={baseName(file.path).replace(/\.[^.]+$/, '')}
-      className="!border-transparent !bg-transparent !px-1.5 !py-0.5 !text-[11px] desk:text-meta"
-    />
+    <>
+      <ArtifactButton {...props} isSlides={slides} />
+      <DownloadHtmlButton {...props} />
+      {slides && (
+        <>
+          <PresentSlidesButton {...props} />
+          <DownloadSlidesPptxButton {...props} />
+        </>
+      )}
+    </>
   )
 }
 

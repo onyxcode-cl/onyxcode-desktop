@@ -101,9 +101,12 @@ export interface AppMcpConfig {
   servers: Record<string, McpEntry>
 }
 
+export type ArtifactContext = { kind: 'chat'; sessionId: string } | { kind: 'file'; path: string; root?: string }
+
 export interface ArtifactPayload {
   title: string
   html: string
+  context?: ArtifactContext
 }
 
 export interface QuickPromptEvent {
@@ -187,7 +190,7 @@ interface ChatDocOpenCommon {
 }
 
 export type ChatDocOpenRequest =
-  | (ChatDocOpenCommon & { kind: 'pdf'; html: string })
+  | (ChatDocOpenCommon & { kind: 'pdf'; html: string; context?: ArtifactContext })
   | (ChatDocOpenCommon & { kind: 'xlsx'; data: XlsxSpec })
   | (ChatDocOpenCommon & { kind: 'pptx'; data: PptxSpec })
   | (ChatDocOpenCommon & { kind: 'docx'; data: DocxSpec })
@@ -198,7 +201,7 @@ export type ChatDocDownloadRequest = { title: string } & (
 )
 
 /** Para `extras:chatDoc:openExternal`: como la descarga, más el PDF (HTML). */
-export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string }
+export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string; context?: ArtifactContext }
 
 export interface ConversationExportRequest {
   format: 'md' | 'pdf'
@@ -403,6 +406,7 @@ export interface IpcExtrasInvokeContract {
   'extras:versions': { req: void; res: VersionsInfo }
   'extras:openArtifact': { req: ArtifactPayload; res: void }
   /** `html` → PDF, con diálogo nativo "Guardar como" (el usuario elige dónde). `null` si cancela. */
+  'extras:downloadHtml': { req: ArtifactPayload; res: string | null }
   'extras:downloadHtmlAsPdf': { req: ArtifactPayload; res: string | null }
   /** Un deck `​```slides` (HTML libre) → `.pptx` PROYECTABLE: una imagen por diapositiva, no editable
    * (ver `slides-deck-export.ts`) — alternativa a `extras:downloadHtmlAsPdf` para quien necesite
@@ -546,6 +550,7 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:setPrefs',
   'extras:versions',
   'extras:openArtifact',
+  'extras:downloadHtml',
   'extras:downloadHtmlAsPdf',
   'extras:downloadSlidesAsPptx',
   'extras:presentSlides',
@@ -639,6 +644,7 @@ export interface ExtrasApi {
   ): () => void
   // Atajos de conveniencia
   openArtifact(payload: ArtifactPayload): Promise<void>
+  downloadHtml(payload: ArtifactPayload): Promise<string | null>
   downloadHtmlAsPdf(payload: ArtifactPayload): Promise<string | null>
   downloadSlidesAsPptx(payload: ArtifactPayload): Promise<string | null>
   presentSlides(payload: ArtifactPayload): Promise<void>

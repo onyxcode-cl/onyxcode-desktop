@@ -26,18 +26,18 @@ it.each([
   {
     path: 'resources/opencode/agents/chat.md',
     end: '- Si eligen la opción HTML/CSS',
-    sha256: '1246e7d689b24fa39f12660e3377dabc54b9810621aed6951cebe0c75869ec5a'
+    sha256: '8d9578caa4c795503c0d4528f9e9ffd13ab4c9a7e66e42fddbb5c64bf6369deb'
   },
   {
     path: 'src/main/opencode/config.ts',
     end: "          'Si eligen la opción HTML/CSS",
-    sha256: '898ea7bb44e213eb452527aac78f6bdfa62c3772323c8fae7f3d3f9024c94228'
+    sha256: 'e675e7eca5ee6a40e5c26aef46b4e0b6931e872650f18fe9d60ba0903601e515'
   }
 ])('$path: conserva el prefijo de guía aprobado en V26 y la regla de formato', ({ path, end, sha256 }) => {
   const source = readFileSync(resolve(root, path), 'utf8')
   const endIndex = source.indexOf(end)
   expect(endIndex).toBeGreaterThan(source.indexOf('REGLA OBLIGATORIA'))
-  // V26 autoriza identidad propia en las guías. Huellas del prefijo actualizado;
+  // V26 autoriza identidad y fotos preparadas (tres permisos específicos). Huellas del prefijo actualizado;
   // la pregunta original de formato se congela además por separado abajo.
   expect(createHash('sha256').update(source.slice(0, endIndex)).digest('hex')).toBe(sha256)
 })

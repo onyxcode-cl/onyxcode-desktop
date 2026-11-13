@@ -1,4 +1,5 @@
 export const chat = {
+  'chat.doc.saveHtml': 'Guardar HTML',
   'chat.file.group': 'Archivos de esta respuesta',
   'chat.file.view': 'Ver aquí',
   'chat.file.open': 'Abrir con tu programa',

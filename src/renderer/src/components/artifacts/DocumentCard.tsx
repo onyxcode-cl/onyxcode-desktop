@@ -11,7 +11,7 @@ import { Code2, Download, Eye, FileSpreadsheet, FileText, Loader2, Presentation 
 import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { useT } from '../../lib/i18n'
 import { getExtras } from '../../lib/extrasApi'
-import { previewInChatDocPanel, type ChatDocBlockKind } from '../../lib/chatDocPreview'
+import { currentArtifactContext, previewInChatDocPanel, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { parseDataBlock } from '../../lib/chatDocBlocks'
 
 /** Tipo de tarjeta: decide ícono, color y forma de la miniatura. */
@@ -149,7 +149,7 @@ export function DocumentCard({ kind, rawText, isSlides = false, title, codeShown
     if (previewInChatDocPanel(kind, rawText, title, isSlides)) return
     if (kind === 'html')
       void getExtras()
-        ?.openArtifact({ title, html: rawText })
+        ?.openArtifact({ title, html: rawText, context: currentArtifactContext() })
         .catch(() => undefined)
   }
 
@@ -159,7 +159,7 @@ export function DocumentCard({ kind, rawText, isSlides = false, title, codeShown
     setBusy(true)
     setError(null)
     try {
-      if (kind === 'html') await extras.downloadHtmlAsPdf({ title, html: rawText })
+      if (kind === 'html') await extras.downloadHtmlAsPdf({ title, html: rawText, context: currentArtifactContext() })
       else {
         const parsed = parseDataBlock(kind, rawText)
         if (kind === 'xlsx' && isXlsxSpec(parsed)) await extras.invoke('extras:downloadChatDoc', { kind: 'xlsx', title, data: parsed })

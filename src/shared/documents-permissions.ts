@@ -8,6 +8,10 @@ import { effectiveModeFor, rulesetForMode, type PermissionModeId, type Permissio
 
 /** Clave del servidor en el bloque `mcp` del motor (y prefijo de las herramientas: `documentos_crear`). Debe coincidir con `DOCUMENTS_ROUTE_NAME` de main. */
 export const DOCUMENTS_SERVER = 'documentos'
+export const CHAT_PHOTOS_SERVER = 'chat_fotos'
+export function chatPhotoPermissions(action: RuleAction = 'allow'): Record<string, RuleAction> {
+  return Object.fromEntries(['imagenes_buscar', 'imagenes_ver', 'imagenes_usar'].map((name) => [`${CHAT_PHOTOS_SERVER}_${name}`, action]))
+}
 /** `folder` de la atadura de Code en main: NO es una ruta, solo la clave que hace que un arranque nuevo del motor sustituya el token anterior. */
 export const CODE_BINDING_FOLDER = '<code>'
 export const DOCUMENTS_CREATE_TOOL = `${DOCUMENTS_SERVER}_crear`
@@ -62,6 +66,8 @@ export function documentsSessionRules(mode: PermissionModeId, agent?: string): P
  */
 export function documentsConfigPermission(): Record<string, RuleAction> {
   return {
+    [`${CHAT_PHOTOS_SERVER}_*`]: 'deny',
+    ...chatPhotoPermissions('deny'),
     [DOCUMENTS_CREATE_TOOL]: 'ask',
     [DOCUMENTS_RENDER_TOOL]: 'allow',
     [DOCUMENTS_IMAGE_SEARCH_TOOL]: 'ask',

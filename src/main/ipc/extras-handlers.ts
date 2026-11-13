@@ -1,3 +1,9 @@
+import { SlidesHtmlError } from '@shared/slides-html'
+import { OutputPathError } from '../documents/output-path'
+import { prepareArtifactPhotos } from '../extras/artifact-photos'
+import { documentsMcp, resolveChatHtmlPhotos } from '../documents'
+import { resolvePreparedHtml } from '../documents/html-photos'
+import type { ArtifactContext } from '@shared/ipc-extras'
 /**
  * Handlers IPC de extras (`extras:*`, `mcp:*`). Registrar en main con:
  *   registerExtrasHandlers(ipcMain, { server, createMainWindow, getMainWindow })
@@ -5,14 +11,14 @@
  */
 import { app, dialog, shell, type IpcMain } from 'electron'
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { stat, writeFile } from 'node:fs/promises'
 import { release } from 'node:os'
 import { basename, join } from 'node:path'
 import { t } from '@shared/i18n'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
-import { openArtifact, presentSlides } from '../extras/artifact-window'
+import { openArtifact, presentSlides, safeDocumentName } from '../extras/artifact-window'
 import { exportConversation } from '../extras/export-conversation'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
@@ -135,28 +141,53 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     arch: process.arch,
     osRelease: release()
   }))
-  handle(ipcMain, 'extras:openArtifact', (payload) => {
+  const prepareHtml = (html: string, context?: ArtifactContext): Promise<string> =>
+    prepareArtifactPhotos(html, context, context?.kind === 'file' ? allFileRoots() : [], {
+      standalone: (source) => resolvePreparedHtml(source),
+      chat: resolveChatHtmlPhotos,
+      file: (source, scope) => documentsMcp.resolveHtmlPhotos(source, scope)
+    })
+  handle(ipcMain, 'extras:openArtifact', async (payload) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
-    openArtifact({ title: String(payload.title ?? ''), html: payload.html })
+    openArtifact({ title: String(payload.title ?? ''), html: await prepareHtml(payload.html, payload.context) })
   })
   // «Descargar/Guardar»: el archivo elegido por la persona se anota en la galería (solo ese archivo, no su carpeta).
   const recordSaved = (path: string | null, title: string): string | null => {
     if (path) galleryRecordChat(path, { exact: true, title: title.trim() || undefined })
     return path
   }
+  handle(ipcMain, 'extras:downloadHtml', async (payload, event) => {
+    const html = await prepareHtml(payload.html, payload.context)
+    const options: Electron.SaveDialogOptions = {
+      title: t('merr.menu.saveHtml'),
+      defaultPath: join(app.getPath('downloads'), `${safeDocumentName(payload.title, 'presentacion')}.html`),
+      filters: [{ name: 'HTML', extensions: ['html'] }]
+    }
+    const win = windowOfSender(event.sender)
+    const saved = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+    if (saved.canceled || !saved.filePath) return null
+    await writeFile(saved.filePath, html, 'utf8')
+    return recordSaved(saved.filePath, payload.title)
+  })
   handle(ipcMain, 'extras:downloadHtmlAsPdf', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     const title = String(payload.title ?? '')
-    return recordSaved(await downloadChatDoc({ kind: 'pdf', html: payload.html }, title, windowOfSender(event.sender)), title)
+    return recordSaved(
+      await downloadChatDoc({ kind: 'pdf', html: await prepareHtml(payload.html, payload.context) }, title, windowOfSender(event.sender)),
+      title
+    )
   })
   handle(ipcMain, 'extras:downloadSlidesAsPptx', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     const title = String(payload.title ?? '')
-    return recordSaved(await downloadSlidesAsPptx({ title, html: payload.html }, windowOfSender(event.sender)), title)
+    return recordSaved(
+      await downloadSlidesAsPptx({ title, html: await prepareHtml(payload.html, payload.context) }, windowOfSender(event.sender)),
+      title
+    )
   })
-  handle(ipcMain, 'extras:presentSlides', (payload) => {
+  handle(ipcMain, 'extras:presentSlides', async (payload) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
-    presentSlides({ title: String(payload.title ?? ''), html: payload.html })
+    await presentSlides({ title: String(payload.title ?? ''), html: await prepareHtml(payload.html, payload.context) })
   })
   handle(ipcMain, 'extras:transcribeAudio', (payload) => voiceWorker.transcribe(payload.samples))
   // Panel de documento de Chat: MISMA vista nativa que Tareas (un solo modo visible a la vez, sin conflicto).
@@ -166,8 +197,11 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     try {
       const { title, sessionId, lang, theme } = req
       let input: ChatDocInput
-      if (req.kind === 'pdf') input = { kind: 'pdf', html: req.html }
-      else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
+      if (req.kind === 'pdf') {
+        if (req.context?.kind === 'chat' && req.context.sessionId !== sessionId)
+          throw new ChatDocError('invalid', 'Las fotos pertenecen a otra conversación.')
+        input = { kind: 'pdf', html: await prepareHtml(req.html, req.context ?? { kind: 'chat', sessionId }) }
+      } else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
       else if (req.kind === 'docx') input = { kind: 'docx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
       const doc = await generateChatDoc(input, title, sessionId)
@@ -201,6 +235,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
           detail: { tipo: kind }
         })
       }
+      if (e instanceof OutputPathError || e instanceof SlidesHtmlError) return { ok: false, reason: 'invalid', detail: e.message }
       if (e instanceof ChatDocError) return { ok: false, reason: e.code, detail: e.message }
       return { ok: false, reason: 'failed' }
     }
@@ -222,7 +257,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     try {
       const input: ChatDocInput =
         req.kind === 'pdf'
-          ? { kind: 'pdf', html: req.html }
+          ? { kind: 'pdf', html: await prepareHtml(req.html, req.context) }
           : req.kind === 'xlsx'
             ? { kind: 'xlsx', data: req.data }
             : req.kind === 'docx'

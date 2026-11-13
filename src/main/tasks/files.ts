@@ -1,3 +1,4 @@
+import { MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Utilidades de archivos de Tareas: importar adjuntos a la carpeta de la tarea y
  * previsualizar entregables. Las rutas deben venir YA validadas (dentro de una carpeta
@@ -5,14 +6,7 @@
  */
 import { t } from '@shared/i18n'
 import { execFile } from 'node:child_process'
-import {
-  lstatSync,
-  openSync,
-  readSync,
-  closeSync,
-  readFileSync,
-  statSync,
-} from 'node:fs'
+import { lstatSync, openSync, readSync, closeSync, readFileSync, statSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'
 import JSZip from 'jszip'
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
@@ -260,7 +254,7 @@ export function previewFile(path: string, maxBytes = DEFAULT_TEXT_BYTES): TasksF
     return { path, size: st.size, kind: 'image', dataUrl: `data:${mime};base64,${readFileSync(path).toString('base64')}` }
   }
   if (!TEXT_EXT.has(ext)) return { path, size: st.size, kind: 'unsupported' }
-  const limit = Math.max(1024, Math.min(maxBytes, 2 * 1024 * 1024))
+  const limit = Math.max(1024, Math.min(maxBytes, ext === '.html' || ext === '.htm' ? MAX_ARTIFACT_HTML_BYTES : 2 * 1024 * 1024))
   const len = Math.min(st.size, limit)
   const buf = Buffer.alloc(len)
   const fd = openSync(path, 'r')

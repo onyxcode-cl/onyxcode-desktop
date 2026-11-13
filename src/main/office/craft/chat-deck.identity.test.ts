@@ -500,3 +500,64 @@ describe('V26 identidad aplicada PPTX', () => {
     expect(commands[heading].p.rect[1] + 3 * commands[heading + 1].p.size * 1.2).toBeLessThanOrEqual(sub.p.rect[1] - 24)
   })
 })
+
+describe('V26 dirección visual y fotos', () => {
+  it('una cifra infantil no conserva una franja de título vacía', () => {
+    const commands = parse(
+      chatDeckCommands({
+        slides: [
+          { layout: 'cover', title: 'Dinosaurios' },
+          { layout: 'stat', title: '65', bullets: ['Millones de años'] }
+        ]
+      })
+    )
+    expect(commands.some((c) => c.id === 'shape.insert' && JSON.stringify(c.p.rect) === '[0,0,960,132]')).toBe(false)
+  })
+
+  it.each([3, 4, 6])('%i pasos: el contenido conserva tamaño útil y no hay una línea con puntos decorativos', (count) => {
+    const bullets = [
+      'Busca evidencia',
+      'Compara resultados',
+      'Elige la solución',
+      'Prepara el trabajo',
+      'Revisa el resultado',
+      'Comparte lo aprendido'
+    ].slice(0, count)
+    const commands = parse(chatDeckCommands({ identity, slides: [{ layout: 'steps', title: 'Cómo empezar', bullets }] }))
+    for (const text of bullets) {
+      const i = commands.findIndex((c) => c.id === 'insert.textBox' && c.p.text === text)
+      expect(commands[i + 1].p.size).toBeGreaterThanOrEqual(22)
+    }
+    const number = commands.findIndex((c) => c.id === 'insert.textBox' && c.p.text === '01')
+    expect(commands[number + 1].p.size).toBeLessThanOrEqual(28)
+    expect(commands.some((c) => c.p.preset === 'ellipse')).toBe(false)
+    expect(commands.some((c) => JSON.stringify(c.p.rect) === '[60,286,840,2]')).toBe(false)
+  })
+
+  it.each(['stat', 'bullets', 'image'] as const)('%s: foto, texto y crédito llegan a la misma lámina sin ocupar el pie', (layout) => {
+    const credit = 'Foto: Autora · CC BY 4.0'
+    const commands = parse(
+      chatDeckCommands(
+        {
+          identity,
+          slides: [
+            {
+              layout,
+              title: layout === 'stat' ? '84 %' : 'Hábitat',
+              bullets: ['Conservar el bosque', 'Proteger la costa'],
+              image: { path: 'photo.png', alt: 'Bosque costero' },
+              imageCredit: credit
+            }
+          ]
+        },
+        images
+      )
+    )
+    const photo = commands.find((c) => c.id === 'insert.picture')
+    expect(photo).toBeDefined()
+    expect(photo!.p.rect[1] + photo!.p.rect[3]).toBeLessThanOrEqual(478)
+    expect(commands.some((c) => c.p.text === credit && c.p.rect[1] === 490)).toBe(true)
+    expect(commands.some((c) => c.p.text === 'Conservar el bosque')).toBe(true)
+    expect(commands.filter((c) => c.id === 'slide.new')).toHaveLength(1)
+  })
+})

@@ -17,8 +17,10 @@ const mock = vi.hoisted(() => ({
   web: vi.fn(),
   openDoc: vi.fn(),
   classic: vi.fn(),
-  gallery: vi.fn()
+  gallery: vi.fn(),
+  photos: vi.fn()
 }))
+vi.mock('../documents', () => ({ documentsMcp: {}, resolveChatHtmlPhotos: mock.photos }))
 vi.mock('electron', () => ({ app: { getPath: () => mock.temp, on: vi.fn() }, dialog: { showSaveDialog: mock.save }, shell: {} }))
 vi.mock('./handle', () => ({
   makeInvokeHandler: () => (_ipc: unknown, channel: string, handler: Handler) => mock.handlers.set(channel, handler)
@@ -85,6 +87,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   mock.handlers.clear()
   mock.temp = mkdtempSync(join(tmpdir(), 'lzx-chat-handlers-'))
+  mock.photos.mockImplementation(async (html: string) => html)
   mock.render.mockResolvedValue(Buffer.from('%PDF-original'))
   mock.save.mockResolvedValue({ canceled: false, filePath: join(mock.temp, 'descarga.pdf') })
   mock.pdf.mockImplementation(async (_cli: string, _source: string, out: string) => {
@@ -132,5 +135,32 @@ describe('documentos de Chat: ruta real del handler', () => {
         filters: [{ name: 'PDF', extensions: ['pdf'] }]
       })
     )
+  })
+})
+
+describe('guardar HTML autónomo por IPC', () => {
+  it('guarda los bytes preparados de la conversación y registra solo ese archivo', async () => {
+    mock.photos.mockResolvedValue('<section class="slide"><img src="data:image/jpeg;base64,cGhvdG8="><aside>Crédito</aside></section>')
+    const path = join(mock.temp, 'fotos.html')
+    mock.save.mockResolvedValue({ canceled: false, filePath: path })
+    const context = { kind: 'chat' as const, sessionId: 'ses_one' }
+    expect(await invoke('extras:downloadHtml', { title: 'Fotos', html: '<img src="imagen:p1">', context })).toBe(path)
+    expect(mock.photos).toHaveBeenCalledWith('<img src="imagen:p1">', 'ses_one')
+    expect(readFileSync(path, 'utf8')).toContain('data:image/jpeg;base64,')
+    expect(readFileSync(path, 'utf8')).not.toContain('imagen:p1')
+    expect(mock.gallery).toHaveBeenCalledWith(path, { exact: true, title: 'Fotos' })
+  })
+  it('cancelar no escribe ni registra un archivo', async () => {
+    mock.save.mockResolvedValue({ canceled: true })
+    expect(await invoke('extras:downloadHtml', { title: 'Fotos', html: '<p>Hola</p>' })).toBeNull()
+    expect(mock.gallery).not.toHaveBeenCalled()
+  })
+  it('un id fuera del contexto falla antes del diálogo', async () => {
+    mock.photos.mockRejectedValue(new Error('Foto de otra conversación'))
+    await expect(
+      invoke('extras:downloadHtml', { title: 'Fotos', html: '<img src="imagen:p1">', context: { kind: 'chat', sessionId: 'ses_other' } })
+    ).rejects.toThrow('otra conversación')
+    expect(mock.save).not.toHaveBeenCalled()
+    expect(mock.gallery).not.toHaveBeenCalled()
   })
 })

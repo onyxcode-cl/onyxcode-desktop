@@ -2,6 +2,7 @@ import type { Messages } from '../index'
 import type { chat as es } from '../es/chat'
 
 export const chat = {
+  'chat.doc.saveHtml': 'Save HTML',
   'chat.file.group': 'Files from this reply',
   'chat.file.view': 'View here',
   'chat.file.open': 'Open with your app',

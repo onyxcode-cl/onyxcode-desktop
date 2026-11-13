@@ -88,3 +88,30 @@ describe('canales goal:* / budget:* / review:run (Objetivo, Presupuesto y Revisa
     expect(() => v({ engineExperiments: { ...ok, codeExtras: { ...ok.codeExtras, goal: 'si' } } })).toThrow()
   })
 })
+
+describe('HTML con fotos: contexto IPC estricto', () => {
+  for (const channel of [
+    'extras:openArtifact',
+    'extras:downloadHtml',
+    'extras:downloadHtmlAsPdf',
+    'extras:downloadSlidesAsPptx',
+    'extras:presentSlides'
+  ]) {
+    it(channel, () => {
+      const validate = IPC_SCHEMAS[channel]!
+      const payload = { title: 'Fotos', html: '<section class="slide"></section>' }
+      expect(validate({ ...payload, context: { kind: 'chat', sessionId: 'ses_abc' } })).toMatchObject({ context: { sessionId: 'ses_abc' } })
+      expect(validate({ ...payload, context: { kind: 'file', path: '/project/deck.html', root: '/project' } })).toMatchObject({
+        context: { kind: 'file' }
+      })
+      for (const context of [
+        { kind: 'chat', sessionId: '../other' },
+        { kind: 'chat', sessionId: 'ses_abc', root: '/anything' },
+        { kind: 'file', path: 'relative.html' },
+        { kind: 'file', path: '/p/deck.html', arbitrary: true },
+        { kind: 'other' }
+      ])
+        expect(() => validate({ ...payload, context })).toThrow()
+    })
+  }
+})

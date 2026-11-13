@@ -56,6 +56,7 @@ vi.mock('./pids', () => ({ killTree: () => [], killPids: () => {}, trackPid: () 
 vi.mock('./catalog-wait', () => ({ catalogFile: () => '/x', waitForCatalog: async () => 'present' }))
 vi.mock('../process/disclaim', () => ({ withDisclaim: (command: string, args: string[]) => ({ command, args, disclaimed: false }) }))
 vi.mock('../documents', () => ({
+  chatPhotosMcp: { configFor: async () => null, revokeToken: () => true },
   documentsMcp: {
     configFor: async (binding: { folder: string; code?: { roots: () => readonly string[] } }) => {
       state.bindings.push(binding)

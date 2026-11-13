@@ -552,6 +552,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:setPrefs': fieldwise(EXTRAS_PREF_FIELDS),
   'extras:versions': 'R',
   'extras:openArtifact': 'X',
+  'extras:downloadHtml': 'X',
   'extras:downloadHtmlAsPdf': 'X',
   'extras:downloadSlidesAsPptx': 'X',
   'extras:presentSlides': 'X',

@@ -23,6 +23,7 @@ export function buildExtrasApi(ipcRenderer: IpcRenderer): ExtrasApi {
     invoke: invoke as ExtrasApi['invoke'],
     on: on as ExtrasApi['on'],
     openArtifact: (payload: ArtifactPayload) => invoke('extras:openArtifact', payload) as Promise<void>,
+    downloadHtml: (payload: ArtifactPayload) => invoke('extras:downloadHtml', payload) as Promise<string | null>,
     downloadHtmlAsPdf: (payload: ArtifactPayload) => invoke('extras:downloadHtmlAsPdf', payload) as Promise<string | null>,
     downloadSlidesAsPptx: (payload: ArtifactPayload) => invoke('extras:downloadSlidesAsPptx', payload) as Promise<string | null>,
     presentSlides: (payload: ArtifactPayload) => invoke('extras:presentSlides', payload) as Promise<void>,
