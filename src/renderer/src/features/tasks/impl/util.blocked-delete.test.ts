@@ -22,6 +22,13 @@ const part = (command: string | undefined, output: string, status: 'completed' |
   }) as unknown as ToolPart
 
 describe('looksLikeBlockedDelete', () => {
+  it('no ofrece tarjeta después de un borrado propio compuesto confirmado por main', () => {
+    const p = part('rm nuevo; cat restringido', 'cat: Permission denied')
+    p.state = { ...p.state, metadata: { exit: 1, lazunoxOwnDelete: true } } as ToolPart['state']
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(false)
+    p.state = { ...p.state, metadata: { exit: 1 } } as ToolPart['state']
+    expect(looksLikeBlockedDelete(p, { folder: '/work' })).toBe(true)
+  })
   it.each(['bash', 'execute'])('un %s que terminó con código 0 no confunde un error recuperado con bloqueo', (tool) => {
     const p = {
       ...part(

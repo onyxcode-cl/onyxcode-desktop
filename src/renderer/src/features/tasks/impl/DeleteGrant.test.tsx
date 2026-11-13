@@ -44,6 +44,44 @@ describe.each(['mac', 'wsl'])('vigencia de la oferta posterior al fallo (%s)', (
     mounted = undefined
   })
 
+  it.each([
+    'rm nuevo; cat restringido',
+    'rm borrador.txt && ls -la; echo listo',
+    'test -e borrador.txt && rm borrador.txt; test -e borrador.txt && echo "todavía existe" || echo "borrado"',
+    'rm informe.docx'
+  ])('borrado propio confirmado sin tarjeta, tampoco al recargar: %s', (command) => {
+    const e = blocked()
+    const p = e.parts[0] as ToolPart
+    p.state = {
+      ...p.state,
+      input: { command },
+      output: 'cat: Permission denied',
+      metadata: { exit: 1, lazunoxOwnDelete: true }
+    } as ToolPart['state']
+    show([e])
+    expect(mounted!.host.textContent).toBe('')
+    mounted!.unmount()
+    mounted = undefined
+    show([e])
+    expect(mounted!.host.textContent).toBe('')
+    expect(m.grant).not.toHaveBeenCalled()
+    expect(m.enable).not.toHaveBeenCalled()
+  })
+  it.each([
+    'rm borrador.txt && ls -la; echo listo',
+    'test -e borrador.txt && rm borrador.txt; test -e borrador.txt && echo "todavía existe" || echo "borrado"',
+    'test -e otro.txt && rm borrador.txt',
+    'rm informe.docx'
+  ])('borrado previo o guardia distinta conserva la tarjeta sin confirmación de main: %s', (command) => {
+    const e = blocked()
+    const p = e.parts[0] as ToolPart
+    p.state = { ...p.state, input: { command } } as ToolPart['state']
+    show([e])
+    expect(mounted!.host.textContent).toContain('Activar permiso y reintentar')
+    expect(m.grant).not.toHaveBeenCalled()
+    expect(m.enable).not.toHaveBeenCalled()
+  })
+
   it('un movimiento exitoso con un error recuperado en la salida no ofrece permiso', () => {
     const e = blocked()
     const p = e.parts[0] as ToolPart

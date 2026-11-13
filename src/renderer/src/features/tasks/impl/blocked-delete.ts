@@ -46,7 +46,7 @@ function inScope(paths: string[], scope: DeleteScope, search = false): boolean {
 export function looksLikeBlockedDelete(part: ToolPart, scope?: DeleteScope): boolean {
   // bash puede completar la herramienta aun con salida distinta de cero. Si el proceso
   // terminó bien, su salida puede contener un error recuperado (p. ej. shutil.move).
-  if (part.state.status === 'completed' && part.state.metadata?.exit === 0) return false
+  if (part.state.status === 'completed' && (part.state.metadata?.exit === 0 || part.state.metadata?.lazunoxOwnDelete === true)) return false
   const text = resultText(part)
   if (!DENIED.test(text)) return false
   const input = part.state.input

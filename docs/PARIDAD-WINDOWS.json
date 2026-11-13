@@ -1078,14 +1078,17 @@
     },
     {
       "id": "N17",
-      "funcion": "Overdrive borra sin tarjeta los temporales que él mismo creó en la tarea (rm, rmdir y unlink simples); lo demás sigue con tarjeta",
+      "funcion": "Overdrive borra sin tarjeta los temporales propios mediante rm, rmdir y unlink literales, simples o compuestos conservadores; lo demás sigue con tarjeta",
       "estado": "NO VERIFICADO",
       "evidencia": [
         "src/main/tasks/own-delete.test.ts:1",
         "src/main/tasks/own-delete-paths.test.ts:1",
-        "src/main/tasks/own-delete-handler.test.ts:1"
+        "src/main/tasks/own-delete-handler.test.ts:1",
+        "src/main/tasks/own-delete-plan.test.ts:1",
+        "src/renderer/src/features/tasks/impl/DeleteGrant.test.tsx:1",
+        "src/renderer/src/features/tasks/impl/util.blocked-delete.test.ts:1"
       ],
-      "nota": "Mismo código en Mac y Windows; en Windows las rutas /win/<unidad>/… se traducen al archivo NTFS del anfitrión (probado con C: y D: simulados). Falta verlo en la app real en Mac y en el PC.",
+      "nota": "Mismo código en Mac y Windows/WSL; traducción de C: y D: simuladas. V23F verifica las cuatro formas acotadas del encargo y las dos literales del ajuste, guardias inmediatas de existencia/tipo sobre el mismo destino, comprobaciones después del borrado, rechazo de lotes mixtos y tarjeta posterior con historial recargado. documentos_crear pasa por el inventario real: nuevo se borra sin tarjeta y previo conserva protección. Las llamadas completas con cp, mkdir o scripts conservan la tarjeta por las restricciones solicitadas. La pasada manual Mac de V23E detectó que las compuestas seguían mostrando tarjeta; la corrección V23F aún requiere repetir esa pasada con motor real y probarla en el PC Windows. No se afirma paridad nativa verificada.",
       "comprobacion": null
     }
   ]
