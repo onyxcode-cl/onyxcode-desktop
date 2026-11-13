@@ -6,6 +6,7 @@ import { commonsLicense } from './free-images-license'
 import { allowedCommonsFile, FreeImagesService, FREE_IMAGE_MAX_BYTES, parseCommonsImages, type FreeImageSearch } from './free-images'
 import type { FreeImageProcessor } from './free-images-visual'
 import { sniffImage } from './image-files'
+import { INTERNAL_NAME, RELEASES_ORIGIN, RELEASES_REPO } from '@shared/brand'
 
 function jpeg(width = 1200, height = 800): Buffer {
   const b = Buffer.alloc(30)
@@ -209,7 +210,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     await service.view([id])
     const calls = vi.mocked(fetch).mock.calls.length
     await service.view([id])
-    expect(vi.mocked(fetch).mock.calls.length).toBe(calls + 1) // metadata rechecked, bytes cached
+    expect(vi.mocked(fetch).mock.calls.length).toBe(calls) // recently verified metadata and bytes cached
     expect((await service.search({ ...input, searchId: first.searchId })).round).toBe(2)
     await expect(service.search(input)).rejects.toThrow('dos rondas')
   })
@@ -220,11 +221,13 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
         ? Response.json(response([page(1, changed ? { ...metadata, LicenseShortName: { value: 'CC BY-NC 4.0' } } : metadata)]))
         : new Response(new Uint8Array(bytes))
     )
-    const service = new FreeImagesService({ fetch, processor }),
+    let now = Date.now()
+    const service = new FreeImagesService({ fetch, processor, now: () => now }),
       found = await service.search(input),
       id = found.candidates[0].id
     await service.view([id])
     changed = true
+    now += 120001 // expired verification must not silently authorize a changed license
     await expect(service.use(id, evaluation)).rejects.toThrow('licencia')
     const bad = new FreeImagesService({
       fetch: fakeFetch((u) =>
@@ -257,6 +260,134 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
       processor
     })
     expect((await large.search(input)).candidates).toHaveLength(0)
+  })
+  it.each(['2', 'date'])('reintenta 429 respetando Retry-After %s y anuncia contacto de la app', async (header) => {
+    let now = Date.UTC(2026, 0, 1)
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms
+    })
+    let attempts = 0
+    const fetch = fakeFetch((u) => {
+      if (u.hostname !== 'commons.wikimedia.org') return new Response(new Uint8Array(bytes))
+      if (++attempts === 1)
+        return new Response('', {
+          status: 429,
+          headers: { 'retry-after': header === 'date' ? new Date(now + 2000).toUTCString() : header }
+        })
+      return Response.json(response())
+    })
+    const service = new FreeImagesService({ fetch, processor, now: () => now, sleep })
+    expect((await service.search(input)).candidates).toHaveLength(1)
+    expect(sleep).toHaveBeenCalledExactlyOnceWith(2000)
+    const init = vi.mocked(fetch).mock.calls[0][1]!
+    expect(init.headers).toMatchObject({
+      'User-Agent': `${INTERNAL_NAME}/free-images (document photos; ${RELEASES_ORIGIN}/${RELEASES_REPO})`
+    })
+    expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('maxlag=5')
+  })
+  it('respeta el mínimo de cinco segundos en 503 de API y no redescarga el original al preparar', async () => {
+    let now = Date.now(),
+      attempts = 0
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms
+    })
+    const fetch = fakeFetch((u) => {
+      if (u.hostname !== 'commons.wikimedia.org') return new Response(new Uint8Array(bytes))
+      return ++attempts === 1
+        ? Response.json({ error: { code: 'maxlag' } }, { status: 503, headers: { 'Retry-After': '1' } })
+        : Response.json(response())
+    })
+    const service = new FreeImagesService({ fetch, processor, now: () => now, sleep })
+    const found = await service.search(input)
+    expect(found.candidates).toHaveLength(1)
+    expect(sleep).toHaveBeenCalledExactlyOnceWith(5000)
+    const id = found.candidates[0].id
+    await service.view([id])
+    const checkedAt = new Date(now).toISOString()
+    now += 1000
+    const calls = vi.mocked(fetch).mock.calls.length
+    expect((await service.use(id, evaluation)).provenance.checkedAt).toBe(checkedAt)
+    expect(fetch).toHaveBeenCalledTimes(calls)
+  })
+  it('detecta maxlag con HTTP 200 y limita reintentos/espera acumulada', async () => {
+    let now = Date.now()
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms
+    })
+    const fetch = vi.fn(async () =>
+      Response.json({ error: { code: 'maxlag', lag: 8 } }, { headers: { 'Retry-After': '5' } })
+    ) as typeof globalThis.fetch
+    const service = new FreeImagesService({ fetch, processor, now: () => now, sleep })
+    expect((await service.search(input)).candidates).toEqual([])
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(sleep).toHaveBeenCalledTimes(2)
+    expect(sleep.mock.calls.reduce((total, [ms]) => total + ms, 0)).toBe(10000)
+  })
+  it('recupera maxlag transitorio y no reintenta un 403', async () => {
+    let now = Date.now(),
+      attempts = 0
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms
+    })
+    const fetch = fakeFetch((u) => {
+      if (u.hostname !== 'commons.wikimedia.org') return new Response(new Uint8Array(bytes))
+      return ++attempts === 1 ? Response.json({ error: { code: 'maxlag' } }) : Response.json(response())
+    })
+    expect((await new FreeImagesService({ fetch, processor, now: () => now, sleep }).search(input)).candidates).toHaveLength(1)
+    expect(sleep).toHaveBeenCalledExactlyOnceWith(5000)
+    const denied = vi.fn(async () => new Response('', { status: 403 })) as typeof globalThis.fetch
+    expect((await new FreeImagesService({ fetch: denied, processor, sleep }).search(input)).candidates).toEqual([])
+    expect(denied).toHaveBeenCalledTimes(1)
+  })
+  it('agrupa dos finalistas, reutiliza la ficha y descarga cada original una sola vez entre ver y usar', async () => {
+    const secondBytes = Buffer.concat([bytes, Buffer.from('second')])
+    const secondPage = page(2)
+    secondPage.imageinfo[0].sha1 = createHash('sha1').update(secondBytes).digest('hex')
+    const fetch = fakeFetch((u) =>
+      u.hostname === 'commons.wikimedia.org'
+        ? Response.json(response([page(), secondPage]))
+        : new Response(new Uint8Array(u.pathname.includes('Photo2') ? secondBytes : bytes))
+    )
+    const service = new FreeImagesService({ fetch, processor })
+    const found = await service.search(input)
+    const ids = found.candidates.map((candidate) => candidate.id)
+    expect(ids).toHaveLength(2)
+    await service.view(ids)
+    await service.use(ids[0], evaluation)
+    await service.use(ids[1], evaluation)
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)))
+    expect(urls.filter((url) => url.searchParams.has('pageids')).map((url) => url.searchParams.get('pageids'))).toEqual(['1|2'])
+    expect(urls.filter((url) => url.hostname === 'upload.wikimedia.org')).toHaveLength(2)
+    // Two batched searches, two thumbnails, one finalist metadata batch and two originals.
+    expect(urls).toHaveLength(7)
+  })
+  it('hereda ficha/tamaño al continuar por searchId, acepta ajustes y no permite una tercera ronda sin id', async () => {
+    const service = new FreeImagesService({ fetch: fakeFetch(), processor })
+    const first = await service.search({
+      queries: input.queries,
+      requirements: { subject: 'café', usage: 'portada' },
+      minWidth: 300,
+      minHeight: 200
+    })
+    const second = await service.search({ queries: ['mesas de café', 'cafe tables'], searchId: first.searchId })
+    expect(second.round).toBe(2)
+    const id = second.candidates[0].id
+    await service.view([id])
+    const asset = await service.use(id, evaluation)
+    expect(asset.provenance.requirements).toEqual({ subject: 'café', usage: 'portada', required: [], excluded: [], realPhoto: true })
+    expect(asset.provenance.width).toBe(300)
+    await expect(service.search({ queries: input.queries, requirements: { subject: 'café', usage: 'portada' } })).rejects.toThrow(
+      'dos rondas'
+    )
+    const other = await service.search(input)
+    const revised = { ...input.requirements!, subject: 'mesas y sillas' }
+    await service.search({ queries: input.queries, requirements: revised, searchId: other.searchId })
+    await expect(service.search({ queries: input.queries, requirements: revised })).rejects.toThrow('dos rondas')
+  })
+  it('los errores de ficha ausente o id ajeno incluyen un ejemplo corregible', async () => {
+    const service = new FreeImagesService({ fetch: fakeFetch(), processor })
+    await expect(service.search({ queries: input.queries })).rejects.toThrow('Ejemplo inicial: {"queries"')
+    await expect(service.search({ queries: input.queries, searchId: 'inventado' })).rejects.toThrow('Omítelo al iniciar')
   })
   it('descarga con servidor falso y no sigue redirecciones', async () => {
     let redirect = false

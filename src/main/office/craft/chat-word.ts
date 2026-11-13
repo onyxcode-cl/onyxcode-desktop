@@ -161,6 +161,8 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
       case 'bullets':
       case 'numbered': {
         cmd('format.size', { size: WORD_REPORT.size })
+        cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
+        cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
         const flat = b.items.flat()
         if (b.type === 'numbered') cmd('para.numbering', { kind: 'numbered' })
         else cmd('para.bullets')
@@ -235,6 +237,10 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         if (!img) break
         // Ancho en puntos (1 cm = 28,35 pt), 12 cm por defecto; WordCraft conserva la proporción. Nunca más ancho que la página útil (16 cm).
         const width = Math.round(Math.min(b.width_cm ?? 12, 16) * 28.35 * 10) / 10
+        cmd('para.style', { style: 'Normal' })
+        cmd('para.set', { props: { keepNext: !!b.caption, keepLines: false, widowControl: false } })
+        cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
+        cmd('para.lineSpacing', { value: 1 })
         cmd('para.align', { value: 'center' })
         cmd('insert.picture', { path: img.file, width, alt: b.alt ?? b.caption ?? '' })
         // Tras insertar, la imagen queda SELECCIONADA: un `text.newParagraph` sin más la reemplaza y desaparece. Se lleva el cursor al final.
@@ -258,12 +264,15 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     groups.push([])
     cmd('references.updateToc')
   }
-  // Word obliga a un párrafo vacío tras una tabla final: si la tabla llena la página, ese párrafo caía en una hoja en blanco. Se deja de 1 pt.
+  // Todos los bloques terminan en un párrafo vacío. También tras fotos y créditos puede desbordar a una hoja en blanco.
+  // Solo cambia ese párrafo de cola, nunca el último texto/imagen. Los saltos explícitos conservan su semántica.
   const last = spec.blocks[spec.blocks.length - 1]
-  if (last && last.type === 'table' && !last.caption) {
+  if (last && last.type !== 'page_break') {
     groups.push([])
     cmd('caret.docEnd')
+    cmd('para.set', { props: { keepNext: false, keepLines: false, widowControl: false } })
     cmd('para.spacing', { before: 0, after: 0 })
+    cmd('para.lineSpacing', { value: 1 })
     cmd('format.size', { size: 1 })
   }
   return groups.filter((g) => g.length > 0)

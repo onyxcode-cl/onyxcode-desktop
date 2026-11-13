@@ -17,11 +17,12 @@ vi.mock('electron', () => ({
     createFromBitmap: (bytes: Buffer, size: { width: number; height: number }) => {
       state.captured = Buffer.from(bytes)
       state.size = size
-      return { toJPEG: () => Buffer.from('encoded JPEG'), toPNG: () => Buffer.from('encoded PNG') }
+      return { toJPEG: () => Buffer.from([0xff, 0xd8, 0xff, 0xd9]), toPNG: () => Buffer.from('encoded PNG') }
     }
   }
 }))
-import { nativeFreeImageProcessor } from './free-images-visual'
+import { nativeFreeImageProcessor, protectFreeImagePreview } from './free-images-visual'
+import { isFreeImagePreview } from './free-image-preview'
 function png(): Buffer {
   const bytes = Buffer.alloc(24)
   Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes)
@@ -37,6 +38,21 @@ beforeEach(() => {
   state.captured = Buffer.alloc(0)
 })
 describe('composición raster sin abrir Electron', () => {
+  it('entrega una muestra marcada en los píxeles y en sus bytes, conservando la imagen original en RAM', async () => {
+    state.width = 400
+    state.height = 200
+    state.bitmap = Buffer.alloc(400 * 200 * 4, 200)
+    const original = Buffer.from(state.bitmap)
+    const preview = await protectFreeImagePreview(png())
+    expect(isFreeImagePreview(preview)).toBe(true)
+    expect(state.bitmap).toEqual(original)
+    expect(state.size).toMatchObject({ width: 400, height: 200 })
+    expect(state.captured.subarray(0, 400 * 4)).toEqual(original.subarray(0, 400 * 4))
+    const center = state.captured.subarray(90 * 400 * 4, 110 * 400 * 4)
+    expect(center.includes(30)).toBe(true)
+    expect(center.equals(original.subarray(90 * 400 * 4, 110 * 400 * 4))).toBe(false)
+  })
+
   it('aplana BGRA premultiplicado sobre blanco sin multiplicar alfa otra vez', async () => {
     await nativeFreeImageProcessor.normalize(png(), 100)
     expect([...state.captured.subarray(0, 4)]).toEqual([191, 127, 127, 255])

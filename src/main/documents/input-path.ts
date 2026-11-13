@@ -30,8 +30,8 @@ export interface TaskFile {
   bytes: Buffer
 }
 
-/** Lo que se espera leer: un documento de Office/PDF (vista previa) o una imagen (para incrustarla). La firma de la imagen la comprueba quien llama. */
-export type ReadKind = 'office' | 'image'
+/** Lo que se espera leer: un documento de Office/PDF (vista previa) una imagen (para incrustarla) o procedencia JSON (128 KB). La firma de la imagen la comprueba quien llama. */
+export type ReadKind = 'office' | 'image' | 'provenance'
 
 function isInside(root: string, child: string): boolean {
   return child === root || child.startsWith(root.endsWith(sep) ? root : root + sep)
@@ -82,11 +82,14 @@ export async function readTaskFile(
   const segs = relativeInputPath(raw, agentRoots)
   const ext = segs[segs.length - 1].split('.').pop()?.toLowerCase() ?? ''
   const hasExt = segs[segs.length - 1].includes('.')
-  const maxBytes = kind === 'image' ? MAX_IMAGE_BYTES : MAX_INPUT_BYTES
+  const maxBytes = kind === 'provenance' ? 128 * 1024 : kind === 'image' ? MAX_IMAGE_BYTES : MAX_INPUT_BYTES
   let tipo: InputTipo | undefined
   if (kind === 'image') {
     if (!hasExt || !IMAGE_EXTS.has(ext)) throw new OutputPathError('name', 'Solo se admiten imágenes .png, .jpg, .webp o .gif.')
     tipo = 'pdf' // marcador interno: el tipo real lo da la firma del archivo (ver `image-files.ts`)
+  } else if (kind === 'provenance') {
+    if (!hasExt || ext !== 'json') throw new OutputPathError('name', 'La procedencia debe ser un archivo .json.')
+    tipo = 'pdf' // solo marcador interno: la autoridad se coteja por hash con el registro de main
   } else {
     tipo = (EXT_TIPO as Record<string, InputTipo | undefined>)[hasExt ? ext : '']
     if (!tipo) throw new OutputPathError('name', 'Solo se puede renderizar un .pptx, .docx, .xlsx o .pdf.')
@@ -141,9 +144,11 @@ export async function readTaskFile(
     if (st.size > maxBytes)
       throw new OutputPathError(
         'size',
-        kind === 'image'
-          ? 'La imagen es demasiado grande (máx. 5 MB).'
-          : 'El archivo es demasiado grande para la vista previa (máx. 25 MB).'
+        kind === 'provenance'
+          ? 'El JSON de procedencia es demasiado grande (máx. 128 KB).'
+          : kind === 'image'
+            ? 'La imagen es demasiado grande (máx. 5 MB).'
+            : 'El archivo es demasiado grande para la vista previa (máx. 25 MB).'
       )
     await hooks.afterOpen?.()
     const bytes = Buffer.alloc(st.size)

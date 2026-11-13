@@ -108,7 +108,7 @@ export function attachImageCredits(
     expectedCredits.push(asset.credit)
     return `<p style="display:block!important;visibility:visible!important;opacity:1!important;color:#111!important;font:11pt Arial!important;position:static!important;overflow:visible!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere!important">Recurso ${index + 1} (${escapeHtml(resourceName(asset.path))}). ${escapeHtml(asset.credit)}</p>`
   })
-  const section = `<section style="display:block!important;visibility:visible!important;opacity:1!important;position:static!important;overflow:visible!important;height:auto!important;background:#fff!important;color:#111!important;break-before:page"><h2 style="font:18pt Arial!important;color:#111!important">Créditos de imágenes</h2>${paragraphs.join('')}</section>`
+  const section = `<section style="display:block!important;visibility:visible!important;opacity:1!important;position:static!important;overflow:visible!important;height:auto!important;background:#fff!important;color:#111!important;break-inside:avoid"><h2 style="font:18pt Arial!important;color:#111!important">Créditos de imágenes</h2>${paragraphs.join('')}</section>`
   const html = /<\/body\s*>/i.test(input.html) ? input.html.replace(/<\/body\s*>/i, `${section}</body>`) : input.html + section
   return { input: { ...input, html }, expectedCredits }
 }
@@ -146,9 +146,11 @@ export async function reviewImageCredits(
         kind === 'pptx' ? /^ppt\/slides\/slide\d+\.xml$/.test(name) : name === 'word/document.xml'
       )
       for (const name of names) {
-        const xml = (await zip.file(name)!.async('string')).replace(/<w:r\b[^>]*>[\s\S]*?<\/w:r>/g, (run) =>
-          /<w:vanish\b/.test(run) ? '' : run
-        )
+        const source = await zip.file(name)!.async('string')
+        if (kind === 'pptx' && /<p:sld\b[^>]*\bshow=["'](?:0|false)["']/.test(source)) continue
+        const xml = source
+          .replace(/<p:sp\b[^>]*>[\s\S]*?<\/p:sp>/g, (shape) => (/<p:cNvPr\b[^>]*\bhidden=["'](?:1|true)["']/.test(shape) ? '' : shape))
+          .replace(/<w:r\b[^>]*>[\s\S]*?<\/w:r>/g, (run) => (/<w:vanish\b/.test(run) ? '' : run))
         text += [...xml.matchAll(/<(?:w|a):t(?:\s[^>]*)?>([^<]*)<\/(?:w|a):t>/g)].map((match) => decodeXml(match[1])).join('')
       }
     }

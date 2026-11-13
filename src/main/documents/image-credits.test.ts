@@ -106,6 +106,8 @@ describe('créditos comprobados de fotografías', () => {
     expect(attached.input.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt; &amp; Autor')
     expect(attached.input.html).not.toContain('<script>')
     expect(attached.input.html).toContain('Recurso 1 (cafe.jpg)')
+    expect(attached.input.html).not.toContain('break-before:page')
+    expect(attached.input.html).toContain('break-inside:avoid')
     expect(attached.input.html.indexOf('Créditos de imágenes')).toBeLessThan(attached.input.html.indexOf('</body>'))
   })
 
@@ -129,6 +131,9 @@ describe('créditos comprobados de fotografías', () => {
     const pptx = new JSZip()
     pptx.file('ppt/slides/slide1.xml', '<p:sld><a:t>Foto</a:t></p:sld>')
     pptx.file('ppt/notesSlides/notesSlide1.xml', `<a:t>${xmlEscape(CREDIT)}</a:t>`)
+    expect((await reviewImageCredits('pptx', await pptx.generateAsync({ type: 'nodebuffer' }), [CREDIT])).ok).toBe(false)
+    pptx.file('ppt/slides/slide2.xml', `<p:sld show="0"><a:t>${xmlEscape(CREDIT)}</a:t></p:sld>`)
+    pptx.file('ppt/slides/slide3.xml', `<p:sld><p:sp><p:cNvPr hidden="1"/><a:t>${xmlEscape(CREDIT)}</a:t></p:sp></p:sld>`)
     expect((await reviewImageCredits('pptx', await pptx.generateAsync({ type: 'nodebuffer' }), [CREDIT])).ok).toBe(false)
     const docx = new JSZip()
     docx.file('word/document.xml', `<w:r><w:rPr><w:vanish/></w:rPr><w:t>${xmlEscape(CREDIT)}</w:t></w:r>`)

@@ -197,7 +197,7 @@ export async function renderPreview(
           if (page <= lastPage) all.push(image)
         } catch (err) {
           const message = err instanceof Error ? err.message.trim() : ''
-          const missing = message.match(/^(?:bad parameters:\s*)?no page (\d+)\.?$/i)
+          const missing = message.match(/^(?:wordcraft-cli:\s*)?(?:bad parameters:\s*)?no page (\d+)\.?$/i)
           if (missing && Number(missing[1]) === page && all.length > 0) {
             pages = page - 1
             status = 'complete'

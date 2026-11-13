@@ -291,9 +291,11 @@ describe('tabla de Word: filas enteras y sin hoja en blanco', () => {
     expect(cmds(flat).filter((c) => c.command === 'para.set' && (c.params?.props as { keepLines?: boolean })?.keepLines).length).toBe(4)
     expect(flat.at(-1)).toBe('format.size={"size":1}')
   })
-  it('con un párrafo al final no encoge nada', () => {
+  it('compacta solo el párrafo vacío posterior al texto final', () => {
     const flat = chatDocxCommands({ title: 'T', blocks: [{ type: 'paragraph', text: 'fin' }] } as never).flat()
-    expect(flat).not.toContain('format.size={"size":1}')
+    expect(flat.at(-1)).toBe('format.size={"size":1}')
+    expect(flat.indexOf('text.insert={"text":"fin"}')).toBeLessThan(flat.lastIndexOf('text.newParagraph'))
+    expect(flat.lastIndexOf('text.newParagraph')).toBeLessThan(flat.indexOf('format.size={"size":1}'))
   })
 })
 
@@ -372,5 +374,51 @@ describe('informe profesional compartido con la skill', () => {
     const widths = c.filter((x) => x.command === 'table.columnWidth').map((x) => x.params?.width as number)
     expect(widths[0]).toBeGreaterThan(widths[1])
     expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(16.59 * 28.35, 0)
+  })
+})
+
+describe('informe con fotos y créditos: paginación sin estilos heredados', () => {
+  it('las listas tras un título reinician espaciado; los créditos finales conservan su tamaño', () => {
+    const groups = chatDocxCommands({
+      blocks: [
+        { type: 'heading', level: 1, text: 'Conclusiones' },
+        { type: 'bullets', items: ['Primera conclusión', 'Segunda conclusión'] },
+        { type: 'heading', level: 1, text: 'Créditos de imágenes' },
+        { type: 'paragraph', text: 'Foto: Autora, CC BY 4.0.' }
+      ]
+    })
+    const list = groups.find((group) => group.includes('para.bullets'))!
+    expect(list).toContain('para.spacing={"before":0,"after":6}')
+    const credit = groups.find((group) => group.includes('text.insert={"text":"Foto: Autora, CC BY 4.0."}'))!
+    expect(credit).toContain('format.size={"size":11}')
+    expect(credit).not.toContain('format.size={"size":1}')
+    expect(groups.at(-1)).toEqual([
+      'caret.docEnd',
+      'para.set={"props":{"keepNext":false,"keepLines":false,"widowControl":false}}',
+      'para.spacing={"before":0,"after":0}',
+      'para.lineSpacing={"value":1}',
+      'format.size={"size":1}'
+    ])
+  })
+  it('foto después de título conserva solo la unión al pie y libera la del título', () => {
+    const spec: DocxSpec = {
+      blocks: [
+        { type: 'heading', level: 1, text: 'Fauna' },
+        { type: 'image', path: 'foto.jpg', caption: 'Figura. Fauna local' },
+        { type: 'paragraph', text: 'Descripción de la foto.' }
+      ]
+    }
+    const images = new Map([
+      ['foto.jpg', { kind: 'jpeg' as const, mime: 'image/jpeg', ext: 'jpg', width: 1200, height: 800, bytes: 100, file: '/tmp/foto.jpg' }]
+    ])
+    const groups = chatDocxCommands(spec, images)
+    const group = groups.find((g) => g.some((c) => c.startsWith('insert.picture=')))!
+    const before = group.slice(
+      0,
+      group.findIndex((c) => c.startsWith('insert.picture='))
+    )
+    expect(before).toContain('para.set={"props":{"keepNext":true,"keepLines":false,"widowControl":false}}')
+    expect(before).toContain('para.spacing={"before":0,"after":6}')
+    expect(before).toContain('para.lineSpacing={"value":1}')
   })
 })

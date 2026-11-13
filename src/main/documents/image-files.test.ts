@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MAX_IMAGE_BYTES } from './input-path'
 import { prepareImages, sniffImage, MAX_IMAGE_PIXELS } from './image-files'
+import { markFreeImagePreview, isFreeImagePreview } from './free-image-preview'
 import { setPrivateTmpBase } from '../office/craft/private-tmp'
 
 /** PNG de 2×3 píxeles (cabecera mínima: firma + IHDR; alcanza para leer el tamaño). */
@@ -58,6 +59,20 @@ const webpVp8x = (w = 100, h = 50): Buffer => {
 }
 
 describe('sniffImage: tipo y tamaño por los bytes, no por el nombre', () => {
+  it('mantiene tamaño JPEG con comentario de muestra y reconoce copias renombradas', async () => {
+    const preview = markFreeImagePreview(jpeg(640, 480))
+    expect(sniffImage(preview)).toMatchObject({ kind: 'jpeg', width: 640, height: 480 })
+    expect(isFreeImagePreview(preview)).toBe(true)
+    await expect(
+      prepareImages('/unused', ['renombrada.jpg'], [], async () => ({
+        bytes: preview,
+        abs: '/unused/renombrada.jpg',
+        rel: 'renombrada.jpg',
+        tipo: 'pdf'
+      }))
+    ).rejects.toThrow(/vista previa.*imagenes_usar/)
+  })
+
   it('PNG, GIF, JPEG y WebP', () => {
     expect(sniffImage(png(2, 3))).toMatchObject({ kind: 'png', mime: 'image/png', ext: 'png', width: 2, height: 3 })
     expect(sniffImage(gif(5, 4))).toMatchObject({ kind: 'gif', width: 5, height: 4 })
