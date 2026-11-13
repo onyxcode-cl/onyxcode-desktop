@@ -42,6 +42,22 @@ describe('looksLikeBlockedDelete', () => {
     p.state = { ...p.state, metadata: { exit: 1 } } as ToolPart['state']
     expect(looksLikeBlockedDelete(p, { folder: '/win/c/work' })).toBe(true)
   })
+  it('una orden encadenada que termina con código 0 pero cuyo rm fue negado SÍ ofrece la tarjeta (Mac y WSL)', () => {
+    const casos: Array<[string, string, string]> = [
+      [
+        'rm viejo.txt; test -e viejo.txt && echo sigue || echo borrado',
+        "rm: cannot remove 'viejo.txt': Permission denied\nsigue",
+        '/win/c/work'
+      ],
+      ['rm viejo.txt; ls -la', 'rm: viejo.txt: Operation not permitted\ntotal 8', '/work'],
+      ['touch temp.txt && rm temp.txt viejo.txt; ls', "rm: cannot remove 'viejo.txt': Permission denied", '/win/c/work']
+    ]
+    for (const [command, output, folder] of casos) {
+      const p = part(command, output)
+      p.state = { ...p.state, metadata: { exit: 0 } } as ToolPart['state']
+      expect(looksLikeBlockedDelete(p, { folder })).toBe(true)
+    }
+  })
   it('borrar, mover o renombrar denegado SÍ ofrece la tarjeta (cualquier forma)', () => {
     for (const c of [
       'rm -rf viejo',

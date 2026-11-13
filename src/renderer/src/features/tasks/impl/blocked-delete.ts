@@ -46,8 +46,12 @@ function inScope(paths: string[], scope: DeleteScope, search = false): boolean {
 export function looksLikeBlockedDelete(part: ToolPart, scope?: DeleteScope): boolean {
   // bash puede completar la herramienta aun con salida distinta de cero. Si el proceso
   // terminó bien, su salida puede contener un error recuperado (p. ej. shutil.move).
-  if (part.state.status === 'completed' && (part.state.metadata?.exit === 0 || part.state.metadata?.lazunoxOwnDelete === true)) return false
   const text = resultText(part)
+  // Una orden encadenada (`rm x; test -e x || echo …`) termina con código 0 aunque el rm haya sido negado: el mensaje propio de rm
+  // (macOS: «rm: x: Operation not permitted»; Linux/WSL: «rm: cannot remove 'x': Permission denied») sigue contando como bloqueo.
+  const rmDenied = /\b(?:rm|rmdir|unlink): (?:cannot remove [^\n]*|[^\n:]+: )(?:Operation not permitted|Permission denied)/i.test(text)
+  if (part.state.status === 'completed' && part.state.metadata?.lazunoxOwnDelete === true) return false
+  if (part.state.status === 'completed' && part.state.metadata?.exit === 0 && !rmDenied) return false
   if (!DENIED.test(text)) return false
   const input = part.state.input
   const patch = str(input.patchText) || str(input.patch)
