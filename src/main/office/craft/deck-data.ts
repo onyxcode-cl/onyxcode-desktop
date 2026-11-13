@@ -86,6 +86,11 @@ export function chartCategory(label: string, max = 24): string {
 /** Promueve los pares que ya escribe el modelo, sin pedir un vocabulario nuevo ni inventar datos. */
 export function prepareSlide(slide: PptxSlideSpec, index: number, total: number): PptxSlideSpec {
   if (['free', 'cover', 'closing', 'section', 'quote', 'image'].includes(slide.layout ?? '')) return slide
+  const noData = !slide.table && !slide.chart && !slide.kpis?.length && !slide.columns?.length && !slide.image && !slide.elements?.length
+  // Una despedida de una palabra también es un cierre, incluso si el modelo escribió «bullets» sin viñetas.
+  if (index === total - 1 && noData && /^(gracias|preguntas|muchas gracias)[.!?¿¡\s]*$/i.test(slide.title ?? ''))
+    return { ...slide, layout: 'closing' }
+  if (noData && slide.title && !slide.bullets?.length && index > 0) return { ...slide, layout: 'section' }
   if (slide.table) return { ...slide, layout: 'table', chart: slide.chart ?? numericSeries(slide.table) }
   if (!slide.chart && !slide.kpis?.length && !slide.columns?.length && (slide.bullets?.length ?? 0) >= 2 && slide.bullets!.length <= 8) {
     const pairs = slide.bullets!.map((text) => text.match(/^(.+?)\s*(?::|=|[—–]|\s·\s)\s*(.+)$/))

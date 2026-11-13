@@ -44,28 +44,37 @@ describe('build_chat_deck (CLI de las Tareas con el motor del Chat)', () => {
     writeFileSync(p, typeof v === 'string' ? v : JSON.stringify(v))
     return p
   }
-  const deps = (run: (b: string, a: string[], t: number) => Promise<void>) => ({
+  const deps = (run: (b: string, a: string[], t: number, input?: string) => Promise<void>) => ({
     deckcraft: fakeBin,
     run,
     log: (m: string) => logs.push(m),
     err: (m: string) => errs.push(m)
   })
   /** runCraft falso: comprueba los argumentos y «genera» el archivo donde dice --save. */
-  const okRun = (seen: { args?: string[]; binary?: string }) => async (binary: string, args: string[]) => {
-    seen.binary = binary
-    seen.args = args
-    writeFileSync(args[args.indexOf('--save') + 1], 'PPTX-FALSO')
-  }
+  const okRun =
+    (seen: { args?: string[]; binary?: string; commands?: string[] }) =>
+    async (binary: string, args: string[], _timeout: number, input?: string) => {
+      seen.binary = binary
+      seen.args = args
+      const commands = JSON.parse(input!.trim().split('\n').at(-1)!).params.arguments.commands as Array<{
+        command: string
+        params?: Record<string, unknown>
+      }>
+      seen.commands = commands
+        .filter((c) => c.command !== 'file.saveAs')
+        .map((c) => c.command + (c.params ? '=' + JSON.stringify(c.params) : ''))
+      writeFileSync(String(commands.find((c) => c.command === 'file.saveAs')!.params!.path), 'PPTX-FALSO')
+    }
 
   it('spec válido: usa los MISMOS comandos que el Chat, escribe la salida y no interpreta nada como comando', async () => {
-    const seen: { args?: string[]; binary?: string } = {}
+    const seen: { args?: string[]; binary?: string; commands?: string[] } = {}
     const code = await runChatDeckCli([spec(SPEC), out], deps(okRun(seen)))
     expect(code).toBe(0)
     expect(readFileSync(out, 'utf8')).toBe('PPTX-FALSO')
     expect(seen.binary).toBe(fakeBin)
     const cmds = chatDeckCommands(SPEC)
-    expect(seen.args![0]).toBe('run')
-    expect(seen.args!.filter((_, i, a) => a[i - 1] === '--cmd')).toEqual(cmds)
+    expect(seen.args).toEqual(['mcp'])
+    expect(seen.commands).toEqual(cmds)
     expect(logs.join('\n')).toContain('2 diapositivas')
   })
 
@@ -134,16 +143,11 @@ describe('build_chat_deck (CLI de las Tareas con el motor del Chat)', () => {
     expect(existsSync(out)).toBe(false)
   })
 
-  it('contenido hostil (rutas y comandos como texto) viaja como DATO dentro de un --cmd, nunca como argumento propio', async () => {
+  it('contenido hostil (rutas y comandos como texto) viaja como DATO por stdin, nunca como argumento propio', async () => {
     const hostile: PptxSpec = { slides: [{ title: '$(touch /tmp/x); --save /etc/passwd', bullets: ['--cmd rm -rf ~', '../../../x'] }] }
     const seen: { args?: string[] } = {}
     expect(await runChatDeckCli([spec(hostile), out], deps(okRun(seen)))).toBe(0)
     const args = seen.args!
-    // Los únicos argumentos que no son `--cmd <json>` son `run`, `--save` y la ruta de salida temporal.
-    expect(args.filter((a, i) => a === '--save' || args[i - 1] === '--save')).toHaveLength(2)
-    expect(args.filter((a) => a === '--save')).toHaveLength(1)
-    expect(args.filter((a, i) => i > 0 && args[i - 1] !== '--cmd' && a !== '--cmd' && a !== '--save' && args[i - 1] !== '--save')).toEqual(
-      []
-    )
+    expect(args).toEqual(['mcp'])
   })
 })

@@ -478,6 +478,50 @@ describe('189: notas del orador', () => {
 })
 
 describe('acento legible', () => {
+  const j = (command: string): Record<string, unknown> => JSON.parse(command.slice(command.indexOf('=') + 1))
+  it('sin tema usa azul profundo AA en títulos, filete, cifras y cabecera de tabla; mono explícito se conserva', () => {
+    const pal = paletteFor(undefined)
+    expect(pal.accent).toBe('1F4E79')
+    for (const bg of [pal.bg, pal.panel, 'FFFFFF']) expect(contrastRatio(pal.accent, bg)).toBeGreaterThanOrEqual(4.5)
+    expect(paletteFor('mono').accent).toBe('111111')
+    const cmds = chatDeckCommands({
+      slides: [
+        { title: 'Resumen', layout: 'kpis', kpis: [{ label: 'Cobertura', value: '91 %' }] },
+        { title: 'Resultados', table: { columns: ['Concepto', 'Valor'], rows: [['Meta', '91 %']] } }
+      ]
+    })
+    expect(cmds).toContain('shape.fill={"color":"#1F4E79"}')
+    expect(cmds.some((c) => c.startsWith('table.cellFill=') && c.includes('#1F4E79'))).toBe(true)
+    for (const title of ['Resumen', 'Resultados', '91 %']) {
+      const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === title)
+      expect(cmds[i + 2]).toBe('format.color={"color":"#1F4E79"}')
+    }
+  })
+
+  it.each(['Gracias', 'Preguntas'])('centra y agranda el cierre %s aunque el layout sea bullets sin contenido', (title) => {
+    const cmds = chatDeckCommands({ slides: [{ title: 'Inicio' }, { title, layout: 'bullets', note: 'equipo@example.test' }] })
+    const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === title)
+    expect(j(cmds[i]).rect).toEqual([60, 152, 840, 240])
+    expect(j(cmds[i + 1]).size).toBeGreaterThanOrEqual(100)
+    expect(cmds.slice(i, i + 10)).toContain('format.align={"align":"center"}')
+    expect(cmds.some((c) => c.startsWith('insert.textBox=') && j(c).text === 'equipo@example.test')).toBe(true)
+  })
+
+  it('una frase sin viñetas queda centrada y un cierre conserva resumen y contacto', () => {
+    const cmds = chatDeckCommands({
+      slides: [
+        { title: 'Inicio' },
+        { title: 'El agua es vida', layout: 'bullets' },
+        { title: 'Gracias', bullets: ['Ampliar la cobertura en 2027'], note: 'equipo@example.test' }
+      ]
+    })
+    const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === 'El agua es vida')
+    expect(j(cmds[i + 1]).size).toBeGreaterThanOrEqual(80)
+    expect(cmds.slice(i, i + 10)).toContain('format.align={"align":"center"}')
+    for (const text of ['Ampliar la cobertura en 2027', 'equipo@example.test'])
+      expect(cmds.some((c) => c.startsWith('insert.textBox=') && j(c).text === text)).toBe(true)
+  })
+
   it('un verde claro sobre blanco se oscurece hasta 4,5:1', () => {
     const p = customPalette({ bg: '#FFFFFF', text: '#10262B', accent: '#7BC47F' })
     expect(contrastRatio(p.accent, p.bg)).toBeGreaterThanOrEqual(4.5)

@@ -22,6 +22,7 @@ from _report_layout import prepare, TEMPLATE, column_widths
 # Búsqueda del programa y entorno mínimo compartidos con la skill _shared (render.py).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
 import render  # noqa: E402
+import craft_batch  # noqa: E402
 
 # Copias de `_docxlib.fecha_es/fmt_num/looks_numeric` (aquí no hace falta python-docx; una prueba exige que sigan iguales).
 MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
@@ -306,13 +307,10 @@ def main(argv):
         print(f"ERROR en el contenido: {e}", file=sys.stderr)
         return 1
     out = os.path.abspath(argv[2])
-    args = [binary, "run", "--save", out]
-    for cmd in cmds:
-        args += ["--cmd", cmd]
     home = tempfile.mkdtemp(prefix="lazunox-craft-")
     env = render.entorno_minimo(home)
     try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=60, env=env)
+        r = craft_batch.run(binary, cmds, out, env, 60)
     except subprocess.TimeoutExpired:
         print("ERROR: WordCraft tardó más de 60 s", file=sys.stderr)
         return 1

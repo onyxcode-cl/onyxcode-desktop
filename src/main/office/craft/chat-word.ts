@@ -1,14 +1,14 @@
 /**
  * PRUEBA (rama `exp/craft-office-pruebas`): el bloque ```docx del Chat (`DocxSpec`, el MISMO esquema JSON de la skill `docx` de Tareas, sin
  * imágenes) → documento de Word armado con `wordcraft-cli` (WordCraft). Es el port a TypeScript de `build_word_craft.py`; el contenido es
- * DATO (va como valor JSON de cada comando, dentro de un archivo de guion) y los números de las tablas se formatean es-CL.
+ * DATO (va como valor JSON de cada comando, por stdin del MCP local) y los números de las tablas se formatean es-CL.
  */
 import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DocxSpec } from '@shared/chat-doc-spec'
 import type { ImageMap } from '../../documents/image-files'
-import { runCraft } from './craft-run'
+import { craftBatch, runCraft } from './craft-run'
 import { prepareWordReport, WORD_REPORT } from './word-report-layout'
 
 const ACCENT = '1F3864'
@@ -269,7 +269,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
   return groups.filter((g) => g.length > 0)
 }
 
-/** Tope de bytes de comandos por ejecución (la línea de comandos tiene un máximo; macOS ~1 MB en total). */
+/** Tope aproximado de comandos por tanda para acotar el trabajo y la respuesta del motor; el contenido viaja por stdin. */
 const CHUNK_BYTES = 150_000
 
 /** Une grupos contiguos en tandas de hasta `CHUNK_BYTES` sin partir ningún grupo. */
@@ -292,7 +292,7 @@ export function chunkGroups(groups: string[][], limit = CHUNK_BYTES): string[][]
 }
 
 /**
- * Arma el .docx con WordCraft y devuelve sus bytes. Si los comandos no caben en una sola ejecución, se parte en tandas por bloque:
+ * Arma el .docx con WordCraft y devuelve sus bytes. Los comandos viajan por stdin, en tandas acotadas por bloque:
  * cada una abre el archivo anterior, escribe al final y lo guarda. Lanza si el programa falla (quien llama cae al camino de siempre).
  */
 export async function renderChatDocx(binary: string, spec: DocxSpec, timeoutMs = 60_000, images?: ImageMap): Promise<Buffer> {
@@ -301,15 +301,14 @@ export async function renderChatDocx(binary: string, spec: DocxSpec, timeoutMs =
     const out = join(dir, 'doc.docx')
     const chunks = chunkGroups(chatDocxCommands(spec, images))
     for (let i = 0; i < chunks.length; i++) {
-      const args = ['run']
+      const commands: string[] = []
       if (i > 0) {
         const prev = join(dir, `entrada-${i}.docx`)
         await copyFile(out, prev)
-        args.push('--file', prev, '--cmd', 'caret.docEnd', '--cmd', 'para.style={"style":"Normal"}')
+        commands.push(`file.open=${JSON.stringify({ path: prev })}`, 'caret.docEnd', 'para.style={"style":"Normal"}')
       }
-      for (const c of chunks[i]) args.push('--cmd', c)
-      args.push('--save', out)
-      await runCraft(binary, args, timeoutMs)
+      commands.push(...chunks[i], `file.saveAs=${JSON.stringify({ path: out })}`)
+      await runCraft(binary, ['mcp'], timeoutMs, craftBatch(commands))
     }
     return await readFile(out)
   } finally {

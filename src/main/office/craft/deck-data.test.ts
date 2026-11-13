@@ -258,7 +258,7 @@ describe('ocupación por defecto y objetos editables', () => {
       slides: [{ title: 'Portada' }, { title: 'Decisión', layout: 'bullets', bullets: ['Aprobar depósitos'] }]
     })
     expect(commands).toContain('design.background={"color":"#F6F9FE"}')
-    expect(commands.some((c) => c.startsWith('design.colors=') && c.includes('#2563EB'))).toBe(true)
+    expect(commands.some((c) => c.startsWith('design.colors=') && c.includes('#1F4E79'))).toBe(true)
     const index = commands.findIndex((c) => c.startsWith('insert.textBox=') && c.includes('Aprobar depósitos'))
     expect(JSON.parse(commands[index + 1].split('=')[1]).size).toBeGreaterThanOrEqual(50)
     expect(commands.slice(index, index + 8)).toContain('format.anchor={"anchor":"middle"}')

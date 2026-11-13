@@ -7,6 +7,7 @@
  * Ejemplo: node scripts/win/measure-tasks-startup.mjs --cdp=http://127.0.0.1:9731 --samples=5 --folder=C:\lzx\prueba
  */
 import { chromium } from 'playwright-core'
+import { mainWindow } from './main-window.mjs'
 
 const args = process.argv.slice(2)
 if (args.includes('--help')) {
@@ -41,8 +42,7 @@ let status = 0
 try {
   const browser = await chromium.connectOverCDP(endpoint.origin, { timeout: 10_000 })
   const pages = browser.contexts().flatMap((c) => c.pages())
-  const page =
-    pages.find((p) => p.url().startsWith('lazunox://app/')) ?? pages.find((p) => /^http:\/\/(127\.0\.0\.1|localhost):\d+\/$/.test(p.url()))
+  const page = await mainWindow(pages)
   if (!page) throw new Error('No se encontró la ventana principal de la copia de prueba')
   const rows = []
   for (const [folderIndex, folder] of folders.entries()) {

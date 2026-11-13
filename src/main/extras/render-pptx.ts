@@ -182,6 +182,24 @@ function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
 function addSectionSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
   slide.background = { color: p.primary2 }
   addBleedDecoration(slide, p, s, 'bl')
+  if (spec.title && !spec.eyebrow && !spec.bullets?.length) {
+    addEyebrow(slide, String(ctx.sectionNumber).padStart(2, '0'), 0.6, p.accentOnDark, { align: 'center' })
+    slide.addText(spec.title, {
+      x: MARGIN_X,
+      y: 1.3,
+      w: CONTENT_W,
+      h: 2.6,
+      fontSize: fitText(spec.title, CONTENT_W, 2.6, [72, 64, 56, 44], p.headFont, { bold: p.titleBold }),
+      bold: p.titleBold,
+      color: p.onDark,
+      fontFace: p.headFont,
+      align: 'center',
+      valign: 'middle',
+      margin: 0
+    })
+    addFooterRow(slide, spec.note ?? ctx.footer, undefined, p.onDarkBody, p.onDarkBody)
+    return
+  }
   const eyebrow = spec.eyebrow ?? String(ctx.sectionNumber).padStart(2, '0')
   addEyebrow(slide, eyebrow, 1.55, p.accentOnDark, { tick: s.ruleUnderEyebrow })
   if (spec.title) {
@@ -213,22 +231,25 @@ function addSectionSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette
   }
 }
 
-function addClosingSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams): void {
+function addClosingSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
   slide.background = { color: p.primary }
   addBleedDecoration(slide, p, s, 'bl')
   if (spec.eyebrow) addEyebrow(slide, spec.eyebrow, 1.0, p.accentOnDark, { tick: s.ruleUnderEyebrow })
   if (spec.title) {
-    const size = fitText(spec.title, CONTENT_W, 1.1, [36, 32, 28], p.headFont, { bold: p.titleBold })
+    const solo = !spec.bullets?.length
+    const height = solo ? 2.6 : 1.1
+    const size = fitText(spec.title, CONTENT_W, height, solo ? [80, 72, 64, 56] : [36, 32, 28], p.headFont, { bold: p.titleBold })
     slide.addText(spec.title, {
       x: MARGIN_X,
       y: 1.3,
       w: CONTENT_W,
-      h: 1.1,
+      h: height,
       fontSize: size,
       bold: p.titleBold,
       color: p.onDark,
       fontFace: p.headFont,
-      valign: 'bottom',
+      align: 'center',
+      valign: solo ? 'middle' : 'bottom',
       margin: 0
     })
   }
@@ -238,6 +259,7 @@ function addClosingSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette
       { x: MARGIN_X, y: 2.75, w: CONTENT_W, h: 1.9, fontSize: 16, color: p.onDarkBody, fontFace: BODY_FONT, valign: 'top', margin: 0 }
     )
   }
+  addFooterRow(slide, spec.note ?? ctx.footer, undefined, p.onDarkMuted, p.onDarkMuted)
 }
 
 /** Una cifra grande como foco (`title` es la cifra, p.ej. "+27%" — la unidad, si se reconoce, sale más chica en la misma línea). El primer `bullet` la explica. Fondo a toda página, misma familia visual que cover/section/closing. */
@@ -918,7 +940,7 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
     const ctx: SlideCtx = { page: i + 1, total, sectionNumber: sectionCount, footer: data.footer }
     if (layout === 'cover') addCoverSlide(slide, spec, palette, style, ctx)
     else if (layout === 'section') addSectionSlide(slide, spec, palette, style, ctx)
-    else if (layout === 'closing') addClosingSlide(slide, spec, palette, style)
+    else if (layout === 'closing') addClosingSlide(slide, spec, palette, style, ctx)
     else if (layout === 'stat') addStatSlide(slide, spec, palette, style, ctx)
     else if (layout === 'steps') addStepsSlide(slide, spec, palette, style, ctx)
     else if (layout === 'two-col') addTwoColSlide(slide, spec, palette, style, ctx)

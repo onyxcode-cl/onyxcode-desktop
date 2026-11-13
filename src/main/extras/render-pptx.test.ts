@@ -73,6 +73,25 @@ describe('isPptxSpec', () => {
   })
 })
 
+describe('cierres y frases breves del respaldo', () => {
+  it('un Gracias sin viñetas y una frase sola quedan grandes y centrados, con contacto conservado', async () => {
+    const slides = await slideTexts(
+      await renderPptx({
+        slides: [
+          { title: 'Inicio' },
+          { title: 'El agua es vida', layout: 'bullets' },
+          { title: 'Gracias', layout: 'bullets', note: 'equipo@example.test' }
+        ]
+      })
+    )
+    for (const i of [1, 2]) {
+      expect(slides[i]).toContain('algn="ctr"')
+      expect(slides[i]).toMatch(/sz="(?:7200|8000)"/)
+    }
+    expect(slides[2]).toContain('equipo@example.test')
+  })
+})
+
 async function slideTexts(buf: Buffer): Promise<string[]> {
   const zip = await JSZip.loadAsync(buf)
   const names = Object.keys(zip.files)

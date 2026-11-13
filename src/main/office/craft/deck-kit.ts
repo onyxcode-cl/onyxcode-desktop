@@ -183,7 +183,9 @@ export function customPalette(p: {
 }
 
 export function paletteFor(theme: string | undefined): Palette {
-  return PALETTES[theme ?? 'blue'] ?? PALETTES.blue
+  if (theme) return PALETTES[theme] ?? PALETTES.blue
+  // Predeterminado sobrio con contraste AA tanto sobre el fondo como sobre las tarjetas.
+  return { ...PALETTES.blue, accent: '1F4E79', accent2: '244B67', marks: ['1F4E79', '176B68', '365C87', '375879', '244B67'] }
 }
 
 /**
@@ -320,7 +322,8 @@ export function createKit(
   const header = (n: number, title: string, kicker: string | undefined): void => {
     bgslide([[680, -250, 500, pal.glow]])
     if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 13, accent, true, 'left', 3)
-    txt(60, 62, 840, 64, title, fitSize(title, 40, 36), pal.text, true, 'left', -1, titleFont)
+    txt(60, 62, 840, 64, title, fitSize(title, 40, 36), autoFit ? pal.accent : pal.text, true, 'left', -1, titleFont)
+    if (autoFit) rect(60, 128, 840, 4, pal.accent)
     dotrow(60, 506, 8, 6)
     txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right')
   }

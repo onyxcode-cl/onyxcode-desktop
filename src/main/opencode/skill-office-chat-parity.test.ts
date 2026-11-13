@@ -185,7 +185,14 @@ describe.skipIf(!hasPython || !hasNode || process.platform === 'win32')(
           writeFileSync(join(shared, f), readFileSync(resolve(ROOT, 'resources/opencode/skills/_shared', f)))
         const mjs = read('scripts/build-chat-office.mjs')
         const fakes: Record<'docx' | 'xlsx', string> = {
-          docx: '#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = "--save" ] && O="$2"; shift; done\nprintf FALSO-WORD > "$O"\n',
+          docx: `#!/bin/sh
+':' //; exec "${process.execPath}" "$0" "$@"
+const fs = require('node:fs');
+const messages = fs.readFileSync(0, 'utf8').trim().split('\\n').map(JSON.parse);
+const commands = messages.find(m => m.id === 2).params.arguments.commands;
+fs.writeFileSync(commands.find(c => c.command === 'file.saveAs').params.path, 'FALSO-WORD');
+console.log(JSON.stringify({id:2,result:{content:[{type:'text',text:JSON.stringify(commands.map(c=>({ok:true})))}]}}));
+`,
           xlsx: '#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = "--out" ] && O="$2"; shift; done\nprintf FALSO-EXCEL > "$O"\n'
         }
         const specs = {
@@ -228,7 +235,7 @@ describe.skipIf(!hasPython || !hasNode || process.platform === 'win32')(
           chmodSync(fake, 0o755)
           const spec = join(dir, `${kind}.json`)
           writeFileSync(spec, JSON.stringify(specs[kind]))
-          const env = { PATH: '/usr/bin:/bin', LAZUNOX_NODE: process.execPath, [envVar[kind]]: fake }
+          const env = { PATH: '/usr/bin:/bin', TMPDIR: dir, LAZUNOX_NODE: process.execPath, [envVar[kind]]: fake }
           const run = (o: string, e: Record<string, string> = env): ReturnType<typeof spawnSync> =>
             spawnSync('python3', ['-I', join(scripts, `build_chat_${kind}.py`), spec, o], {
               env: { ...e, LAZUNOX_BIN_DIR: join(dir, 'vacio') },

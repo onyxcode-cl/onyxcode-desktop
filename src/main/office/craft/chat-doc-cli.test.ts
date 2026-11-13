@@ -49,13 +49,28 @@ describe.skipIf(!posixOnly)('build_chat_docx / build_chat_xlsx (CLI de las Tarea
     chmodSync(p, 0o755)
     return p
   }
+  const fakeMcp = (name: string, extra = ''): string => {
+    const p = join(dir, name)
+    writeFileSync(
+      p,
+      `#!/bin/sh
+':' //; exec "${process.execPath}" "$0" "$@"
+const fs = require('node:fs');
+const messages = fs.readFileSync(0, 'utf8').trim().split('\\n').map(JSON.parse);
+const commands = messages.find(m => m.id === 2).params.arguments.commands;
+fs.writeFileSync(${JSON.stringify(logFile)}, commands.filter(c => c.command !== 'file.saveAs').map(c => c.command + (c.params ? '=' + JSON.stringify(c.params) : '')).join('\\n'));
+fs.writeFileSync(commands.find(c => c.command === 'file.saveAs').params.path, 'FALSO');
+${extra}
+console.log(JSON.stringify({id:2,result:{content:[{type:'text',text:JSON.stringify(commands.map(c=>({command:c.command,ok:true})))}]}}));
+`
+    )
+    chmodSync(p, 0o755)
+    return p
+  }
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'lazunox-office-cli-'))
     logFile = join(dir, 'recibido.txt')
-    fakeBin = fake(
-      'wordcraft-cli',
-      `L="${logFile}"; : > "$L"; while [ $# -gt 0 ]; do case "$1" in --cmd) printf '%s\\n' "$2" >> "$L"; shift;; --save) O="$2"; shift;; esac; shift; done; printf FALSO > "$O"`
-    )
+    fakeBin = fakeMcp('wordcraft-cli')
     out = join(dir, 'salida')
     errs = []
     logs = []
@@ -123,16 +138,13 @@ describe.skipIf(!posixOnly)('build_chat_docx / build_chat_xlsx (CLI de las Tarea
     })
 
     it('si alguien crea la salida mientras el programa trabaja (carrera), no la pisa: O_EXCL', async () => {
-      const carrera = fake(
-        'carrera',
-        `while [ $# -gt 0 ]; do [ "$1" = "--save" ] && O="$2"; shift; done; printf FALSO > "$O"; printf DEL-USUARIO > "${out}.docx"`
-      )
+      const carrera = fakeMcp('carrera', `fs.writeFileSync(${JSON.stringify(out + '.docx')}, 'DEL-USUARIO');`)
       expect(await runChatDocxCli([spec(DOCX), out + '.docx'], { binary: carrera, ...sink })).toBe(1)
       expect(readFileSync(out + '.docx', 'utf8')).toBe('DEL-USUARIO')
       expect(errs.join()).toContain('no se pudo escribir')
     })
 
-    it('el contenido es DATO: un título con comillas, saltos y una ruta solo viaja dentro del JSON de un --cmd', async () => {
+    it('el contenido es DATO: un título con comillas, saltos y una ruta solo viaja dentro del JSON por stdin', async () => {
       const hostil: DocxSpec = {
         title: '"; touch /tmp/pwned-lazunox; echo "',
         blocks: [{ type: 'paragraph', text: '../../../etc/passwd $(rm -rf ~) `id`\n--save /tmp/otra.docx' }]
@@ -140,7 +152,7 @@ describe.skipIf(!posixOnly)('build_chat_docx / build_chat_xlsx (CLI de las Tarea
       expect(await runChatDocxCli([spec(hostil), out + '.docx'], { binary: fakeBin, ...sink })).toBe(0)
       expect(existsSync('/tmp/pwned-lazunox')).toBe(false)
       expect(existsSync('/tmp/otra.docx')).toBe(false)
-      // Cada línea registrada es el valor de UN --cmd: el texto hostil quedó dentro de un JSON, no como argumento propio.
+      // Cada línea registrada es un comando JSON: el texto hostil quedó dentro de un JSON, no como argumento propio.
       const lines = readFileSync(logFile, 'utf8').split('\n').filter(Boolean)
       expect(lines.every((l) => /^[a-zA-Z.]+(=\{.*\})?$/.test(l))).toBe(true)
       expect(readFileSync(logFile, 'utf8')).toContain('touch /tmp/pwned-lazunox')

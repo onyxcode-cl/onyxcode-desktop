@@ -17,6 +17,7 @@ import tempfile
 # Búsqueda del programa y entorno mínimo compartidos con la skill _shared (render.py).
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
 import render  # noqa: E402
+import craft_batch  # noqa: E402
 
 BG, EDGE, VI, VIL, WH, MU = "07070C", "25253A", "8B5CF6", "C4B5FD", "F5F5FA", "A1A1B5"
 GLOW, BLUEG = "1F1640", "0F1A3A"
@@ -335,13 +336,10 @@ def main(argv):
         print(f"ERROR en el contenido: {e}", file=sys.stderr)
         return 1
     out = os.path.abspath(argv[2])
-    args = [binary, "run", "--save", out]
-    for cmd in build_commands(slides):
-        args += ["--cmd", cmd]
     home = tempfile.mkdtemp(prefix="lazunox-craft-")
     env = render.entorno_minimo(home)
     try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=30, env=env)
+        r = craft_batch.run(binary, build_commands(slides), out, env, 30)
     except subprocess.TimeoutExpired:
         print("ERROR: DeckCraft tardó más de 30 s", file=sys.stderr)
         return 1

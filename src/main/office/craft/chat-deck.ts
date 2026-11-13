@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { PptxChartType, PptxSlideSpec, PptxSpec } from '@shared/chat-doc-spec'
 import type { ImageMap } from '../../documents/image-files'
-import { runCraft } from './craft-run'
+import { craftBatch, runCraft } from './craft-run'
 import { ensureTitlePlaceholders } from './pptx-titles'
 import { chartNumber, formatChartNumbers } from './pptx-chart-format'
 import { chartCategory, prepareSlide } from './deck-data'
@@ -130,8 +130,8 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
       const cx = x + Math.floor(i / rows) * (cw + gap)
       const cy = y + (i % rows) * rh
       const size = autoFitSize(text, base, cw - 28, rh - 14, false)
-      dot(cx, cy + rh / 2 - 5, 10, accent)
-      txt(cx + 28, cy + 4, cw - 28, rh - 12, text, size, pal.text)
+      if (items.length !== 1) dot(cx, cy + rh / 2 - 5, 10, accent)
+      txt(cx + 28, cy + 4, cw - 28, rh - 12, text, size, pal.text, false, items.length === 1 ? 'center' : 'left')
       a('format.anchor', { anchor: 'middle' })
     })
   }
@@ -187,13 +187,22 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         break
       case 'section': {
         sectionN += 1
+        if (!s.eyebrow && !bullets.length) {
+          bgslide()
+          txt(60, 70, 840, 32, String(sectionN).padStart(2, '0'), 16, accent, true, 'center')
+          rect(360, 124, 240, 6, accent)
+          txt(60, 152, 840, 240, title, fitSize(title, 110, 22), accent, true, 'center', -2, titleFont)
+          a('format.anchor', { anchor: 'middle' })
+          foot(s)
+          break
+        }
         bgslide([
           [380, -300, 900, pal.dark ? '2E1D66' : pal.glow],
           [-220, 300, 560, g2]
         ])
         dotrow(60, 88, 20, 14)
         txt(54, 130, 700, 160, s.eyebrow ?? String(sectionN).padStart(2, '0'), 120, accent, true, 'left', -4)
-        txt(60, 300, 840, 140, title, fitSize(title, 54, 28), pal.text, true, 'left', -1, titleFont)
+        txt(60, 300, 840, 140, title, fitSize(title, 54, 28), accent, true, 'left', -1, titleFont)
         foot(s)
         break
       }
@@ -204,7 +213,21 @@ export function chatDeckCommands(input: PptxSpec, images?: ImageMap): string[] {
         ])
         if (s.eyebrow) txt(60, 54, 840, 30, s.eyebrow.toUpperCase(), 16, accent, true, 'center')
         dotrow(364, 106, 20, 16)
-        txt(60, 150, 840, 146, title, fitSize(title, 68, 34), pal.text, true, 'center', -2, titleFont)
+        txt(
+          60,
+          bullets.length ? 150 : 152,
+          840,
+          bullets.length ? 146 : 240,
+          title,
+          fitSize(title, bullets.length ? 68 : 120, 22),
+          accent,
+          true,
+          'center',
+          -2,
+          titleFont
+        )
+        a('format.anchor', { anchor: 'middle' })
+        if (!bullets.length) rect(360, 416, 240, 6, accent)
         // Hasta 3 líneas (la primera más grande): el contacto o la despedida de verdad no se pierden.
         bullets.slice(0, 3).forEach((line, k, lines) => {
           const height = 156 / lines.length
@@ -518,9 +541,7 @@ export async function renderChatDeck(
   const dir = await mkdtemp(join(tmpdir(), 'lazunox-chatdeck-'))
   try {
     const out = join(dir, 'deck.pptx')
-    const args = ['run', '--save', out]
-    for (const cmd of chatDeckCommands(spec, images)) args.push('--cmd', cmd)
-    await run(binary, args, timeoutMs)
+    await run(binary, ['mcp'], timeoutMs, craftBatch([...chatDeckCommands(spec, images), `file.saveAs=${JSON.stringify({ path: out })}`]))
     return await formatChartNumbers(await ensureTitlePlaceholders(await readFile(out)))
   } finally {
     await rm(dir, { recursive: true, force: true })
