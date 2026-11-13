@@ -30,6 +30,7 @@ import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import landlock  # noqa: E402
@@ -389,7 +390,39 @@ def child_env(init, root, tmp):
         "OPENCODE_DISABLE_AUTOUPDATE": "1",
     }
     env.update(init["env"])  # ya validado: solo prefijos permitidos
+    # Ruta de la distro, nunca una ruta de Windows ni un valor suministrado por el motor.
+    env.pop("LAZUNOX_RM_BIN_DIR", None)
+    if init["env"].get("LAZUNOX_OWN_DELETE_RUNTIME") == "1":
+        env["LAZUNOX_RM_BIN_DIR"] = "/opt/lazunox/own-delete-bin"
     return env
+
+
+def prepare_rm_bin(init, payload_dir="/opt/lazunox"):
+    """Programas root-owned antes de setuid/Landlock; /opt/lazunox ya es rx en la política.
+
+    El mecanismo sigue apagado hasta comprobar la app real en los dos sistemas. No se
+    usa el árbol privado modificable por la tarea para almacenar programas de confianza.
+    """
+    if init["env"].get("LAZUNOX_OWN_DELETE_RUNTIME") != "1":
+        return None
+    target = os.path.join(payload_dir, "own-delete-bin")
+    os.makedirs(target, mode=0o755, exist_ok=True)
+    st = os.lstat(target)
+    if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.getuid() or st.st_mode & 0o022:
+        raise ValueError("directorio de rm no confiable")
+    with open(os.path.join(payload_dir, "lzx_rm.py"), "rb") as src:
+        data = src.read()
+    for verb in ("rm", "rmdir", "unlink"):
+        fd, temp = tempfile.mkstemp(prefix=".rm-", dir=target)
+        try:
+            with os.fdopen(fd, "wb") as out:
+                out.write(data)
+                os.fchmod(out.fileno(), 0o755)
+            os.replace(temp, os.path.join(target, verb))
+        finally:
+            if os.path.exists(temp):
+                os.unlink(temp)
+    return target
 
 
 def spawn_server(init, root, tmp):
@@ -422,6 +455,7 @@ def namespace_init(init):
     mount_folders(init)
     hide_init()
     root, tmp = prepare_private(init)
+    prepare_rm_bin(init)
     mux = M.Mux(STDIN, STDOUT, init["relayPorts"], init["serverPort"])
     mux.start()
     server = spawn_server(init, root, tmp)

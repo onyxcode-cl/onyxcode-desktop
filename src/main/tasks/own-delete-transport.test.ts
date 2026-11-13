@@ -12,7 +12,7 @@ function harness() {
   core.server = {}
   proxy.port = 1234
   const cleanup = vi.fn(async () => ({ deleted: true }))
-  const mutation = proxy.setLocalPostHandler('/cleanup', cleanup)
+  const mutation = proxy.setLocalPostHandler('/cleanup', cleanup, (token) => token === 'call-ticket')
   const read = proxy.setLocalHandler('/guard', async () => ({ status: 200, body: { id: 'ses_read' } }))
   const request = async (
     opts: { token?: string; method?: string; url?: string; headers?: Record<string, string | undefined>; body?: string } = {}
@@ -57,6 +57,17 @@ describe('canal de limpieza separado del guardián', () => {
     expect(await h.request()).toEqual({ status: 200, body: '{"deleted":true}' })
     expect(h.cleanup).toHaveBeenCalledExactlyOnceWith({ command: 'rm a' }, expect.any(AbortSignal))
     expect(knownMcpProxyTokens()).toContain(h.mutation.token)
+  })
+  it('el billete llega al handler solo en su POST; no obtiene acceso al guardián ni a MCP', async () => {
+    const h = harness()
+    expect((await h.request({ token: 'call-ticket' })).status).toBe(200)
+    expect(h.cleanup).toHaveBeenCalledExactlyOnceWith({ command: 'rm a' }, expect.any(AbortSignal), 'call-ticket')
+    h.cleanup.mockClear()
+    expect((await h.request({ token: 'call-ticket', method: 'GET' })).status).toBe(405)
+    expect((await h.request({ token: 'call-ticket', url: '/guard' })).status).toBe(401)
+    expect((await h.request({ token: 'call-ticket', url: '/mcp' })).status).toBe(401)
+    expect((await h.request({ token: 'call-ticket', headers: { origin: 'https://otro.test' } })).status).toBe(403)
+    expect(h.cleanup).not.toHaveBeenCalled()
   })
   it('un token de lectura o inválido no autoriza mutación', async () => {
     const h = harness()

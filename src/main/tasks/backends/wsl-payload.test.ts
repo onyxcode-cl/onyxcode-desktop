@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildManifest, encodeLzpk, LZPK_MAGIC, LZPK_MAX_TOTAL, LzpkError, sha256Hex, type LzpkInputFile } from './wsl-payload'
+import { readPayloadPyFiles } from './wsl-real-deps'
 
 const b = (s: string): Uint8Array => Buffer.from(s)
 const base = (): LzpkInputFile[] => [
@@ -18,6 +19,13 @@ const reason = (fn: () => unknown): string | undefined => {
 }
 
 describe('LZPK1: codificador', () => {
+  it('la carga real transporta la fuente compartida de rm sin abrir la lista de rutas ni hacerla ejecutable', async () => {
+    const py = await readPayloadPyFiles(join(process.cwd(), 'resources/wsl'))
+    const encoded = encodeLzpk([...py, { path: 'bin/opencode', data: b('tgz-bytes') }])
+    const wrapper = encoded.manifest.files.find((f) => f.path === 'lzx_rm.py')
+    expect(wrapper).toMatchObject({ mode: 0o644, kind: 'file' })
+    expect(wrapper?.sha256).toBe(sha256Hex(readFileSync(join(process.cwd(), 'resources/wsl/lzx_rm.py'))))
+  })
   it('estructura: magia, longitud BE, manifiesto y cuerpos en orden de ruta', () => {
     const r = encodeLzpk(base())
     expect(r.buffer.subarray(0, 6).toString('latin1')).toBe(LZPK_MAGIC)

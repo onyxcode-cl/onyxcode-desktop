@@ -1090,6 +1090,20 @@
       ],
       "nota": "Mismo código en Mac y Windows/WSL; traducción de C: y D: simuladas. V23F verifica las cuatro formas acotadas del encargo y las dos literales del ajuste, guardias inmediatas de existencia/tipo sobre el mismo destino, comprobaciones después del borrado, rechazo de lotes mixtos y tarjeta posterior con historial recargado. documentos_crear pasa por el inventario real: nuevo se borra sin tarjeta y previo conserva protección. Las llamadas completas con cp, mkdir o scripts conservan la tarjeta por las restricciones solicitadas. La pasada manual Mac de V23E detectó que las compuestas seguían mostrando tarjeta; la corrección V23F aún requiere repetir esa pasada con motor real y probarla en el PC Windows. No se afirma paridad nativa verificada.",
       "comprobacion": null
+    },
+    {
+      "id": "N18",
+      "funcion": "Borrado propio al ejecutar rm con billete por llamada (V24-A)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/tasks/own-delete-runtime.ts:1",
+        "src/main/tasks/own-delete-runtime-files.ts:1",
+        "resources/wsl/lzx_rm.py:1",
+        "resources/wsl/launcher.py:1",
+        "src/main/tasks/manager.ts:1"
+      ],
+      "nota": "Regla rm/rmdir/unlink allow solo en carpeta aislada sin permiso de borrar; Seatbelt y Landlock conservan protección de previos. Mac usa Python incluido y wrappers en configuración de solo lectura; WSL usa Python de imagen y wrappers root-owned antes de Landlock. Inventario independiente de copia. Mecanismo por billetes implementado pero puerta OWN_DELETE_RUNTIME_VERIFIED=false hasta prueba de app real con modelo en Mac y Windows; C:/D: y Landlock reales pendientes.",
+      "comprobacion": null
     }
   ]
 }

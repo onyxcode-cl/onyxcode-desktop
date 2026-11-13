@@ -75,6 +75,10 @@ import { buildInlineConfig } from './inline-config'
 import { tasksMcpContribution } from './mcp-tasks'
 import { McpProxy } from './mcp-proxy'
 import { createOwnDeleteHandler } from './own-delete-handler'
+import { createOwnDeleteRuntimeHandler } from './own-delete-runtime'
+import { prepareOwnDeleteBin } from './own-delete-runtime-files'
+import { bundledPythonEnv } from './python-runtime'
+
 import { deleteEngineMessages } from './own-delete-engine'
 import type { DeleteBaseline } from './own-delete'
 import { getBridgeSecret } from './bridge-secret'
@@ -109,6 +113,9 @@ import { sandboxPermissionDir } from '../opencode/permission-store'
 import { createRealWinHost, type WinHost } from './win-context'
 import { appAuthFile } from '../opencode/data-dir'
 import { sandboxCredentialIds } from './sandbox-credentials'
+
+// Plan 1.8.24 §7: no activar hasta comprobar en la app real de Mac Y Windows.
+const OWN_DELETE_RUNTIME_VERIFIED = false
 
 /** Traducción léxica `C:\x` → `/win/c/x` (no depende de los montajes concedidos). */
 const WIN_PATH_MAP: PathMapWire = { kind: 'wsl', mounts: [] }
@@ -1632,6 +1639,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     }
     const config = buildInlineConfig({
       fullAccess,
+      allowDelete: this.hasDeleteGrant(folder),
       extras,
       // Skills de la app, solo lectura. En Windows `toSandbox` (abajo) la traduce a `/win/c/…/opencode-config/skills`, la ruta que
       // ve OpenCode dentro de la distro; esa carpeta ya está montada `ro` (`configDir` en `wsl-spec.ts`). No autoriza AppData.
@@ -1739,21 +1747,41 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
             })
           )
         : null
+      const deleteOpts = {
+        folder,
+        platform: this.platform,
+        excluded: extras.map((e) => e.path),
+        server: () => {
+          const h = this.servers.get(key)?.handle
+          return h ? { baseUrl: h.baseUrl, authorization: h.authorization, directory: h.paths.directory } : null
+        },
+        enabled: () => !!this.servers.get(key)?.handle && !this.hasDeleteGrant(folder),
+        baseline: this.opts.deleteBaseline!
+      }
+      let rmBin: string | undefined
+      if (OWN_DELETE_RUNTIME_VERIFIED && !fullAccess && this.platform !== 'win32') {
+        const python = bundledPythonEnv().LAZUNOX_PYTHON
+        if (python) {
+          const source = app.isPackaged
+            ? join(process.resourcesPath, 'wsl', 'lzx_rm.py')
+            : join(app.getAppPath(), 'resources', 'wsl', 'lzx_rm.py')
+          rmBin = prepareOwnDeleteBin(getOpencodeConfigDir(), python, source)
+        }
+      }
+      const runtimeDelete =
+        OWN_DELETE_RUNTIME_VERIFIED &&
+        !fullAccess &&
+        this.opts.deleteBaseline &&
+        !this.hasDeleteGrant(folder) &&
+        (this.platform === 'win32' || !!rmBin)
+          ? createOwnDeleteRuntimeHandler(deleteOpts)
+          : null
       const ownDelete =
         mcpProxy && !fullAccess && this.opts.deleteBaseline && !this.hasDeleteGrant(folder)
           ? mcpProxy.setLocalPostHandler(
               '/__lazunox-own-delete',
-              createOwnDeleteHandler({
-                folder,
-                platform: this.platform,
-                excluded: extras.map((e) => e.path),
-                server: () => {
-                  const h = this.servers.get(key)?.handle
-                  return h ? { baseUrl: h.baseUrl, authorization: h.authorization, directory: h.paths.directory } : null
-                },
-                enabled: () => !!this.servers.get(key)?.handle && !this.hasDeleteGrant(folder),
-                baseline: this.opts.deleteBaseline
-              })
+              runtimeDelete ? runtimeDelete.handle : createOwnDeleteHandler(deleteOpts),
+              runtimeDelete?.acceptsTicket
             )
           : null
       const privateIso = {
@@ -1815,6 +1843,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // Canal del guardián (solo sandbox); `lazunox-env.js` lo oculta a bash (HIDDEN_SHELL_ENV).
           ...(guard ? { LAZUNOX_GUARD_URL: guard.url, LAZUNOX_GUARD_TOKEN: guard.token } : {}),
           ...(ownDelete ? { LAZUNOX_OWN_DELETE_URL: ownDelete.url, LAZUNOX_OWN_DELETE_TOKEN: ownDelete.token } : {}),
+          ...(ownDelete && runtimeDelete ? { LAZUNOX_OWN_DELETE_RUNTIME: '1', ...(rmBin ? { LAZUNOX_RM_BIN_DIR: rmBin } : {}) } : {}),
           // Solo sandbox: sin esto la búsqueda web de OpenCode alterna entre mcp.exa.ai y
           // search.parallel.ai según el hash de la sesión. Fijar el proveedor deja UN único host
           // (`WEB_SEARCH_HOSTS`) que la lista blanca del proxy de egress puede permitir.

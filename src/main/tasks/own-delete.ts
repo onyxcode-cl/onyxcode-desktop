@@ -66,7 +66,13 @@ export function parseOwnDelete(command: string): DeleteCommand | null {
  * fuera de la excepción de borrado del kernel. rename mueve el enlace mismo, jamás su destino.
  * Después se valida TODO antes de unlink/rmdir individuales, sin await ni shell ni rm recursivo.
  */
-export function deleteOwnPaths(root: string, command: DeleteCommand, baseline: DeleteBaseline, excluded: string[] = []): boolean {
+export function deleteOwnPaths(
+  root: string,
+  command: DeleteCommand,
+  baseline: DeleteBaseline,
+  excluded: string[] = [],
+  onDeleted?: (path: string, isDirectory: boolean) => void
+): boolean {
   const canonical = realpathSync(root)
   // APFS y NTFS suelen ser insensibles a caja; APFS también admite equivalencias NFC/NFD.
   // En un volumen sensible esto solo puede negar de más, nunca convertir un previo en nuevo.
@@ -77,7 +83,7 @@ export function deleteOwnPaths(root: string, command: DeleteCommand, baseline: D
   const toRel = (p: string): string => relative(canonical, p).split(sep).join('/')
   const scratch = '.lazunox/trabajo'
   const excludedRel = excluded.map((p) => fold(toRel(p)))
-  const plans: Array<{ path: string; stat: Stats }> = []
+  const plans: Array<{ path: string; original: string; stat: Stats }> = []
   const seen = new Map<string, string>()
   const staged = new Map<string, { dest: string; original: string }>()
   let stageDir: string | null = null
@@ -130,7 +136,7 @@ export function deleteOwnPaths(root: string, command: DeleteCommand, baseline: D
       if (command.directory && names.length) throw new Error('not empty')
       for (const name of names) walk(join(path, name), rel + '/' + name)
     } else if (command.directory) throw new Error('not directory')
-    plans.push({ path, stat: st })
+    plans.push({ path, original: join(canonical, rel), stat: st })
   }
   let validated = false
   try {
@@ -183,6 +189,7 @@ export function deleteOwnPaths(root: string, command: DeleteCommand, baseline: D
       checkParent(p.path)
       if (p.stat.isDirectory()) rmdirSync(p.path)
       else unlinkSync(p.path)
+      onDeleted?.(p.original, p.stat.isDirectory())
     }
     return true
   } catch (err) {

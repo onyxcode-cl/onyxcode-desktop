@@ -3,12 +3,33 @@ export function ownDeletePluginSource(): string {
   return `// Generado por la app; ver src/main/tasks/own-delete-plugin.ts.
 const URL = process.env.LAZUNOX_OWN_DELETE_URL || ''
 const TOKEN = process.env.LAZUNOX_OWN_DELETE_TOKEN || ''
+const BIN = process.env.LAZUNOX_RM_BIN_DIR || ''
+const RUNTIME = process.env.LAZUNOX_OWN_DELETE_RUNTIME === '1' && !!BIN
 export default {
   id: 'lazunox-own-delete',
   server: async () => {
     const done = new Set()
     return !URL || !TOKEN ? {} : ({
+    'shell.env': async (input, output) => {
+      if (!RUNTIME || !input.sessionID || !input.callID || !output || !output.env) return
+      try {
+        const r = await fetch(URL, {
+          method: 'POST', headers: { authorization: 'Bearer ' + TOKEN, 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'ticket', sessionId: input.sessionID, callId: input.callID }),
+          redirect: 'error', signal: AbortSignal.timeout(10000)
+        })
+        if (!r.ok) return
+        const result = await r.json()
+        if (!result || typeof result.ticket !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(result.ticket)) return
+        output.env.PATH = BIN + ':' + (output.env.PATH || process.env.PATH || '/usr/bin:/bin')
+        output.env.LAZUNOX_RM_BILLETE = result.ticket
+        output.env.LAZUNOX_RM_URL = URL
+      } catch {
+        // Sin billete se ejecuta el programa nativo bajo el mismo aislamiento.
+      }
+    },
     'tool.execute.before': async (input, output) => {
+      if (RUNTIME) return
       if (input.tool !== 'bash' || !output || !output.args || typeof output.args.command !== 'string') return
       const command = output.args.command
       if (!/\\b(?:rm|rmdir|unlink)\\s/.test(command)) return

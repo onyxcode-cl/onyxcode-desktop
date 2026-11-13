@@ -343,6 +343,93 @@ describe.skipIf(!macOnly)('RestorePoints', () => {
   })
 })
 
+describe('RestorePoints: inventario independiente de la copia', () => {
+  it.each([
+    { limits: { maxFiles: 1 }, reason: /archivos/ },
+    { limits: { maxTotalBytes: 1 }, reason: /2 GB/ },
+    { limits: { maxCreateMs: -1 }, reason: /tardaba demasiado/ }
+  ])('conserva todos los nombres cuando la copia se omite por $reason', async ({ limits, reason }) => {
+    put('a.txt', 'archivo previo')
+    put('sub/b.txt', 'otro previo')
+    const rp = make(limits)
+    const created = Date.now() + 100
+    const point = await rp.create(folder, 'nueva', 'inicio', async () => true)
+    expect(point).toMatchObject({ status: 'skipped', reason })
+    expect(rp.deleteBaseline(folder, 'nueva', created)).toMatchObject({
+      paths: expect.arrayContaining(['a.txt', 'sub', 'sub/b.txt']),
+      unknown: []
+    })
+    // Otra captura jamás convierte un archivo previo desaparecido en uno de la tarea.
+    rmSync(join(folder, 'a.txt'))
+    put('nuevo.txt', 'de la tarea')
+    await rp.create(folder, 'nueva', 'segundo', async () => true)
+    const baseline = rp.deleteBaseline(folder, 'nueva', created)!
+    expect(baseline.paths).toContain('a.txt')
+    expect(baseline.paths).not.toContain('nuevo.txt')
+  })
+
+  it('guarda el inventario antes de comprobar espacio y no lo invalida si la tarea empieza durante la copia', async () => {
+    put('previo.txt', 'previo')
+    const created = Date.now() + 100
+    let pristine = true
+    let checks = 0
+    let inspected = false
+    const rp = make(undefined, {
+      freeBytes: () => {
+        // Esta dependencia se consulta después del recorrido y antes de copiar contenidos.
+        expect(rp.deleteBaseline(folder, 'nueva', created)?.paths).toContain('previo.txt')
+        inspected = true
+        pristine = false
+        return 1e12
+      }
+    })
+    const point = await rp.create(folder, 'nueva', 'inicio', async () => {
+      checks++
+      return pristine
+    })
+    expect(point.status).toBe('ok')
+    expect(inspected).toBe(true)
+    expect(checks).toBe(2)
+    expect(rp.deleteBaseline(folder, 'nueva', created)?.paths).toContain('previo.txt')
+  })
+
+  it('conserva el inventario si después falta espacio o se agota el tiempo de copiar', async () => {
+    put('previo.txt', 'previo')
+    const created = Date.now() + 100
+    const noSpace = make(undefined, { freeBytes: () => 0 })
+    expect((await noSpace.create(folder, 'sin-espacio', 'inicio', async () => true)).status).toBe('skipped')
+    expect(noSpace.deleteBaseline(folder, 'sin-espacio', created)?.paths).toContain('previo.txt')
+    const slow = make(undefined, { freeBytes: () => ((clock += 31_000), 1e12) })
+    expect(await slow.create(folder, 'lenta', 'inicio', async () => true)).toMatchObject({
+      status: 'skipped',
+      reason: 'tardaba demasiado'
+    })
+    expect(slow.deleteBaseline(folder, 'lenta', created)?.paths).toContain('previo.txt')
+  })
+
+  it('niega el inventario si la tarea comenzó durante el recorrido y nunca lo sustituye después', async () => {
+    for (let i = 0; i < 401; i++) put(`previo-${i}.txt`, 'previo')
+    let pristine = true
+    const checks: boolean[] = []
+    const changed = new Promise<void>((done) =>
+      setImmediate(() => {
+        pristine = false
+        done()
+      })
+    )
+    const rp = make()
+    await rp.create(folder, 'activa', 'inicio', async () => {
+      checks.push(pristine)
+      return pristine
+    })
+    await changed
+    expect(checks).toEqual([true, false])
+    expect(rp.deleteBaseline(folder, 'activa', Date.now() + 100)).toBeNull()
+    await rp.create(folder, 'activa', 'segundo', async () => true)
+    expect(rp.deleteBaseline(folder, 'activa', Date.now() + 100)).toBeNull()
+  })
+})
+
 // ───────────────────────── Robustez (F8-B21) ─────────────────────────
 
 const caseInsensitive = (): boolean => {
@@ -417,6 +504,23 @@ describe.skipIf(!macOnly)('RestorePoints: robustez', () => {
     expect(res).toMatchObject({ trashed: 0, restored: 0, failed: [] })
     expect(read('privado/doc.txt')).toBe('documento')
     expect(read('privado/otro.txt')).toBe('creado después')
+  })
+
+  it('el inventario conserva las áreas ilegibles, enlaces y nombres de nube aunque no haya espacio para copiar', async () => {
+    put('privado/doc.txt', 'documento previo')
+    put('.nube.docx.icloud', 'stub')
+    symlinkSync(trashDir, join(folder, 'enlace'))
+    chmodSync(join(folder, 'privado'), 0o000)
+    const rp = make(undefined, { freeBytes: () => 0 })
+    try {
+      expect((await rp.create(folder, 'nueva', 'inicio', async () => true)).status).toBe('skipped')
+      expect(rp.deleteBaseline(folder, 'nueva', Date.now() + 100)).toMatchObject({
+        paths: expect.arrayContaining(['privado', 'enlace', 'nube.docx']),
+        unknown: ['privado']
+      })
+    } finally {
+      chmodSync(join(folder, 'privado'), 0o755)
+    }
   })
 
   it('H4: fecha dentro del margen del punto (FAT/exFAT/HFS+): se compara por contenido', async () => {

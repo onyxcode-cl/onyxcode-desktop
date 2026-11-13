@@ -501,9 +501,9 @@ export class RestorePoints {
     const skipped = (reason: string): TasksRestorePoint => finish({ files: 0, bytes: 0, status: 'skipped', reason }, empty)
     const expired = (): boolean => this.now() - startedAt > this.limits.maxCreateMs
     const SLOW = 'tardaba demasiado'
-    const w = await walk(real, this.limits.maxFiles, expired)
-    if (w.timedOut) return skipped(SLOW)
-    if (w.overLimit) return skipped(`la carpeta tiene más de ${this.limits.maxFiles.toLocaleString('es')} archivos`)
+    // El primer inventario necesita TODOS los nombres: los topes de archivos y tiempo pertenecen a la copia,
+    // no deciden qué archivos existían. El recorrido sigue cediendo el hilo y nunca lee contenidos.
+    const w = await walk(real, saveBaseline ? Number.MAX_SAFE_INTEGER : this.limits.maxFiles, saveBaseline ? undefined : expired)
     // Inventario de existencia, independiente de copias, hashes y retención de los puntos siguientes.
     // Se registra incluso un archivo que desaparezca durante la copia; nunca pasa a ser «propio».
     const baseline: DeleteBaseline = {
@@ -512,6 +512,12 @@ export class RestorePoints {
       paths: [...w.files.map((f) => f.rel), ...w.dirs, ...w.symlinks, ...w.cloudStubs],
       unknown: w.unreadableDirs
     }
+    // La segunda comprobación de sesión inactiva ocurre al terminar de inventariar, antes de copiar.
+    // Un fallo, omisión o inicio de la tarea durante la copia no invalida este registro ya completo.
+    await saveBaseline?.(baseline)
+    if (w.timedOut || expired()) return skipped(SLOW)
+    if (w.overLimit || w.files.length > this.limits.maxFiles)
+      return skipped(`la carpeta tiene más de ${this.limits.maxFiles.toLocaleString('es')} archivos`)
     let total = 0
     for (const f of w.files) if (f.st.size <= this.limits.maxFileBytes) total += f.st.size
     if (total > this.limits.maxTotalBytes) return skipped('la carpeta ocupa más de 2 GB')
@@ -604,7 +610,6 @@ export class RestorePoints {
       ...(w.cloudStubs.length ? { cloudStubs: w.cloudStubs } : {})
     }
     const result = finish({ files: Object.keys(entries).length, bytes, status: 'ok', ...(notCopied ? { notCopied } : {}) }, man)
-    await saveBaseline?.(baseline)
     return result
   }
 

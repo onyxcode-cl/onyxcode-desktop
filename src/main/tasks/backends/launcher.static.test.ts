@@ -49,6 +49,13 @@ describe('launcher.py: análisis estático', () => {
     expect(v).toBeGreaterThan(0)
     for (const effect of ['isolate_namespaces()', 'os.fork()', 'namespace_init(init)']) expect(main.indexOf(effect)).toBeGreaterThan(v)
   })
+  it('prepara rm solo tras validar INIT, antes del servidor, y su ruta no depende del entorno anfitrión', () => {
+    const namespace = launcher.slice(launcher.indexOf('def namespace_init(init):'))
+    expect(namespace.indexOf('prepare_rm_bin(init)')).toBeGreaterThan(namespace.indexOf('prepare_private(init)'))
+    expect(namespace.indexOf('prepare_rm_bin(init)')).toBeLessThan(namespace.indexOf('spawn_server(init, root, tmp)'))
+    expect(launcher).toContain('env.pop("LAZUNOX_RM_BIN_DIR", None)')
+    expect(launcher).toContain('env["LAZUNOX_RM_BIN_DIR"] = "/opt/lazunox/own-delete-bin"')
+  })
 })
 
 describe('launcher.py: probe ampliado y subcomandos de datos', () => {
@@ -95,6 +102,16 @@ describe('landlock.py / protocol.py / mux.py', () => {
 // Se salta en Windows: test_install.py usa os.getuid/fcntl (solo POSIX). Es el lanzador de WSL, que corre dentro de Linux;
 // en el CI de macOS sí se ejecuta. El análisis estático de arriba sigue corriendo en todas las plataformas.
 describe.skipIf(!hasPython || !posixOnly)('parte pura del lanzador (python3 -m unittest)', () => {
+  it('rm valida argumentos y falla hacia el programa nativo; prepara las copias solo con la puerta activa', () => {
+    const r = spawnSync('python3', ['-m', 'unittest', 'discover', '-s', 'tests'], {
+      cwd: dir,
+      encoding: 'utf8',
+      timeout: 60_000,
+      env: { PATH: process.env.PATH ?? '', PYTHONDONTWRITEBYTECODE: '1' }
+    })
+    expect(r.stderr + r.stdout).toMatch(/OK/)
+    expect(r.status).toBe(0)
+  }, 70_000)
   it('protocol.py, mux.py, el lanzador y el instalador pasan sus pruebas', () => {
     const r = spawnSync('python3', ['-m', 'unittest', 'test_protocol', 'test_install'], {
       cwd: dir,

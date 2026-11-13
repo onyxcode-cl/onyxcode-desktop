@@ -322,7 +322,7 @@
       "win32": 2
     },
     "src/main/tasks/manager.ts": {
-      "win32": 14
+      "win32": 16
     },
     "src/main/tasks/mcp-tasks.ts": {
       "win32": 1,
@@ -330,6 +330,9 @@
     },
     "src/main/tasks/own-delete-paths.ts": {
       "win32": 1
+    },
+    "src/main/tasks/own-delete-runtime-files.ts": {
+      "binSh": 1
     },
     "src/main/tasks/own-delete.ts": {
       "usrBin": 3

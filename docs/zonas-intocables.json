@@ -3,7 +3,8 @@
   "huellas": {
     "resources/computer-use/helper.swift": "43bed81700d9b65e6014145519c7dd48b1c4939c5303ec2efe8c067332c7d73a",
     "resources/wsl/landlock.py": "d5149cece44f25068162b801ff8b0016f741418b64ffa26322ff65040fcf7ba4",
-    "resources/wsl/launcher.py": "8a709af9b68186728039f1d97b6af9a4e3a5edd32022776a901df28540368f52",
+    "resources/wsl/launcher.py": "594e498415ffcfb71cd273b036c2c7e446248b063113157fa8a1ef61777c6209",
+    "resources/wsl/lzx_rm.py": "c56d5bfebc3bb541e0c746e9a8c48f95ffa67796b408dda1e3fcef20313a3dfd",
     "resources/wsl/mux.py": "7fd0d4f122a8e4ff1335f49f56da17e2076acabfb0d6b473ed9e7cfdb973aab5",
     "resources/wsl/payload-vectors.json": "21c50b64f58fb4991b0d6afee9fba00de6546df9df4a61c3415d4e7fc90558b1",
     "resources/wsl/protocol.py": "3a5bf4db8c1ebfa16e080afb01b3def5602661dd6610a5a0b6dcbc96ec4af787",
@@ -16,7 +17,7 @@
     "src/main/tasks/backends/wsl-paths.ts": "653cf49ce6be0862778d921815217cbae46ee15b18f49d06b73a68ba3b858a00",
     "src/main/tasks/backends/wsl-payload.ts": "0160dcdda7781f75e828851a8fcf048aca7ee0e73136eec5cae86b323ec86093",
     "src/main/tasks/backends/wsl-pin.ts": "8c1286980ab18b750f78e2e0f0227c91030e9ce302ff1fbd2cc1b621c23c7f4b",
-    "src/main/tasks/backends/wsl-real-deps.ts": "ee91a93789a1b04fda74a555b9484e7319c493a78339bf68f7b275a315a71f0d",
+    "src/main/tasks/backends/wsl-real-deps.ts": "49d54bd49a9c3bda358d69c16d660b3bc8a062e777db2fa61517455ae5695b17",
     "src/main/tasks/backends/wsl-setup.ts": "ca84f6ebf31112afc0fc7b5792f7b86c1208661b9dd0ca51a5d4db8389215048",
     "src/main/tasks/backends/wsl-spec.ts": "d018d7134432233e2a9cd4c551115a3d8d4827727e0f0613a562cd23d5e3e493",
     "src/main/tasks/backends/wsl-status.ts": "bc00f8de1b51952a7f467cd7bc465f4508b55aa4a070ba450887ae16ffd6c969",
@@ -307,6 +308,18 @@
         "src/main/tasks/opencode-config.ts"
       ],
       "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-13",
+      "motivo": "V24-A: carga rm de solo lectura WSL y billetes por llamada; revisión independiente sin hallazgos pendientes",
+      "cambiados": [
+        "resources/wsl/launcher.py",
+        "src/main/tasks/backends/wsl-real-deps.ts"
+      ],
+      "nuevos": [
+        "resources/wsl/lzx_rm.py"
+      ],
       "desaparecidos": []
     }
   ]

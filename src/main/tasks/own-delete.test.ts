@@ -29,6 +29,22 @@ const baseline = (): DeleteBaseline => restore.deleteBaseline(folder, session, c
 const clean = (cmd: string, b = baseline(), extras: string[] = []) => deleteOwnPaths(folder, parseOwnDelete(cmd)!, b, extras)
 
 describe('borrado propio sobre archivos reales', () => {
+  it('notifica solo borrados terminados, con sus rutas originales también bajo scratch', async () => {
+    await snapshot()
+    file('.lazunox/trabajo/arbol/hijo.txt')
+    const events: Array<{ path: string; isDirectory: boolean }> = []
+    expect(
+      deleteOwnPaths(folder, parseOwnDelete('rm -rf .lazunox/trabajo/arbol')!, baseline(), [], (path, isDirectory) => {
+        expect(existsSync(path)).toBe(false)
+        events.push({ path, isDirectory })
+      })
+    ).toBe(true)
+    expect(events).toEqual([
+      { path: join(folder, '.lazunox/trabajo/arbol/hijo.txt'), isDirectory: false },
+      { path: join(folder, '.lazunox/trabajo/arbol'), isDirectory: true }
+    ])
+    expect(existsSync(join(folder, '.lazunox/trabajo/arbol'))).toBe(false)
+  })
   it('elimina archivo nuevo, carpeta vacía y árbol completamente nuevo', async () => {
     await snapshot()
     file('v3.pptx')
@@ -124,7 +140,7 @@ describe('borrado propio sobre archivos reales', () => {
 })
 
 describe('registro inicial fiable', () => {
-  it('sin registro, registro omitido y sesión anterior a la instancia no habilitan borrado', async () => {
+  it('sin registro o con sesión anterior no habilita; una copia omitida conserva el inventario', async () => {
     expect(restore.deleteBaseline(folder, session, created)).toBeNull()
     await snapshot()
     expect(restore.deleteBaseline(folder, session, 0)).toBeNull()
@@ -133,7 +149,7 @@ describe('registro inicial fiable', () => {
     expect((await limited.create(folder, session, 'inicio', async () => true)).status).toBe('skipped')
     rmSync(join(folder, 'existente'))
     await limited.create(folder, session, 'segundo')
-    expect(limited.deleteBaseline(folder, session, Date.now() + 100)).toBeNull()
+    expect(limited.deleteBaseline(folder, session, Date.now() + 100)?.paths).toContain('existente')
   })
   it('persiste el inicio tras más puntos, retención y reinicio; olvidar lo inhabilita', async () => {
     const limited = new RestorePoints({
@@ -159,7 +175,7 @@ describe('registro inicial fiable', () => {
     expect(baseline()).toBeNull()
     expect(restore.deleteBaseline(folder, 'ses_desconocida', created)).toBeNull()
   })
-  it('inventario tardío o ejecución empezada durante la copia no se habilitan después', async () => {
+  it('inventario tardío o ejecución empezada durante el inventario no se habilitan después', async () => {
     let checks = 0
     await restore.create(folder, session, 'inicio', async () => ++checks === 1)
     expect(checks).toBe(2)

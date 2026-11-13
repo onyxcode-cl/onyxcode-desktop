@@ -324,3 +324,21 @@ describe('modelo de respaldo en Tareas', () => {
     expect((c.respaldo as { modelos: string[] }).modelos).toHaveLength(3)
   })
 })
+
+describe('borrado protegido por el sistema, por carpeta', () => {
+  it('solo sin permiso explícito permite intentar rm/rmdir/unlink dentro del aislamiento', () => {
+    const c = buildInlineConfig({ ...empty, allowDelete: false })
+    expect(agentsOf(c)[TASKS_AGENT_ID].permission?.bash).toEqual({ 'rm *': 'allow', 'rmdir *': 'allow', 'unlink *': 'allow' })
+    for (const allowDelete of [true, undefined]) {
+      expect(agentsOf(buildInlineConfig({ ...empty, allowDelete }))[TASKS_AGENT_ID]?.permission?.bash).toBeUndefined()
+    }
+    expect(
+      agentsOf(buildInlineConfig({ ...empty, allowDelete: false, fullAccess: true }))[TASKS_AGENT_ID]?.permission?.bash
+    ).toBeUndefined()
+  })
+  it('no pisa los deny/ask recordados ni altera las reglas de los demás agentes', () => {
+    const c = buildInlineConfig({ ...empty, allowDelete: false, rulesPermission: { bash: { 'rm *': 'deny', 'rmdir *': 'ask' } } })
+    expect(agentsOf(c)[TASKS_AGENT_ID].permission?.bash).toEqual({ 'rm *': 'deny', 'rmdir *': 'ask', 'unlink *': 'allow' })
+    expect(agentsOf(c)[COMPUTER_AGENT_ID].permission?.bash).toEqual({ 'rm *': 'deny', 'rmdir *': 'ask' })
+  })
+})

@@ -158,7 +158,7 @@ export const realSetupFs: WslSetupFs = {
 }
 
 /** Los `.py` de la carga, de `<dir>` (`resources/wsl` en desarrollo, `<resources>/wsl` empaquetado). */
-export const PAYLOAD_PY_NAMES = ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py'] as const
+export const PAYLOAD_PY_NAMES = ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'lzx_rm.py'] as const
 export async function readPayloadPyFiles(dir: string): Promise<LzpkInputFile[]> {
   return Promise.all(PAYLOAD_PY_NAMES.map(async (name) => ({ path: name, data: await readFile(join(dir, name)) })))
 }

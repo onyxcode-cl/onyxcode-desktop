@@ -161,6 +161,8 @@ module.exports = {
   },
   mac: {
     extraResources: [
+      // Fuente compartida del rm de Tareas: fuera del asar para ejecutarla con el Python propio.
+      { from: 'resources/wsl', to: 'wsl', filter: ['lzx_rm.py'] },
       // Nombre visible localizado (Finder, Dock, Spotlight): InfoPlist.strings con CFBundleDisplayName
       // → Contents/Resources/<idioma>.lproj. Se añaden antes de firmar, así que quedan sellados.
       { from: 'build/lproj/es.lproj', to: 'es.lproj' },
@@ -299,7 +301,7 @@ module.exports = {
       // y las dos imágenes → resources\\wsl\\images (de ahí `setup()` las COPIA a la caché y las verifica; nunca se usan en el sitio).
       ...(wslBundlePack
         ? [
-            { from: 'resources/wsl', to: 'wsl', filter: ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'wsl.conf'] },
+            { from: 'resources/wsl', to: 'wsl', filter: ['launcher.py', 'landlock.py', 'mux.py', 'protocol.py', 'lzx_rm.py', 'wsl.conf'] },
             { from: 'resources/opencode-bin', to: 'wsl', filter: ['pin.json'] },
             {
               from: 'resources/wsl-images',

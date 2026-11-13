@@ -16,6 +16,8 @@ const SANDBOX_FREE_PROVIDER = 'opencode'
 
 export interface InlineConfigInput {
   fullAccess: boolean
+  /** Solo false explícito autoriza el intento: Seatbelt/Landlock siguen negando borrar previos. */
+  allowDelete?: boolean
   /** Carpetas adicionales del espacio (solo sandbox). */
   extras: Array<{ path: string }>
   /**
@@ -134,10 +136,11 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
         : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
-        ...(i.extras.length || allowDirs.length || i.documentsMcp || i.hostMcp
+        ...(i.extras.length || allowDirs.length || i.documentsMcp || i.hostMcp || i.allowDelete === false
           ? {
               [TASKS_AGENT_ID]: {
                 permission: {
+                  ...(i.allowDelete === false ? { bash: { 'rm *': 'allow', 'rmdir *': 'allow', 'unlink *': 'allow' } } : {}),
                   ...(i.extras.length || allowDirs.length ? { external_directory: externalDirectory } : {}),
                   ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {}),
                   // Comandos fuera del aislamiento: la aprobación la pide y decide MAIN (`host-exec/approvals.ts`), con el comando entero, cada vez.

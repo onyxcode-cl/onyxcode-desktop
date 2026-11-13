@@ -263,7 +263,12 @@ export class McpProxy {
   private server: Server | null = null
   private routes: Route[] = []
   private local: { prefix: string; hash: Buffer; handler: McpProxyLocalHandler } | null = null
-  private localPost: { path: string; hash: Buffer; handler: (body: unknown, signal: AbortSignal) => Promise<unknown> } | null = null
+  private localPost: {
+    path: string
+    hash: Buffer
+    handler: (body: unknown, signal: AbortSignal, ticket?: string) => Promise<unknown>
+    acceptsTicket?: (ticket: string) => boolean
+  } | null = null
   private total = 0
   private readonly upstreams = new Set<ClientRequest>()
   port = 0
@@ -377,16 +382,20 @@ export class McpProxy {
   }
 
   /** Mutación local acotada, con token DISTINTO del guardián de solo lectura. Sin destinos elegibles por el cliente. */
-  setLocalPostHandler(path: string, handler: (body: unknown, signal: AbortSignal) => Promise<unknown>): { url: string; token: string } {
+  setLocalPostHandler(
+    path: string,
+    handler: (body: unknown, signal: AbortSignal, ticket?: string) => Promise<unknown>,
+    acceptsTicket?: (ticket: string) => boolean
+  ): { url: string; token: string } {
     if (!this.server || !/^\/[A-Za-z0-9_-]+$/.test(path)) throw new Error('Ruta local no válida.')
     const token = randomBytes(32).toString('base64url')
-    this.localPost = { path, hash: sha256(token), handler }
+    this.localPost = { path, hash: sha256(token), handler, acceptsTicket }
     issuedTokens.push(token)
     if (issuedTokens.length > 512) issuedTokens.splice(0, issuedTokens.length - 512)
     return { url: `http://${HOST}:${this.port}${path}`, token }
   }
 
-  private async handleLocalPost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async handleLocalPost(req: IncomingMessage, res: ServerResponse, ticket?: string): Promise<void> {
     const local = this.localPost!
     if (req.url !== local.path) return this.reply(res, 404, 'not found')
     if (req.method !== 'POST') return this.reply(res, 405, 'method not allowed', { allow: 'POST' })
@@ -406,7 +415,7 @@ export class McpProxy {
       }
       const body = parseStrictJson(Buffer.concat(chunks).toString('utf8'))
       if (this.localPost !== local) return this.reply(res, 401, 'unauthorized')
-      const result = await local.handler(body, controller.signal)
+      const result = await (ticket === undefined ? local.handler(body, controller.signal) : local.handler(body, controller.signal, ticket))
       if (!res.destroyed)
         res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify(result))
     } catch {
@@ -496,6 +505,11 @@ export class McpProxy {
     const token = typeof auth === 'string' && /^Bearer /.test(auth) ? auth.slice(7) : undefined
     if (this.localPost && token && timingSafeEqual(sha256(token), this.localPost.hash)) {
       void this.handleLocalPost(req, res)
+      return
+    }
+    // Billete de una sola llamada: solo la ruta local exacta; nunca concede rutas MCP ni el canal GET.
+    if (this.localPost && req.url === this.localPost.path && token && this.localPost.acceptsTicket?.(token)) {
+      void this.handleLocalPost(req, res, token)
       return
     }
     // Manejador local (canal del guardián): mismo Host/Origin, su propio token en tiempo constante.
