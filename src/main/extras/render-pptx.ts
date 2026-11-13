@@ -10,6 +10,8 @@
  * Sigue sin imágenes externas ni el ciclo de revisión con visión de la skill oficial — eso
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
+import { resolveDocumentIdentity } from '@shared/document-identity'
+import { customPalette, legibleInk } from '../office/craft/deck-kit'
 import { protectSlide } from './pptx-guards'
 import { chartCategory, numericSeries, prepareSlide } from '../office/craft/deck-data'
 import type { ImageMap } from '../documents/image-files'
@@ -19,7 +21,7 @@ import { fitText, splitLabel, splitStatUnit, STYLES, THEMES, type Palette, type 
 
 export { isPptxSpec, type PptxSlideSpec, type PptxSpec } from '@shared/chat-doc-spec'
 
-const BODY_FONT = 'Arial'
+const BODY_FONT = '+mn-lt'
 const PAGE_W = 10
 const PAGE_H = 5.625
 const MARGIN_X = 0.6
@@ -936,6 +938,7 @@ export function degradeFreeSlides(data: PptxSpec): PptxSpec {
       const biggest = texts.reduce<{ t: string; size: number } | null>((m, x) => (!m || x.size > m.size ? x : m), null)
       const rest = texts.filter((x) => x !== biggest).map((x) => x.t.slice(0, 500))
       return {
+        ...s,
         title: biggest?.t.slice(0, 200) ?? s.title,
         bullets: rest.slice(0, 20),
         layout: i === 0 ? 'cover' : rest.length ? 'bullets' : 'section'
@@ -949,9 +952,37 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
   const pres = new PptxGenJS()
   pres.defineLayout({ name: 'LAZUNOX', width: PAGE_W, height: PAGE_H })
   pres.layout = 'LAZUNOX'
-  const palette = THEMES[data.theme ?? 'blue']
-  const style = STYLES[data.style ?? 'classic']
-  pres.theme = { headFontFace: palette.headFont, bodyFontFace: BODY_FONT }
+  const identity = resolveDocumentIdentity(rawData)
+  const own = customPalette(identity.palette)
+  const palette: Palette = {
+    ...THEMES[data.theme ?? 'blue'],
+    primary: own.accent,
+    primary2: own.accent2,
+    bg: own.bg,
+    surface: own.panel,
+    border: own.edge,
+    ink: own.text,
+    body: own.text,
+    muted: legibleInk(own.muted, own.text, own.bg),
+    accent: own.accent,
+    accentOnDark: legibleInk(own.bg, own.text, own.accent),
+    onDark: legibleInk(own.bg, own.text, own.accent),
+    onDarkBody: legibleInk(own.bg, own.text, own.accent),
+    onDarkMuted: legibleInk(own.bg, own.text, own.accent),
+    chart: own.marks.slice(0, 5) as Palette['chart'],
+    chartHi: own.accent,
+    chartSoft: own.accent2,
+    headFont: identity.fonts.title,
+    titleBold: identity.titles !== 'plain'
+  }
+  const style = {
+    ...STYLES[data.style ?? 'classic'],
+    cardRadius: identity.cards === 'rounded' ? 0.12 : 0,
+    cardFill: identity.cards !== 'outline',
+    cardBorder: true,
+    bleedShape: 'none' as const
+  }
+  pres.theme = { headFontFace: identity.fonts.title, bodyFontFace: identity.fonts.body }
   const total = data.slides.length
 
   let sectionCount = 0

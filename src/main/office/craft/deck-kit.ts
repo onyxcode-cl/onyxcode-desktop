@@ -3,6 +3,9 @@
  * (`deck-builder.ts`, siempre el diseño oscuro «dots») y la del Chat (`chat-deck.ts`, que además cambia de paleta según `theme` y de
  * decoración según `style`, como ya lo pide el agente de Chat). Cada función añade comandos `id={json}` a `c`.
  */
+import type { DocumentIdentity } from '@shared/chat-doc-spec'
+export class DeckTextFitError extends Error {}
+
 /** Tamaño de letra que cabe: reduce `base` en proporción al largo cuando el texto pasa de `fits` caracteres (mínimo 55 % de `base`). */
 export function fitSize(text: string, base: number, fits: number): number {
   if (text.length <= fits) return base
@@ -139,11 +142,11 @@ export function contrastRatio(a: string, b: string): number {
   const [x, y] = [lin(a), lin(b)]
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
-/** Color de letra chica (pie, nota, numeración) legible sobre `bg`: el `want` si contrasta lo bastante (≥ 3,5), si no `fallback` y, si tampoco, negro o blanco. */
+/** Color de letra chica (pie, nota, numeración) legible sobre `bg`: el `want` si contrasta lo bastante (≥ 4,5), si no `fallback` y, si tampoco, negro o blanco. */
 export function legibleInk(want: string, fallback: string, bg: string): string {
-  if (contrastRatio(want, bg) >= 3.5) return want
+  if (contrastRatio(want, bg) >= 4.5) return want
   if (contrastRatio(fallback, bg) >= 4.5) return fallback
-  return contrastRatio('FFFFFF', bg) >= contrastRatio('111111', bg) ? 'FFFFFF' : '111111'
+  return contrastRatio('FFFFFF', bg) >= contrastRatio('000000', bg) ? 'FFFFFF' : '000000'
 }
 export const stripHash = (h: string): string => h.replace(/^#/, '').toUpperCase()
 
@@ -195,14 +198,16 @@ export function paletteFor(theme: string | undefined): Palette {
  */
 /**
  * Tamaño que cabe en una caja de `w × h` pt: estima las líneas con el ancho medio de Arial (0,5 × tamaño; 0,55 en negrita) y baja de a 1 pt
- * hasta que el alto estimado entra, sin pasar del 55 % del tamaño pedido. DeckCraft no mide ni autoajusta, y así un texto largo no se sale de la caja.
+ * hasta que el alto estimado entra, hasta 14 pt para cuerpo (anotaciones mantienen su tamaño). El llamador rechaza cajas que aún no caben; la medida es una estimación.
  */
 export function autoFitSize(text: string, size: number, w: number, h: number, bold: boolean): number {
   const inner = Math.max(20, w - 14)
-  const floor = Math.max(8, Math.round(size * 0.55))
+  const floor = Math.min(14, size)
   const cw = bold ? 0.55 : 0.5
   const lines = (sz: number): number => text.split('\n').reduce((n, ln) => n + Math.max(1, Math.ceil((ln.length * sz * cw) / inner)), 0)
-  let sz = size
+  // Evitar partir una palabra aunque quepa el número estimado de líneas (títulos serif en bandas angostas).
+  const longestWord = Math.max(1, ...text.split(/\s+/).map((word) => word.length))
+  let sz = Math.max(8, Math.min(size, Math.floor(inner / (longestWord * (bold ? 0.62 : 0.56)))))
   while (sz > floor && lines(sz) * sz * 1.2 > h - 4) sz -= 1
   return sz
 }
@@ -213,7 +218,8 @@ export function createKit(
   look: Look = 'classic',
   accent: string = pal.accent,
   titleFontOverride?: string,
-  autoFit = false
+  autoFit = false,
+  identity?: DocumentIdentity
 ) {
   const c: string[] = []
   const a = (id: string, params?: Record<string, unknown>): void => {
@@ -223,15 +229,25 @@ export function createKit(
   const titleFont = titleFontOverride ?? (look === 'editorial' ? 'Georgia' : undefined)
   /** Fondo de la diapositiva en curso, si la IA pidió uno distinto al de la paleta (sin `#`). */
   let bgOverride: string | undefined
+  const panelBackdrops: { x: number; y: number; w: number; h: number; color: string }[] = []
   const setBg = (c: string | undefined): void => {
     bgOverride = c
+    panelBackdrops.length = 0
   }
   /** Letra chica (pie, nota, numeración): con un `background` propio en la diapositiva se elige un color que contraste con ESE fondo. */
-  const footInk = (): string => (bgOverride ? legibleInk(pal.muted, pal.text, bgOverride) : pal.muted)
+  const footInk = (): string => legibleInk(pal.muted, pal.text, bgOverride ?? pal.bg)
   const bgslide = (glows: [number, number, number, string][] = []): void => {
     a('slide.new', { layout: 'blank' })
     const bgc = bgOverride ?? pal.bg
     a('design.background', { color: '#' + bgc })
+    if (identity) {
+      if (identity.background === 'panel') {
+        rect(0, 0, 960, 26, pal.panel)
+      } else if (identity.background === 'split') {
+        rect(0, 0, 24, 540, pal.accent)
+      }
+      return
+    }
     // Los estilos editorial y minimal no llevan brillos: la página queda limpia.
     if (look === 'editorial' || look === 'minimal') return
     for (const [x, y, d, col] of glows) {
@@ -287,15 +303,31 @@ export function createKit(
     bold = false,
     align = 'left',
     spacing?: number,
-    font?: string
+    font?: string,
+    annotation = false,
+    preserveColor = false
   ): void => {
+    const fitted = autoFit ? autoFitSize(t, size, w, h, bold) : size
+    if (identity && !annotation && t.trim() && fitted < 14)
+      throw new DeckTextFitError('El texto no cabe con letra de 14 pt: divide el contenido en más bloques o láminas.')
+    if (identity && !annotation && t.trim()) {
+      const lines = t
+        .split('\n')
+        .reduce((n, line) => n + Math.max(1, Math.ceil((line.length * fitted * (bold ? 0.55 : 0.5)) / Math.max(20, w - 14))), 0)
+      if (lines * fitted * 1.2 > h - 4)
+        throw new DeckTextFitError('El contenido supera la caja a tamaño legible: divídelo en más bloques o láminas.')
+    }
     a('insert.textBox', { rect: [x, y, w, h], text: t })
-    a('format.size', { size: autoFit ? autoFitSize(t, size, w, h, bold) : size })
-    a('format.color', { color: '#' + color })
+    a('format.size', { size: fitted })
+    const backdrop =
+      [...panelBackdrops].reverse().find((p) => x >= p.x && y >= p.y && x + w <= p.x + p.w + 0.01 && y + h <= p.y + p.h + 0.01)?.color ??
+      bgOverride ??
+      pal.bg
+    a('format.color', { color: '#' + (identity && !preserveColor ? legibleInk(color, pal.text, backdrop) : color) })
     a('format.bold', { on: bold })
     a('format.align', { align })
     if (spacing !== undefined) a('format.spacing', { pt: spacing })
-    if (font) a('format.font', { family: font })
+    if (font ?? identity?.fonts?.body) a('format.font', { family: font ?? identity?.fonts?.body })
     if (autoFit) {
       // DeckCraft recalcula la altura al cambiar la letra: conservar la caja que acabamos de ajustar.
       a('format.autofit', { mode: 'none' })
@@ -315,18 +347,34 @@ export function createKit(
   }
   /** Tarjeta/panel: relleno según el estilo (clásico y geométrico con relleno; editorial y minimal solo con borde fino). */
   const panel = (x: number, y: number, w: number, h: number): void => {
-    a('shape.insert', { preset: look === 'geometric' ? 'roundRect' : 'rect', rect: [x, y, w, h] })
-    if (look === 'editorial' || look === 'minimal') a('shape.fill', { none: true })
+    const outlined = identity ? identity.cards === 'outline' : look === 'editorial' || look === 'minimal'
+    panelBackdrops.push({ x, y, w, h, color: outlined ? (bgOverride ?? pal.bg) : pal.panel })
+    a('shape.insert', {
+      preset: identity ? (identity.cards === 'rounded' ? 'roundRect' : 'rect') : look === 'geometric' ? 'roundRect' : 'rect',
+      rect: [x, y, w, h]
+    })
+    if (outlined) a('shape.fill', { none: true })
     else a('shape.fill', { color: '#' + pal.panel })
     a('shape.line', { color: '#' + pal.edge, width: 1 })
   }
   const header = (n: number, title: string, kicker: string | undefined, footerDecoration = true): void => {
     bgslide([[680, -250, 500, pal.glow]])
-    if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 13, accent, true, 'left', 3)
-    txt(60, 62, 840, 64, title, fitSize(title, 40, 36), autoFit ? pal.accent : pal.text, true, 'left', -1, titleFont)
-    if (autoFit) rect(60, 128, 840, 4, pal.accent)
+    if (kicker) txt(60, 34, 600, 24, kicker.toUpperCase(), 14, accent, true, 'left', 3)
+    txt(
+      60,
+      62,
+      840,
+      64,
+      title,
+      fitSize(title, 40, 36),
+      autoFit ? pal.accent : pal.text,
+      identity ? identity.titles === 'bold' : true,
+      'left',
+      identity?.titles === 'editorial' ? 1 : -1,
+      titleFont
+    )
     if (footerDecoration) dotrow(60, 506, 8, 6)
-    txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right')
+    txt(820, 500, 80, 24, String(n).padStart(2, '0'), 13, footInk(), false, 'right', undefined, undefined, true)
   }
   return { c, a, bgslide, rect, ring, dot, dotrow, txt, pill, panel, header, titleFont, setBg, footInk }
 }

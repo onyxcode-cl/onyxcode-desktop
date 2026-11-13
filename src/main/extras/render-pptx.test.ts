@@ -1,3 +1,5 @@
+import { resolveDocumentIdentity } from '@shared/document-identity'
+import { customPalette } from '../office/craft/deck-kit'
 import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
 import { isPptxSpec, renderPptx, type PptxSpec } from './render-pptx'
@@ -137,7 +139,7 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     expect(text).toContain('Ñandú')
   })
 
-  it('fondo a toda página: portada y cierre usan "primary", sección y cifra "primary2" — el contenido (viñetas) se queda en blanco, por legibilidad', async () => {
+  it('los fondos del respaldo se derivan de la identidad y el contenido conserva su fondo', async () => {
     const spec: PptxSpec = {
       slides: [
         { title: 'Portada' },
@@ -149,8 +151,9 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     }
     const buf = await renderPptx(spec)
     const texts = await slideTexts(buf)
-    const primaryBg = bgPattern(THEMES.blue.primary)
-    const primary2Bg = bgPattern(THEMES.blue.primary2)
+    const own = customPalette(resolveDocumentIdentity(spec).palette)
+    const primaryBg = bgPattern(own.accent)
+    const primary2Bg = bgPattern(own.accent2)
     expect(texts[0]).toContain(primaryBg) // cover
     expect(texts[1]).toContain(primary2Bg) // section
     expect(texts[2]).toContain(primary2Bg) // stat
@@ -163,14 +166,14 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     const spec: PptxSpec = { slides: [{ title: 'Portada con bullets pero forzada a section', bullets: ['x'], layout: 'section' }] }
     const buf = await renderPptx(spec)
     const [text] = await slideTexts(buf)
-    expect(text).toContain(THEMES.blue.primary2) // "section" usa primary2, aunque sea la diapositiva 0 (que por índice sería portada)
+    expect(text).toContain(customPalette(resolveDocumentIdentity(spec).palette).accent2) // "section" usa primary2, aunque sea la diapositiva 0 (que por índice sería portada)
   })
 
   it('el theme cambia la paleta de todo el deck', async () => {
     const spec: PptxSpec = { theme: 'green', slides: [{ title: 'Portada' }] }
     const buf = await renderPptx(spec)
     const [text] = await slideTexts(buf)
-    expect(text).toContain(THEMES.green.primary)
+    expect(text).toContain(resolveDocumentIdentity(spec).palette.accent.slice(1))
     expect(text).not.toContain(THEMES.blue.primary)
   })
 
@@ -251,15 +254,15 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     }
   })
 
-  it('cada diapositiva de fondo a toda página trae su propio círculo de textura', async () => {
+  it('el respaldo no añade círculos decorativos fuera del lienzo', async () => {
     const spec: PptxSpec = {
       slides: [{ title: 'Portada' }, { title: 'Sección' }, { title: 'A', bullets: ['x'] }, { title: '80%', bullets: ['y'], layout: 'stat' }]
     }
     const buf = await renderPptx(spec)
     const texts = await slideTexts(buf)
-    expect((texts[0].match(/prst="ellipse"/g) ?? []).length).toBeGreaterThan(0) // portada
-    expect((texts[1].match(/prst="ellipse"/g) ?? []).length).toBeGreaterThan(0) // sección
-    expect((texts[3].match(/prst="ellipse"/g) ?? []).length).toBeGreaterThan(0) // cifra
+    expect((texts[0].match(/prst="ellipse"/g) ?? []).length).toBe(0) // portada
+    expect((texts[1].match(/prst="ellipse"/g) ?? []).length).toBe(0) // sección
+    expect((texts[3].match(/prst="ellipse"/g) ?? []).length).toBe(0) // cifra
   })
 
   it('layout "two-col" SIN "columns": las viñetas se reparten mitad y mitad (compatibilidad con decks ya generados)', async () => {
@@ -294,7 +297,7 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     const [text] = await slideTexts(buf)
     for (const t of ['Antes', 'Después', '21 días', '30% sin respuesta', '12 días', '8% sin respuesta']) expect(text).toContain(t)
     expect((text.match(/prst="roundRect"/g) ?? []).length).toBe(2) // los dos paneles
-    expect(text).toContain(THEMES.blue.primary2) // panel derecho invertido
+    expect(text).toContain(customPalette(resolveDocumentIdentity(spec).palette).accent2) // panel derecho invertido
   })
 
   it('layout "cards": cada viñeta sale como una tarjeta numerada (roundRect + círculo con el número + su propio texto)', async () => {
@@ -347,7 +350,7 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     expect(chart).toBeTruthy()
     for (const cat of ['Ene', 'Feb', 'Mar']) expect(chart).toContain(cat)
     for (const val of ['10', '20', '15']) expect(chart).toContain(`<c:v>${val}</c:v>`)
-    expect(chart).toContain(THEMES.blue.chart[0])
+    expect(chart).toContain(resolveDocumentIdentity(spec).palette.accent.slice(1))
   })
 
   it('eyebrow/note/footer llegan al xml cuando se dan — y NUNCA se inventa nada si no vienen', async () => {
@@ -379,12 +382,14 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     expect(texts[3]).toContain('<a:t>02</a:t>')
   })
 
-  it('el tema elige la tipografía del título: Georgia en los temas editoriales (blue/green/warm), Arial en negrita en los más "corporativos" (dark/mono) — el cuerpo siempre en Arial', async () => {
-    const spec: PptxSpec = { slides: [{ title: 'Título', bullets: ['cuerpo'] }] }
-    const warm = await slideTexts(await renderPptx({ theme: 'warm', ...spec }))
-    const dark = await slideTexts(await renderPptx({ theme: 'dark', ...spec }))
-    expect(warm[0]).toContain('typeface="Georgia"')
-    expect(dark[0]).not.toContain('typeface="Georgia"')
+  it('las fuentes propias ganan sobre los ejemplos de tema', async () => {
+    const spec: PptxSpec = { fonts: { title: 'Verdana', body: 'Georgia' }, slides: [{ title: 'Título', bullets: ['cuerpo'] }] }
+    for (const theme of ['warm', 'dark'] as const) {
+      const buffer = await renderPptx({ ...spec, theme })
+      expect((await slideTexts(buffer))[0]).toContain('typeface="Verdana"')
+      const zip = await JSZip.loadAsync(buffer)
+      expect(await zip.file('ppt/theme/theme1.xml')!.async('string')).toContain('typeface="Georgia"')
+    }
   })
 
   it('sin "style": el look es idéntico al de siempre (equivale a "classic") — cero regresión para decks ya generados', async () => {
@@ -396,53 +401,14 @@ describe('renderPptx: genera un .pptx real, releíble', () => {
     expect(plain).toEqual(classic)
   })
 
-  it('"style": cambia la decoración de las diapositivas a toda página (círculo en "classic", barra rotada en "geometric", línea fina de borde a borde en "editorial", nada en "minimal")', async () => {
-    const spec: PptxSpec = { slides: [{ title: 'Portada' }] }
-    const classic = (await slideTexts(await renderPptx({ ...spec, style: 'classic' })))[0]
-    const geometric = (await slideTexts(await renderPptx({ ...spec, style: 'geometric' })))[0]
-    const editorial = (await slideTexts(await renderPptx({ ...spec, style: 'editorial' })))[0]
-    const minimal = (await slideTexts(await renderPptx({ ...spec, style: 'minimal' })))[0]
-    expect(classic).toContain('prst="ellipse"') // círculo sutil de siempre
-    expect(geometric).not.toContain('prst="ellipse"')
-    expect(geometric).toContain('rot="2700000"') // barra rotada 45°
-    expect(editorial).not.toContain('prst="ellipse"')
-    expect(editorial).not.toContain('rot=')
-    expect(editorial).toContain('name="Shape 0"') // la línea fina sí es una forma de verdad
-    expect(minimal).not.toContain('prst="ellipse"')
-    expect(minimal).not.toContain('name="Shape 0"') // "minimal" no agrega ninguna forma decorativa
-  })
-
-  it('"style": cambia la forma de las tarjetas (radio de esquina, relleno y borde) en "cards"/"kpis" — nunca la posición/tamaño', async () => {
-    const cards: PptxSpec = { slides: [{ title: 'X', layout: 'cards', bullets: ['a', 'b'] }] }
-    const classic = (await slideTexts(await renderPptx({ ...cards, style: 'classic' })))[0]
-    const geometric = (await slideTexts(await renderPptx({ ...cards, style: 'geometric' })))[0]
-    const editorial = (await slideTexts(await renderPptx({ ...cards, style: 'editorial' })))[0]
-    const minimal = (await slideTexts(await renderPptx({ ...cards, style: 'minimal' })))[0]
-    expect(classic).toContain('fmla="val 4706"') // rectRadius 0.08
-    expect(geometric).toContain('fmla="val 11765"') // rectRadius 0.2, más redondeada ("pill")
-    // rectRadius 0 NUNCA se manda como "roundRect" con radio 0 — bug real de pptxgenjs (chequea el
-    // valor con `if (rectRadius)`, así que 0 nunca escribe el "adj" y PowerPoint cae al radio PROPIO
-    // del preset "roundRect", bien redondeado, no la esquina recta que pide el estilo) — por eso acá
-    // la tarjeta usa la forma "rect" lisa en vez de "roundRect" sin radio.
-    expect(classic).toContain('prst="roundRect"')
-    expect(geometric).toContain('prst="roundRect"')
-    expect(editorial).not.toContain('prst="roundRect"')
-    expect(minimal).not.toContain('prst="roundRect"')
-    expect(editorial).not.toContain('fmla="val') // rectRadius 0, esquina recta
-    expect(classic).toContain(THEMES.blue.surface) // "classic" rellena la tarjeta
-    expect(editorial).not.toContain(THEMES.blue.surface) // "editorial" NO rellena — bloque de texto plano
-    expect(geometric).toContain(THEMES.blue.surface) // "geometric" sí rellena
-    expect(geometric).not.toContain(THEMES.blue.border) // "geometric" sin borde
-    expect(minimal).toContain(THEMES.blue.border) // "minimal" sí lleva borde fino (y nunca relleno)
-    expect(minimal).not.toContain(THEMES.blue.surface)
-    expect(editorial).not.toContain('prst="ellipse"') // "editorial" no usa círculo numerado
-    expect(geometric).toContain('prst="ellipse"') // "geometric" sigue usando círculo numerado
-  })
-
-  it('"style" por defecto es "classic" aunque no se declare explícito ("classic" === sin campo)', async () => {
-    const spec: PptxSpec = { style: 'classic', slides: [{ title: 'Portada' }] }
-    const [text] = await slideTexts(await renderPptx(spec))
-    expect((text.match(/prst="ellipse"/g) ?? []).length).toBeGreaterThan(0)
+  it('la identidad de tarjetas determina geometría en el respaldo y no agrega decoración fuera del lienzo', async () => {
+    const spec: PptxSpec = { slides: [{ title: 'Portada' }, { title: 'X', layout: 'cards', bullets: ['a', 'b'] }] }
+    for (const cards of ['rounded', 'square', 'outline'] as const) {
+      const texts = await slideTexts(await renderPptx({ ...spec, identity: { cards } }))
+      expect(texts[0]).not.toContain('prst="ellipse"')
+      expect(texts[1].includes('prst="roundRect"')).toBe(cards === 'rounded')
+      for (const t of ['a', 'b']) expect(texts[1]).toContain(`<a:t>${t}</a:t>`)
+    }
   })
 })
 

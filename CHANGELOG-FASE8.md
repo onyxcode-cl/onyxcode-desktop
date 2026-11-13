@@ -4428,3 +4428,11 @@ Incluye F8-B248 a F8-B260 (revisión en la tarjeta del archivo, vista del docume
 - `documentos_exportar_pdf` convierte el Word o PowerPoint existente con su motor, sin reconstruirlo como HTML. Respeta la carpeta autorizada, los permisos de escritura de Código, límites, cancelación y reemplazo condicionado por sesión/huella; entrega vistas previas. No publica una conversión inválida o incompleta detectada.
 - El pie usa «con cambios» y reserva una franja sin línea decorativa ni número de lámina. Las guías de Tareas/Código conservan fotos y créditos en seguimientos, revisan con las herramientas de documentos sin pedir control del equipo y anuncian cualquier entrega parcial al principio.
 - Pruebas: registro y reinicio, JSON inventado/corrupto, recuperación de la segunda foto, Word/PowerPoint→PDF, añadir/cambiar foto y traducción; rutas WSL, proyecto Código, permisos y detección del entregable; conversión con WordCraft/DeckCraft reales y guardias de contenido. Ver detalle y resultados de la tanda en el informe V26 de fotos libres, sección «Quinta ronda».
+
+## F8-B290 — Identidad documental aplicada y banco visual (V26)
+
+PowerPoint y Word aceptan una identidad visual compacta y derivan una estable del contenido cuando falta. Los armadores aplican fuentes, colores y tratamientos; PowerPoint incorpora variantes geométricas de portada, cifras, comparación, cierre e imagen, elimina la línea forzada bajo títulos y conserva paleta/fuentes en el respaldo. Word permite títulos, tablas, portada y encabezados propios. La normalización conserva la identidad durante correcciones. Las guías presentan temas nombrados como ejemplos y conservan intacta la pregunta de formato.
+
+Banco `scripts/design-bench/`: diez temas, tres formatos, ejecución con modelo solo por activación explícita y huella visual de archivos finales con texto excluido. `scripts/design-samples.mjs` genera muestras sintéticas con los CLI reales, sin app ni modelo. La métrica es exploratoria: no sustituye preferencia a ciegas ni validación en Office Windows.
+
+Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word; variantes geométricas, contraste y fuentes/paleta del respaldo PowerPoint; paridad de guías y pregunta de formato; banco sintético. Evidencia y límites en el informe V26 externo; no se ejecuta el banco con modelo.

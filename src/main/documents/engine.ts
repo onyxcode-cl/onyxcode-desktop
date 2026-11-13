@@ -7,6 +7,7 @@ import { renderHtmlToPdf } from '../extras/artifact-window'
 import { craftService } from '../office/craft/service'
 import { recordCraftProblem } from '../office/craft/craft-problems'
 import { foldSubtitles, renderChatDeck } from '../office/craft/chat-deck'
+import { DeckTextFitError } from '../office/craft/deck-kit'
 import { ensureTitlePlaceholders } from '../office/craft/pptx-titles'
 import { renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from '../extras/render-pptx'
@@ -113,12 +114,13 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
   }
   if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de PowerPoint inválidos.')
   await ensureCraft()
-  // Con DeckCraft instalado la presentación se arma con él (diseño «dots»); si falla por lo que sea, cae al generador de siempre.
+  // Con DeckCraft instalado se aplica la identidad. Un fallo de contenido se corrige; solo un fallo del motor usa el respaldo.
   const craft = craftBinary('deckcraft')
   if (craft) {
     try {
       return await renderChatDeck(craft, input.data, undefined, undefined, opts.images)
     } catch (e) {
+      if (e instanceof DeckTextFitError) throw new ChatDocError('invalid', e.message)
       console.warn('[chat-docs] DeckCraft falló, se usa el generador de siempre:', e instanceof Error ? e.message : e)
       recordCraftProblem('documento', e, { programa: 'deckcraft' }, { level: 'warn' })
     }
