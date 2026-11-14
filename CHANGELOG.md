@@ -11,15 +11,21 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **Las presentaciones de más de 8 láminas ya se ven y se descargan.** Antes fallaban con «Los datos del documento no son válidos».
 - **Los errores de documentos dicen el motivo**, y «Pedir de nuevo» se lo pasa a la IA para que lo corrija.
 - **En Windows, Overdrive ya no bloquea la carpeta** por un atraso momentáneo del sistema al revisarla.
+- **Presentaciones de hasta 200 láminas.** Antes se cortaban en 40 sin avisar, y las presentaciones HTML largas se detenían a mitad.
+- **«Presentar»** recorre todas las láminas y sale con Esc sin cerrar la app.
 
 ### Código y Overdrive
 
 - **«Automático» trabaja sin pedir permiso:** solo pregunta antes de borrar, salir de la carpeta del proyecto o tocar archivos sensibles.
-- **El plan avanza de verdad:** la IA va marcando cada etapa y, al terminar, deja el plan al día. Ya no queda «trabajando» cuando terminó.
+- **El plan avanza de verdad:** cada etapa se marca lista apenas termina, y ya no queda «trabajando» cuando terminó.
+- **Cada conversación recuerda su modo de permisos.** Cambiar el modo en una ya no cambia las demás.
+- **No se puede cambiar la IA ni el modo mientras trabaja:** un aviso te deja «Detener y cambiar» o «Esperar a que termine». En Chat, Código y Overdrive.
+- **Tarjetas de permiso más claras:** muestran el comando real una sola vez, no se repiten después de aprobarlas y sus botones no quedan grises al abrir los detalles.
 - **Tarjeta «En segundo plano»** en el panel de la derecha: muestra lo que sigue corriendo (agentes, ayudantes, servidores y comandos) con su estado y el botón «Parar».
 - **Las tarjetas del panel se pueden ordenar** arrastrándolas, y la app recuerda el orden.
 - **Barra de Código más limpia:** sin botones repetidos, y en Windows ya no se amontona bajo los botones de la ventana.
 - **Una sola tarjeta de permiso al borrar**, y la IA puede borrar los borradores que ella misma creó. Tus archivos de antes siguen protegidos.
+- **En Windows,** las pruebas que pasan ya no se marcan como error ni muestran un bloque rojo de PowerShell.
 
 ## [1.8.26] - 2026-11-14
 
