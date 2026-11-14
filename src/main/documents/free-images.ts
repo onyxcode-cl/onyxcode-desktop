@@ -715,7 +715,7 @@ export class FreeImagesService {
   }
   private get(id: string): StoredCandidate {
     const found = this.candidates.get(id)
-    if (!found) throw new FreeImageError('Identificador de imagen desconocido para esta tarea/carpeta; no se aceptan URLs.')
+    if (!found) throw new FreeImageError('Ese resultado de búsqueda ya no está disponible; vuelve a buscar. No se aceptan URLs.')
     return found
   }
   async view(ids: string[]): Promise<FreeImageView[]> {

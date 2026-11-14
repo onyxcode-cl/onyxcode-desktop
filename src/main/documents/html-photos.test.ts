@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { FreeImageAsset } from './free-images'
 import { FreeImageRegistry } from './free-image-registry'
-import { resolvePreparedHtml } from './html-photos'
+import { MissingPreparedPhotoError, resolvePreparedHtml } from './html-photos'
 import { FREE_IMAGE_PREVIEW_MARKER } from './free-image-preview'
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH7sAAAAASUVORK5CYII=', 'base64')
 const evaluation = { mode: 'manual' as const, observed: 'Foto elegida por la persona.', meets: [], doubts: '' }
@@ -99,6 +99,17 @@ it('rejects IDs from another conversation, arbitrary paths, changed bytes and sy
   await rm(join(root, rel))
   await symlink(join(base, 'elsewhere.jpg'), join(root, rel))
   await expect(resolvePreparedHtml('<section class="slide"><img src="imagen:p1">', { root }, registry)).rejects.toThrow('enlace')
+})
+it('identifies the missing photo and explains recovery without blaming the document data', async () => {
+  const result = resolvePreparedHtml(
+    '<section class="slide"><img src="imagen:p1"><img src="imagen:missing-photo"></section>',
+    { root },
+    registry
+  )
+  await expect(result).rejects.toBeInstanceOf(MissingPreparedPhotoError)
+  await expect(result).rejects.toThrow('«imagen:missing-photo»')
+  await expect(result).rejects.toThrow('imagenes_usar')
+  await expect(result).rejects.toThrow('vuelve a buscar y sustituye la referencia')
 })
 it('rejects marked preview data and enforces context and byte budgets', async () => {
   await expect(

@@ -117,10 +117,10 @@ export interface QuickPromptEvent {
 
 /**
  * Por qué `extras:chatDoc:open` no abrió nada: `failed` (la generación del archivo falló por algo inesperado), `invalid` (los datos no
- * pasaron la validación de main) o `no-craft` (falta el programa de ArtCraft que ese tipo de documento necesita). `detail` es un motivo
+ * pasaron la validación de main), `photo-missing` (una foto no está preparada en el ámbito) o `no-craft` (falta ArtCraft). `detail` es un motivo
  * corto y ya apto para mostrar (nunca un mensaje crudo del sistema: solo textos propios de la app).
  */
-export type ChatDocOpenReject = 'failed' | 'invalid' | 'no-craft'
+export type ChatDocOpenReject = 'failed' | 'invalid' | 'photo-missing' | 'no-craft'
 /** `bytes` (opcional): peso real del archivo generado, para la tarjeta de documento del Chat. */
 export type ChatDocOpenResult = { ok: true; bytes?: number } | { ok: false; reason: ChatDocOpenReject; detail?: string }
 

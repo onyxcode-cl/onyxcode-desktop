@@ -4,7 +4,7 @@ import { SlidesHtmlError } from '@shared/slides-html'
 import { OutputPathError } from '../documents/output-path'
 import { prepareArtifactPhotos } from '../extras/artifact-photos'
 import { documentsMcp, resolveChatHtmlPhotos } from '../documents'
-import { resolvePreparedHtml } from '../documents/html-photos'
+import { MissingPreparedPhotoError, resolvePreparedHtml } from '../documents/html-photos'
 import type { ArtifactContext } from '@shared/ipc-extras'
 /**
  * Handlers IPC de extras (`extras:*`, `mcp:*`). Registrar en main con:
@@ -253,6 +253,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
           detail: { tipo: kind }
         })
       }
+      if (e instanceof MissingPreparedPhotoError) return { ok: false, reason: 'photo-missing', detail: e.message }
       if (e instanceof OutputPathError || e instanceof SlidesHtmlError) return { ok: false, reason: 'invalid', detail: e.message }
       if (e instanceof ChatDocError) return { ok: false, reason: e.code, detail: e.message }
       return { ok: false, reason: 'failed' }

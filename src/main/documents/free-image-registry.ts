@@ -208,8 +208,22 @@ export class FreeImageRegistry {
     return asset ? { ...location, asset } : null
   }
 
-  findId(root: string, id: string): Promise<RegisteredPhoto | null> {
-    return this.find(root, `id:${id}`)
+  async findId(root: string, id: string): Promise<RegisteredPhoto | null> {
+    const exact = await this.find(root, `id:${id}`)
+    if (exact || !/^[0-9a-f-]{8,35}$/i.test(id)) return exact
+    // Algunos modelos copian el identificador cortado («imagen:5697d8fe»). Si el trozo identifica una
+    // sola foto preparada en este mismo ámbito, se acepta; si es ambiguo o no existe, sigue el error.
+    const home = await this.home(root)
+    const prefix = `location-${digest(await realpath(root))}-`
+    const matches = new Set<string>()
+    for (const file of (await readdir(home)).filter((name) => name.startsWith(prefix))) {
+      const location = (await this.read(join(home, file), 4096)) as Location | null
+      if (location?.version === 1 && typeof location.id === 'string' && location.id.toLowerCase().startsWith(id.toLowerCase()))
+        matches.add(location.id)
+      if (matches.size > 1) return null
+    }
+    const [only] = matches
+    return only ? this.find(root, `id:${only}`) : null
   }
   findPath(root: string, path: string): Promise<RegisteredPhoto | null> {
     return this.find(root, `path:${path.toLowerCase()}`)

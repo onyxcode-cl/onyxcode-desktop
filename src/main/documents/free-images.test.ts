@@ -293,8 +293,10 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     expect(used.provenance.evaluationStatus).toBe('declarada-por-el-modelo')
     expect(used.provenance.status).toBe('licencia-comprobada')
     expect(used.provenance.sha256).toBe(createHash('sha256').update(used.bytes).digest('hex'))
-    await expect(new FreeImagesService({ fetch, processor }).view([id])).rejects.toThrow('desconocido')
-    await expect(service.view(['https://evil.test/p.jpg'])).rejects.toThrow('no se aceptan URLs')
+    await expect(new FreeImagesService({ fetch, processor }).view([id])).rejects.toThrow(
+      'Ese resultado de búsqueda ya no está disponible; vuelve a buscar'
+    )
+    await expect(service.view(['https://evil.test/p.jpg'])).rejects.toThrow('No se aceptan URLs')
   })
   it.each(['h1', 'h6'])('limpia el pie de %s y conserva los metadatos reales íntegros en procedencia', async (caseId) => {
     const captured = JSON.parse(await readFile(new URL(`./fixtures-free-images/${caseId}-attribution-real.json`, import.meta.url), 'utf8'))

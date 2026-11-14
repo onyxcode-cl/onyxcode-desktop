@@ -100,7 +100,9 @@ export function ChatDocPanel({
 
   // JSON roto / forma incorrecta / datos no válidos: reintentar el mismo texto no sirve, hay que pedirle al modelo que lo vuelva a escribir.
   const askAgain =
-    !!problem && (problem.reason === 'json' || problem.reason === 'schema' || problem.reason === 'invalid') && canAskAboutChatDoc()
+    !!problem &&
+    (problem.reason === 'json' || problem.reason === 'schema' || problem.reason === 'invalid' || problem.reason === 'photo-missing') &&
+    canAskAboutChatDoc()
   const noCraft = problem?.reason === 'no-craft'
 
   return (
@@ -173,12 +175,14 @@ export function ChatDocPanel({
                     ? () =>
                         askAboutChatDoc(
                           t('chat.doc.retryPrompt', {
-                            reason: t(docProblemKey(problem.reason))
+                            reason: problem.reason === 'photo-missing' && problem.detail ? problem.detail : t(docProblemKey(problem.reason))
                           })
                         )
                     : onRetry
               }
-              detail={askAgain && problem.reason !== 'invalid' ? doc.rawText.slice(0, 4000) : problem.detail}
+              detail={
+                askAgain && problem.reason !== 'invalid' && problem.reason !== 'photo-missing' ? doc.rawText.slice(0, 4000) : problem.detail
+              }
             />
           </div>
         )}

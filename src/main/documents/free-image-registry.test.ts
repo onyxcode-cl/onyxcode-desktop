@@ -48,6 +48,18 @@ afterEach(async () => {
   await rm(base, { recursive: true, force: true })
 })
 describe('registro privado de fotos', () => {
+  it('acepta el identificador cortado si apunta a una sola foto del mismo ámbito (prueba real en Mac)', async () => {
+    const id = '5697d8fe-0536-48d6-9067-e49bd3a7be9b'
+    await new FreeImageRegistry(store).remember(root, id, rel, asset)
+    const registry = new FreeImageRegistry(store)
+    expect(await registry.findId(root, '5697d8fe')).toMatchObject({ sha, id })
+    expect(await registry.findId(root, '5697d8fe-0536')).toMatchObject({ sha, id })
+    expect(await registry.findId(root, '9999aaaa')).toBeNull()
+    expect(await registry.findId(root, '5697')).toBeNull()
+    const other = join(base, 'other')
+    await mkdir(other)
+    expect(await registry.findId(other, '5697d8fe')).toBeNull()
+  })
   it('persiste bytes exactos, procedencia original y crédito; id y ruta sobreviven una instancia nueva', async () => {
     await new FreeImageRegistry(store).remember(root, 'test-id', rel, asset)
     const registry = new FreeImageRegistry(store)

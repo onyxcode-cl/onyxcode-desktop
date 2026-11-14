@@ -4490,3 +4490,9 @@ Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word;
 - Se quitan las revisiones que exigían créditos visibles, también al convertir Word/PowerPoint a PDF, y las instrucciones de reservar espacio para ellos. Las guías indican no añadir créditos ni pies de foto salvo petición de la persona.
 - No se escriben JSON de procedencia junto a las fotos ni a los entregables. Se conserva el registro interno persistente, la procedencia invisible del HTML, los filtros de licencia, el flujo buscar/ver/usar y las protecciones contra vistas de muestra.
 - Regresiones dirigidas: HTML y su entrega, herramientas MCP de imágenes/documentos, exportación PDF, armadores Word/PowerPoint y guías de Chat/Código/Tareas. Resultados y límites de ejecución en `V26-SIN-CREDITOS-INFORME.md`, entregado fuera del repositorio. Sin app, commit ni publicación.
+
+## F8-B298 — Fotos de Chat tras reiniciar y errores recuperables (V26)
+
+- Se comprueba la persistencia ya existente: una foto preparada en Chat se resuelve desde `documentos-fotos` tras cambiar proceso y token, con el mismo userData y conversación, antes de volver a llamar a `imagenes_usar`. Otra conversación sigue rechazada; no se amplía la autoridad del registro ni se añaden créditos.
+- `imagenes_ver` explica que un resultado de búsqueda caducado requiere volver a buscar. Si falta una foto del HTML, el panel muestra su referencia y cómo prepararla o sustituirla; «Pedir de nuevo» conserva ese motivo para el modelo.
+- Regresiones: `chat-photos.persistent`, `free-images`, `html-photos`, `extras-handlers.chat-docs` y `ChatDocPanel.photos`. La prueba de reinicio usa procesos Node separados y tokens nuevos; el transporte directo sustituye solo el arranque del socket en entornos sin loopback. `LAZUNOX_PHOTO_RESTART_LOOPBACK=1` permite probar HTTP real. Resultados y límites en el informe externo `V26-FOTOS-CHAT-REINICIO-INFORME.md`.

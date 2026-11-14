@@ -68,7 +68,10 @@ vi.mock('../extras/slides-deck-export', () => ({}))
 vi.mock('../office/craft/craft-problems', () => ({}))
 vi.mock('../office/craft/open-external', () => ({}))
 vi.mock('../office/craft/service', () => ({}))
-vi.mock('../diagnostics/problem-log', () => ({}))
+vi.mock('../diagnostics/problem-log', () => ({
+  describeError: (err: Error) => ({ message: err.message }),
+  recordProblem: vi.fn()
+}))
 vi.mock('../runtimes/service', () => ({}))
 vi.mock('../extras/local-connectors', () => ({}))
 vi.mock('../extras/prefs', () => ({}))
@@ -164,6 +167,20 @@ describe('documentos de Chat: ruta real del handler', () => {
 })
 
 describe('guardar HTML autónomo por IPC', () => {
+  it('el panel recibe un fallo específico con el id de la foto y la acción para recuperarla', async () => {
+    const { MissingPreparedPhotoError } = await import('../documents/html-photos')
+    const error = new MissingPreparedPhotoError('imagen:foto-perdida')
+    mock.photos.mockRejectedValue(error)
+    expect(
+      await invoke('extras:chatDoc:open', {
+        ...common,
+        kind: 'pdf',
+        html: '<section class="slide"><img src="imagen:foto-perdida"></section>'
+      })
+    ).toEqual({ ok: false, reason: 'photo-missing', detail: error.message })
+    expect(mock.render).not.toHaveBeenCalled()
+    expect(mock.openDoc).not.toHaveBeenCalled()
+  })
   it('guarda los bytes preparados de la conversación y registra solo ese archivo', async () => {
     mock.photos.mockResolvedValue('<section class="slide"><img src="data:image/jpeg;base64,cGhvdG8="><aside>Crédito</aside></section>')
     const path = join(mock.temp, 'fotos.html')

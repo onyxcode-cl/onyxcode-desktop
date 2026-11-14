@@ -8,8 +8,15 @@ import { htmlImageTags, decodeHtmlText } from './html-images'
 import { readTaskFile, relativeInputPath } from './input-path'
 import { OutputPathError } from './output-path'
 import { MAX_ARTIFACT_HTML_BYTES, hasHtmlSlides } from '@shared/slides-html'
+import { t } from '@shared/i18n'
 
 const MAX_PHOTOS = 10
+/** A scoped missing reference is actionable, unlike a generic invalid-document error. */
+export class MissingPreparedPhotoError extends OutputPathError {
+  constructor(reference: string) {
+    super('name', t('chat.doc.problem.photoMissingDetail', { reference: reference.slice(0, 200) }))
+  }
+}
 export interface HtmlPhotoScope {
   root: string
   agentRoots?: string[]
@@ -61,8 +68,7 @@ export async function resolvePreparedHtml(html: string, scope?: HtmlPhotoScope, 
       record = id === null ? await registry.findPath(localRoot, parts.join('/')) : await registry.findId(localRoot, id)
       if (record) fileRel = [...base, record.rel].join('/')
     }
-    if (!record)
-      throw new OutputPathError('name', 'La foto no está preparada en esta conversación o carpeta. Usa imagenes_usar en este ámbito.')
+    if (!record) throw new MissingPreparedPhotoError(ref)
     // Even IDs must still point at the intact prepared file; the exported JSON is never authority.
     const file = await readTaskFile(scope.root, fileRel!, scope.agentRoots ?? [scope.root], {}, 'image')
     const sha = createHash('sha256').update(file.bytes).digest('hex')
