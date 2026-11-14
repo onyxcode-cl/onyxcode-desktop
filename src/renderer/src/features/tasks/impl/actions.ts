@@ -1,3 +1,4 @@
+import { deferTaskChange } from './working-change'
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import type { PasteRejected } from '@shared/paste-files'
@@ -299,6 +300,7 @@ export async function applyWantedAuto(folder: string): Promise<void> {
  * (diálogo) se pide UNA vez por equipo, salvo que `confirmed` sea true; volver a Sandbox es inmediato.
  */
 export async function setAccessMode(fullAccess: boolean, confirmed = false): Promise<void> {
+  if (deferTaskChange(() => setAccessMode(fullAccess, confirmed))) return
   useUnified.setState({ wantAuto: false })
   if (!fullAccess) return leaveFullAccess()
   const info = (await loadFullAccessInfo()) ?? useTasks.getState().fullAccessInfo
@@ -1014,16 +1016,14 @@ export async function rejectQuestion(requestID: string): Promise<void> {
     return { questions }
   })
   if (request && root)
-    useRejectionNotices
-      .getState()
-      .add({
-        mode: 'tasks',
-        directory: folder,
-        sessionID: root,
-        requestID,
-        kind: 'question',
-        detail: request.questions.map((question) => question.question).join('\n')
-      })
+    useRejectionNotices.getState().add({
+      mode: 'tasks',
+      directory: folder,
+      sessionID: root,
+      requestID,
+      kind: 'question',
+      detail: request.questions.map((question) => question.question).join('\n')
+    })
 }
 
 export async function archiveTask(sessionID: string): Promise<void> {

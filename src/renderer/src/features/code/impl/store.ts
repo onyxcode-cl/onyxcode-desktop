@@ -6,6 +6,8 @@
  */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import { create } from 'zustand'
+import { deferWorkingChange } from '../../../lib/working-change'
+import { useServer } from '../../../stores/server'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
 import {
@@ -1813,6 +1815,7 @@ export const useCode = create<CodeState>((set, get) => {
       }),
 
     setAgent: (agent) => {
+      if (agent !== get().agent && deferCodeChange(() => get().setAgent(agent))) return
       lsSet(LS_AGENT, agent)
       set({ agent })
       // «Hacer» con el modo «Solo explorar» rige como «Preguntar siempre» (`effectiveModeFor`): el chip de permisos pasa a decirlo,
@@ -1821,10 +1824,12 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     setModel: (model, remember = true) => {
+      if (remember && deferCodeChange(() => get().setModel(model))) return
       set({ model, variant: null })
       if (remember) setModeModel('code', model)
     },
     setRoleModel: (role, model) => {
+      if (deferCodeChange(() => get().setRoleModel(role, model))) return
       const key = get().activeSessionID ?? ''
       set((s) => ({ roleModels: { ...s.roleModels, [key]: withRoleModel(s.roleModels[key], role, model) } }))
     },
@@ -1835,7 +1840,10 @@ export const useCode = create<CodeState>((set, get) => {
         delete roleNotices[sessionID]
         return { roleNotices }
       }),
-    setVariant: (variant) => set({ variant }),
+    setVariant: (variant) => {
+      if (variant !== get().variant && deferCodeChange(() => get().setVariant(variant))) return
+      set({ variant })
+    },
 
     // -- Cola de mensajes --
     enqueue: (sessionID, text, files = [], attachments = []) => {
@@ -1881,6 +1889,7 @@ export const useCode = create<CodeState>((set, get) => {
 
     // -- Modo de permisos --
     setPermissionMode: async (mode) => {
+      if (mode !== get().permissionMode && deferCodeChange(() => get().setPermissionMode(mode))) return
       lsSet(LS_PERM_MODE, mode)
       set({ permissionMode: mode })
       // El agente se iguala AUNQUE todavía no haya conversación (borrador): `effectiveModeFor('plan', 'build')` es «manual», así que sin esto una
@@ -1890,8 +1899,7 @@ export const useCode = create<CodeState>((set, get) => {
       const sid = get().activeSessionID
       if (!sid) return
       // El bloque del modo se manda ya (también «Solo explorar»: tiene que anular lo que dejó el modo anterior en esta sesión).
-      // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
-      // el cambio vale desde el próximo mensaje (la interfaz lo avisa).
+      // No se reenvía si la sesión ya termina con él. Los cambios pedidos durante una respuesta esperan a Detener.
       const { client, dir } = activeDir()
       {
         const rf = refreshGlobalConfigRules()
@@ -2540,3 +2548,30 @@ useProviders.subscribe((s) => {
   providerIdsSig = sig
   if (changed && useCode.getState().model) useCode.setState({ model: null, variant: null })
 })
+
+/** Protege también los atajos y los modelos de Planear/Hacer, con el estado visible del compositor. */
+export function deferCodeChange(apply: () => void | Promise<void>): boolean {
+  const { activeSessionID: id, directory } = useCode.getState()
+  const client = useServer.getState().client
+  return deferWorkingChange(
+    {
+      busy: () => {
+        const run = selectCodeRunOf(useCode.getState(), id)
+        return run === 'busy' || run === 'retry'
+      },
+      current: () =>
+        useCode.getState().activeSessionID === id && useCode.getState().directory === directory && useServer.getState().client === client,
+      stop: () => useCode.getState().abort(),
+      subscribe: (listener) => {
+        const offCode = useCode.subscribe(listener)
+        const offServer = useServer.subscribe(listener)
+        return () => {
+          offCode()
+          offServer()
+        }
+      },
+      onError: (globalError) => useCode.setState({ globalError })
+    },
+    apply
+  )
+}

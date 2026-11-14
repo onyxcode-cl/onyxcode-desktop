@@ -1,3 +1,4 @@
+import { deferTaskChange } from './working-change'
 import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
 import { requestViewerOpen } from './store'
 /**
@@ -137,8 +138,11 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
         gate={aiGate.gate}
         freeModel={aiGate.free}
         onUseFree={(m) => {
-          setTaskModel(m)
-          adoptFreeModel(m)
+          const apply = (): void => {
+            setTaskModel(m)
+            adoptFreeModel(m)
+          }
+          if (!deferTaskChange(apply)) apply()
         }}
       />
       <div
@@ -268,7 +272,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             {/* En el inicio (hero) carpeta, alcance y Manual/Automático van juntos en el ScopePicker de Home. */}
             {hero ? null : (
               <>
-                <AccessChip disabled={sending || busy} />
+                <AccessChip disabled={sending} />
                 <AutoModeChip />
               </>
             )}

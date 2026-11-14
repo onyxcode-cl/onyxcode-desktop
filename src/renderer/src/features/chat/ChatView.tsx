@@ -22,7 +22,7 @@ import { onStreamReconnect, useServer } from '../../stores/server'
 import { ExportMenuButton } from '../../components/ExportConversation'
 import { exportChatConversation } from './export'
 import { useSessions, type MessageEntry } from '../../stores/sessions'
-import { adoptFreeModel, setModeModel, useModeModel } from '../settings/impl/extras'
+import { useModeModel } from '../settings/impl/extras'
 import type { ChatAttachment } from '../../lib/attachments'
 import {
   CompareConfirmDialog,
@@ -36,6 +36,7 @@ import {
 } from '../compare'
 import {
   abortChat,
+  setChatModel,
   compactChat,
   loadChatSessions,
   openChatSession,
@@ -201,7 +202,7 @@ export function ChatView(): React.JSX.Element {
     <div className="flex w-full items-center">
       <ProjectChip />
       <CompareControls mode="chat" directory={null} current={effective ?? model} />
-      <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={(m) => setModeModel('chat', m)} />
+      <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={setChatModel} />
       <span className="ml-auto" />
       <UsageMeter messages={entries} model={effective ?? model} />
     </div>
@@ -257,8 +258,7 @@ export function ChatView(): React.JSX.Element {
         gate={unavailable ? { blocked: false, reason: null, freeNote: false } : gate}
         freeModel={free}
         onUseFree={(m) => {
-          setModeModel('chat', m)
-          adoptFreeModel(m)
+          setChatModel(m, true)
         }}
       />
     </div>

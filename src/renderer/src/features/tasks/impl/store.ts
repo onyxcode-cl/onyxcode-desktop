@@ -1,3 +1,4 @@
+import { deferTaskChange } from './working-change'
 /**
  * Estado del modo Tareas. Los mensajes/partes de las sesiones viven en el store genérico
  * `useSessions` (alimentado aquí con el stream SSE del servidor sandboxeado de la carpeta);
@@ -1510,6 +1511,7 @@ export function currentTasksVariant(): string | undefined {
  * NUNCA toca `settings.defaultModel` (es el de Chat). Si cambia de modelo, se descarta el esfuerzo.
  */
 export function setTaskModel(m: ModelRef): void {
+  if (deferTaskChange(() => setTaskModel(m))) return
   const cur = useTasks.getState().taskModel
   const changed = !cur || cur.providerID !== m.providerID || cur.modelID !== m.modelID
   useTasks.setState((s) => ({ taskModel: m, taskVariant: changed ? null : s.taskVariant }))
@@ -1517,6 +1519,7 @@ export function setTaskModel(m: ModelRef): void {
 }
 
 export function setTaskVariant(v: string | null): void {
+  if (deferTaskChange(() => setTaskVariant(v))) return
   useTasks.setState({ taskVariant: v })
 }
 

@@ -70,18 +70,8 @@ export function PermissionChip(): React.JSX.Element {
   const t = useT()
   const mode = useCode((s) => s.permissionMode)
   const current = PERMISSION_MODES.find((m) => m.id === mode) ?? PERMISSION_MODES[0]
-  // El motor lee las reglas de la sesión al EMPEZAR cada respuesta: con una en curso, el cambio vale desde el próximo mensaje.
-  const [notice, setNotice] = useState(false)
-  useEffect(() => {
-    if (!notice) return
-    const id = setTimeout(() => setNotice(false), 6000)
-    return () => clearTimeout(id)
-  }, [notice])
   const pick = (id: string): void => {
-    const st = useCode.getState()
-    const running = st.activeSessionID ? st.runState[st.activeSessionID] === 'busy' : false
-    setNotice(running)
-    void st.setPermissionMode(id as PermissionMode)
+    void useCode.getState().setPermissionMode(id as PermissionMode)
   }
   return (
     <ChipMenu
@@ -94,7 +84,6 @@ export function PermissionChip(): React.JSX.Element {
       shortClass="hidden desk:@max-[40rem]:inline desk:@max-[28rem]:sr-only"
       testId="permission-chip"
       note={t('code.mode.note')}
-      notice={notice ? t('code.mode.laterNotice') : undefined}
       options={PERMISSION_MODES.map((m) => ({
         id: m.id,
         label: t(m.label),

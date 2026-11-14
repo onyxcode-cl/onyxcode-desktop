@@ -142,7 +142,6 @@ export const code = {
     'Except in "Allow everything", it always asks about folders outside the project and .env files; if an action repeats in a loop it warns you in any mode. Connectors that come with the folder ask before they are used in every mode, except those you marked “Don’t ask in Code” in Settings.',
   'code.mode.stalePlan':
     'This conversation went through “Explore only”: even after changing mode, helpers (subagents) cannot edit files here and will be blocked without a card. Open a new conversation to use them.',
-  'code.mode.laterNotice': 'The change takes effect from the next message',
   'code.mode.title': 'Permission mode',
   'code.agent.title': 'Work mode',
   'code.agent.build': 'Build',

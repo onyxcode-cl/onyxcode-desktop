@@ -775,7 +775,7 @@ function TasksWorkspaceContent(): React.JSX.Element {
           >
             {(phase === 'ready' || phase === 'error') && (
               <>
-                <AccessModeSwitch disabled={folderBusy} plain />
+                <AccessModeSwitch disabled={folderBusy && !busy} plain />
                 <span className="text-subtle" aria-hidden>
                   /
                 </span>

@@ -1,4 +1,10 @@
 export const common = {
+  'common.workingChange.title': 'Todavía está trabajando',
+  'common.workingChange.message': 'Para cambiar la IA o el modo, primero hay que detener el trabajo o esperar a que termine.',
+  'common.workingChange.stop': 'Detener y cambiar',
+  'common.workingChange.wait': 'Esperar a que termine',
+  'common.workingChange.failed': 'No se pudo confirmar que el trabajo se detuvo. El cambio no se aplicó. Intenta detenerlo de nuevo.',
+
   'labels.mode.chat': 'Chat',
   'labels.mode.code': 'Code',
   'labels.mode.tasks': 'Overdrive',

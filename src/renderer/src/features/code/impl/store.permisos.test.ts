@@ -5,6 +5,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  statusIdle,
   makeSession,
   msgUpdated,
   partUpdated,
@@ -200,7 +201,8 @@ describe('modo de permisos → sesión del motor', () => {
     await st().setPermissionMode('auto')
     expect(update).toHaveBeenCalledTimes(1)
     expect(sessions['s1']!.length).toBe(len)
-    // Volver a Manual sí lo añade (una sola vez).
+    // Volver a Manual con la respuesta terminada sí lo añade (una sola vez).
+    apply(statusIdle('s1', D))
     await st().setPermissionMode('manual')
     await st().send('tres', [])
     expect(update).toHaveBeenCalledTimes(2)

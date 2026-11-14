@@ -1,6 +1,6 @@
 /** D2: el modelo de cada mensaje sale según el agente (planear / ejecutar), con aviso si el elegido ya no está. */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeSession, resetEventIds, sessionCreated } from '../../../../../test/fixtures/events'
+import { statusIdle, makeSession, resetEventIds, sessionCreated } from '../../../../../test/fixtures/events'
 
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
@@ -56,6 +56,8 @@ const sent = (): { agent: string; model?: { providerID: string; modelID: string 
 describe('modelo para planear y para ejecutar en Code', () => {
   it('sin ajustes: siempre el modelo de la conversación', async () => {
     await useCode.getState().send('hola', [])
+    const done = statusIdle('s1', D)
+    useCode.getState().applyEvent(done.event, done.directory)
     useCode.getState().setAgent('plan')
     await useCode.getState().send('plan', [])
     expect(sent().map((c) => c.model)).toEqual([conv, conv])
@@ -65,6 +67,8 @@ describe('modelo para planear y para ejecutar en Code', () => {
     useExtrasPrefs.setState({ prefs: { ...useExtrasPrefs.getState().prefs, planExecModels: { plan: strong, exec: cheap } } })
     useCode.getState().setAgent('plan')
     await useCode.getState().send('planifica', [])
+    const done = statusIdle('s1', D)
+    useCode.getState().applyEvent(done.event, done.directory)
     useCode.getState().setAgent('build')
     await useCode.getState().send('hazlo', [])
     expect(sent().map((c) => [c.agent, c.model])).toEqual([

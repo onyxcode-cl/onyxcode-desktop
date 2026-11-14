@@ -1,3 +1,4 @@
+import { deferTaskChange } from './working-change'
 /**
  * Chip "Modo auto" del compositor: visible SOLO si el interruptor maestro está activo (Ajustes ›
  * Modo auto). Muestra si está encendido para la carpeta/tarea actuales y deja activarlo/desactivarlo
@@ -35,6 +36,7 @@ function UnifiedModeChip(): React.JSX.Element {
   const pick = (id: string): void => {
     const on = id === 'auto'
     if (on && blocked) return
+    if (on === auto || deferTaskChange(() => pick(id))) return
     useUnified.setState({ wantAuto: folder ? false : on })
     if (folder) {
       const done = on ? enableAutoOnlyFor(folder) : setAutoModeSettings({ folder: { path: folder, on } })
@@ -91,12 +93,12 @@ function ClassicAutoModeChip(): React.JSX.Element | null {
   const active = folderOn || taskOn
 
   const toggleFolder = (): void => {
-    if (!folder) return
+    if (!folder || deferTaskChange(toggleFolder)) return
     setBusy('folder')
     void setAutoModeSettings({ folder: { path: folder, on: !folderOn } }).finally(() => setBusy(null))
   }
   const toggleTask = (): void => {
-    if (!activeTaskId) return
+    if (!activeTaskId || deferTaskChange(toggleTask)) return
     setBusy('task')
     void setAutoModeSettings({ task: { sessionId: activeTaskId, on: !taskOn } }).finally(() => setBusy(null))
   }
