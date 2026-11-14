@@ -353,6 +353,7 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
   const visibleBlocks = reading === 'normal' ? blocks : blocks.filter((b) => showBlock(reading, b))
   // Escritorio: el trabajo de la respuesta (herramientas, razonamiento y la narración entre medias) va en una línea plegable.
   const segments: Segment<Part>[] | null = useMemo(() => (mobile ? null : segmentWork(entry.parts, partRole)), [mobile, entry.parts])
+  const singleWork = segments?.filter((s) => s.kind === 'work').length === 1
   return (
     <div
       data-message-id={entry.info.id}
@@ -368,6 +369,15 @@ const ChatAssistantRow = memo(function ChatAssistantRow({
               <WorkFold
                 key={`work-${seg.items[0].id}`}
                 parts={seg.items as Parameters<typeof WorkFold>[0]['parts']}
+                timingParts={
+                  singleWork
+                    ? [
+                        ...entry.parts.filter((p) => p.type === 'tool' || p.type === 'text' || p.type === 'reasoning'),
+                        { type: 'message', time: { start: entry.info.time.created, end: entry.info.time.completed } }
+                      ]
+                    : undefined
+                }
+                timingLive={singleWork ? live : undefined}
                 tools={tools}
                 live={live && isOngoing(segments, si, partRole)}
                 view={reading}
@@ -485,7 +495,11 @@ export function mergeAssistantRuns(entries: MessageEntry[]): MessageEntry[] {
       const withError = run.find((e) => e.info.role === 'assistant' && e.info.error)
       // El id es el del primero: la fila conserva su clave (y su estado abierto/cerrado) cuando llegan más mensajes.
       out.push({
-        info: { ...(withError?.info ?? run[run.length - 1].info), id: run[0].info.id },
+        info: {
+          ...(withError?.info ?? run[run.length - 1].info),
+          id: run[0].info.id,
+          time: { ...run[run.length - 1].info.time, created: run[0].info.time.created }
+        },
         parts: run.flatMap((e) => e.parts)
       } as MessageEntry)
     }

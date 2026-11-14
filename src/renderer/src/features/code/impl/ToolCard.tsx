@@ -542,6 +542,29 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
         </Row>
       )
     default: {
+      if (tool === 'question' || tool === 'browser_new_page') {
+        const question = tool === 'question'
+        return (
+          <Row
+            icon={question ? <CircleDot size={14} /> : <Globe size={14} />}
+            verb={t(question ? (running ? 'code.tool.asking' : 'code.tool.asked') : 'code.tool.browserPage')}
+            detail={question ? undefined : str(input.url)}
+            status={state.status}
+          >
+            {question ? (
+              Array.isArray(input.questions) &&
+              input.questions.map((q, i) => (
+                <div key={i} className="px-3 py-2 text-xs">
+                  {str(q?.question)}
+                </div>
+              ))
+            ) : (
+              <Output text={output} />
+            )}
+            {errorBlock}
+          </Row>
+        )
+      }
       // Búsqueda diferida de herramientas de conectores (`tool_search` busca, `mcp_call` ejecuta la herramienta real).
       if (tool === 'tool_search') {
         const query = str(input.query)

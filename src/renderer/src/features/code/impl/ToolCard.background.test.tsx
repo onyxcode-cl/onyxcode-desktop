@@ -96,3 +96,24 @@ it.each(['pending', 'running'] as const)('V28: inicio en segundo plano %s usa la
   expect(html).toContain('Correr un comando en segundo plano')
   expect(html).not.toContain('bgshell_start')
 })
+
+it.each(['pending', 'running', 'completed'] as const)('V28 ronda 3: herramientas visibles en español (%s)', (status) => {
+  for (const [tool, label] of [
+    ['browser_new_page', 'Abrir una página'],
+    ['question', status === 'completed' ? 'Hizo una pregunta' : 'Haciendo una pregunta']
+  ]) {
+    const part = toolPart('translated', 'm1', 's1', tool, {
+      status,
+      input: { questions: [{ question: '¿Qué formato prefieres?' }], url: 'http://localhost:8765' },
+      raw: '',
+      output: 'Asked 1 question',
+      title: 'Asked 1 question',
+      metadata: {},
+      time: { start: 1, end: 2 }
+    } as never) as ToolPart
+    const html = renderToStaticMarkup(<ToolRow part={part} root={null} />)
+    expect(html).toContain(label)
+    expect(html).not.toContain(tool)
+    expect(html).not.toContain('Asked 1 question')
+  }
+})

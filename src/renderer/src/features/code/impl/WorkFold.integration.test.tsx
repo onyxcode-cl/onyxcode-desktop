@@ -188,3 +188,33 @@ describe('Chat: respuestas seguidas del asistente', () => {
     expect(html).toContain('Trabajó durante 4 s · 2 pasos')
   })
 })
+
+it('V28 ronda 3: 2 s de herramienta más 78 s generando HTML muestran 80 s, también al recargar', () => {
+  surface('win32')
+  const info = { ...assistantFull.info, time: { created: T0, completed: T0 + 80_000 } }
+  const entries = [
+    userWithFile,
+    {
+      info,
+      parts: [
+        done('brief', 'read', { filePath: 'datos.txt' }, 0),
+        { ...text('deck', 'Documento terminado'), time: { start: T0 + 2000, end: T0 + 80_000 } }
+      ]
+    }
+  ] as never[]
+  const html = renderToStaticMarkup(<ChatMessageList entries={entries} busy={false} />)
+  expect(html).toContain('Trabajó durante 1 min 20 s · 1 paso')
+  expect(html).not.toContain('Trabajó durante 2 s')
+})
+
+it('V28 ronda 3: mensajes consecutivos conservan el inicio del primero y el fin del último', () => {
+  surface('darwin')
+  const first = { ...assistantFull.info, id: 'first', time: { created: T0, completed: T0 + 2000 } }
+  const last = { ...assistantFull.info, id: 'last', time: { created: T0 + 3000, completed: T0 + 80_000 } }
+  const entries = [
+    userWithFile,
+    { info: first, parts: [done('brief', 'read', { filePath: 'datos.txt' }, 0)] },
+    { info: last, parts: [text('deck', 'Documento terminado')] }
+  ] as never[]
+  expect(renderToStaticMarkup(<ChatMessageList entries={entries} busy={false} />)).toContain('Trabajó durante 1 min 20 s · 1 paso')
+})

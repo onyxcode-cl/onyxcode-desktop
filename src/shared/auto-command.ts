@@ -327,6 +327,17 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
         if (a === '/' && part.words.some((w) => /^\[math\]::/i.test(w))) return false
         if (name === 'cmd' && /^\/[cdsq]$/i.test(a)) return false
         if (localRuntime && i + 1 === runtimeIndex) return false
+        // Mensajes de salida con el código numérico no son rutas NTFS («Código de salida: ...»).
+        if (
+          part.literals[i + 1] &&
+          /^(?:echo|write-output|printf)$/.test(name) &&
+          !/[\\/$`]/.test(a.replace(/\$LASTEXITCODE/gi, '0')) &&
+          !sensitive(a)
+        )
+          return false
+        // El operando literal de -match/-notmatch es una expresión regular, no un proveedor de PowerShell.
+        if (part.literals[i + 1] && /^-(?:c|i)?(?:not)?match$/i.test(part.words[i] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
+          return false
         // El segundo argumento literal de Matches es el patrón regex, no una ruta del proyecto.
         // No se extiende a cadenas que parecen rutas ni a variables que puedan ocultar una ruta sensible.
         if (part.literals[i + 1] && /^\[regex\]::matches$/i.test(part.words[i - 1] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
