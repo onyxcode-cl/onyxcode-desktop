@@ -285,6 +285,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'que sí se puede. "categories" y "values" tienen que tener el mismo largo. "bar" para comparar categorías, ' +
           '"line" para una tendencia en el tiempo, "pie" para partes de un total (como mucho 5-6 porciones). Por ahora ' +
           'sigue sin imágenes propias (fotos, íconos): si piden eso, avisa que todavía no se puede. ' +
+          'Si piden un número de láminas, entrega exactamente ese número (portada y cierre incluidos). ' +
           'REGLA OBLIGATORIA, la primera que aplicás ante cualquier pedido de presentación. Ejemplos que SIEMPRE se responden ' +
           'con la pregunta de formato y NADA más: «hazme una presentación sobre X», «una presentación en PowerPoint de X», ' +
           '«un PPT de X», «armame unas diapositivas», «un deck de X». ' +

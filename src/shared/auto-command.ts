@@ -116,11 +116,14 @@ function sensitive(value: string): boolean {
 }
 
 /** Un argumento puede ser una ruta, una opción con ruta o un fichero de respuesta (@archivo). */
-function safeArgument(arg: string, cwd: string, root: string): boolean {
+function safeArgument(arg: string, cwd: string, root: string, approvedDirectories: readonly string[] = []): boolean {
   let value = arg.replace(/^[^=]+=|^@/, '')
-  if (/^https?:\/\//i.test(value)) return true
+  if (/^https?:\/\//i.test(value) || value === '/dev/null') return true
   if (/^(?:~|[a-z]:[^\\/]|[a-z]+:)/i.test(value) && !absolute(value)) return false
   if (value.startsWith('~') || /\$(?:HOME|env:)|%[a-z_][\w]*%/i.test(value) || sensitive(value)) return false
+  // Solo llega aquí una aprobación exterior ligada a esta llamada y a su comando completo.
+  const approved = approvedDirectories.find((dir) => inside(pathFor(value, cwd), dir))
+  if (approved) return safeArgument(arg, cwd, approved)
   // Miembros e índices numéricos de variables de PowerShell son expresiones, no comodines de una ruta.
   if (/^\$(?:[a-z_]\w*)(?:\.\w+|\[\d+\])*$/.test(value)) return true
   value = value.replace(/\\/g, '/')
@@ -148,6 +151,11 @@ function safeArgument(arg: string, cwd: string, root: string): boolean {
 
 const DELICATE = new Set([
   'rm',
+  'kill',
+  'pkill',
+  'killall',
+  'stop-process',
+  'taskkill',
   'rmdir',
   'del',
   'erase',
@@ -198,7 +206,7 @@ const delicateName = (name: string): boolean =>
   (!['new-item', 'set-item'].includes(name) && name.includes('-') && [...DELICATE].some((full) => full.startsWith(name)))
 
 /** El código de Python/JS no es una ruta ni sintaxis de shell. Sí se revisan sus literales de ruta. */
-function safeInlineScript(script: string, cwd: string, root: string): boolean {
+function safeInlineScript(script: string, cwd: string, root: string, approvedDirectories: readonly string[]): boolean {
   if (
     /https?:\/\/|\b(?:urlopen|fetch)\s*\(|\b(?:requests|https?)\./i.test(script) &&
     /\b(?:exec|eval|compile|system|spawn|execSync|spawnSync|subprocess|child_process|Function)\b/.test(script)
@@ -212,7 +220,7 @@ function safeInlineScript(script: string, cwd: string, root: string): boolean {
     for (const word of value.split(/\s+/)) {
       if (sensitive(word)) return false
       if (/[\/\\]/.test(word) || /^(?:~|\.\.|\$HOME|\$env:|%\w+%)/i.test(word)) {
-        if (!safeArgument(word, cwd, root)) return false
+        if (!safeArgument(word, cwd, root, approvedDirectories)) return false
       }
     }
   }
@@ -220,14 +228,24 @@ function safeInlineScript(script: string, cwd: string, root: string): boolean {
 }
 
 /** Sin raíz conocida, cwd exterior o sintaxis que no podamos resolver: preguntar. */
-export function isAutoApprovableCodeCommand(command: string | undefined, projectRoot: string | undefined, workdir?: unknown): boolean {
+export function isAutoApprovableCodeCommand(
+  command: string | undefined,
+  projectRoot: string | undefined,
+  workdir?: unknown,
+  approvedExternalDirectories: readonly string[] = []
+): boolean {
   if (!command?.trim() || command.length > 16000 || !projectRoot || !absolute(projectRoot)) return false
   const windows = /^[a-z]:/i.test(projectRoot)
   const root = normalize(windows ? projectRoot.toLowerCase() : projectRoot)
   if (!root || root === '/' || /^[a-z]:$/i.test(root)) return false
+  const approvedDirectories = approvedExternalDirectories
+    .filter((dir) => absolute(dir) && !sensitive(dir))
+    .map((dir) => normalize(windows ? dir.toLowerCase() : dir))
+    .filter((dir) => dir !== '/' && !/^[a-z]:$/i.test(dir))
   let cwd = root
   if (workdir !== undefined) {
-    if (typeof workdir !== 'string' || !safeArgument(windows ? workdir.toLowerCase() : workdir, cwd, root)) return false
+    if (typeof workdir !== 'string' || !safeArgument(windows ? workdir.toLowerCase() : workdir, cwd, root, approvedDirectories))
+      return false
     cwd = pathFor(windows ? workdir.toLowerCase() : workdir, cwd)
   }
   if (/\b(?:os\.(?:remove|unlink|rmdir)|shutil\.rmtree|fs(?:\.promises)?\.(?:rm|rmdir|unlink)(?:Sync)?)\s*\(|\.unlink\s*\(/i.test(command))
@@ -260,7 +278,8 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
     downloads &&
     parts.some(
       (p) =>
-        SCRIPTING.test(p.words[0].toLowerCase().replace(/\.exe$/, '')) ||
+        (SCRIPTING.test(p.words[0].toLowerCase().replace(/\.exe$/, '')) && !/^python[\d.]*$/i.test(p.words[0])) ||
+        (/^python[\d.]*$/i.test(p.words[0]) && !(p.words[1] === '-m' && p.words[2] === 'http.server')) ||
         INTERPRETERS.test(p.words[0].toLowerCase().replace(/\.exe$/, '')) ||
         /^(?:iex|invoke-expression|eval)$/i.test(p.words[0]) ||
         /^(?:\.\/|\.\\)/.test(p.words[0])
@@ -318,15 +337,32 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
       !sensitive(runtime) &&
       workingIndex > 0 &&
       !/[$%`*?\[\]]/.test(part.words[workingIndex]) &&
-      directories.every((dir) => safeArgument(windows ? part.words[workingIndex].toLowerCase() : part.words[workingIndex], dir, root))
+      directories.every((dir) =>
+        safeArgument(windows ? part.words[workingIndex].toLowerCase() : part.words[workingIndex], dir, root, approvedDirectories)
+      )
     // Se inspeccionan todos los argumentos: también el programa de xargs/find -exec.
-    if (delicateName(name) || ((absolute(first) || first.startsWith('.')) && !safeArgument(first, cwd, root))) return false
+    if (delicateName(name) || ((absolute(first) || first.startsWith('.')) && !safeArgument(first, cwd, root, approvedDirectories)))
+      return false
     if (
       args.some((a, i) => {
-        if (i === inlineIndex) return directories.some((dir) => !safeInlineScript(a, dir, root))
+        // El script entre comillas del intérprete se valida recursivamente, con todas sus rutas y órdenes.
+        if (INTERPRETERS.test(name) && part.literals[i + 1] && /^(?:-[ec]|-command|\/c)$/i.test(args[i - 1] ?? ''))
+          return !isAutoApprovableCodeCommand(a, projectRoot, directories[0], approvedDirectories)
+        if (i === inlineIndex) return directories.some((dir) => !safeInlineScript(a, dir, root, approvedDirectories))
         if (a === '/' && part.words.some((w) => /^\[math\]::/i.test(w))) return false
         if (name === 'cmd' && /^\/[cdsq]$/i.test(a)) return false
         if (localRuntime && i + 1 === runtimeIndex) return false
+        if (part.literals[i + 1] && name === 'grep' && /^-(?:o|e)$/.test(part.words[i] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
+          return false
+        if (
+          part.literals[i + 1] &&
+          name === 'curl' &&
+          /^(?:-w|--write-out)$/.test(part.words[i] ?? '') &&
+          !/[`/]/.test(a) &&
+          !/\$(?:\(|\{|env:|HOME)/i.test(a) &&
+          !sensitive(a)
+        )
+          return false
         // Mensajes de salida con el código numérico no son rutas NTFS («Código de salida: ...»).
         if (
           part.literals[i + 1] &&
@@ -340,9 +376,14 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
           return false
         // El segundo argumento literal de Matches es el patrón regex, no una ruta del proyecto.
         // No se extiende a cadenas que parecen rutas ni a variables que puedan ocultar una ruta sensible.
-        if (part.literals[i + 1] && /^\[regex\]::matches$/i.test(part.words[i - 1] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
+        if (
+          part.literals[i + 1] &&
+          /^\[regex\]::matches$/i.test(part.words[i - 1] ?? '') &&
+          !/[\\/$`]/.test(a.replace(/\\[.dwsbDWSB]/g, '')) &&
+          !sensitive(a)
+        )
           return false
-        return directories.some((dir) => !safeArgument(windows ? a.toLowerCase() : a, dir, root))
+        return directories.some((dir) => !safeArgument(windows ? a.toLowerCase() : a, dir, root, approvedDirectories))
       })
     )
       return false
@@ -358,7 +399,7 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
       const script = ['eval', 'iex', 'invoke-expression'].includes(name)
         ? args.join(' ')
         : args.find((_, i) => i > 0 && /^(?:-[ec]|-command|\/c)$/i.test(args[i - 1]))
-      if (script && !isAutoApprovableCodeCommand(script, projectRoot, cwd)) return false
+      if (script && !isAutoApprovableCodeCommand(script, projectRoot, cwd, approvedDirectories)) return false
     }
     if (/^(?:npm|pnpm|yarn|bun|pip[\d.]*|uv)$/.test(name) && lower.some((a) => /^(?:-g|--global|--system|--user)$/.test(a))) return false
     if (name === 'git') {

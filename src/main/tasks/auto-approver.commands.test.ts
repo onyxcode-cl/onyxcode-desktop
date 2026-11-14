@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { round2Commands } from '../../shared/fixtures/auto-command-round2'
 import { round3Commands } from '../../shared/fixtures/auto-command-round3'
+import { round4Commands } from '../../shared/fixtures/auto-command-round4'
 import { AutoApprover, type AutoServer } from './auto-approver'
 import type { RawPerm } from './monitor'
 
@@ -142,7 +143,7 @@ describe('V28: el modo de Overdrive pertenece a la conversación', () => {
 })
 
 it.each(['/work/project', 'C:\\work\\project'])('V28: replay de permisos de shell y verificaciones del plan en %s', async (root) => {
-  for (const item of [...round2Commands(root), ...round3Commands(root)]) {
+  for (const item of [...round2Commands(root), ...round3Commands(root), ...round4Commands(root)]) {
     const h = harness(root, item.command, 'bash', { todo: item.tool === 'todowrite' })
     expect(await h.approver.considerOne(root, false, 'request'), item.command).toBe(item.allowed)
     expect(h.replies).toHaveLength(item.allowed ? 1 : 0)

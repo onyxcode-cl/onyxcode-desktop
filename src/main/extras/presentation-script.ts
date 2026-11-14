@@ -19,7 +19,15 @@ export function presentationScript(labels: { counter: string; controls: string }
     document.body.append(controls, counter);
     function show(index) {
       const next = Math.max(0, Math.min(index, slides.length - 1));
-      slides.forEach((slide, n) => slide.style.setProperty('display', n === next ? (slide.dataset.lzxExportDisplay || 'block') : 'none', 'important'));
+      // display:none excluye las láminas anteriores de los contadores CSS del deck: la última decía «1».
+      // Todas conservan su caja y solo la actual se pinta; así counter-increment sigue contando las anteriores.
+      slides.forEach((slide, n) => {
+        slide.style.setProperty('display', slide.dataset.lzxExportDisplay || 'block', 'important');
+        slide.style.setProperty('visibility', n === next ? 'visible' : 'hidden', 'important');
+        slide.style.setProperty('opacity', n === next ? '1' : '0', 'important');
+        slide.style.setProperty('pointer-events', n === next ? 'auto' : 'none', 'important');
+        slide.setAttribute('aria-hidden', String(n !== next));
+      });
       current = next;
       counter.textContent = (current + 1) + ' / ' + slides.length;
       counter.setAttribute('aria-label', ${JSON.stringify(labels.counter)}.replace('{current}', String(current + 1)).replace('{total}', String(slides.length)));

@@ -239,23 +239,25 @@ export function EditChip({ part, root }: { part: ToolPart; root: string | null }
       <div className={`flex items-center gap-2 px-1.5 ${mobile ? 'min-h-11 py-1' : 'py-1'}`}>
         <Icon size={14} className={status === 'error' ? 'shrink-0 text-danger' : 'shrink-0 text-subtle'} />
         <span className="shrink-0 text-fg/90">{label}</span>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          disabled={!patch && !error}
-          aria-expanded={open}
-          title={file}
-          className={`flex min-w-0 items-center gap-2 rounded-md border px-2 ${mobile ? 'py-1.5 active:bg-hover' : 'py-0.5'} transition ${open ? 'border-border-strong bg-hover' : 'border-border bg-elevated hover:border-border-strong hover:bg-hover'} disabled:cursor-default`}
-        >
-          <span className="min-w-0 truncate font-mono text-xs">
-            <span className="text-fg">{name || file}</span>
-            {dir && <span className="ml-1.5 text-subtle">{dir}</span>}
-          </span>
-          <DiffStats {...stats} />
-          {(patch || error) && (
-            <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
-          )}
-        </button>
+        {file && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            disabled={!patch && !error}
+            aria-expanded={open}
+            title={file}
+            className={`flex min-w-0 items-center gap-2 rounded-md border px-2 ${mobile ? 'py-1.5 active:bg-hover' : 'py-0.5'} transition ${open ? 'border-border-strong bg-hover' : 'border-border bg-elevated hover:border-border-strong hover:bg-hover'} disabled:cursor-default`}
+          >
+            <span className="min-w-0 truncate font-mono text-xs">
+              <span className="text-fg">{name || file}</span>
+              {dir && <span className="ml-1.5 text-subtle">{dir}</span>}
+            </span>
+            <DiffStats {...stats} />
+            {(patch || error) && (
+              <ChevronRight size={12} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-90' : ''}`} />
+            )}
+          </button>
+        )}
         <span className="ml-auto shrink-0">
           <StatusMark status={status} />
         </span>

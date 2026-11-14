@@ -117,3 +117,13 @@ it.each(['pending', 'running', 'completed'] as const)('V28 ronda 3: herramientas
     expect(html).not.toContain('Asked 1 question')
   }
 })
+
+it('V28 ronda 4: al recibir write sin argumentos no dibuja una caja vacía; al llegar la ruta muestra el archivo', () => {
+  for (const input of [{}, { filePath: '/proj/index.html' }]) {
+    const part = toolPart('p', 'm', 's', 'write', { status: 'running', input, time: { start: 1 } }) as ToolPart
+    const html = renderToStaticMarkup(<ToolRow part={part} root="/proj" />)
+    expect(html).toContain('Quiere crear')
+    if ('filePath' in input) expect(html).toContain('index.html')
+    else expect(html).not.toContain('<button')
+  }
+})

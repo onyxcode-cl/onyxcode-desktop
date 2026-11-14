@@ -3224,3 +3224,12 @@ Los argumentos de código literal de los intérpretes se inspeccionan como códi
 El clasificador de Automático reconoce los argumentos literales de salida de `echo`, `Write-Output` y `printf` con el valor numérico `$LASTEXITCODE`, y los patrones literales sin sustituciones de `-match`/`-notmatch`. Sus dos puntos no se interpretan como proveedores NTFS. Se mantienen las comprobaciones de todo el comando y se excluyen de estas excepciones rutas, secretos e interpolaciones de comandos. Las verificaciones de `todowrite` usan la misma política.
 
 Permitir una carpeta externa una vez no concede el permiso posterior de ejecutar el shell. El comando temporal de la captura contiene `Remove-Item`, por lo que conserva la segunda pregunta. El replay comprueba que esa primera aprobación no se propaga a la ejecución ni al borrado. No cambian los canales, el aislamiento ni las zonas intocables.
+
+
+### V28 ronda 4 — Una aprobación exterior ligada al comando (F8-B312)
+
+En Código Automático, aprobar `external_directory` permite omitir la segunda tarjeta de ejecución únicamente para el mismo mensaje, llamada, comando completo, proyecto y carpeta de trabajo. Se guardan en memoria las carpetas exteriores devueltas por ese permiso; no se concede acceso a otra llamada ni se persiste la autorización. Un rechazo o fallo al responder no la registra. Si el permiso de shell llega antes de terminar la respuesta al permiso exterior, se reevalúa al confirmarse esta.
+
+El comando completo sigue pasando por el clasificador: borrar, matar procesos (`kill`, `pkill`, `killall`, `Stop-Process`, `taskkill`), secretos, cambios del sistema o descarga seguida de ejecución mantienen la tarjeta. Se distingue arrancar `python -m http.server` junto a una comprobación HTTP de ejecutar lo descargado. `/dev/null` es el destino nulo; el registro en `/tmp` sigue requiriendo aprobación exterior. PowerShell anidado revisa recursivamente el comando y los patrones literales de `[regex]::Matches` admiten escapes de regex sin habilitar rutas ni sustituciones. La política continúa siendo una heurística, no un sandbox.
+
+Pruebas: `auto-command.test.ts`, `store.permisos.test.ts` (API v1/v2, otra llamada y comando cambiado, además del temporal de ronda 3 que borra y mata procesos), `auto-approver.commands.test.ts` (replay de lecturas Windows). No se modifican zonas intocables ni canales.
