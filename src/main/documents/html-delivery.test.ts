@@ -57,7 +57,7 @@ afterEach(async () => {
   await rm(base, { recursive: true, force: true })
 })
 
-it('entrega una copia autónoma portable, deduplica y conserva el borrador', async () => {
+it('entrega una copia autónoma portable sin créditos visibles ni JSON suelto, deduplica y conserva el borrador', async () => {
   const draft = '<body><section class="slide"><img src="' + rel + '"><img src="imagen:p1"></section></body>'
   await writeFile(join(root, 'deck.html'), draft)
   const output = await prepareHtmlDelivery(root, 'deck.html', [root], registry)
@@ -66,7 +66,11 @@ it('entrega una copia autónoma portable, deduplica y conserva el borrador', asy
   expect(html).not.toContain('src="img/')
   expect(html).not.toContain('imagen:p1')
   expect(html.split(photo('p1').bytes.toString('base64'))).toHaveLength(2)
-  expect(html).toContain(credit)
+  expect(html).not.toContain('data-lzx-photo-credit')
+  expect(html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')).not.toContain('Foto:')
+  expect(html).toContain('data-lzx-photo-provenance')
+  expect(await readdir(root)).toEqual(['deck-autonomo.html', 'deck.html', 'img'])
+  expect(await readdir(join(root, 'img'))).toEqual(['free-12345678901234567890.jpg'])
   expect(await readFile(join(root, 'deck.html'), 'utf8')).toBe(draft)
   // Ya no depende del registro ni de img al copiarla fuera de la carpeta.
   await mkdir(join(base, 'destination'))

@@ -1,4 +1,4 @@
-/** Recorrido MCP real: píxeles, autoridad por carpeta y créditos en el archivo final. Sin proveedor ni Electron reales. */
+/** Recorrido MCP real: píxeles, autoridad por carpeta sin créditos automáticos en el archivo final. Sin proveedor ni Electron reales. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, realpath, readFile, rm, writeFile, copyFile, symlink, readdir, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -86,10 +86,7 @@ function service(): Pick<FreeImagesService, 'search' | 'view' | 'use'> {
   return fake
 }
 const text = (r: Awaited<ReturnType<Harness['invoke']>>) => (r.content[0] as { text: string }).text
-async function prepare(
-  extra: Record<string, unknown> = {},
-  owner = binding
-): Promise<{ id: string; path: string; agentPath: string; provenance: string }> {
+async function prepare(extra: Record<string, unknown> = {}, owner = binding): Promise<{ id: string; path: string; agentPath: string }> {
   const found = await server.invoke(owner, 'imagenes_buscar', { ...searchArgs, ...extra })
   const id = JSON.parse(text(found)).candidates[0].id
   await server.invoke(owner, 'imagenes_ver', { ids: [id], ...extra })
@@ -170,7 +167,7 @@ describe('fotos libres por MCP', () => {
     expect(services[0].use).not.toHaveBeenCalled()
   })
 
-  it('resuelve el id preparado y pone el crédito sin copiar texto al spec', async () => {
+  it('resuelve el id preparado sin añadir crédito al spec', async () => {
     const saved = await prepare()
     const created = await server.invoke(binding, 'crear', {
       tipo: 'docx',
@@ -180,8 +177,9 @@ describe('fotos libres por MCP', () => {
     expect(created.isError).not.toBe(true)
     const input = renderInputs.at(-1)!
     if (input.kind !== 'docx') throw new Error('kind')
-    expect(input.data.blocks[0]).toMatchObject({ type: 'image', path: saved.path, caption: expect.any(String) })
+    expect(input.data.blocks[0]).toMatchObject({ type: 'image', path: saved.path })
     expect(input.data.blocks[0]).not.toHaveProperty('id')
+    expect(input.data.blocks[0]).not.toHaveProperty('caption')
   })
 
   it('el id no permite saltar la procedencia ni reutilizar otra atadura', async () => {
@@ -189,7 +187,7 @@ describe('fotos libres por MCP', () => {
     const args = { tipo: 'docx', nombre: 'ID ajeno', spec: { blocks: [{ type: 'image', id: saved.id }] } }
     expect((await server.invoke({ folder: root }, 'crear', args)).isError).toBe(true)
     expect(renderInputs).toHaveLength(0)
-    await writeFile(join(root, saved.provenance), '{}')
+    await writeFile(join(root, saved.path), Buffer.concat([PNG, Buffer.from('changed')]))
     expect((await server.invoke(binding, 'crear', args)).isError).toBe(true)
     expect(renderInputs).toHaveLength(0)
   })
@@ -211,7 +209,7 @@ describe('fotos libres por MCP', () => {
     expect(renderInputs).toHaveLength(0)
   })
 
-  it('usa atribución comprobada de main para el pie breve bajo la foto y conserva la ficha completa', async () => {
+  it('devuelve atribución interna y conserva intacto el pie que escribió el modelo', async () => {
     const found = await server.invoke(binding, 'imagenes_buscar', searchArgs)
     const id = JSON.parse(text(found)).candidates[0].id
     await server.invoke(binding, 'imagenes_ver', { ids: [id] })
@@ -234,19 +232,22 @@ describe('fotos libres por MCP', () => {
     const prepared = await server.invoke(binding, 'imagenes_usar', { id, evaluation })
     expect(prepared.isError).not.toBe(true)
     const saved = JSON.parse(text(prepared))
-    expect(saved.caption).toBe('Foto: Autora Ejemplo · CC BY 4.0 · Wikimedia Commons · con cambios')
+    expect(saved).not.toHaveProperty('caption')
+    expect(saved.attribution.author).toBe('Autora Ejemplo')
+    expect(saved.notice).toContain('No agregues créditos ni pies de foto salvo que la persona los pida')
     expect(saved.credit).toBe(CREDIT)
-    expect(JSON.parse(await readFile(join(root, saved.provenance), 'utf8')).credit).toBe(CREDIT)
+    expect(saved).not.toHaveProperty('provenance')
+    expect((await readdir(join(root, 'img'))).filter((name) => name.endsWith('.json'))).toEqual([])
     const created = await server.invoke(binding, 'crear', {
       tipo: 'docx',
       nombre: 'Pie-breve',
-      spec: { blocks: [{ type: 'image', path: saved.path, caption: 'Interior de cafetería' }] }
+      spec: { blocks: [{ type: 'image', path: saved.path, caption: 'Foto: Crédito pedido por la persona' }] }
     })
     expect(created.isError).not.toBe(true)
     const input = renderInputs.at(-1)!
     if (input.kind !== 'docx') throw new Error('kind')
     expect(input.data.blocks).toHaveLength(1)
-    expect(input.data.blocks[0]).toMatchObject({ type: 'image', caption: expect.stringContaining(saved.caption) })
+    expect(input.data.blocks[0]).toMatchObject({ type: 'image', caption: 'Foto: Crédito pedido por la persona' })
   })
 
   it('la búsqueda indica la llamada siguiente y ver devuelve el paso de usar sin inventar evaluación', async () => {
@@ -322,7 +323,7 @@ describe('fotos libres por MCP', () => {
     expect(renderInputs).toHaveLength(0)
   })
 
-  it.each(['path', 'id'] as const)('PPTX por %s incorpora crédito visible y rechaza motor que solo conserva notas', async (reference) => {
+  it.each(['path', 'id'] as const)('PPTX por %s no incorpora créditos visibles ni exige que el motor los conserve', async (reference) => {
     await server.stop()
     let notesOnly = false
     server = new Harness({
@@ -347,14 +348,13 @@ describe('fotos libres por MCP', () => {
     const result = await server.invoke(binding, 'crear', args)
     expect(result.isError).not.toBe(true)
     const zip = await JSZip.loadAsync(await readFile(join(root, 'Credito-visible.pptx')))
-    expect(await zip.file('ppt/slides/slide1.xml')!.async('string')).toContain('CC BY 4.0')
+    expect(await zip.file('ppt/slides/slide1.xml')!.async('string')).not.toContain('CC BY 4.0')
     expect(zip.file('ppt/slides/slide2.xml')).toBeNull()
-    expect(text(result)).toContain('Créditos de imágenes: ✔')
+    expect(text(result)).not.toContain('Créditos de imágenes')
     notesOnly = true
     const failed = await server.invoke(binding, 'crear', { ...args, nombre: 'Solo-notas' })
-    expect(failed.isError).toBe(true)
-    expect(text(failed)).toContain('No se guardó')
-    expect(await readdir(root)).not.toContain('Solo-notas.pptx')
+    expect(failed.isError).not.toBe(true)
+    expect(await readdir(root)).toContain('Solo-notas.pptx')
   })
 
   it('entrega la hoja y ampliación como bloques image por JSON-RPC, no solo URLs', async () => {
@@ -399,53 +399,37 @@ describe('fotos libres por MCP', () => {
     expect((await server.invoke(code, 'imagenes_ver', { ids: [codeId], carpeta: root })).isError).toBe(true)
   })
 
-  it('guarda foto y JSON en carpeta segura; ruta traducida WSL y crédito automático verificable', async () => {
+  it('guarda foto sin JSON sueltos; ruta WSL y DOCX sin crédito automático', async () => {
     binding.toAgentPath = (host) => host.replace(root, '/win/c/Mis fotos')
     const saved = await prepare()
     expect(saved.agentPath).toBe(`/win/c/Mis fotos/${saved.path}`)
     expect(await readFile(join(root, saved.path))).toEqual(PNG)
-    const provenance = JSON.parse(await readFile(join(root, saved.provenance), 'utf8'))
-    expect(provenance.credit).toBe(CREDIT)
-    expect(provenance.evaluationStatus).toBe('declarada-por-el-modelo')
-    expect(provenance.stage).toBe('preparada')
+    expect(saved).not.toHaveProperty('provenance')
     const result = await server.invoke(binding, 'crear', {
       tipo: 'docx',
       nombre: 'Informe',
       spec: { blocks: [{ type: 'image', path: saved.path, alt: 'Interior', caption: 'Cafetería' }] }
     })
     expect(result.isError).not.toBe(true)
-    expect(text(result)).toContain('Créditos de imágenes: ✔')
+    expect(text(result)).not.toContain('Créditos de imágenes')
     const bytes = await readFile(join(root, 'Informe.docx'))
     const zip = await JSZip.loadAsync(bytes)
-    expect(await zip.file('word/document.xml')!.async('string')).toContain(CREDIT)
-    const usagePath = (await readdir(root)).find((name) => name.startsWith('Informe-imagenes-'))!
-    const usage = JSON.parse(await readFile(join(root, usagePath), 'utf8'))
-    expect(usage.stage).toBe('documento-creado-con-referencias')
-    expect(usage.insertionVerification).toContain('presencia-visual-pendiente')
-    expect(usage.images[0].file).toBe(saved.path)
-    expect(usage.visualReview).toBe('pendiente-del-modelo')
+    expect(await zip.file('word/document.xml')!.async('string')).not.toContain(CREDIT)
+    expect((await readdir(root)).filter((name) => name.endsWith('.json'))).toEqual([])
+    expect((await readdir(join(root, 'img'))).filter((name) => name.endsWith('.json'))).toEqual([])
   })
 
-  it('crédito sobre copias por hash, JSON no es autoridad y modificación de foto rechazada', async () => {
+  it('autoriza copias por hash sin JSON y rechaza modificación de foto', async () => {
     const saved = await prepare()
     await copyFile(join(root, saved.path), join(root, 'copia.jpg'))
-    const manifest = await readFile(join(root, saved.provenance))
     const args = { tipo: 'docx', nombre: 'Copia', spec: { blocks: [{ type: 'image', path: 'copia.jpg' }] } }
     expect((await server.invoke(binding, 'crear', args)).isError).not.toBe(true)
-    expect(JSON.stringify(renderInputs.at(-1))).toContain(CREDIT)
-    await writeFile(join(root, saved.provenance), JSON.stringify({ credit: 'Crédito inventado' }))
-    expect((await server.invoke(binding, 'crear', args)).isError).toBe(true)
-    expect(JSON.stringify(renderInputs.at(-1))).not.toContain('Crédito inventado')
-    await rm(join(root, saved.provenance))
-    const missing = await server.invoke(binding, 'crear', args)
-    expect(missing.isError).toBe(true)
-    expect(text(missing)).toContain('JSON de procedencia')
-    await writeFile(join(root, saved.provenance), manifest)
+    expect(JSON.stringify(renderInputs.at(-1))).not.toContain(CREDIT)
     await writeFile(join(root, saved.path), Buffer.concat([PNG, Buffer.from('changed')]))
     expect((await server.invoke(binding, 'crear', { ...args, spec: { blocks: [{ type: 'image', path: saved.path }] } })).isError).toBe(true)
   })
 
-  it('no entrega documento cuyo motor omite los créditos', async () => {
+  it('entrega documento sin exigir créditos del motor', async () => {
     const saved = await prepare()
     loseCredits = true
     const result = await server.invoke(binding, 'crear', {
@@ -453,9 +437,9 @@ describe('fotos libres por MCP', () => {
       nombre: 'Sincredito',
       spec: { blocks: [{ type: 'image', path: saved.path }] }
     })
-    expect(result.isError).toBe(true)
-    expect(text(result)).toContain('No se guardó')
-    expect(await readdir(root)).not.toContain('Sincredito.docx')
+    expect(result.isError).not.toBe(true)
+    expect(text(result)).not.toContain('Créditos de imágenes')
+    expect(await readdir(root)).toContain('Sincredito.docx')
   })
 
   it('sin red continúa documento sin fotos; impide escritura por enlace en img', async () => {

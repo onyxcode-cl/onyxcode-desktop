@@ -45,6 +45,8 @@ it('uses distinct private stores per conversation and gives the model only an ID
   expect(JSON.parse(text)).toMatchObject({ id: 'short-id', source: 'imagen:short-id' })
   expect(text).not.toContain('/private')
   expect(text).not.toContain('base64')
+  expect(text).toContain('No agregues créditos ni pies de foto salvo que la persona los pida')
+  expect(text).not.toContain('44 px')
 })
 it('checks the engine session directory, rejects another project and ambiguity', async () => {
   const directory = join(base, 'chat')

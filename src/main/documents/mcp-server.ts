@@ -48,7 +48,8 @@ import { resolvePreparedHtml, type HtmlPhotoScope } from './html-photos'
 import { htmlHasFreeImagePreview } from './free-image-preview'
 import { htmlImageSources, mapHtmlImageSources } from './html-images'
 import { protectFreeImagePreview } from './free-images-visual'
-import { attachImageCredits, imageCreditCaption, reviewImageCredits, type ImageCredit } from './image-credits'
+import type { ImageCredit } from './image-credits'
+import { layoutOf } from '../office/craft/chat-deck'
 import { MAX_PREVIEW_PAGES, type PreviewRange, type PreviewResult } from './preview'
 
 export const MAX_SPEC_BYTES = 1_000_000
@@ -187,6 +188,7 @@ export const DOCUMENT_TOOLS = [
       'y lo guarda en la carpeta de esta tarea. Para pptx, docx y xlsx pasa `spec` (el mismo JSON que documentan las skills pptx, docx y xlsx); ' +
       'para pdf pasa `html` (documento autocontenido, sin recursos externos). `nombre` va sin extensión. Si repites nombre, tipo y subcarpeta, ' +
       'rehace el archivo que creó esta herramienta en esta tarea solo si nadie lo cambió; si es previo o cambió, añade « (2)». ' +
+      'No agregues créditos ni pies de foto salvo que la persona los pida. ' +
       'Devuelve la ruta, la revisión automática (lista ✔/✘) y las imágenes disponibles. Ciclo obligatorio: crea → mira TODAS las imágenes devueltas ' +
       '(usa `renderizar` solo si faltan) → corrige todo junto y vuelve a crear con el MISMO nombre, tipo y subcarpeta → máximo 3 rondas.',
     inputSchema: {
@@ -283,7 +285,7 @@ export const IMAGE_TOOLS = [
   {
     name: 'imagenes_usar',
     description:
-      'Recupera una foto ya preparada con su id persistente (sin evaluation ni red), o prepara un id nuevo visto en imagenes_ver: vuelve a comprobar licencia, normaliza y guarda foto más procedencia en img/. La evaluación visual es TU declaración, no una certificación del servicio. mode=manual solo tras selección de la persona. Usa la ruta relativa devuelta en documentos_crear; Word y PowerPoint admiten también el id preparado en el objeto de imagen. El crédito se incorpora automáticamente. Revisa también la página terminada, sujeto, proporciones y crédito legible.',
+      'Recupera una foto ya preparada con su id persistente (sin evaluation ni red), o prepara un id nuevo visto en imagenes_ver: vuelve a comprobar licencia, normaliza y guarda la foto en img/ y la procedencia en el registro interno. La evaluación visual es TU declaración, no una certificación del servicio. mode=manual solo tras selección de la persona. Usa la ruta relativa devuelta en documentos_crear; Word y PowerPoint admiten también el id preparado en el objeto de imagen. No agregues créditos ni pies de foto salvo que la persona los pida. Autor y licencia son datos internos. Revisa también la página terminada, sujeto y proporciones.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -459,7 +461,7 @@ export const PREVIEW_TOOL = {
 export const EXPORT_PDF_TOOL = {
   name: 'exportar_pdf',
   description:
-    'Convierte un Word o PowerPoint existente de esta tarea a PDF con el mismo motor, conservando sus fotos, créditos y diseño. ' +
+    'Convierte un Word o PowerPoint existente de esta tarea a PDF con el mismo motor, conservando sus fotos y diseño. ' +
     'Úsala cuando pidan «la misma versión en PDF»: pasa ruta al .docx o .pptx original; no lo reconstruyas como HTML. ' +
     'Devuelve el PDF y su vista previa. Si falla, informa al principio que falta la conversión; no entregues una versión sin fotos o páginas.',
   inputSchema: {
@@ -562,8 +564,6 @@ function rewriteCreated(root: string, entry: CreatedFile, bytes: Buffer): Writte
 
 interface SavedPhoto {
   id: string
-  provenance: string
-  provenanceSha: string
   rel: string
   sha: string
   credit: string
@@ -905,7 +905,6 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         maxBytes: 5 * 1024 * 1024
       })
       incompletePhoto = written.rel
-      const record = { ...asset.provenance, file: written.rel, sha256: sha, credit: asset.credit, stage: 'preparada' }
       const p = asset.provenance
       const attribution: ImageCredit['attribution'] =
         p.author && p.license && p.provider && p.source && p.licenseUrl
@@ -920,14 +919,6 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
               transformations: p.transformations
             }
           : undefined
-      const manifestBytes = Buffer.from(JSON.stringify(record, null, 2))
-      const manifest = await writeNewFile(where.root, {
-        name: basename(written.rel, `.${asset.ext}`),
-        ext: 'json',
-        subfolder: 'img',
-        bytes: manifestBytes,
-        maxBytes: 128 * 1024
-      })
       await this.deps.photoRegistry?.remember(where.root, restored?.id ?? args.id, written.rel, asset)
       incompletePhoto = undefined
       scope.assets.set(written.rel, {
@@ -935,9 +926,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         rel: written.rel,
         sha,
         credit: asset.credit,
-        attribution,
-        provenance: manifest.rel,
-        provenanceSha: createHash('sha256').update(manifestBytes).digest('hex')
+        attribution
       })
       this.audit({ at: t0, tool: name, result: 'ok', bytes: written.bytes, ms: now() - t0 })
       return this.text(
@@ -946,11 +935,10 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
           ...(this.deps.photoRegistry ? { recoveryId: `preparada-${sha}` } : {}),
           path: written.rel,
           agentPath: binding.toAgentPath?.(written.abs) ?? written.abs,
-          provenance: manifest.rel,
           credit: asset.credit,
-          caption: imageCreditCaption({ path: written.rel, credit: asset.credit, attribution }),
+          attribution,
           notice:
-            'Foto preparada con licencia comprobada. Evaluación registrada como declaración del selector; no certificada por la app. Inserta path en documentos_crear (o id en el objeto de imagen de Word/PowerPoint); crédito automático. Revisa después la página terminada. Conserva imagen y procedencia.'
+            'Foto preparada con licencia comprobada. Evaluación registrada como declaración del selector; no certificada por la app. Inserta path en documentos_crear (o id en el objeto de imagen de Word/PowerPoint). No agregues créditos ni pies de foto salvo que la persona los pida. Autor y licencia son datos internos. Revisa después la página terminada.'
         })
       )
     } catch (err) {
@@ -1052,15 +1040,6 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
             : undefined
         credits.push({ path, credit: registered.credit, attribution, assetPath: rel, sha256: sha })
       } else if (known) {
-        try {
-          const manifest = await readTaskFile(root, known.provenance, agentRoots, {}, 'provenance')
-          if (createHash('sha256').update(manifest.bytes).digest('hex') !== known.provenanceSha) throw new Error('changed')
-        } catch {
-          throw new OutputPathError(
-            'name',
-            'Falta el JSON de procedencia original o cambió. Vuelve a preparar la foto con imagenes_usar; no copies la caché ni inventes el registro.'
-          )
-        }
         credits.push({ path, credit: known.credit, attribution: known.attribution, assetPath: known.rel, sha256: known.sha })
       }
     }
@@ -1272,7 +1251,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       if (quota.created.size > 400) quota.created.delete(quota.created.keys().next().value as string)
       this.audit({ at: t0, tool: 'exportar_pdf', tipo: 'pdf', result: 'ok', bytes: written.bytes, rel: written.rel, ms: now() - t0 })
       const result = this.text(
-        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB). PDF de ${pages} página(s), convertido directamente del original. Revisa las fotos, créditos y composición antes de entregarlo.`
+        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB). PDF de ${pages} página(s), convertido directamente del original. Revisa las fotos y composición antes de entregarlo.`
       )
       try {
         const preview =
@@ -1311,7 +1290,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
           true
         )
       return this.text(
-        'No se pudo convertir el documento original a PDF; no se guardó una versión parcial. Reintenta exportar_pdf con la misma ruta una vez; si falla, avisa al principio y conserva el original con sus fotos y créditos.',
+        'No se pudo convertir el documento original a PDF; no se guardó una versión parcial. Reintenta exportar_pdf con la misma ruta una vez; si falla, avisa al principio y conserva el original con sus fotos.',
         true
       )
     } finally {
@@ -1367,7 +1346,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
       this.audit({ at: started, tool: 'preparar_html', result: 'ok', bytes: result.bytes, ms: now() - started })
       const path = binding.toAgentPath?.(result.abs) ?? result.abs
       return this.text(
-        `Documento creado: ${path} (${(result.bytes / 1024).toFixed(1)} KB).\nHTML autónomo: fotos deduplicadas y créditos incrustados. Entrega esta copia y revisa todas sus láminas; no entregues el borrador con rutas img/.`
+        `Documento creado: ${path} (${(result.bytes / 1024).toFixed(1)} KB).\nHTML autónomo: fotos deduplicadas e incrustadas. Entrega esta copia y revisa todas sus láminas; no entregues el borrador con rutas img/.`
       )
     } catch (error) {
       this.audit({
@@ -1484,9 +1463,15 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         if (refs.length > 0) prepared = await this.prepareDocumentImages(root, refs, agentRoots)
       }
       const credits = prepared ? await this.creditsFor(binding, root, prepared.images, agentRoots) : []
-      const credited = attachImageCredits(built.input, credits)
-      let renderInput = credited.input
-      // Incrusta los mismos bytes comprobados, después de añadir los créditos y antes del motor sin red.
+      if (built.input.kind === 'pptx') {
+        const paths = new Set(credits.map((asset) => asset.path))
+        for (const [index, slide] of built.input.data.slides.entries()) {
+          if (slide.image?.path && paths.has(slide.image.path) && !['cover', 'image'].includes(layoutOf(slide, index)))
+            throw new OutputPathError('name', 'Una foto necesita una lámina cover o image para quedar insertada.')
+        }
+      }
+      let renderInput = built.input
+      // Incrusta los mismos bytes comprobados antes del motor sin red.
       if (renderInput.kind === 'pdf' && prepared) {
         let html = renderInput.html
         for (const [ref, img] of prepared.images) {
@@ -1514,7 +1499,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         if (!pages || pages < lo || pages > hi) {
           this.audit({ at: t0, tool: name, tipo: built.tipo, result: 'rechazado', detail: 'paginas', ms: now() - t0 })
           const result = this.text(
-            `No se guardó el PDF: ${pages ? `tiene ${pages} página(s)` : 'no se pudo comprobar el total de páginas'} y pediste ${lo === hi ? lo : `${lo} a ${hi}`}. Ajusta el contenido y vuelve a crear con el MISMO nombre, tipo y subcarpeta. Conserva todas las fotos y sus créditos; no extraigas ni borres páginas con otra herramienta para cumplir el número.`,
+            `No se guardó el PDF: ${pages ? `tiene ${pages} página(s)` : 'no se pudo comprobar el total de páginas'} y pediste ${lo === hi ? lo : `${lo} a ${hi}`}. Ajusta el contenido y vuelve a crear con el MISMO nombre, tipo y subcarpeta. Conserva todas las fotos; no extraigas ni borres páginas con otra herramienta para cumplir el número.`,
             true
           )
           if (this.deps.preview) {
@@ -1533,19 +1518,10 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
           return result
         }
       }
-      const creditReview = await reviewImageCredits(renderInput.kind, bytes, credited.expectedCredits)
-      if (!creditReview.ok)
-        return this.text(
-          `No se guardó el documento: ${creditReview.items.map((item) => item.text).join(' ')} Corrige los créditos antes de entregar.`,
-          true
-        )
-      const creditNote = creditReview.items.length
-        ? `\nCréditos de imágenes: ${creditReview.items.map((item) => `${item.ok ? '✔' : '✘'} ${item.text}`).join('\n')}`
-        : ''
       // Letra de menos de 12 pt en una lámina: se rechaza (hasta 2 veces seguidas por tarea; después se entrega con el ✘ para no atascar al agente).
       if (built.tipo === 'pptx' && !this.deps.review) {
         try {
-          const early = await reviewDocument('pptx', bytes, credited.input.kind === 'pptx' ? credited.input.data : undefined)
+          const early = await reviewDocument('pptx', bytes, built.input.kind === 'pptx' ? built.input.data : undefined)
           const small = early.items.find((it) => !it.ok && /menos de 12 pt/.test(it.text))
           if (small && (quota.smallFont ?? 0) < 2) {
             quota.smallFont = (quota.smallFont ?? 0) + 1
@@ -1577,38 +1553,6 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         }))
       const agentPath = binding.toAgentPath ? binding.toAgentPath(written.abs) : written.abs
       const sha = createHash('sha256').update(bytes).digest('hex')
-      let insertionNote = ''
-      if (credits.length) {
-        // Registro nuevo por versión del documento: no se modifica ni se confía en el sidecar editable de la foto.
-        try {
-          const usage = await writeNewFile(root, {
-            name: `${basename(written.rel, `.${built.tipo}`)}-imagenes-${sha.slice(0, 8)}`,
-            ext: 'json',
-            subfolder: args.subcarpeta,
-            maxBytes: 128 * 1024,
-            bytes: Buffer.from(
-              JSON.stringify(
-                {
-                  stage: 'documento-creado-con-referencias',
-                  insertionVerification: 'referencias-enviadas-al-motor; presencia-visual-pendiente',
-                  document: written.rel,
-                  documentSha256: sha,
-                  at: new Date(now()).toISOString(),
-                  images: credits.map(({ assetPath, sha256, credit }) => ({ file: assetPath, sha256, credit })),
-                  creditCheck: 'contenido-del-archivo-comprobado',
-                  visualReview: 'pendiente-del-modelo'
-                },
-                null,
-                2
-              )
-            )
-          })
-          insertionNote = `\nRegistro de referencias de fotos: ${usage.rel}.`
-        } catch {
-          insertionNote =
-            '\nNo se pudo guardar el registro de inserción. Se comprobó el texto de los créditos; la presencia y composición de las fotos queda por revisar. La procedencia está junto a cada foto.'
-        }
-      }
       const entry = { abs: written.abs, rel: written.rel, tipo: built.tipo, sha }
       quota.created.set(agentPath, entry)
       quota.created.set(written.abs, entry)
@@ -1620,16 +1564,16 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
         built.tipo,
         bytes,
         this.deps.review,
-        credited.input.kind === 'pptx' || credited.input.kind === 'xlsx'
-          ? credited.input.data
-          : credited.input.kind === 'pdf'
-            ? credited.input.html
+        built.input.kind === 'pptx' || built.input.kind === 'xlsx'
+          ? built.input.data
+          : built.input.kind === 'pdf'
+            ? built.input.html
             : undefined
       )
-      const pagesNote = credited.input.kind === 'docx' ? pageBudgetNote(args.paginas_objetivo, credited.input.data) : ''
+      const pagesNote = built.input.kind === 'docx' ? pageBudgetNote(args.paginas_objetivo, built.input.data) : ''
       const extrasNote = built.warnings?.length ? `\nAvisos: ${built.warnings.join(' ')}` : ''
       const result = this.text(
-        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${creditNote}${insertionNote}${pagesNote}${extrasNote}`
+        `Documento creado: ${agentPath} (${Math.max(1, Math.round(written.bytes / 1024))} KB).${revision}${pagesNote}${extrasNote}`
       )
       // Se usan los mismos bytes guardados: no se relee una ruta que podría cambiar. Fallar al dibujar nunca invalida un archivo creado.
       if (this.deps.preview) {

@@ -1,7 +1,7 @@
 /** Follow-up documents use trusted persistent photos after rebinding/restarting; no network or Electron. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
-import { mkdtemp, realpath, rm, readFile, writeFile, mkdir, readdir, copyFile } from 'node:fs/promises'
+import { mkdtemp, realpath, rm, readFile, writeFile, mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import JSZip from 'jszip'
@@ -55,7 +55,7 @@ class Harness extends DocumentsMcpServer {
   }
 }
 const text = (r: Awaited<ReturnType<Harness['invoke']>>) => (r.content[0] as { text: string }).text
-// Minimal real PDF with selectable text; the output credit check parses this with the normal extractor.
+// Minimal real PDF with selectable text for the document pipeline.
 function pdf(content: string): Buffer {
   const stream = `BT /F1 10 Tf 30 700 Td (${content.replace(/[()\\]/g, '\\$&')}) Tj ET`
   const bodies = [
@@ -105,7 +105,7 @@ function restart(): Harness {
 async function prepare(id = 'photo-1') {
   const result = await server.invoke({ folder: root }, 'imagenes_usar', { id, evaluation })
   expect(result.isError, text(result)).not.toBe(true)
-  return JSON.parse(text(result)) as { id: string; path: string; provenance: string; recoveryId: string }
+  return JSON.parse(text(result)) as { id: string; path: string; recoveryId: string }
 }
 const docx = (paths: string[], title = 'Informe') => ({
   tipo: 'docx',
@@ -127,7 +127,7 @@ afterEach(async () => {
 })
 
 describe('procedencia persistente en seguimientos reales de herramientas', () => {
-  it.each(['docx', 'pptx'] as const)('%s → PDF mantiene ambas fotos y créditos tras servidor nuevo sin red', async (tipo) => {
+  it.each(['docx', 'pptx'] as const)('%s → PDF mantiene ambas fotos sin créditos automáticos tras servidor nuevo sin red', async (tipo) => {
     const a = await prepare('one'),
       b = await prepare('two')
     const source =
@@ -158,13 +158,32 @@ describe('procedencia persistente en seguimientos reales de herramientas', () =>
     expect(final.input.kind).toBe('pdf')
     if (final.input.kind === 'pdf') {
       expect(final.input.html.match(/data:image\//g)).toHaveLength(2)
-      expect(final.input.html.match(/Foto: Author/g)).toHaveLength(2)
+      expect(final.input.html).not.toContain('Foto: Author')
     }
-    expect(text(next)).toContain('Créditos de imágenes: ✔')
+    expect(text(next)).not.toContain('Créditos de imágenes')
     expect(use).toHaveBeenCalledTimes(2)
   })
 
-  it('agrega otra foto, cambia portada y traduce al inglés en sesiones nuevas, con crédito automático', async () => {
+  it('PDF conserva intacto el crédito solicitado y su estilo, sin enlaces ni pie añadido', async () => {
+    const a = await prepare()
+    const caption = '<figcaption class="personal" style="color:red;font-size:17px">Foto: crédito solicitado</figcaption>'
+    const result = await server.invoke({ folder: root }, 'crear', {
+      tipo: 'pdf',
+      nombre: 'Credito solicitado',
+      html: `<html><body><img src="${a.path}">${caption}</body></html>`
+    })
+    expect(result.isError, text(result)).not.toBe(true)
+    const input = seen.at(-1)!.input
+    if (input.kind !== 'pdf') throw new Error('kind')
+    expect(input.html).toContain(caption)
+    expect(input.html.match(/Foto:/g)).toHaveLength(1)
+    expect(input.html).not.toContain('<small')
+    expect(input.html).not.toContain('<aside')
+    expect(input.html).not.toContain('Fuente')
+    expect(input.html).not.toContain('Licencia')
+  })
+
+  it('agrega otra foto, cambia portada y traduce al inglés en sesiones nuevas, sin crédito automático', async () => {
     const a = await prepare('one')
     await server.stop()
     server = restart()
@@ -190,18 +209,18 @@ describe('procedencia persistente en seguimientos reales de herramientas', () =>
     server = restart()
     expect((await server.invoke({ folder: root }, 'crear', docx([a.path, b.path], 'Marine conservation'))).isError).not.toBe(true)
     expect(JSON.stringify(seen.at(-1)!.input)).toContain('Marine conservation')
-    expect(JSON.stringify(seen.at(-1)!.input).match(/Foto: Author/g)).toHaveLength(2)
+    expect(JSON.stringify(seen.at(-1)!.input)).not.toContain('Foto: Author')
   })
 
   it('retoma al día siguiente por id y ruta WSL absoluta sin confiar en el JSON de carpeta', async () => {
     const a = await prepare()
-    await writeFile(join(root, a.provenance), JSON.stringify({ credit: 'CREDITO FALSO' }))
+    await writeFile(join(root, 'procedencia-inventada.json'), JSON.stringify({ credit: 'CREDITO FALSO' }))
     await server.stop()
     server = restart()
     const binding = { folder: root, toAgentPath: (path: string) => path.replace(root, '/win/c/Informe') }
     expect((await server.invoke(binding, 'crear', docx([`/win/c/Informe/${a.path}`]))).isError).not.toBe(true)
     expect(JSON.stringify(seen.at(-1)!.input)).not.toContain('FALSO')
-    await rm(join(root, a.provenance))
+    await rm(join(root, 'procedencia-inventada.json'))
     expect(
       (await server.invoke({ folder: root }, 'crear', { tipo: 'docx', spec: { blocks: [{ type: 'image', id: a.id }] } })).isError
     ).not.toBe(true)
@@ -249,7 +268,7 @@ describe('procedencia persistente en seguimientos reales de herramientas', () =>
     await mkdir(join(other, 'img'))
     const fake = 'img/free-00000000000000000000.jpg'
     await writeFile(join(other, fake), photo('inventada').bytes)
-    await copyFile(join(root, a.provenance), join(other, fake.replace('.jpg', '.json')))
+    await writeFile(join(other, fake.replace('.jpg', '.json')), JSON.stringify({ credit }))
     await server.stop()
     server = restart()
     expect((await server.invoke({ folder: other }, 'crear', docx([fake]))).isError).toBe(true)
@@ -257,7 +276,7 @@ describe('procedencia persistente en seguimientos reales de herramientas', () =>
     expect(seen).toHaveLength(0)
   })
 
-  it('registro corrupto falla cerrado aunque la tarea tenga su JSON original', async () => {
+  it('registro interno corrupto falla cerrado', async () => {
     const a = await prepare()
     const sha = createHash('sha256').update(photo('photo-1').bytes).digest('hex')
     await writeFile(join(store, `photo-${sha}.json`), '{}')

@@ -35,10 +35,6 @@ export async function resolvePreparedHtml(html: string, scope?: HtmlPhotoScope, 
     {
       data: string
       credit: string
-      author: string
-      license: string
-      source: string
-      licenseUrl: string
       provenance: FreeImageAsset['provenance']
     }
   >()
@@ -88,10 +84,6 @@ export async function resolvePreparedHtml(html: string, scope?: HtmlPhotoScope, 
     assets.set(sha, {
       data: `data:image/jpeg;base64,${file.bytes.toString('base64')}`,
       credit: record.asset.credit,
-      author: record.asset.provenance.author,
-      license: record.asset.provenance.license,
-      source: record.asset.provenance.source,
-      licenseUrl: record.asset.provenance.licenseUrl,
       provenance: record.asset.provenance
     })
   }
@@ -113,58 +105,25 @@ export async function resolvePreparedHtml(html: string, scope?: HtmlPhotoScope, 
       return sha ? `var(--lzx-photo-${sha})` : whole
     })
   )
-  const data = JSON.stringify(Object.fromEntries([...assets].map(([sha, { provenance: _provenance, ...photo }]) => [sha, photo]))).replace(
-    /</g,
-    '\\u003c'
-  )
+  const data = JSON.stringify(Object.fromEntries([...assets].map(([sha, { data }]) => [sha, data]))).replace(/</g, '\\u003c')
   // A single copy of each data URI supplies every occurrence, including CSS backgrounds.
-  // Credits are placed inside the actual closest slide, never in a global print footer.
+  // Photo provenance stays invisible; authored text, links and layout are left untouched.
   const script = `<script data-lzx-prepared-photos>(function(){const photos=${data};
 const root=document.documentElement;
-const used=new Map();
-const anchors=new Map();
-for(const [id,p] of Object.entries(photos)){root.style.setProperty('--lzx-photo-'+id,'url("'+p.data+'")')}
-const mark=(el,id)=>{const slide=el.closest('.slide');
-if(!slide){root.dataset.lzxPhotoError='La foto preparada debe estar dentro de una .slide';return;}
-if(!used.has(slide))used.set(slide,new Set());used.get(slide).add(id);
-if(!anchors.has(slide))anchors.set(slide,new Map());if(!anchors.get(slide).has(id))anchors.get(slide).set(id,el)};
+for(const [id,data] of Object.entries(photos)){root.style.setProperty('--lzx-photo-'+id,'url("'+data+'")')}
+const check=el=>{if(!el.closest('.slide'))root.dataset.lzxPhotoError='La foto preparada debe estar dentro de una .slide'};
 document.querySelectorAll('[data-lzx-photo]').forEach(el=>{const id=el.getAttribute('data-lzx-photo');
-if(photos[id]){el.src=photos[id].data;mark(el,id)}});
-const markStyle=(el,text)=>{for(const id of Object.keys(photos)){if(text.includes('--lzx-photo-'+id))mark(el,id)}};
-const rules=(list)=>{for(const rule of list){if(rule.cssRules)rules(rule.cssRules);
-if(rule.selectorText&&rule.style){try{document.querySelectorAll(rule.selectorText.replace(/::(?:before|after)/g,'')).forEach(el=>markStyle(el,rule.style.cssText))}catch{}}}};
+if(photos[id]){el.src=photos[id];check(el)}});
+const checkStyle=(el,text)=>{if(Object.keys(photos).some(id=>text.includes('--lzx-photo-'+id)))check(el)};
+const rules=list=>{for(const rule of list){if(rule.cssRules)rules(rule.cssRules);
+if(rule.selectorText&&rule.style){try{document.querySelectorAll(rule.selectorText.replace(/::(?:before|after)/g,'')).forEach(el=>checkStyle(el,rule.style.cssText))}catch{}}}};
 for(const sheet of document.styleSheets){try{rules(sheet.cssRules)}catch{}}
-document.querySelectorAll('.slide,.slide *').forEach(el=>{markStyle(el,el.style.cssText);
-for(const pseudo of [null,'::before','::after']){const bg=getComputedStyle(el,pseudo).backgroundImage;
-for(const [id,p] of Object.entries(photos)){if(bg.includes(p.data)||bg.includes('--lzx-photo-'+id))mark(el,id)}}});
-const normalize=text=>text.normalize('NFKC').toLowerCase().replace(/[\\s\\p{P}\\p{S}]/gu,'');
-const visible=(el,boundary=root)=>{for(let node=el;node&&node!==boundary;node=node.parentElement){const s=getComputedStyle(node);if(s.display==='none'||s.visibility==='hidden'||s.opacity==='0')return false}return true};
-// El crédito va en una etiqueta chica sobre la esquina inferior derecha de la propia foto: no cruza la
-// lámina ni tapa texto. Si el modelo ya escribió el crédito, se respeta su diseño tal cual.
-const place=(slide,credit,el)=>{const sb=slide.getBoundingClientRect();if(!sb.height)return;const scale=sb.height/(slide.offsetHeight||sb.height);
-const er=el&&el!==slide?el.getBoundingClientRect():null;const r=er&&er.width&&er.height?er:sb;
-const right=Math.max(6,(sb.right-r.right)/scale+6),bottom=Math.max(6,(sb.bottom-r.bottom)/scale+6);
-let lift=bottom;const span=Math.max(credit.offsetWidth,120)*scale,cr=sb.right-right*scale,cl=cr-span;
-for(const control of document.querySelectorAll('button,[role="button"],nav,input,select')){if(!visible(control))continue;const c=control.getBoundingClientRect();
-if(c.width&&c.height&&c.left<cr&&c.right>cl&&c.top<sb.bottom-lift*scale&&c.bottom>sb.bottom-(lift*scale+(credit.offsetHeight||16)*scale)-1)lift=Math.max(lift,(sb.bottom-c.top)/scale+8)}
-credit.style.setProperty('right',right+'px','important');credit.style.setProperty('bottom',lift+'px','important');
-credit.style.setProperty('max-width',Math.max(120,r.width/scale-12)+'px','important')};
-for(const [slide,ids] of used){if(getComputedStyle(slide).position==='static')slide.style.position='relative';
-for(const id of ids){const p=photos[id];
-const existing=Array.from(slide.querySelectorAll('figcaption,small,footer,p,div,aside,span')).reverse().find(el=>{
-if(el.querySelector('img')||!visible(el,slide))return false;const text=normalize(el.textContent||'');
-return text.includes(normalize(p.credit))||(text.includes(normalize(p.author))&&text.includes(normalize(p.license)))});
-if(existing){existing.setAttribute('data-lzx-photo-credit','existing');continue}
-const el=anchors.get(slide)?.get(id)||slide;
-const credit=document.createElement('aside');credit.setAttribute('data-lzx-photo-credit','');credit.textContent=p.credit;
-credit.style.cssText='position:absolute!important;left:auto!important;top:auto!important;z-index:2!important;display:block!important;margin:0!important;padding:2px 6px!important;background:rgba(0,0,0,.55)!important;color:#fff!important;font:10px/1.25 Arial,sans-serif!important;text-align:right!important;border-radius:3px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;';
-slide.appendChild(credit);
-const refresh=()=>place(slide,credit,el);refresh();requestAnimationFrame(refresh);window.addEventListener('resize',refresh);document.fonts?.ready.then(refresh);new MutationObserver(refresh).observe(slide,{attributes:true,attributeFilter:['class','style','hidden']})}}})();</script>`
+})();</script>`
   const metadata = `<script type="application/json" data-lzx-photo-provenance>${JSON.stringify([...assets].map(([sha, p]) => ({ sha, credit: p.credit, provenance: p.provenance }))).replace(/</g, '\\u003c')}</script>`
   const addition = `${metadata}${script}`
   html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, () => addition + '</body>') : html + addition
   if (Buffer.byteLength(html) > MAX_ARTIFACT_HTML_BYTES)
-    throw new OutputPathError('name', 'El HTML con sus créditos supera el presupuesto de 24 MiB.')
+    throw new OutputPathError('name', 'El HTML con sus fotos supera el presupuesto de 24 MiB.')
   return html
 }
 

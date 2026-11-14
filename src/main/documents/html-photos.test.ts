@@ -56,9 +56,10 @@ beforeEach(async () => {
   await registry.remember(root, 'p1', rel, asset)
 })
 afterEach(async () => {
+  delete document.documentElement.dataset.lzxPhotoError
   await rm(base, { recursive: true, force: true })
 })
-it('embeds one copy per hash and adds legible credit inside every photo slide', async () => {
+it('embeds one copy per hash without adding visible photo credits or links', async () => {
   const html = await resolvePreparedHtml(
     '<body><section class="slide"><img src="imagen:p1"><img src="' +
       rel +
@@ -73,13 +74,10 @@ it('embeds one copy per hash and adds legible credit inside every photo slide', 
   const slides = [...document.querySelectorAll('.slide')]
   expect(slides).toHaveLength(2)
   for (const slide of slides) {
-    const footer = slide.querySelector('[data-lzx-photo-credit]') as HTMLElement
-    expect(footer.textContent).toContain(credit)
-    expect(footer.style.color).toBe('rgb(255, 255, 255)')
-    // Etiqueta chica y semitransparente sobre la foto, no una franja negra que cruce la lámina.
-    expect(footer.style.background).toBe('rgba(0, 0, 0, 0.55)')
-    expect(footer.style.left).toBe('auto')
-    expect(footer.querySelector('a')).toBeNull()
+    expect(slide.querySelector('[data-lzx-photo-credit]')).toBeNull()
+    expect(slide.textContent).not.toContain('Foto:')
+    expect(slide.querySelector('a')).toBeNull()
+    expect(slide.getAttribute('style')).toBeNull()
   }
   expect(document.querySelectorAll('img[src^="data:image/jpeg;base64,"]')).toHaveLength(3)
   const provenance = JSON.parse(document.querySelector('[data-lzx-photo-provenance]')!.textContent!)
@@ -126,13 +124,16 @@ it('supports prepared CSS background IDs and ignores script strings', async () =
   )
   expect(html).toContain('var(--lzx-photo-')
   expect(html).toContain('url(no-file.jpg)')
-  expect(html).toContain('data-lzx-photo-credit')
+  expect(html).not.toContain('data-lzx-photo-credit')
   document.body.innerHTML = html
   new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
     document,
     (el: Element) => window.getComputedStyle(el)
   )
-  expect(document.querySelector('.slide [data-lzx-photo-credit]')?.textContent).toContain(credit)
+  expect(document.querySelector('.slide [data-lzx-photo-credit]')).toBeNull()
+  expect(document.documentElement.style.getPropertyValue('--lzx-photo-' + photo('p1').provenance.sha256)).toContain(
+    'data:image/jpeg;base64,'
+  )
   await expect(resolvePreparedHtml(html)).resolves.toBe(html)
 })
 
@@ -184,70 +185,48 @@ it('resolves img paths relative to the HTML directory within the registered scop
   ).rejects.toThrow('subir')
 })
 
-it('keeps an existing verified author/license credit as the model designed it, without a second bar or added links', async () => {
+it('preserves a credit requested by the person byte-for-byte, including its style and links', async () => {
+  const authored =
+    '<small class="credito" style="color:red;position:absolute;bottom:12px">Foto: Author · CC BY 4.0 <a href="https://example.org/source">Fuente</a></small>'
   const html = await resolvePreparedHtml(
-    '<section class="slide"><img src="imagen:p1"><small>Photo: Author · CC BY 4.0</small><button>Next</button></section>',
+    '<section class="slide" style="position:static"><img src="imagen:p1">' + authored + '<button>Next</button></section>',
     { root },
     registry
   )
+  expect(html).toContain(authored)
   document.body.innerHTML = html
-  new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
-    document,
-    (el: Element) => window.getComputedStyle(el)
-  )
-  expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(1)
-  expect(document.querySelector('[data-lzx-photo-credit]')?.tagName).toBe('SMALL')
+  const original = document.querySelector('.credito')!.outerHTML
+  new Function('document', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(document)
+  expect(document.querySelector('.credito')!.outerHTML).toBe(original)
+  expect(document.querySelector('.slide')!.getAttribute('style')).toBe('position:static')
+  expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(0)
   expect(document.querySelector('aside')).toBeNull()
-  expect(document.querySelectorAll('small a')).toHaveLength(0)
-  expect((document.querySelector('small') as HTMLElement).style.background).toBe('')
 })
 
-it('lifts the photo credit above a control in the same corner, without stealing clicks', async () => {
+it('preserves authored credits on initially hidden slides without adding attributes or styles', async () => {
+  const authored =
+    '<div class="credito">Foto: Author · CC BY 4.0 · Wikimedia Commons <a href="https://commons.wikimedia.org/wiki/File:Photo.jpg">Fuente</a></div>'
   const html = await resolvePreparedHtml(
-    '<section class="slide"><img src="imagen:p1"></section><nav><button>Next</button></nav>',
+    '<section class="slide" style="display:none"><img src="imagen:p1">' + authored + '</section>',
     { root },
     registry
   )
   document.body.innerHTML = html
-  vi.spyOn(document.querySelector('.slide')!, 'getBoundingClientRect').mockReturnValue({
-    left: 0,
-    right: 960,
-    top: 0,
-    bottom: 540,
-    width: 960,
-    height: 540
-  } as DOMRect)
-  vi.spyOn(document.querySelector('button')!, 'getBoundingClientRect').mockReturnValue({
-    left: 800,
-    right: 950,
-    top: 490,
-    bottom: 535,
-    width: 160,
-    height: 45
-  } as DOMRect)
-  new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
-    document,
-    (el: Element) => window.getComputedStyle(el)
-  )
-  const credit = document.querySelector('[data-lzx-photo-credit]') as HTMLElement
-  expect(credit.parentElement).toBe(document.querySelector('.slide'))
-  expect(credit.style.bottom).toBe('58px')
-  expect(credit.style.pointerEvents).toBe('none')
+  const original = document.querySelector('.credito')!.outerHTML
+  new Function('document', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(document)
+  expect(document.querySelector('.credito')!.outerHTML).toBe(original)
+  expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(0)
+  expect(document.querySelector('.slide')!.getAttribute('style')).toBe('display:none')
+  expect(document.querySelector('aside')).toBeNull()
 })
 
-it('recognizes copied credits on initially hidden slides and preserves their links', async () => {
+it('retains the runtime guard for prepared CSS photos outside slides', async () => {
   const html = await resolvePreparedHtml(
-    '<section class="slide" style="display:none"><img src="imagen:p1"><div class="credito">Foto: Author · CC BY 4.0 · Wikimedia Commons <a href="https://commons.wikimedia.org/wiki/File:Photo.jpg">Fuente</a></div></section>',
+    '<style>.outside{background:url("imagen:p1")}</style><section class="slide"></section><div class="outside"></div>',
     { root },
     registry
   )
   document.body.innerHTML = html
-  new Function('document', 'getComputedStyle', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(
-    document,
-    (el: Element) => window.getComputedStyle(el)
-  )
-  expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(1)
-  expect(document.querySelectorAll('.credito a')).toHaveLength(1)
-  expect((document.querySelector('.credito') as HTMLElement).style.background).toBe('')
-  expect(document.querySelector('aside')).toBeNull()
+  new Function('document', document.querySelector('[data-lzx-prepared-photos]')!.textContent!)(document)
+  expect(document.documentElement.dataset.lzxPhotoError).toContain('dentro de una .slide')
 })

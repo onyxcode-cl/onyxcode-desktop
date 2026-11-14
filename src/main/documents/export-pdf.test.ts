@@ -108,7 +108,7 @@ describe('exportación del documento original a PDF', () => {
       })
     ).rejects.toThrow(/perdió fotos/)
   })
-  it('bloquea PDF que pierde el crédito visible de una foto', async () => {
+  it('no exige créditos visibles en el PDF', async () => {
     const source = await sourceZip('<w:p><w:r><w:t>Foto: Autora · CC BY 4.0 · Wikimedia Commons</w:t></w:r></w:p>')
     await expect(
       exportDocumentPdf('docx', source, tools, {
@@ -116,7 +116,7 @@ describe('exportación del documento original a PDF', () => {
           await writeFile(args[2], minimalPdf)
         }
       })
-    ).rejects.toThrow(/perdió un crédito/)
+    ).resolves.toEqual(minimalPdf)
   })
   it('bloquea conversión que reduce el número de láminas', async () => {
     const source = await sourceZip('', '', 2)

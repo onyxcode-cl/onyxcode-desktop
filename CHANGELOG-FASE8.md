@@ -4483,3 +4483,10 @@ Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word;
 - La primera búsqueda real fallaba por cinco consultas contra un máximo de cuatro, antes de la red. Se admiten hasta ocho sugerencias, validando todas, y se ejecutan las primeras cuatro con aviso explícito para conservar el presupuesto. No se añade un reintento de red.
 - El IPC de documentos acepta la identidad visual ya admitida por los armadores, sin permitir claves desconocidas. Las regresiones verifican que cancelar la elección de pantalla libera Presentar en HTML y PPTX y permite reintentar.
 - Pruebas dirigidas, revisión de subagentes, evidencia y límites en «Quinta ronda» del informe externo V26. Sin ejecución de la app ni validación física de monitores/Windows en esta tanda.
+
+## F8-B297 — Fotos sin créditos automáticos (V26)
+
+- HTML autónomo, PDF desde HTML y creación de Word/PowerPoint dejan de insertar pies, enlaces de atribución y láminas de créditos. Los textos, estilos y créditos escritos expresamente en el contenido se conservan.
+- Se quitan las revisiones que exigían créditos visibles, también al convertir Word/PowerPoint a PDF, y las instrucciones de reservar espacio para ellos. Las guías indican no añadir créditos ni pies de foto salvo petición de la persona.
+- No se escriben JSON de procedencia junto a las fotos ni a los entregables. Se conserva el registro interno persistente, la procedencia invisible del HTML, los filtros de licencia, el flujo buscar/ver/usar y las protecciones contra vistas de muestra.
+- Regresiones dirigidas: HTML y su entrega, herramientas MCP de imágenes/documentos, exportación PDF, armadores Word/PowerPoint y guías de Chat/Código/Tareas. Resultados y límites de ejecución en `V26-SIN-CREDITOS-INFORME.md`, entregado fuera del repositorio. Sin app, commit ni publicación.

@@ -9,7 +9,7 @@ import { OutputPathError, writeNewFile, type WrittenFile } from './output-path'
 export const PREPARE_HTML_TOOL = {
   name: 'preparar_html',
   description:
-    'Paso obligatorio antes de entregar una presentación HTML: lee el borrador de la carpeta, valida fotos preparadas y guarda una copia autónoma con fotos deduplicadas y créditos. Entrega la ruta devuelta, no el borrador. No sustituye la revisión visual.',
+    'Paso obligatorio antes de entregar una presentación HTML: lee el borrador de la carpeta, valida fotos preparadas y guarda una copia autónoma con fotos deduplicadas. No agregues créditos ni pies de foto salvo que la persona los pida. Entrega la ruta devuelta, no el borrador. No sustituye la revisión visual.',
   inputSchema: {
     type: 'object',
     additionalProperties: false,

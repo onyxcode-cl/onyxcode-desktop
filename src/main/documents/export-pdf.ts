@@ -5,7 +5,6 @@ import { join } from 'node:path'
 import JSZip from 'jszip'
 import { runCraft } from '../office/craft/craft-run'
 import { privateTmp } from '../office/craft/private-tmp'
-import { decodeHtmlText } from './html-images'
 
 export const MAX_EXPORTED_PDF_BYTES = 50 * 1024 * 1024
 
@@ -19,12 +18,7 @@ export class PdfExportError extends Error {
   }
 }
 
-type ExportSource = { jpegUses: number; credits: string[]; slides?: number }
-const comparable = (text: string): string =>
-  text
-    .normalize('NFKC')
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]/gu, '')
+type ExportSource = { jpegUses: number; slides?: number }
 
 /** Solo XML visible y sus relaciones; nunca se infla todo el ZIP ni se lee contenido de las fotos. */
 async function inspectSource(tipo: 'docx' | 'pptx', bytes: Buffer): Promise<ExportSource> {
@@ -52,7 +46,7 @@ async function inspectSource(tipo: 'docx' | 'pptx', bytes: Buffer): Promise<Expo
     })
     return Buffer.concat(chunks).toString('utf8')
   }
-  const source: ExportSource = { jpegUses: 0, credits: [] }
+  const source: ExportSource = { jpegUses: 0 }
   const visible = names.filter((name) =>
     tipo === 'docx' ? /^word\/(?:document|header\d+|footer\d+)\.xml$/.test(name) : /^ppt\/slides\/slide\d+\.xml$/.test(name)
   )
@@ -71,11 +65,6 @@ async function inspectSource(tipo: 'docx' | 'pptx', bytes: Buffer): Promise<Expo
       if (/\/image$/.test(attr(tag, 'Type')) && /\.jpe?g$/i.test(attr(tag, 'Target')) && attr(tag, 'TargetMode') !== 'External')
         jpegIds.add(attr(tag, 'Id'))
     for (const [tag] of content.matchAll(/<a:blip\b[^>]*>/g)) if (jpegIds.has(attr(tag, 'r:embed'))) source.jpegUses++
-    for (const [paragraph] of content.matchAll(/<(?:w|a):p\b[^>]*>[\s\S]*?<\/(?:w|a):p>/g)) {
-      const text = decodeHtmlText([...paragraph.matchAll(/<(?:w|a):t\b[^>]*>([\s\S]*?)<\/(?:w|a):t>/g)].map((m) => m[1]).join(''))
-      const credit = /\bFoto\s*[:：]\s*.+/i.exec(text)?.[0]
-      if (credit) source.credits.push(credit)
-    }
   }
   return source
 }
@@ -95,10 +84,8 @@ async function verifyExport(pdf: Buffer, source: ExportSource): Promise<void> {
             'La exportación perdió o añadió láminas. Conserva el original y vuelve a exportar; no entregues este PDF como completo.'
           )
         let images = 0
-        const texts: string[] = []
         for (let n = 1; n <= doc.numPages; n++) {
           const page = await doc.getPage(n)
-          texts.push((await page.getTextContent()).items.map((item) => ('str' in item ? item.str : '')).join(' '))
           if (source.jpegUses) {
             const ops = await page.getOperatorList()
             for (const [i, op] of ops.fnArray.entries()) {
@@ -111,11 +98,6 @@ async function verifyExport(pdf: Buffer, source: ExportSource): Promise<void> {
         if (images < source.jpegUses)
           throw new PdfExportError(
             'La exportación perdió fotos del original. Conserva el documento y vuelve a exportar; no entregues este PDF sin sus fotos.'
-          )
-        const text = comparable(texts.join(' '))
-        if (source.credits.some((credit) => !text.includes(comparable(credit))))
-          throw new PdfExportError(
-            'La exportación perdió un crédito visible de las fotos. Conserva el original y vuelve a exportar; no entregues este PDF incompleto.'
           )
       })(),
       new Promise<never>((_, reject) => {
