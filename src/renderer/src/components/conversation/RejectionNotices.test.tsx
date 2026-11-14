@@ -22,15 +22,17 @@ import { makeSession, userMessage, textPart, toolPart } from '../../../../test/f
 vi.mock('../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
 const directory = '/fixture'
-const permission = {
-  id: 'p1',
+const makePermission = (id: string) => ({
+  id,
   sessionID: 'kid',
   permission: 'bash',
   patterns: ['npm run build'],
   always: [],
   metadata: {},
   api: 'v1' as const
-}
+})
+let permission: ReturnType<typeof makePermission>
+let permissionID = 0
 const question = { id: 'q1', sessionID: 'kid', questions: [{ header: 'Destino', question: '¿Dónde guardarlo?', options: [] }] }
 const reply = vi.fn()
 const reject = vi.fn()
@@ -59,6 +61,8 @@ const html = (mode: 'code' | 'tasks', sessionID = 'root', folder = directory): s
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // El store recuerda los permisos resueltos fuera de Zustand: cada caso representa una solicitud nueva.
+  permission = makePermission(`p${++permissionID}`)
   Object.defineProperty(window, 'api', { configurable: true, value: {} })
   setLang('es')
   useLang.setState({ lang: 'es' })
@@ -73,7 +77,7 @@ beforeEach(() => {
     sessions,
     sessionProject: { root: directory, kid: directory },
     activeSessionID: 'root',
-    permissions: { p1: permission },
+    permissions: { [permission.id]: permission },
     questions: { q1: question },
     globalError: null,
     runState: {},
@@ -90,19 +94,19 @@ beforeEach(() => {
     sending: false,
     attachments: [],
     elements: [],
-    permissions: { p1: permission },
+    permissions: { [permission.id]: permission },
     questions: { q1: question }
   })
 })
 
 describe.each(['code', 'tasks'] as const)('cierre de tarjeta en %s', (mode) => {
   const rejectPermission = (): Promise<void> =>
-    mode === 'code' ? useCode.getState().replyPermission(permission, 'reject') : replyPermission('p1', 'reject')
+    mode === 'code' ? useCode.getState().replyPermission(permission, 'reject') : replyPermission(permission.id, 'reject')
   const rejectTheQuestion = (): Promise<void> => (mode === 'code' ? useCode.getState().rejectQuestion(question) : rejectQuestion('q1'))
 
   it('retira la tarjeta y explica el rechazo del ayudante en la raíz sin otra llamada al modelo', async () => {
     await rejectPermission()
-    expect((mode === 'code' ? useCode : useTasks).getState().permissions.p1).toBeUndefined()
+    expect((mode === 'code' ? useCode : useTasks).getState().permissions[permission.id]).toBeUndefined()
     expect(html(mode)).toContain('No hice esta acción porque la rechazaste. Quedó pendiente:')
     expect(html(mode)).toContain('npm run build')
     expect(html(mode)).toContain('Puedes darme otra instrucción.')
@@ -169,7 +173,7 @@ describe.each(['code', 'tasks'] as const)('cierre de tarjeta en %s', (mode) => {
   it('no declara rechazado un permiso cuya respuesta falló y conserva la tarjeta', async () => {
     reply.mockResolvedValue({ error: { message: 'sin red' } })
     await rejectPermission().catch(() => {})
-    expect((mode === 'code' ? useCode : useTasks).getState().permissions.p1).toBeDefined()
+    expect((mode === 'code' ? useCode : useTasks).getState().permissions[permission.id]).toBeDefined()
     expect(html(mode)).toBe('')
   })
 
@@ -201,12 +205,21 @@ describe.each(['code', 'tasks'] as const)('cierre de tarjeta en %s', (mode) => {
   it('aprobar y los rechazos internos de detención o reintento no generan avisos de rechazo manual', async () => {
     if (mode === 'code') {
       await useCode.getState().replyPermission(permission, 'once')
+      permission = makePermission(`${permission.id}-quiet`)
+      useCode.setState({ permissions: { [permission.id]: permission } })
       await useCode.getState().replyPermission(permission, 'reject', true)
     } else {
-      await replyPermission('p1', 'once')
-      useTasks.setState({ permissions: { p1: permission } })
-      await replyPermission('p1', 'reject', 'reinicio', true)
+      await replyPermission(permission.id, 'once')
+      useTasks.setState({ permissions: { [permission.id]: permission } })
+      await replyPermission(permission.id, 'reject', 'reinicio', true)
     }
+    expect(reply).toHaveBeenCalledTimes(2)
+    expect(reply).toHaveBeenLastCalledWith({
+      requestID: permission.id,
+      directory,
+      reply: 'reject',
+      ...(mode === 'tasks' ? { message: 'reinicio' } : {})
+    })
     expect(html(mode)).toBe('')
   })
 })
@@ -253,10 +266,10 @@ it('muestra una ruta de Windows en el aviso y usa el directorio aislado en la re
       pathMap: { kind: 'wsl', mounts: [{ win: 'C:\\Trabajo', linux: '/win/c/Trabajo' }] },
       fullAccess: false
     } as TasksConnection,
-    permissions: { p1: { ...permission, permission: 'edit', patterns: ['/win/c/Trabajo/informe.txt'] } }
+    permissions: { [permission.id]: { ...permission, permission: 'edit', patterns: ['/win/c/Trabajo/informe.txt'] } }
   })
-  await replyPermission('p1', 'reject')
-  expect(reply).toHaveBeenCalledWith({ requestID: 'p1', directory: '/win/c/Trabajo', reply: 'reject' })
+  await replyPermission(permission.id, 'reject')
+  expect(reply).toHaveBeenCalledWith({ requestID: permission.id, directory: '/win/c/Trabajo', reply: 'reject' })
   expect(html('tasks', 'root', 'C:\\Trabajo')).toContain('C:\\Trabajo\\informe.txt')
 })
 
@@ -275,14 +288,39 @@ it('el protocolo v2 de Código también produce el cierre local', async () => {
   const v2reply = vi.fn().mockResolvedValue({ data: true })
   useServer.setState({ client: { ...client, v2: { session: { permission: { reply: v2reply } } } } as never })
   await useCode.getState().replyPermission({ ...permission, api: 'v2' }, 'reject')
-  expect(v2reply).toHaveBeenCalledWith({ sessionID: 'kid', requestID: 'p1', reply: 'reject' })
+  expect(v2reply).toHaveBeenCalledWith({ sessionID: 'kid', requestID: permission.id, reply: 'reject' })
   expect(html('code')).toContain('No hice esta acción porque la rechazaste.')
   expect(promptAsync).not.toHaveBeenCalled()
 })
 
+it.each(['v1', 'v2'] as const)('un rechazo repetido de Código (%s) responde una vez y no recrea un aviso cerrado', async (api) => {
+  let finish!: (value: { data: boolean }) => void
+  const response = new Promise<{ data: boolean }>((resolve) => {
+    finish = resolve
+  })
+  const respond = vi.fn(() => response)
+  useServer.setState({
+    client: { ...client, permission: { reply: respond }, v2: { session: { permission: { reply: respond } } } } as never
+  })
+  const request = { ...permission, api }
+  const pending = useCode.getState().replyPermission(request, 'reject')
+  await useCode.getState().replyPermission(request, 'reject')
+  expect(respond).toHaveBeenCalledTimes(1)
+  expect(html('code')).toBe('')
+  finish({ data: true })
+  await pending
+  expect(useRejectionNotices.getState().notices).toHaveLength(1)
+  expect(html('code')).toContain('npm run build')
+  useRejectionNotices.getState().dismiss(useRejectionNotices.getState().notices[0])
+  await useCode.getState().replyPermission(request, 'reject')
+  expect(respond).toHaveBeenCalledTimes(1)
+  expect(html('code')).toBe('')
+  expect(promptAsync).not.toHaveBeenCalled()
+})
+
 it('el rechazo con indicaciones de Tareas conserva el mensaje y no añade una petición al modelo', async () => {
-  await replyPermission('p1', 'reject', 'Usa otra carpeta')
-  expect(reply).toHaveBeenCalledWith({ requestID: 'p1', directory, reply: 'reject', message: 'Usa otra carpeta' })
+  await replyPermission(permission.id, 'reject', 'Usa otra carpeta')
+  expect(reply).toHaveBeenCalledWith({ requestID: permission.id, directory, reply: 'reject', message: 'Usa otra carpeta' })
   expect(html('tasks')).toContain('No hice esta acción porque la rechazaste.')
   expect(promptAsync).not.toHaveBeenCalled()
 })
