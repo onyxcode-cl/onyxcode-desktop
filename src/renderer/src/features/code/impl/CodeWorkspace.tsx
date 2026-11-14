@@ -681,7 +681,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
                     <span
                       aria-hidden
                       data-testid="code-jobs-indicator"
-                      className="absolute -top-1 -right-1 rounded-full bg-accent px-1 text-[9px] leading-3 text-accent-fg tabular-nums"
+                      className="absolute -top-1 -right-1 rounded-full bg-accent px-1 text-[9px] leading-3 desk:min-w-4 desk:px-1 desk:text-[12px] desk:leading-4 text-accent-fg tabular-nums"
                     >
                       {jobs.liveCount}
                     </span>
