@@ -58,10 +58,13 @@ export function PermCardFrame({
 }): React.JSX.Element {
   const t = useT()
   const [open, setOpen] = useState(detailsOpen)
-  // Si la misma tarjeta pasa a pedir el detalle abierto (el comando cambió a algo largo), se abre y ya no se cierra sola.
-  useEffect(() => {
-    if (detailsOpen) setOpen(true)
-  }, [detailsOpen])
+  const expandRequested = useRef(false)
+  useEffect(() => setOpen(detailsOpen), [id, detailsOpen])
+  useLayoutEffect(() => {
+    if (!expandRequested.current) return
+    expandRequested.current = false
+    document.getElementById(`perm-${id}`)?.querySelector<HTMLElement>('[data-perm-actions]')?.scrollIntoView?.({ block: 'nearest' })
+  }, [id, open])
   // H20: al aparecer una tarjeta de aprobación se anuncia una vez (por id), sin leer el comando.
   useEffect(() => {
     announce(t('a11y.approvalNeeded', { title }))
@@ -99,7 +102,10 @@ export function PermCardFrame({
             type="button"
             aria-expanded={open}
             aria-controls={detailsId}
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => {
+              expandRequested.current = true
+              setOpen((o) => !o)
+            }}
             className="no-drag inline-flex shrink-0 items-center gap-1 rounded-ctl px-2 py-1 text-ui text-muted outline-none hover:bg-hover hover:text-fg focus-visible:shadow-focus"
           >
             {open ? t('perm.details.hide') : t('perm.details.show')}
@@ -114,7 +120,7 @@ export function PermCardFrame({
       )}
       {preview}
       {details && (
-        <div id={detailsId} hidden={!open} className="flex flex-col gap-3">
+        <div id={detailsId} hidden={!open} className="flex max-h-[40vh] flex-col gap-3 overflow-y-auto">
           {details}
         </div>
       )}
@@ -256,7 +262,7 @@ export function PermActions({ actions, armed, busy }: { actions: PermAction[]; a
     </Button>
   )
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div data-perm-actions className="flex flex-wrap items-center gap-2">
       {actions.filter((a) => a.side === 'left').map(render)}
       <span className="flex-1" />
       {actions.filter((a) => a.side === 'right').map(render)}
@@ -306,12 +312,12 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
     observingRef.current = true
     const root = scrollParent(el)
     let state: ArmState = initialArmState(Date.now(), el.getBoundingClientRect().top)
-    // «Visible» se calcula midiendo la tarjeta contra el área de desplazamiento en cada vuelta (no solo cuando el observador avisa: este solo
+    // «Visible» mide los controles de decisión contra el área de desplazamiento en cada vuelta (no solo cuando el observador avisa: este solo
     // avisa al cruzar sus umbrales, y una tarjeta más alta que la ventana se queda entre dos umbrales y nunca volvía a avisar). Cuenta como
-    // visible si se ve al menos el 60 % de la tarjeta o, si es más alta que la ventana, al menos el 60 % de la altura visible.
+    // visible si se ve al menos el 60 % de los controles. El alto del diff no debe dejar desactivados botones que sí están a la vista.
     const measureVisible = (): boolean => {
       if (document.visibilityState === 'hidden') return false
-      const r = el.getBoundingClientRect()
+      const r = (el.querySelector('[data-perm-actions]') ?? el).getBoundingClientRect()
       const top = root ? root.getBoundingClientRect().top : 0
       const bottom = root ? root.getBoundingClientRect().bottom : window.innerHeight
       const shown = Math.min(r.bottom, bottom) - Math.max(r.top, top)
@@ -320,7 +326,7 @@ export function usePermGuard({ id, reply, busy }: { id: string; reply: (kind: 'o
     }
     const commit = (): void => {
       visibleRef.current = measureVisible()
-      const y = el.getBoundingClientRect().top
+      const y = (el.querySelector('[data-perm-actions]') ?? el).getBoundingClientRect().top
       state = armState(state, { visible: visibleRef.current, now: Date.now(), y })
       if (state.armed !== armedRef.current) {
         armedRef.current = state.armed

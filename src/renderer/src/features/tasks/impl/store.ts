@@ -1312,6 +1312,8 @@ export async function loadGrants(): Promise<void> {
 function isAutoActiveFor(folder: string, sessionID: string): boolean {
   const settings = useTasks.getState().autoMode?.settings
   if (!settings?.enabled) return false
+  const root = rootTaskId(sessionID)
+  if (settings.taskModes && Object.hasOwn(settings.taskModes, root)) return settings.taskModes[root]!
   if (settings.folders.includes(folder)) return true
   return settings.tasks.includes(rootTaskId(sessionID))
 }

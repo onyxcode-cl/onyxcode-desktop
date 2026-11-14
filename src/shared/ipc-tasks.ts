@@ -1085,6 +1085,8 @@ export interface AutoModeSettings {
   enabled: boolean
   folders: string[]
   tasks: string[]
+  /** Elección explícita por conversación; prevalece sobre la carpeta. */
+  taskModes?: Record<string, boolean>
   viewApps: string[]
 }
 

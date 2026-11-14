@@ -12,11 +12,48 @@ interface UnifiedState {
   loaded: boolean
   /** El usuario eligió «Automático» antes de tener carpeta: se aplica a la carpeta del chat al crearla. */
   wantAuto: boolean
+  lastAuto: boolean
   /** Ruta REAL que devolvió `tasks:chatFolder:create` en esta sesión (la carpeta automática del chat actual). */
   chatFolder: string | null
 }
 
-export const useUnified = create<UnifiedState>(() => ({ on: false, loaded: false, wantAuto: false, chatFolder: null }))
+export const useUnified = create<UnifiedState>(() => ({
+  on: false,
+  loaded: false,
+  wantAuto: false,
+  lastAuto: readLastAuto(),
+  chatFolder: null
+}))
+
+function readLastAuto(): boolean {
+  try {
+    return localStorage.getItem('tasks.lastAuto') === 'true'
+  } catch {
+    return false
+  }
+}
+
+export function rememberTaskMode(on: boolean): void {
+  useUnified.setState({ lastAuto: on, wantAuto: on })
+  try {
+    localStorage.setItem('tasks.lastAuto', String(on))
+  } catch {
+    /* sin storage */
+  }
+}
+
+export async function setConversationAuto(sessionId: string, on: boolean): Promise<void> {
+  // El interruptor maestro sigue siendo una parada global. Encender esta conversación
+  // no debe reactivar otras que figuraban como manuales bajo ese interruptor.
+  const settings = useTasks.getState().autoMode?.settings
+  if (on && settings && !settings.enabled) {
+    for (const path of settings.folders) await setAutoModeSettings({ folder: { path, on: false } })
+    for (const id of new Set([...settings.tasks, ...Object.keys(settings.taskModes ?? {})])) {
+      if (id !== sessionId) await setAutoModeSettings({ task: { sessionId: id, on: false } })
+    }
+  }
+  await setAutoModeSettings({ ...(on ? { enabled: true } : {}), task: { sessionId, on } })
+}
 
 /** Lee `app:info` una sola vez; un fallo deja el modo apagado (comportamiento de siempre). */
 export async function loadUnified(): Promise<void> {

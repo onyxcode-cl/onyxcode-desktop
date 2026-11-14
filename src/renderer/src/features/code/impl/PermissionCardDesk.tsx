@@ -31,6 +31,7 @@ const PERMISSION_LABEL: Record<string, MsgKey> = {
   edit: 'code.perm.edit',
   write: 'code.perm.write',
   bash: 'code.perm.bash',
+  bgshell_start: 'code.perm.background',
   webfetch: 'code.perm.webfetch',
   websearch: 'code.perm.websearch',
   read: 'code.perm.read',
@@ -71,13 +72,36 @@ export function PermissionCardDesk({
   )
   const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => run(kind), busy })
 
+  const tool = useCode((s) =>
+    request.tool
+      ? s.messages[request.sessionID]
+          ?.find((m) => m.info.id === request.tool!.messageID)
+          ?.parts.find((p) => p.type === 'tool' && p.callID === request.tool!.callID)
+      : undefined
+  )
+  const input = tool?.type === 'tool' ? tool.state.input : undefined
   const md = request.metadata
   // Ruta protegida del motor: el motor ya manda `always: []`; aquí tampoco se ofrece «Permitir siempre» y se avisa con una línea clara.
   const protectedPath = isProtectedPermission(md)
   // Solo informa: texto plano, sin tocar botones, foco ni orden; en ruta protegida no se muestra.
   const suggestion = readPermissionSuggestion(request, { protectedPath, isChild: sub.child })
   const diff = typeof md.diff === 'string' ? md.diff : ''
-  const command = typeof md.command === 'string' ? md.command : ''
+  const command =
+    typeof md.command === 'string'
+      ? md.command
+      : request.permission === 'bgshell_start' && typeof input?.command === 'string'
+        ? input.command
+        : ''
+  const cwd =
+    typeof input?.cwd === 'string'
+      ? input.cwd
+      : typeof input?.workdir === 'string'
+        ? input.workdir
+        : typeof md.workdir === 'string'
+          ? md.workdir
+          : request.permission === 'bgshell_start'
+            ? null
+            : root
   const description = typeof md.description === 'string' ? md.description : ''
   const file = typeof md.filepath === 'string' ? md.filepath : typeof md.filePath === 'string' ? md.filePath : ''
   const labelKey = PERMISSION_LABEL[request.permission]
@@ -85,7 +109,11 @@ export function PermissionCardDesk({
   const stats = diff ? diffStats(diff) : null
   const patterns = request.patterns.filter((p) => p && p !== command)
   const Icon =
-    request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
+    request.permission === 'bash' || request.permission === 'bgshell_start'
+      ? SquareTerminal
+      : request.permission === 'edit' || request.permission === 'write'
+        ? FilePen
+        : ShieldAlert
 
   const actions: PermAction[] = [
     // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
@@ -116,7 +144,11 @@ export function PermissionCardDesk({
   ]
 
   const previewText = command || (file ? relPath(file, root) : patterns.map((p) => relPath(p, root)).join(', '))
-  const previewNode = previewText ? (
+  const previewNode = command ? (
+    <div className="max-h-40 overflow-auto">
+      <PermCommand text={command} prompt hasHidden={false} hiddenMessage="" longMessage={(n) => t('code.perm.cmdLong', { n })} />
+    </div>
+  ) : previewText ? (
     <PermPreview text={previewText} prompt={!!command} extra={!command && stats ? <DiffStats {...stats} /> : undefined} />
   ) : undefined
   // Nace abierto si el resumen de una línea no muestra todo el comando (largo, varias líneas o caracteres ocultos).
@@ -138,10 +170,6 @@ export function PermissionCardDesk({
           {t('code.perm.protectedPath')}
         </p>
       )}
-      {/* Si el resumen ya muestra el comando entero, no se repite aquí. */}
-      {command && !previewFits(command, hasHiddenChars(command)) && (
-        <PermCommand text={command} prompt hasHidden={false} hiddenMessage="" longMessage={(n) => t('code.perm.cmdLong', { n })} />
-      )}
       {!command && !diff && patterns.length > 0 && (
         <div className="rounded-ctl bg-code ring-1 ring-inset ring-border">
           <pre className="max-h-40 overflow-auto px-3 py-2.5 font-mono text-[13px] whitespace-pre-wrap break-all">
@@ -160,11 +188,11 @@ export function PermissionCardDesk({
           <p className="mt-0.5 text-ui text-muted">{description}</p>
         </div>
       )}
-      {root && (
+      {cwd && (
         <PermScope>
           <span className="inline-flex items-center gap-1.5">
             <ShieldAlert size={14} className="text-muted" />
-            {t('code.perm.noSandbox', { root })}
+            {t('code.perm.workingFolder', { root: cwd })}
           </span>
         </PermScope>
       )}

@@ -626,3 +626,166 @@ describe('doSend y reglas de proyecto: falla cerrado en todos los modos', () => 
     expect(promptAsync).not.toHaveBeenCalled()
   })
 })
+
+describe('V28: modos por conversación y permisos fuera de orden', () => {
+  it('crear desde Planear conserva el agente del borrador y la elección de permisos', async () => {
+    const { create } = install()
+    await st().setPermissionMode('auto')
+    st().setAgent('plan')
+    await st().newSessionAt(D)
+    expect(create.mock.calls[0]?.[0].permission).toEqual(rulesetFor('plan'))
+    expect(st().agent).toBe('plan')
+    expect(st().permissionMode).toBe('auto')
+  })
+
+  it('volver, reiniciar y enviar conserva el modo propio; una nueva usa la última elección', async () => {
+    const { create, update, promptAsync } = install()
+    apply(sessionCreated(makeSession('todo', D, { permission: rulesetFor('bypass') })))
+    apply(sessionCreated(makeSession('editar', D, { permission: rulesetFor('acceptEdits') })))
+    await st().selectSession('editar')
+    expect(st().permissionMode).toBe('acceptEdits')
+    await st().setPermissionMode('auto')
+    await st().selectSession('todo')
+    expect(st().permissionMode).toBe('bypass')
+    await st().send('lista archivos')
+    expect(update.mock.calls.at(-1)?.[0].permission).toEqual(rulesetFor('bypass'))
+    expect(promptAsync).toHaveBeenCalledOnce()
+    await st().selectSession(null)
+    expect(st().permissionMode).toBe('auto')
+    await st().newSessionAt(D)
+    expect(create.mock.calls[0]?.[0].permission).toEqual(rulesetFor('auto'))
+    // Nueva instancia del renderer: la elección por sesión se recupera del almacenamiento.
+    vi.resetModules()
+    const fresh = (await import('./store')).useCode
+    expect(fresh.getState().sessionPermissionModes.editar).toBe('auto')
+    fresh.setState({ sessions: { todo: makeSession('todo', D, { permission: rulesetFor('bypass') }) } })
+    await fresh.getState().selectSession('todo')
+    expect(fresh.getState().permissionMode).toBe('bypass')
+  })
+
+  it.each([D, 'C:\\work\\code'])('replay permiso → herramienta: %s; aprueba una sola vez al completar los datos', async (root) => {
+    const reply = vi.fn(() => Promise.resolve({ data: true }))
+    install()
+    ;(useServer.getState().client as unknown as { permission: { reply: typeof reply } }).permission.reply = reply
+    apply(sessionCreated(makeSession('s1', root, { permission: rulesetFor('auto') })))
+    useCode.setState({
+      directory: root,
+      sessions: { s1: makeSession('s1', root, { permission: rulesetFor('auto') }) },
+      sessionProject: { s1: root }
+    })
+    const command = 'python -m unittest test_estadistica'
+    const request = {
+      id: 'late',
+      sessionID: 's1',
+      permission: 'bash',
+      patterns: [command],
+      metadata: { command },
+      always: [],
+      tool: { messageID: 'm1', callID: 'call' }
+    }
+    st().applyEvent({ type: 'permission.asked', properties: request } as never, root)
+    expect(reply).not.toHaveBeenCalled()
+    expect(st().permissions.late).toBeDefined()
+    apply(msgUpdated(userMessage('m1', 's1'), root))
+    apply(
+      partUpdated(
+        toolPart('part', 'm1', 's1', 'bash', { status: 'running', input: { command, workdir: root }, time: { start: 1 } }, 'call'),
+        root
+      )
+    )
+    expect(reply).toHaveBeenCalledOnce()
+    apply(
+      partUpdated(
+        toolPart('part', 'm1', 's1', 'bash', { status: 'running', input: { command, workdir: root }, time: { start: 2 } }, 'call'),
+        root
+      )
+    )
+    expect(reply).toHaveBeenCalledOnce()
+    await Promise.resolve()
+    expect(st().permissions.late).toBeUndefined()
+  })
+
+  it.each([
+    { command: 'rm archivo', workdir: D },
+    { command: 'npm test', workdir: '/outside' }
+  ])('no aprueba datos tardíos peligrosos o incompatibles: %j', (input) => {
+    const reply = vi.fn(() => Promise.resolve({ data: true }))
+    install()
+    ;(useServer.getState().client as unknown as { permission: { reply: typeof reply } }).permission.reply = reply
+    apply(sessionCreated(makeSession('s1', D, { permission: rulesetFor('auto') })))
+    st().applyEvent(
+      {
+        type: 'permission.asked',
+        properties: {
+          id: 'late',
+          sessionID: 's1',
+          permission: 'bash',
+          patterns: ['npm test'],
+          metadata: { command: 'npm test' },
+          always: [],
+          tool: { messageID: 'm1', callID: 'call' }
+        }
+      } as never,
+      D
+    )
+    apply(msgUpdated(userMessage('m1', 's1'), D))
+    apply(partUpdated(toolPart('part', 'm1', 's1', 'bash', { status: 'running', input, time: { start: 1 } }, 'call'), D))
+    expect(reply).not.toHaveBeenCalled()
+    expect(st().permissions.late).toBeDefined()
+  })
+
+  it('replay lista iniciada antes del permiso → aprobación → lista atrasada: no resucita la tarjeta', async () => {
+    install()
+    const session = makeSession('s1', D, { permission: rulesetFor('acceptEdits') })
+    apply(sessionCreated(session))
+    let finish!: (v: unknown) => void
+    const pending = new Promise((resolve) => {
+      finish = resolve
+    })
+    const reply = vi.fn(() => Promise.resolve({ data: true }))
+    const client = useServer.getState().client!
+    Object.assign(client.session, { list: () => Promise.resolve({ data: [session] }) })
+    Object.assign(client.permission, { list: () => pending, reply })
+    const loading = st().loadSessions(D)
+    await Promise.resolve()
+    await Promise.resolve()
+    const p = {
+      id: 'repeated',
+      sessionID: 's1',
+      permission: 'bash',
+      patterns: ['python3 -m unittest'],
+      metadata: { command: 'python3 -m unittest' },
+      always: [],
+      api: 'v1' as const
+    }
+    st().applyEvent({ type: 'permission.asked', properties: p } as never, D)
+    await st().replyPermission(p, 'once')
+    finish({ data: [p] })
+    await loading
+    st().applyEvent({ type: 'permission.asked', properties: p } as never, D)
+    expect(st().permissions.repeated).toBeUndefined()
+    expect(reply).toHaveBeenCalledOnce()
+  })
+
+  it('una autoaprobación fallida devuelve la tarjeta para reintentar', async () => {
+    install()
+    Object.assign(useServer.getState().client!.permission, { reply: () => Promise.reject(new Error('sin conexión')) })
+    apply(sessionCreated(makeSession('s1', D, { permission: rulesetFor('auto') })))
+    st().applyEvent(
+      {
+        type: 'permission.asked',
+        properties: {
+          id: 'failed',
+          sessionID: 's1',
+          permission: 'bash',
+          patterns: ['npm test'],
+          metadata: { command: 'npm test' },
+          always: []
+        }
+      } as never,
+      D
+    )
+    await Promise.resolve()
+    expect(st().permissions.failed).toBeDefined()
+  })
+})

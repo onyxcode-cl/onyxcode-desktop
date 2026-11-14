@@ -3203,3 +3203,11 @@ siguen sujetos al filtro. Esto es una heurística de aprobación, no certifica l
 sandbox. `RunAs`, scripts/ejecutables arbitrarios exteriores, carpetas exteriores o dinámicas, archivos sensibles y descarga con
 ejecución conservan pregunta. La excepción de datos de regex se limita al argumento literal de `[regex]::Matches`, sin rutas,
 variables ni sustituciones; no se amplía a los argumentos de `Get-Content` o `Test-Path`.
+
+### V28 — Elección de permisos por conversación y respuestas fuera de orden (F8-B308)
+
+Código conserva la elección por sesión; el último modo elegido solo inicializa conversaciones nuevas. Antes de enviar se siguen sincronizando las reglas con el motor y fallando cerrado si no se pueden aplicar. Overdrive persiste `taskModes`: una elección explícita de la conversación prevalece sobre la autorización por carpeta, sin saltarse el interruptor maestro ni la política administrada. Las hijas siguen usando la raíz. No cambia el clasificador ni la matriz de acciones de cada modo.
+
+Un permiso de Automático sin entrada completa permanece pendiente. Cuando llega la herramienta asociada o se recargan sus mensajes se vuelve a comprobar comando completo, coincidencia de entrada, carpeta y rutas protegidas. Las respuestas en vuelo se deduplican; las resueltas no se reinsertan desde listados atrasados. Un fallo al responder conserva la tarjeta para reintentar.
+
+El armado de una tarjeta comprueba la visibilidad de sus controles, no el porcentaje de un diff que puede ser mucho más alto que la pantalla. Se mantienen los 600 ms de estabilidad, el bloqueo de Enter sin modificador y las demás condiciones del atajo. Abrir detalles desplaza los controles a la vista, sin enfocarlos ni aprobar.

@@ -92,7 +92,7 @@ beforeEach(() => {
   useChat.setState({ activeSessionId: 'chat', elicitations: {} })
   useSessions.setState({ status: { chat: 'busy', task: 'busy' }, sessions: {}, messages: {}, errors: {} })
   useExtrasPrefs.setState({ prefs: { ...useExtrasPrefs.getState().prefs, modelsByMode: { chat: first } } })
-  useUnified.setState({ on: false, loaded: true, wantAuto: false })
+  useUnified.setState({ on: false, loaded: true, wantAuto: false, lastAuto: false })
   useTasks.setState({
     activeTaskId: 'task',
     folder: '/work/task',
@@ -253,7 +253,7 @@ it.each(['darwin', 'win32'])('Overdrive Manual/Automático en %s usa el mismo av
   useTasks.setState({ autoMode: { settings } as never })
   const stop = vi.spyOn(taskActions, 'stopIsolatedTask').mockResolvedValue()
   const api = window.api as unknown as { tasks?: unknown }
-  const invoke = vi.fn(async () => ({ ok: true, data: { settings: { ...settings, folders: ['/work/task'] } } }))
+  const invoke = vi.fn(async () => ({ ok: true, data: { settings: { ...settings, tasks: ['task'], taskModes: { task: true } } } }))
   api.tasks = { invoke }
   act(() =>
     root.render(
@@ -272,8 +272,9 @@ it.each(['darwin', 'win32'])('Overdrive Manual/Automático en %s usa el mismo av
   expect(invoke).not.toHaveBeenCalled()
   act(idle)
   await flush()
-  expect(useTasks.getState().autoMode?.settings.folders).toEqual(['/work/task'])
-  expect(invoke).toHaveBeenCalledWith('tasks:auto:set', { enabled: true, folder: { path: '/work/task', on: true } })
+  expect(useTasks.getState().autoMode?.settings.folders).toEqual([])
+  expect(useTasks.getState().autoMode?.settings.taskModes).toEqual({ task: true })
+  expect(invoke).toHaveBeenCalledWith('tasks:auto:set', { enabled: true, task: { sessionId: 'task', on: true } })
 })
 
 it('Overdrive Control total usa el kill-switch del botón Detener', async () => {

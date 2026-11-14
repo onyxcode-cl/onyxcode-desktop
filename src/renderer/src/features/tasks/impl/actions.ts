@@ -23,7 +23,7 @@ import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
 import { forgetChatSession } from './chatIndex'
 import { ensureFolderReadable } from '../../code/impl/folder-access'
-import { enableAutoOnlyFor, isChatFolderPath, useUnified } from './unified'
+import { enableAutoOnlyFor, isChatFolderPath, setConversationAuto, useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
 import { stopPicking } from '../../browser/pick-state'
@@ -735,6 +735,7 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
     if (res.error || !res.data) throw new Error(errorMessage(res.error))
     sessions.upsertSession(res.data)
     sessionID = res.data.id
+    if (useUnified.getState().on) await setConversationAuto(sessionID, useUnified.getState().lastAuto)
     const id = sessionID
     useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] }, loaded: { ...s.loaded, [id]: true } }))
     useTasks.setState({ activeTaskId: id })

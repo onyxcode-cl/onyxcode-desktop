@@ -231,3 +231,22 @@ describe('modo unificado: cada chat nuevo sin carpeta tiene su propia carpeta', 
     expect(h.cw).toHaveBeenCalledWith('tasks:chatFolder:create')
   })
 })
+
+it('V28: una conversación nueva conserva la última elección de Overdrive sin cambiar las anteriores', async () => {
+  const { rememberTaskMode, setConversationAuto } = await import('./unified')
+  useTasks.setState({
+    autoMode: {
+      settings: { enabled: true, folders: [], tasks: ['previous'], taskModes: { previous: true }, viewApps: [] },
+      log: [],
+      policyDisabled: false
+    }
+  })
+  rememberTaskMode(false)
+  await setConversationAuto('current', false)
+  expect(h.setAutoModeSettings).toHaveBeenCalledWith({ task: { sessionId: 'current', on: false } })
+  expect(h.setAutoModeSettings).not.toHaveBeenCalledWith({ task: { sessionId: 'previous', on: false } })
+  rememberTaskMode(true)
+  newTask()
+  expect(useUnified.getState().lastAuto).toBe(true)
+  expect(localStorage.getItem('tasks.lastAuto')).toBe('true')
+})
