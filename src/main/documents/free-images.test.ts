@@ -170,6 +170,49 @@ describe('licencias de archivos Commons', () => {
 })
 
 describe('servicio de fotos sin rutas ni URLs del modelo', () => {
+  it('resuelve la primera llamada Mac con cinco consultas sin aumentar el trabajo de red', async () => {
+    // Forma exacta de la llamada rechazada en la prueba Mac: cinco sugerencias, no un fallo de red.
+    const queries = [
+      'dinosaur skeleton museum',
+      'Tyrannosaurus rex fossil',
+      'Triceratops dinosaur',
+      'Stegosaurus dinosaur illustration',
+      'dinosaur fossil footprints'
+    ]
+    const requirements = { subject: 'dinosaurios para niños, esqueletos y fósiles reconocibles', usage: 'presentación infantil' }
+    const fetch = fakeFetch()
+    const service = new FreeImagesService({ fetch, processor })
+    const first = await service.search({ queries, requirements })
+    expect(first.round).toBe(1)
+    expect(first.candidates).toHaveLength(1)
+    expect(first.notice).toContain('Se usaron las primeras cuatro consultas; se omitieron 1')
+    const requested = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
+    const baselineFetch = fakeFetch()
+    await new FreeImagesService({ fetch: baselineFetch, processor }).search({ queries: queries.slice(0, 4), requirements })
+    expect(requested).toEqual(vi.mocked(baselineFetch).mock.calls.map(([url]) => String(url)))
+    await service.view([first.candidates[0].id])
+    const asset = await service.use(first.candidates[0].id, evaluation)
+    expect(asset.provenance.queries).not.toContain(queries[4])
+    const second = await service.search({ queries, searchId: first.searchId })
+    expect(second.round).toBe(2)
+    expect(second.notice).toContain('se omitieron 1')
+    await expect(service.search({ queries, searchId: first.searchId })).rejects.toThrow('dos rondas')
+    expect(queries).toHaveLength(5)
+  })
+
+  it.each([
+    [Array.from({ length: 9 }, (_, i) => `consulta ${i}`), 'queries:'],
+    [['uno', 'dos', 'tres', 'cuatro', 42], 'queries[4]:'],
+    [['uno', 'dos', 'tres', 'cuatro', ''], 'queries[4]:'],
+    [['uno', 'dos', 'tres', 'cuatro', 'uno'], 'queries:']
+  ])('valida incluso sugerencias que no ejecutará: %j', async (queries, field) => {
+    const fetch = fakeFetch()
+    const service = new FreeImagesService({ fetch, processor })
+    await expect(service.search({ ...input, queries } as FreeImageSearch)).rejects.toThrow(field)
+    expect(fetch).not.toHaveBeenCalled()
+    expect((await service.search(input)).round).toBe(1)
+  })
+
   it('acepta cuatro consultas de la prueba Mac en primera y segunda ronda sin reintento del modelo', async () => {
     const service = new FreeImagesService({ fetch: fakeFetch(), processor })
     const queries = ['dinosaur skeleton museum', 'tyrannosaurus rex fossil', 'dinosaur footprints fossil', 'stegosaurus dinosaur']
@@ -508,7 +551,7 @@ describe('servicio de fotos sin rutas ni URLs del modelo', () => {
     expect(parseCommonsImages(raw)).toEqual([])
     const service = new FreeImagesService({ fetch: fakeFetch(), processor })
     expect((await service.search({ ...input, orientation: 'portrait' })).candidates).toHaveLength(0)
-    await expect(service.search({ ...input, queries: ['single'] })).rejects.toThrow('queries: usa de dos a cuatro')
+    await expect(service.search({ ...input, queries: ['single'] })).rejects.toThrow('queries: usa de dos a ocho')
   })
 })
 

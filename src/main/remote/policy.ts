@@ -364,6 +364,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:openPath': 'X',
   'tasks:chatOffice:prepare': 'X',
   'tasks:importFiles': 'X',
+  'tasks:attachDroppedFile': 'X', // X: arrastre local de archivos; el celular no crea adjuntos por este canal.
   'tasks:pasteFromClipboard': 'X',
   'tasks:reviewFile': (p, ctx) => (!inDirs(p.path, scopeIpc(ctx)) ? deny('out-of-scope') : 'R'),
   'tasks:previewFile': (p, ctx) =>

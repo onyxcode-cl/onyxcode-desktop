@@ -34,8 +34,16 @@ import { SafeTempFile } from '../tasks/safe-write'
 import { imagePathsOf } from '@shared/chat-doc-spec'
 import { prepareImages, type ImageMap, type PreparedImages } from './image-files'
 import { readTaskFile, relativeInputPath, type TaskFile } from './input-path'
-import { FreeImageError, FreeImageInputError, FreeImagesService, normalizeImageEvaluation, type FreeImageSearch } from './free-images'
+import {
+  FreeImageError,
+  FreeImageInputError,
+  FreeImagesService,
+  FREE_IMAGE_MAX_INPUT_QUERIES,
+  normalizeImageEvaluation,
+  type FreeImageSearch
+} from './free-images'
 import type { FreeImageRegistry } from './free-image-registry'
+import { PREPARE_HTML_TOOL, prepareHtmlDelivery } from './html-delivery'
 import { resolvePreparedHtml, type HtmlPhotoScope } from './html-photos'
 import { htmlHasFreeImagePreview } from './free-image-preview'
 import { htmlImageSources, mapHtmlImageSources } from './html-images'
@@ -221,7 +229,14 @@ export const IMAGE_TOOLS = [
       type: 'object',
       additionalProperties: false,
       properties: {
-        queries: { type: 'array', minItems: 2, maxItems: 4, items: { type: 'string', minLength: 1, maxLength: 200 } },
+        queries: {
+          type: 'array',
+          minItems: 2,
+          maxItems: FREE_IMAGE_MAX_INPUT_QUERIES,
+          items: { type: 'string', minLength: 1, maxLength: 200 },
+          description:
+            'Envía 2–4 consultas distintas. Se toleran hasta 8 sugerencias, pero solo se ejecutan las primeras cuatro y se avisa del recorte.'
+        },
         requirements: {
           type: 'object',
           additionalProperties: false,
@@ -590,6 +605,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
   protected listTools(): readonly unknown[] {
     return [
       ...DOCUMENT_TOOLS,
+      PREPARE_HTML_TOOL,
       ...(this.deps.exportPdf ? [EXPORT_PDF_TOOL] : []),
       ...(this.deps.preview ? [PREVIEW_TOOL] : []),
       ...IMAGE_TOOLS
@@ -1325,6 +1341,50 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     }
   }
 
+  private async callPrepareHtml(binding: DocumentsBinding, args: Record<string, unknown>, signal?: AbortSignal): Promise<McpToolResult> {
+    const unexpected = Object.keys(args).filter((key) => !['ruta', 'carpeta'].includes(key))
+    if (unexpected.length) return this.text(`Campos inesperados: ${unexpected.join(', ')}. Usa ruta y, en Code, carpeta.`, true)
+    if (typeof args.ruta !== 'string' || !args.ruta.trim() || args.ruta.length > 400)
+      return this.text('ruta: usa un texto de 1 a 400 caracteres con el archivo .html.', true)
+    if (args.carpeta !== undefined && typeof args.carpeta !== 'string')
+      return this.text('carpeta: usa un texto con el proyecto abierto.', true)
+    const where = await this.rootOf(binding, args)
+    if (!where.ok) return this.text(where.message, true)
+    const now = this.deps.now ?? Date.now
+    const started = now()
+    const quota = this.quotaOf(binding)
+    quota.stamps = quota.stamps.filter((stamp) => started - stamp < 3_600_000)
+    if (quota.busy || this.active >= MAX_CONCURRENT_GLOBAL)
+      return this.text('Hay otro documento en curso; vuelve a intentarlo en un momento.', true)
+    if (quota.stamps.length >= MAX_PER_BINDING_PER_HOUR)
+      return this.text('Ya se crearon muchos documentos en esta hora; espera un rato.', true)
+    quota.busy = true
+    this.active++
+    quota.stamps.push(started)
+    try {
+      const roots = binding.code ? [where.root] : [binding.folder, binding.toAgentPath?.(binding.folder) ?? binding.folder]
+      const result = await prepareHtmlDelivery(where.root, args.ruta, roots, this.deps.photoRegistry, signal)
+      this.audit({ at: started, tool: 'preparar_html', result: 'ok', bytes: result.bytes, ms: now() - started })
+      const path = binding.toAgentPath?.(result.abs) ?? result.abs
+      return this.text(
+        `Documento creado: ${path} (${(result.bytes / 1024).toFixed(1)} KB).\nHTML autónomo: fotos deduplicadas y créditos incrustados. Entrega esta copia y revisa todas sus láminas; no entregues el borrador con rutas img/.`
+      )
+    } catch (error) {
+      this.audit({
+        at: started,
+        tool: 'preparar_html',
+        result: 'error',
+        detail: error instanceof OutputPathError ? error.code : 'io',
+        ms: now() - started
+      })
+      if (error instanceof OutputPathError) return this.text(error.message, true)
+      throw error
+    } finally {
+      quota.busy = false
+      this.active--
+    }
+  }
+
   private async callToolInner(
     binding: DocumentsBinding,
     name: string,
@@ -1334,6 +1394,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
     const now = this.deps.now ?? Date.now
     const t0 = now()
     if (IMAGE_TOOLS.some((tool) => tool.name === name)) return this.callImages(binding, name, args, signal)
+    if (name === 'preparar_html') return this.callPrepareHtml(binding, args, signal)
     if (name === 'renderizar' && this.deps.preview) return this.callPreview(binding, args)
     if (name === 'exportar_pdf' && this.deps.exportPdf) return this.callExportPdf(binding, args, signal)
     if (name !== 'crear') return this.text(`Herramienta desconocida: ${name}`, true)

@@ -1165,6 +1165,8 @@ export interface TasksInvokeContract {
    * (sin sobrescribir: añade " (2)"…). Devuelve los archivos copiados ([] si se cancela).
    */
   'tasks:importFiles': { req: { folder: string }; res: TasksDeliverable[] }
+  /** Bytes de un archivo arrastrado, hasta 25 MiB; destino autorizado y escritura sin sobrescribir. Solo escritorio. */
+  'tasks:attachDroppedFile': { req: { folder: string; name: string; base64: string }; res: TasksDeliverable }
   /**
    * Pegar en el compositor de Tareas: main lee el portapapeles del sistema (archivos copiados o imagen), valida
    * (regulares, sin ejecutables, topes) y los GUARDA en la carpeta autorizada sin sobrescribir. Solo escritorio.
@@ -1600,6 +1602,7 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:openPath',
   'tasks:chatOffice:prepare',
   'tasks:importFiles',
+  'tasks:attachDroppedFile',
   'tasks:pasteFromClipboard',
   'tasks:previewFile',
   'tasks:reviewFile',

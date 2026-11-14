@@ -1,15 +1,18 @@
 /**
- * Arrastrar una carpeta a la ventana de Tareas: devuelve los manejadores para el contenedor y si hay algo arrastrándose encima (para
- * mostrar el aviso). La ruta real sale del preload (`window.lzxPaths`); main la valida antes de usarla (ver `dropFolder`).
+ * Arrastrar archivos o una carpeta a Tareas. Las carpetas siguen la autorización habitual;
+ * los archivos se copian como bytes de File, sin dar a main una ruta de lectura arbitraria.
  */
 import { useCallback, useRef, useState } from 'react'
 import { dropFolder } from './actions'
+import { attachDroppedFiles } from './drop-files'
+import { useTasks } from './store'
+import { t } from '@shared/i18n'
 
 interface LzxPaths {
   forFile: (file: File) => string
 }
 
-/** Ruta de la primera entrada soltada (carpeta o archivo; si es un archivo, main la rechaza con «no es una carpeta válida»). */
+/** Ruta real de la primera carpeta soltada (main vuelve a validarla). */
 export function droppedPath(files: FileList | null | undefined): string {
   const paths = (window as unknown as { lzxPaths?: LzxPaths }).lzxPaths
   const first = files?.[0]
@@ -17,6 +20,31 @@ export function droppedPath(files: FileList | null | undefined): string {
 }
 
 const hasFiles = (e: React.DragEvent): boolean => Array.from(e.dataTransfer?.types ?? []).includes('Files')
+
+/** Se lee durante el evento: Chromium vacía los items tras terminar el manejador. */
+export function droppedEntries(data: Pick<DataTransfer, 'items' | 'files'>): { folders: File[]; files: File[] } {
+  const folders: File[] = []
+  const files: File[] = []
+  const items = Array.from(data.items ?? []).filter((item) => item.kind === 'file')
+  if (!items.length) return { folders, files: Array.from(data.files) }
+  for (const item of items) {
+    const file = item.getAsFile()
+    if (!file) continue
+    if (item.webkitGetAsEntry?.()?.isDirectory) folders.push(file)
+    else files.push(file)
+  }
+  return { folders, files }
+}
+
+export function acceptDrop(data: Pick<DataTransfer, 'items' | 'files'>): void {
+  const { folders, files } = droppedEntries(data)
+  if (folders.length && files.length) {
+    useTasks.setState({ error: t('tasks.drop.mixed') })
+    return
+  }
+  if (folders.length) void dropFolder(droppedPath(folders as unknown as FileList))
+  else void attachDroppedFiles(files)
+}
 
 export function useFolderDrop(enabled: boolean): {
   dragging: boolean
@@ -55,7 +83,7 @@ export function useFolderDrop(enabled: boolean): {
       if (!enabled || !hasFiles(e)) return
       e.preventDefault()
       reset()
-      void dropFolder(droppedPath(e.dataTransfer.files))
+      acceptDrop(e.dataTransfer)
     },
     [enabled]
   )

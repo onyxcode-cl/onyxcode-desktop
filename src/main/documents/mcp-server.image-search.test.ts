@@ -46,7 +46,8 @@ describe('entrada de búsqueda de fotos', () => {
   it('publica ficha mínima y permite segunda ronda sin repetir requisitos', async () => {
     const schema = IMAGE_TOOLS[0].inputSchema
     expect(schema.required).toEqual(['queries'])
-    expect(schema.properties.queries.maxItems).toBe(4)
+    expect(schema.properties.queries.maxItems).toBe(8)
+    expect(schema.properties.queries.description).toContain('solo se ejecutan las primeras cuatro')
     expect(IMAGE_TOOLS[2].inputSchema.properties.evaluation.properties.doubts.anyOf.map((entry) => entry.type)).toEqual(['string', 'array'])
     expect(schema.properties.requirements.required).toEqual(['subject', 'usage'])
     const first = { queries, requirements: { subject: 'Cafetería', usage: 'Portada' } }

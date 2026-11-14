@@ -18,6 +18,7 @@ import { DIAG_SOURCES } from '@shared/diagnostics'
 import { RATING_ID_RE, RATING_LABEL_RE, RATING_VALUES } from '@shared/ratings'
 import { MAX_ATTACHMENTS } from '@shared/attach-classify'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
+import { PASTE_MAX_FILE_BYTES } from '@shared/paste-files'
 import { TRANSLATE_CLEAN_HTML_MAX, TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
 import { PROJECT_LIMITS } from '@shared/project-knowledge'
 import { EXPORT_LIMITS, type ExportDoc } from '@shared/conversation-export'
@@ -441,7 +442,21 @@ const pptxPalette = obj({
   panel: optional(hexColor),
   edge: optional(hexColor)
 })
+/** Mismo contrato visual que DocumentIdentity; conserva la validación estricta de claves anidadas. */
+const documentIdentity = obj({
+  concept: optional(str({ min: 1, max: 500, pattern: /\S/ })),
+  palette: optional(pptxPalette),
+  fonts: optional(obj({ title: optional(pptxFont), body: optional(pptxFont) })),
+  titles: optional(literal('editorial', 'plain', 'bold')),
+  cards: optional(literal('square', 'rounded', 'outline')),
+  background: optional(literal('plain', 'panel', 'split')),
+  rhythm: optional(literal('calm', 'balanced', 'dynamic')),
+  photos: optional(literal('contain', 'wide', 'portrait')),
+  cover: optional(literal('left', 'center', 'band')),
+  headers: optional(literal('plain', 'accent'))
+})
 const pptxData = obj({
+  identity: optional(documentIdentity),
   palette: optional(pptxPalette),
   fonts: optional(obj({ title: optional(pptxFont), body: optional(pptxFont) })),
   theme: optional(pptxTheme),
@@ -498,6 +513,7 @@ const docxBlock = tagged('type', {
   page_break: obj({ type: literal('page_break') })
 })
 const docxData = obj({
+  identity: optional(documentIdentity),
   title: docxMeta,
   subtitle: docxMeta,
   author: docxMeta,
@@ -950,6 +966,14 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     }
   }),
   'tasks:importFiles': folderReq,
+  'tasks:attachDroppedFile': obj({
+    folder: absPath,
+    name: str({ min: 1, max: 255, pattern: /^(?!.*[. ]$)[^/\\:<>"|?*\x00-\x1f]+$/ }),
+    base64: str({
+      max: 4 * Math.ceil(PASTE_MAX_FILE_BYTES / 3),
+      pattern: /^[A-Za-z0-9+/]*={0,2}$/
+    })
+  }),
   'tasks:pasteFromClipboard': folderReq,
   'tasks:reviewFile': pathReq,
   'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: MAX_ARTIFACT_HTML_BYTES })) }),

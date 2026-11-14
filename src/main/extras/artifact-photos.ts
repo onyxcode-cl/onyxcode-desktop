@@ -3,7 +3,8 @@ import { realpath, stat } from 'node:fs/promises'
 import { dirname, relative, isAbsolute, sep } from 'node:path'
 import type { ArtifactContext } from '@shared/ipc-extras'
 import { OutputPathError } from '../documents/output-path'
-import { resolveChatFile } from '../files/chat-files'
+import { readTaskFile } from '../documents/input-path'
+import { readChatFile, resolveChatFile } from '../files/chat-files'
 
 export interface ArtifactPhotoResolvers {
   standalone(html: string): Promise<string>
@@ -58,6 +59,18 @@ export async function prepareArtifactPhotos(
     root = requested
   }
   // Un archivo exacto autorizado al guardar NO autoriza su carpeta vecina ni sus fotos.
-  if (!root) return resolvers.standalone(html)
-  return resolvers.file(html, { root, agentRoots: [root], baseDir: relative(root, dirname(info.path)).split(sep).join('/') })
+  if (!root) {
+    const current = readChatFile(allowedRoots, info.path)
+    if (!current.ok || current.kind !== 'html' || current.truncated)
+      throw new OutputPathError('name', 'No se pudo leer el HTML autorizado completo.')
+    return resolvers.standalone(current.text)
+  }
+  // Las tarjetas pueden conservar el primer borrador mientras el agente corrige rutas de fotos.
+  // Toda acción de archivo lee la versión actual, igual que «Ver»; el HTML del renderer no es la fuente.
+  const current = await readTaskFile(root, info.path, [root], {}, 'html')
+  return resolvers.file(current.bytes.toString('utf8'), {
+    root,
+    agentRoots: [root],
+    baseDir: relative(root, dirname(info.path)).split(sep).join('/')
+  })
 }

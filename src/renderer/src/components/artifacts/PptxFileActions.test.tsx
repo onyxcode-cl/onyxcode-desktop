@@ -59,3 +59,26 @@ it('no ofrece ventanas ni importa bytes desde la superficie remota', () => {
   view = mount(createElement(PptxFileActions, { source: { kind: 'chat', path: '/a.pptx' } }))
   expect(view.host.querySelector('button')).toBeNull()
 })
+
+it.each(['chat', 'tasks'] as const)('%s: cancelar pantalla libera Presentar sin error y permite reintentar', async (kind) => {
+  let cancel!: () => void
+  const present = kind === 'tasks' ? mock.task : mock.invoke
+  present.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        cancel = resolve
+      })
+  )
+  view = mount(createElement(PptxFileActions, { source: { kind, path: '/work/deck.pptx' } }))
+  const button = view.host.querySelector<HTMLButtonElement>('[aria-label="Presentar"]')!
+  click(button)
+  expect(button.disabled).toBe(true)
+  expect(button.querySelector('.animate-spin')).not.toBeNull()
+  await act(async () => cancel())
+  expect(button.disabled).toBe(false)
+  expect(button.querySelector('.animate-spin')).toBeNull()
+  expect(view.host.querySelector('[role="alert"]')).toBeNull()
+  click(button)
+  expect(present).toHaveBeenCalledTimes(2)
+  await act(async () => cancel())
+})

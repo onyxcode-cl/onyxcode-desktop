@@ -12,7 +12,7 @@ beforeEach(async () => {
   await mkdir(root)
   root = await realpath(root)
   path = join(root, 'deck.html')
-  await writeFile(path, '<section class="slide"></section>')
+  await writeFile(path, 'html')
 })
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true })
@@ -33,9 +33,16 @@ describe('contexto autorizado para fotos HTML', () => {
   it('ancla las rutas relativas al directorio del HTML sin cambiar el ámbito del registro', async () => {
     await mkdir(join(root, 'decks'))
     const nested = join(root, 'decks', 'cafe.html')
-    await writeFile(nested, '<section class="slide"></section>')
+    await writeFile(nested, 'html')
     await prepareArtifactPhotos('html', { kind: 'file', path: nested, root }, [root], resolvers)
     expect(resolvers.file).toHaveBeenCalledWith('html', { root, agentRoots: [root], baseDir: 'decks' })
+  })
+  it('ignora el borrador cacheado en todas las acciones y lee las rutas corregidas como Ver', async () => {
+    const initial = '<section class="slide"><img src="img/free-placeholder.jpg"></section>'
+    const corrected = '<section class="slide"><img src="img/free-preparada.jpg"></section>'
+    await writeFile(path, corrected)
+    await prepareArtifactPhotos(initial, { kind: 'file', path, root }, [root], resolvers)
+    expect(resolvers.file).toHaveBeenCalledWith(corrected, { root, agentRoots: [root], baseDir: '' })
   })
   it('no transforma permiso sobre un archivo exacto en permiso de carpeta', async () => {
     await prepareArtifactPhotos('html', { kind: 'file', path }, [path], resolvers)

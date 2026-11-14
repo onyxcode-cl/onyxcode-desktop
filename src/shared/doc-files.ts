@@ -18,7 +18,7 @@ const WRITE_TOOLS = new Set(['write', 'edit', 'multiedit'])
 const PATCH_TOOLS = new Set(['patch', 'apply_patch'])
 
 /** Los nombres MCP pueden llevar el prefijo del servidor. */
-export const isDocumentTool = (name: string): boolean => /(?:^|_)documentos_(?:crear|renderizar|exportar_pdf)$/.test(name)
+export const isDocumentTool = (name: string): boolean => /(?:^|_)documentos_(?:crear|renderizar|exportar_pdf|preparar_html)$/.test(name)
 
 const isAbs = (p: string): boolean => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p)
 /** Un `.html` solo cuenta como documento si su nombre dice que lo es (el `index.html` de una web no merece tarjeta). */
@@ -105,7 +105,7 @@ export function detectDocFiles({ parts, root }: DocScanInput): string[] {
       // MCP también puede terminar con un mensaje de error: exigimos el marcador de éxito de la herramienta.
       // Crear devuelve la ruta efectiva (incluye subcarpeta y nombre sin colisiones), no se reconstruye desde `nombre`.
       const output = str(p.state.output)
-      if (tool.endsWith('documentos_crear') || tool.endsWith('documentos_exportar_pdf')) {
+      if (tool.endsWith('documentos_crear') || tool.endsWith('documentos_exportar_pdf') || tool.endsWith('documentos_preparar_html')) {
         const created = /(?:^|\n)Documento creado:\s*(.+?)\s*\(\d+(?:[.,]\d+)?\s*KB\)/.exec(output)
         if (created) add(created[1])
       } else if (/^Vista previa:\s*\d+\s/.test(output)) {

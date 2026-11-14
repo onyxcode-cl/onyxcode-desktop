@@ -4475,3 +4475,11 @@ Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word;
 - El núcleo español de la PWA incluye las seis claves nuevas de Guardar HTML y vista/presentación PPTX; se regenera con el grafo existente, sin cambiar la guardia de cobertura.
 - Se actualizan las pruebas desfasadas de inicialización del temporal IPC, permisos de subagentes, descripción de acceso a apps y advertencia documental. Se conservan las denegaciones y se añade una regresión que exige bloquear al ayudante si pierde la denegación de fotos exclusivas de Chat.
 - Verificación dirigida conjunta: 16 archivos y 190 pruebas pasan. La equivalencia MCP no puede verificarse en este entorno por `listen EPERM` en loopback; solo cambian tres descripciones del fixture, cotejadas con el catálogo actual. Detalle, revisión de subagentes y comprobaciones manuales pendientes en el informe externo solicitado `V26-SUITE-FALLOS-INFORME.md`. Sin app, E2E, commit ni publicación.
+
+## F8-B296 — Correcciones de la prueba Mac de presentaciones (V26, quinta ronda)
+
+- Las tarjetas HTML se actualizan al cambiar el archivo y todas sus acciones releen la versión autorizada en disco. Corrige la foto «no preparada» causada por rutas de un borrador anterior. La herramienta `documentos_preparar_html` crea una copia autónoma con fotos deduplicadas, créditos y presupuesto de 24 MiB; la guía exige revisar y entregar esa copia.
+- Tareas distingue archivos de carpetas al arrastrar. Los archivos se adjuntan en la carpeta autorizada (también desde el inicio), con Ver/Presentar para PPTX, límites y escritura segura; las carpetas mantienen el flujo existente. Canal estricto y remoto X.
+- La primera búsqueda real fallaba por cinco consultas contra un máximo de cuatro, antes de la red. Se admiten hasta ocho sugerencias, validando todas, y se ejecutan las primeras cuatro con aviso explícito para conservar el presupuesto. No se añade un reintento de red.
+- El IPC de documentos acepta la identidad visual ya admitida por los armadores, sin permitir claves desconocidas. Las regresiones verifican que cancelar la elección de pantalla libera Presentar en HTML y PPTX y permite reintentar.
+- Pruebas dirigidas, revisión de subagentes, evidencia y límites en «Quinta ronda» del informe externo V26. Sin ejecución de la app ni validación física de monitores/Windows en esta tanda.

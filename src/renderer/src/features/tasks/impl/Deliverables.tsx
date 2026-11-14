@@ -144,7 +144,11 @@ function CsvTable({ text, sep }: { text: string; sep: string }): React.JSX.Eleme
   )
 }
 
-function usePreview(path: string | null, maxBytes?: number): { data: TasksFilePreview | null; error: string | null; loading: boolean } {
+function usePreview(
+  path: string | null,
+  maxBytes?: number,
+  version?: number
+): { data: TasksFilePreview | null; error: string | null; loading: boolean } {
   const [state, setState] = useState<{ data: TasksFilePreview | null; error: string | null; loading: boolean }>({
     data: null,
     error: null,
@@ -160,7 +164,7 @@ function usePreview(path: string | null, maxBytes?: number): { data: TasksFilePr
     return () => {
       alive = false
     }
-  }, [path, maxBytes])
+  }, [path, maxBytes, version])
   return state
 }
 
@@ -278,7 +282,7 @@ const ACTION_BTN =
 
 /** «Abrir como artifact» para un HTML entregable: carga su contenido y usa el `ArtifactButton` de siempre. */
 function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Element | null {
-  const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES)
+  const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES, file.mtime)
   const folder = useTasks((s) => s.folder)
   if (!data || data.kind !== 'text' || data.truncated || !data.content?.trim()) return null
   const props = {

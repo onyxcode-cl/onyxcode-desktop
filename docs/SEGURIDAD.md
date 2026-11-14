@@ -3144,3 +3144,11 @@ Las rutas relativas de fotos se anclan al directorio real del HTML autorizado. E
 El PDF se rasteriza en la sesión aislada del visor, con plazo, presupuesto de imágenes y destrucción de ventana. El HTML solo contiene las imágenes resultantes y se presenta en la sesión aislada de artifacts. Un número incompleto de láminas o un recurso no representable da error; no se sustituye por el visor simplificado. Esto no certifica equivalencia visual con PowerPoint: la copia es estática y requiere revisión. No cambian sesión, esquema ni CSP del visor o de la app.
 
 La preferencia de pantalla guarda únicamente un ID local de Electron. No concede permisos ni expone controles al celular; la ventana de presentación no tiene preload ni acceso a IPC. Los eventos de desconexión y los temporizadores se retiran al cerrar.
+
+### Entrega HTML y adjuntos arrastrados (F8-B296)
+
+Las acciones de un HTML de archivo releen su contenido actual en main tras revalidar el contexto. La lectura confinada rechaza enlaces, cambios de identidad y más de 24 MiB; un archivo autorizado individualmente no autoriza fotos vecinas. Así, un borrador conservado por una tarjeta no decide qué fotos resolver.
+
+`documentos_preparar_html` lee el borrador de la carpeta vinculada, resuelve fotos con el registro privado y SHA256, y publica una copia nueva `-autonomo.html` mediante la escritura segura existente. Mantiene presupuesto de 24 MiB y deduplicación, no sobrescribe el original ni añade red/CSP. En Código hereda el permiso efectivo de escritura (incluido el rechazo del agente Plan); Chat conserva únicamente sus tres herramientas de fotos. La guía exige revisar y entregar la copia devuelta: no se finalizan automáticamente archivos de modelos que omitan este paso.
+
+`tasks:attachDroppedFile` es un canal con esquema estricto, exclusivo de la ventana principal y clase remota X. Recibe nombre y bytes base64 acotados a 25 MiB, nunca una ruta de origen para leer. Main revalida el destino con `assertInsideApproved`, rechaza nombres y extensiones peligrosos y usa escritura segura sin sobrescribir. El arrastre conserva los límites de cantidad y peso de adjuntos; las carpetas mantienen su autorización previa. No se envía el archivo al modelo hasta que la persona envía el mensaje.

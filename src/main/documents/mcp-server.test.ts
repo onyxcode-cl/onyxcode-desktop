@@ -114,6 +114,7 @@ describe('transporte y autenticación', () => {
     const list = await post(port, token, { jsonrpc: '2.0', id: 2, method: 'tools/list' })
     expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'crear',
+      'preparar_html',
       'imagenes_buscar',
       'imagenes_ver',
       'imagenes_usar'
@@ -392,6 +393,7 @@ describe('renderizar', () => {
     const list = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
     expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'crear',
+      'preparar_html',
       'imagenes_buscar',
       'imagenes_ver',
       'imagenes_usar'
@@ -405,6 +407,7 @@ describe('renderizar', () => {
     const list = await post(port, token, { jsonrpc: '2.0', id: 1, method: 'tools/list' })
     expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'crear',
+      'preparar_html',
       'renderizar',
       'imagenes_buscar',
       'imagenes_ver',

@@ -14,6 +14,17 @@ const tool = (name: string, input: Record<string, unknown>, output = '', status 
 const text = (t: string): Part => ({ id: 't', type: 'text', text: t }) as unknown as Part
 
 describe('detectDocFiles', () => {
+  it('detecta la copia HTML autónoma solo tras preparación confirmada', () => {
+    expect(
+      detectDocFiles({
+        parts: [tool('documentos_preparar_html', { ruta: 'deck.html' }, `Documento creado: ${ROOT}/deck-autonomo.html (20.1 KB).`)],
+        root: ROOT
+      })
+    ).toEqual([`${ROOT}/deck-autonomo.html`])
+    expect(
+      detectDocFiles({ parts: [tool('documentos_preparar_html', { ruta: 'deck.html' }, 'La foto no está preparada')], root: ROOT })
+    ).toEqual([])
+  })
   it('detecta el PDF exportado solo cuando la herramienta confirma el archivo', () => {
     expect(
       detectDocFiles({

@@ -170,6 +170,9 @@ export function normalizeImageEvaluation(raw: unknown): FreeImageEvaluation {
 }
 const API = 'https://commons.wikimedia.org/w/api.php'
 export const FREE_IMAGE_MAX_BYTES = 6 * 1024 * 1024
+// Tolerate extra suggestions from the model without increasing network work per round.
+export const FREE_IMAGE_MAX_INPUT_QUERIES = 8
+export const FREE_IMAGE_MAX_SEARCH_QUERIES = 4
 const CACHE_BYTES = 32 * 1024 * 1024
 const TTL = 60 * 60 * 1000
 const METADATA_TTL = 2 * 60 * 1000
@@ -283,8 +286,11 @@ export function parseCommonsImages(raw: unknown): CommonsImage[] {
 }
 function validateSearch(input: NormalizedSearch): void {
   const text = (s: unknown, max = 400): boolean => typeof s === 'string' && s.trim().length > 0 && s.length <= max
-  if (!Array.isArray(input.queries) || input.queries.length < 2 || input.queries.length > 4)
-    throw new FreeImageInputError('queries', `usa de dos a cuatro consultas distintas. ${SEARCH_EXAMPLE}`)
+  if (!Array.isArray(input.queries) || input.queries.length < 2 || input.queries.length > FREE_IMAGE_MAX_INPUT_QUERIES)
+    throw new FreeImageInputError(
+      'queries',
+      `usa de dos a ocho consultas distintas; se ejecutan como máximo las primeras cuatro. ${SEARCH_EXAMPLE}`
+    )
   for (const [index, query] of input.queries.entries())
     if (!text(query, 200)) throw new FreeImageInputError(`queries[${index}]`, 'usa texto no vacío de hasta 200 caracteres.')
   if (new Set(input.queries.map((q) => q.trim().toLowerCase())).size !== input.queries.length)
@@ -550,6 +556,9 @@ export class FreeImagesService {
       normalized.requirements.orientation = orientation
     }
     validateSearch(normalized)
+    // Validate even unused suggestions before trimming; malformed input must never be hidden.
+    const omittedQueries = normalized.queries.length - FREE_IMAGE_MAX_SEARCH_QUERIES
+    normalized.queries = normalized.queries.slice(0, FREE_IMAGE_MAX_SEARCH_QUERIES)
     input = normalized
     const requirements = normalized.requirements
     const fingerprint = createHash('sha256')
@@ -700,6 +709,8 @@ export class FreeImagesService {
       delete result.sheet
       result.notice = 'No se pudo consultar o preparar el banco de fotos. Continúa sin fotos y explícalo; no inventes una selección visual.'
     }
+    if (omittedQueries > 0)
+      result.notice = `Se usaron las primeras cuatro consultas; se omitieron ${omittedQueries} para mantener el límite de búsqueda. ${result.notice ?? ''}`
     return result
   }
   private get(id: string): StoredCandidate {
