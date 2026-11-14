@@ -269,7 +269,7 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
     const name = first.toLowerCase().replace(/\.exe$/, '')
     // Start-Process usa el runtime instalado fuera del proyecto, pero su cwd y sus scripts/argumentos
     // siguen sujetos a la política de carpeta. Un ejecutable arbitrario exterior no recibe esta excepción.
-    const runtimeIndex = name === 'start-process' ? part.words.findIndex((w, i) => i > 0 && /^-filepath$/i.test(part.words[i - 1])) : -1
+    const runtimeIndex = name === 'start-process' ? part.words.findIndex((_w, i) => i > 0 && /^-filepath$/i.test(part.words[i - 1])) : -1
     const runtime = part.words[runtimeIndex] ?? ''
     const runtimeName = runtime
       .replace(/\\/g, '/')
@@ -278,7 +278,7 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
       .toLowerCase()
       .replace(/\.exe$/, '')
     const workingIndex =
-      name === 'start-process' ? part.words.findIndex((w, i) => i > 0 && /^-workingdirectory$/i.test(part.words[i - 1])) : -1
+      name === 'start-process' ? part.words.findIndex((_w, i) => i > 0 && /^-workingdirectory$/i.test(part.words[i - 1])) : -1
     if (name === 'start-process' && args.some((a, i) => /^-work/i.test(a) && (!args[i + 1] || /[$%`*?\[\]]/.test(args[i + 1]))))
       return false
     const localRuntime =
