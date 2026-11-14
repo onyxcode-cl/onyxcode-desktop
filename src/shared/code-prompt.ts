@@ -27,7 +27,7 @@ export function buildCodeSystemPrompt(i: CodePromptInput): string {
     memoryProject: on ? i.learnedProject : null,
     projectName: i.projectName
   })
-  const parts: string[] = []
+  const parts: string[] = ['Si el trabajo tiene 3 o más pasos, publica primero el plan con `todowrite` antes de ejecutar el trabajo.']
   if (ctx) parts.push(ctx)
   parts.push(
     on

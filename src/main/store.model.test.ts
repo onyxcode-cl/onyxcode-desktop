@@ -61,6 +61,26 @@ describe('settings: defaultModel (modelo de Chat)', () => {
   })
 })
 
+describe('settings: orden de tarjetas', () => {
+  it('guarda cada modo al recibirlo y conserva el otro aunque el renderer no lo haya leído', async () => {
+    const dir = userData()
+    const store = await openStore(dir)
+    store.set({ summaryCardOrder: { code: ['context', 'project', 'plan', 'background', 'changes'] } })
+    store.set({ summaryCardOrder: { tasks: ['changes', 'plan'] } })
+    store.set({ theme: 'dark' })
+    expect((await openStore(dir)).get().summaryCardOrder).toEqual({
+      code: ['context', 'project', 'plan', 'background', 'changes'],
+      tasks: ['changes', 'plan']
+    })
+  })
+
+  it('limpia preferencias corruptas sin eliminar el orden válido', async () => {
+    const dir = userData()
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ summaryCardOrder: { code: ['plan', 7, 'gone', 'plan'], tasks: false } }))
+    expect((await openStore(dir)).get().summaryCardOrder).toEqual({ code: ['plan'] })
+  })
+})
+
 describe('settings: codeTrustedMcp', () => {
   it('sin el campo en disco -> vacío (ningún conector de confianza: Code pregunta)', async () => {
     const dir = userData()

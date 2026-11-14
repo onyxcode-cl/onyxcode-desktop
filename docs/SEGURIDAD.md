@@ -2738,16 +2738,19 @@ Code (sidecar principal, compartido con el Chat) recibe `documentos_crear` y `do
 
 ## 3 octogies decies. Cierre de R1 y R4 en los modos de Code (Lazunox 1.8.12, 2026-11-08)
 
-**Actualización V27 (2026-11-14, decisión del dueño).** Solo Código «Automático» vuelve a aprobar comandos de trabajo del proyecto
-(`npm`, `pip`, compilación, pruebas, servidores, `git add/commit`, edición por terminal), incluidos encadenados y tuberías de PowerShell.
-El motor conserva `bash * ask`; `auto-command.ts` revisa la orden completa y la app responde «una vez», sin guardar un «siempre».
-Preguntan borrados, Git destructivo, rutas exteriores o sensibles (`.env*`, `.git`, claves, credenciales y configuración ejecutable),
-privilegios/sistema y descarga seguida de ejecución. Las expansiones, envoltorios o sintaxis que no se pueden interpretar conservan tarjeta.
-El proyecto se toma de la sesión y, si está disponible, `workdir` de la herramienta asociada, verificando su comando; el permiso
-`external_directory` y `lazunoxProtegido` mantienen sus puertas. No cambian «Solo explorar», los otros modos, Comparar, sugerencias ni Overdrive.
-Esto sustituye la política de solo lectura de R1 **para Código Automático**: los scripts, instaladores y hooks pueden ejecutar código
-arbitrario. El filtro es heurístico, no aislamiento ni garantía sobre el comportamiento interno de esos programas; no resuelve alias del
-shell, ejecutables sustituidos en PATH, enlaces ni los «Permitir siempre» previos. El guardián de borrado existente no se modifica.
+**Actualización V27 ronda 2 (2026-11-14, decisión del dueño).** Código «Automático» y el modo automático de Overdrive aprueban por defecto los comandos de trabajo de su
+carpeta. El motor conserva `bash * ask`; la app comprueba la orden completa antes de responder «una vez», sin guardar un «siempre».
+Las tuberías de PowerShell, `ForEach-Object`, `xargs ls` y `find -exec ls` dejan de ser motivo de pregunta por su sintaxis. La misma
+comprobación se aplica a los comandos de `bgshell_start`. Preguntan los patrones de borrado, rutas exteriores o sensibles (`.env*`,
+`.git`, claves y credenciales), cambios del sistema y descarga seguida de ejecución. El proyecto se toma de la sesión y el directorio
+de trabajo de la herramienta; `external_directory` y `lazunoxProtegido` conservan sus puertas. `bgshell_start` necesita un `cwd`
+explícito para aprobarse solo: su directorio predeterminado real puede ser la carpeta de Chat. Una entrada ausente, incoherente o sin
+ámbito comprobable conserva la tarjeta.
+
+Esto sustituye la política de solo lectura de R1 **para Código Automático** y la lista de shell de solo lectura de Overdrive Auto: scripts, instaladores y hooks pueden ejecutar código
+arbitrario. El filtro de patrones es heurístico: no aísla procesos ni garantiza el comportamiento interno de programas, alias,
+ejecutables sustituidos o enlaces. «Solo explorar», Comparar y los demás modos conservan sus políticas. La prueba del camino de
+permisos debe entregar los eventos reales de herramienta y permiso al store y comprobar la respuesta y la ausencia o presencia de tarjeta.
 
 - **R1 (se cerró el camino `npm`; el riesgo NO está cerrado del todo):** «Automático» y «Comparar» ya no aprueban solos `npm test` ni `npm run`. Ejecutan código del proyecto (scripts, archivos de prueba, configuración) y «Automático» deja editarlo sin preguntar; preguntar solo por `package.json` no lo cierra. `PROJECT_COMMANDS` y `LEGACY_AUTO_ALLOW` se eliminaron: `isAutoApprovableCommand` solo aprueba la lista de solo lectura (solo con una LISTA BLANCA de caracteres ASCII (letras, números, espacio y `. _ / : = , @ % ^ ~ + -`; 1.8.12, RI4): nada de comillas (tampoco las tipográficas U+2018-201E que PowerShell recompone en `--ou‘’tput`), llaves, comodines del shell (`*`, `?`, `[`, `]`: `git log *` se expandiría a archivos con nombre de opción que la IA pudo crear), `!`, `#`, `\`, tabuladores, retornos de carro ni caracteres de control o de ancho completo; `^` solo detrás de letra o número (`HEAD^` sí, `^HEAD` no: comodín de zsh con `extendedglob` y escape de cmd); sin redirecciones ni, en `git`, `--out…` (git 2.54 rechaza `--ou=`/`--outp=`, pero bloquearlas es inocuo), `--ext…`, `--text…`, `-c`, `-C`, `-o`, `--git-dir`, `--work-tree`, `--exec-path`, `--config-env`, `--namespace`) y Comparar usa el mismo bloque, con todo en «preguntar». Un ARCHIVO llamado `.git` (no carpeta) y TODO `.opencode/` (plugins y herramientas que el motor carga y ejecuta, agentes, comandos) también preguntan al editarlos en «Editar sin preguntar» y «Automático»; Ajustes › Ayudantes y las habilidades aprendidas escriben en `.opencode/agents` y `.opencode/skills` desde el proceso principal con `fs`, no por la IA, y no se ven afectados. De los caracteres que se dejan pasar en la aprobación automática, `~` y `@` se aceptan (`HEAD~1`); `^` solo detrás de letra o número (`HEAD^` sí, `^HEAD` no) y `%` solo dentro de `--format=`, `--pretty=` o `--date=` (`--format=%h`); costo: `ls *.ts` pide tarjeta. Decisión D1 = (a). Quien quiera comodidad usa «Permitir siempre» en su carpeta.
 - **`opencode.json` / `opencode.jsonc` preguntan al editar** en «Editar sin preguntar» y «Automático» (`EXEC_CONFIG_ASK`, como `GIT_CONFIG_ASK`): el motor los carga y pueden declarar un conector MCP con `command`.
@@ -3169,3 +3172,17 @@ Las acciones de un HTML de archivo releen su contenido actual en main tras reval
 ### Tarjeta de trabajos de Tareas (F8-B304, V27)
 
 `tasks:jobs:list`, `tasks:jobs:stop` y `tasks:jobs:resume` son canales con contrato tipado, esquema estricto, guardia existente y clase remota **X**, exclusivos de la ventana principal. Main revalida la carpeta con `assertInsideApproved` y selecciona únicamente el servidor ya vivo de esa carpeta y del modo aislado o de Control total pedido. La conexión, sus credenciales y el directorio SDK (incluido WSL) se toman del servidor registrado en main; el renderer no aporta URL ni ruta SDK. Sin ese servidor se rechaza la petición: no se arranca otro ni se consulta el motor principal. Los identificadores de sesión y trabajo siguen limitados y el motor aplica su ámbito de sesión. Consultar, parar o reanudar usa las rutas existentes de trabajos; no cambia los permisos, el aislamiento ni la forma de lanzar comandos.
+
+### Fuentes propias de segundo plano y orden de tarjetas (F8-B305, V27 ronda 2)
+
+Los canales existentes de trabajos reúnen el motor con `bgshell` y los comandos de `equipo_ejecutar`. Las rutas del registro de
+`bgshell` provienen del servidor registrado en main; el renderer solo indica sesión e identificador de trabajo. Su estado tiene
+caducidad, y la solicitud de parada se valida contra la sesión dueña antes de llamar al manager. Para `equipo_*`, el plugin
+`lazunox-session` sobrescribe la sesión con la de la llamada real en sus dos variantes; esto identifica al dueño del proceso y no
+concede permisos para ejecutarlo. La consulta comprueba la conversación raíz con ese mismo motor y la parada vuelve a comprobar
+el ámbito. No se aceptan PIDs ni rutas de archivos de control del renderer. Las aprobaciones y políticas de comandos del equipo
+siguen vigentes.
+
+El orden de tarjetas se escribe al mover mediante `settings:set`, con una lista cerrada de identificadores y modos en su esquema.
+Main mezcla cada modo con el valor actual y escribe el archivo atómicamente antes de responder. El campo `summaryCardOrder` es
+clase remota X; no se crea un canal ni un permiso nuevo para el celular.

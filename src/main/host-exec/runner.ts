@@ -12,6 +12,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, statS
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
+import type { EngineJob } from '@shared/engine-jobs'
 import { minimalEnv } from '../process/child-env'
 import { killTree } from '../opencode/pids'
 
@@ -22,6 +23,8 @@ export const BACKGROUND_GRACE_MS = 3_000
 export const MAX_BACKGROUND_PER_OWNER = 3
 
 export interface RunOptions {
+  /** Inyectada por el plugin de la app, nunca elegida por el modelo. */
+  sessionID?: string
   cwd?: string
   platform?: NodeJS.Platform
   timeoutMs?: number
@@ -147,12 +150,29 @@ export function runHostCommand(command: string, opts: RunOptions = {}): Promise<
 // ───────────────────────────── Segundo plano ─────────────────────────────
 
 interface Tracked {
+  job: EngineJob
+  sessionID?: string
   pid: number
   owner: string
   command: string
   logPath: string
 }
 const tracked = new Map<number, Tracked>()
+const finished: Tracked[] = []
+function rememberFinished(t: Tracked): void {
+  if (finished.includes(t)) return
+  finished.push(t)
+  if (finished.length > 50) finished.shift()
+}
+export function hostBackgroundJobs(owner: string): Array<{ job: EngineJob; sessionID: string }> {
+  return [...tracked.values(), ...finished].flatMap((t) =>
+    t.owner === owner && t.sessionID ? [{ job: { ...t.job }, sessionID: t.sessionID }] : []
+  )
+}
+export function stopHostBackgroundJob(id: string, owner: string, sessionID: string): boolean {
+  const t = [...tracked.values()].find((t) => t.job.id === id && t.owner === owner && t.sessionID === sessionID)
+  return t ? stopBackground(t.pid, owner) : false
+}
 
 function logDir(): string {
   const dir = join(tmpdir(), 'lazunox-host-exec')
@@ -227,16 +247,42 @@ export function startBackground(command: string, owner: string, opts: RunOptions
     }
     closeSync(fd)
     let exited: { code: number | null; signal: string | null } | null = null
+    let graceFinished = false
     let errText = ''
     child.on('error', (e) => {
       errText = String(e.message).slice(0, 300)
     })
     child.on('exit', (code, signal) => {
       exited = { code, signal }
+      const t = tracked.get(child.pid ?? 0)
+      if (t) {
+        t.job.state = 'terminado'
+        t.job.code = code
+        t.job.endedAt = Date.now()
+        tracked.delete(t.pid)
+        rememberFinished(t)
+        if (graceFinished) rmSync(logPath, { force: true })
+      }
     })
     child.unref()
     const pid = child.pid ?? 0
-    if (pid) tracked.set(pid, { pid, owner, command: command.slice(0, 200), logPath })
+    if (pid)
+      tracked.set(pid, {
+        pid,
+        owner,
+        command: command.slice(0, 200),
+        logPath,
+        sessionID: opts.sessionID,
+        job: {
+          id: `host_${randomBytes(12).toString('hex')}`,
+          kind: 'shell',
+          title: command.slice(0, 200),
+          state: 'en_curso',
+          code: null,
+          startedAt: started,
+          endedAt: null
+        }
+      })
     setTimeout(() => {
       let text = ''
       let truncated = false
@@ -248,6 +294,7 @@ export function startBackground(command: string, owner: string, opts: RunOptions
       } catch {
         // sin registro todavía
       }
+      graceFinished = true
       const result = exited as { code: number | null; signal: string | null } | null
       const running = !result && !!pid && isAlive(pid)
       if (!running) {
@@ -273,8 +320,11 @@ export function startBackground(command: string, owner: string, opts: RunOptions
 export function stopBackground(pid: number, owner: string): boolean {
   const t = tracked.get(pid)
   if (!t || t.owner !== owner) return false
-  killTree(pid)
+  t.job.state = 'terminado_por_ti'
+  t.job.endedAt = Date.now()
+  rememberFinished(t)
   tracked.delete(pid)
+  killTree(pid)
   rmSync(t.logPath, { force: true })
   return true
 }
@@ -301,5 +351,6 @@ export function stopEveryBackground(): number {
     n++
   }
   tracked.clear()
+  finished.length = 0
   return n
 }

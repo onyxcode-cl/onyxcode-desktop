@@ -1,6 +1,8 @@
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { GripVertical } from 'lucide-react'
 import { useT } from '../lib/i18n'
+import { call } from '../lib/api'
+import { useSettings } from '../stores/settings'
 
 export interface SummaryCard {
   id: string
@@ -34,11 +36,15 @@ function CardList({ mode, cards }: Props): React.JSX.Element {
   const t = useT()
   const helpId = useId()
   const [saved, setSaved] = useState(() => readOrder(mode))
+  const persisted = useSettings((s) => s.settings.summaryCardOrder?.[mode])
+  const moved = useRef(false)
   const [announcement, setAnnouncement] = useState('')
   const dragging = useRef<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const ids = cards.map((card) => card.id)
-  const order = [...new Set([...saved.filter((id) => ids.includes(id)), ...ids])]
+  // Una hidratación pendiente no debe deshacer un movimiento que ya hizo la persona.
+  const preferred = moved.current ? saved : (persisted ?? saved)
+  const order = [...new Set([...preferred.filter((id) => ids.includes(id)), ...ids])]
   const ordered = order.map((id) => cards.find((card) => card.id === id)!)
 
   const move = (id: string, target: number): void => {
@@ -47,7 +53,11 @@ function CardList({ mode, cards }: Props): React.JSX.Element {
     const next = [...order]
     next.splice(from, 1)
     next.splice(target, 0, id)
+    moved.current = true
     setSaved(next)
+    // main escribe settings.json atómicamente antes de responder; Chromium puede perder su caché
+    // de localStorage al matar el proceso, incluso aunque setItem ya haya vuelto.
+    void call('settings:set', { summaryCardOrder: { [mode]: next } }).catch(() => undefined)
     try {
       localStorage.setItem(storageKey(mode), JSON.stringify(next))
     } catch {

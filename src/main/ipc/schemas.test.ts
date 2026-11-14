@@ -10,6 +10,14 @@ describe('contrato IPC', () => {
 })
 
 describe('settings:set', () => {
+  it('acepta solo modos e ids conocidos en el orden de tarjetas', () => {
+    const v = IPC_SCHEMAS['settings:set']
+    const summaryCardOrder = { code: ['context', 'project'], tasks: ['changes', 'plan'] }
+    expect(v({ summaryCardOrder })).toEqual({ summaryCardOrder })
+    for (const bad of [{ chat: [] }, { code: ['unknown'] }, { code: [7] }, { tasks: Array(6).fill('plan') }]) {
+      expect(() => v({ summaryCardOrder: bad })).toThrow()
+    }
+  })
   it('acepta checkUpdates booleano y rechaza otros tipos', () => {
     const v = IPC_SCHEMAS['settings:set']
     expect(v({ checkUpdates: false })).toEqual({ checkUpdates: false })

@@ -85,7 +85,13 @@ class SettingsStore {
   }
 
   set(patch: Partial<Settings>): Settings {
-    const next = normalize({ ...this.get(), ...patch })
+    const current = this.get()
+    const next = normalize({
+      ...current,
+      ...patch,
+      // Cada movimiento manda solo su modo: conserva el otro incluso si el renderer aún no se hidrató.
+      summaryCardOrder: { ...current.summaryCardOrder, ...patch.summaryCardOrder }
+    })
     this.cache = next
     this.write(next)
     for (const l of this.listeners) l(next)
@@ -121,6 +127,13 @@ function normalize(s: Settings): Settings {
     : []
   const tasksGlobalInstructions = typeof s.tasksGlobalInstructions === 'string' ? s.tasksGlobalInstructions.slice(0, 20_000) : ''
   const userInstructions = typeof s.userInstructions === 'string' ? s.userInstructions.slice(0, 4000) : ''
+  const summaryCardOrder: NonNullable<Settings['summaryCardOrder']> = {}
+  for (const mode of ['code', 'tasks'] as const) {
+    const value = s.summaryCardOrder?.[mode]
+    if (Array.isArray(value)) {
+      summaryCardOrder[mode] = [...new Set(value.filter((id) => ['project', 'plan', 'background', 'context', 'changes'].includes(id)))]
+    }
+  }
   const onboarded = s.onboarded === true
   const routinesTermsAcknowledged = s.routinesTermsAcknowledged === true
   // Solo rutas absolutas sin bytes nulos; el resto se descarta (vuelve la detección automática).
@@ -132,6 +145,7 @@ function normalize(s: Settings): Settings {
     defaultModel,
     theme,
     sidebarGlass,
+    summaryCardOrder,
     recentFolders,
     tasksGlobalInstructions,
     userInstructions,

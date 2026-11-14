@@ -14,6 +14,9 @@ const winDir = join(__dirname, '../../../resources/opencode/agents-win')
 const read = (n: string): string => readFileSync(join(n === 'computer.win' ? winDir : dir, `${n}.md`), 'utf8')
 
 describe('prompts de agente', () => {
+  it('Overdrive publica primero todowrite en trabajos de 3 o más pasos', () => {
+    expect(read('tasks')).toContain('si el trabajo tiene 3 o más pasos, publica el plan con `todowrite` antes de ejecutar el trabajo.')
+  })
   it.each(['chat', 'tasks', 'computer'])('%s.md tiene cabecera con descripción y modo primary', (n) => {
     const s = read(n)
     expect(s.startsWith('---\n')).toBe(true)

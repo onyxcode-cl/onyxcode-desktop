@@ -3,6 +3,7 @@ import { parseEngineJobs, parseResumeResult, type EngineJobResumeResult, type En
 import type { OpencodeConnection } from '@shared/types'
 import type { OpencodeServer } from '../opencode/server'
 import { handle, IpcError } from './handle'
+import { isAppBackgroundJob, mergeAppBackgroundJobs, stopAppBackgroundJob } from './app-background-jobs'
 
 /**
  * Trabajos en segundo plano del motor propio (comandos y Code Mode): el renderer pide por IPC y main habla con el sidecar
@@ -74,7 +75,14 @@ export function registerEngineJobsHandlers(ipcMain: IpcMain, server: OpencodeSer
     if (!c) throw new IpcError('NOT_READY', 'El motor aún no está listo')
     return c
   }
-  handle(ipcMain, 'jobs:list', (req) => fetchEngineJobs(conn(), req))
-  handle(ipcMain, 'jobs:stop', (req) => stopEngineJob(conn(), req))
+  handle(ipcMain, 'jobs:list', async (req) => {
+    const c = conn()
+    return mergeAppBackgroundJobs(c, req.sessionID, { eventsFile: server.getShellBgEventsFile() }, await fetchEngineJobs(c, req))
+  })
+  handle(ipcMain, 'jobs:stop', async (req) =>
+    isAppBackgroundJob(req.jobId)
+      ? { ok: await stopAppBackgroundJob(conn(), req.sessionID, req.jobId, { eventsFile: server.getShellBgEventsFile() }) }
+      : stopEngineJob(conn(), req)
+  )
   handle(ipcMain, 'jobs:resume', (req) => resumeEngineJob(conn(), req))
 }

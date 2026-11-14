@@ -29,6 +29,7 @@ export interface RawPerm {
   permission: string
   patterns?: string[]
   metadata?: Record<string, unknown>
+  tool?: { messageID: string; callID: string }
 }
 
 /** Servidor vivo tal como lo entrega `TasksManager.liveServers()`. */
@@ -480,11 +481,9 @@ export class TasksMonitor {
   private async pollServer(st: ServerState): Promise<void> {
     const [status, perms, questions] = await Promise.all([
       this.req<Record<string, { type?: string }>>(st, 'GET', '/session/status'),
-      this.req<Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown }>>(
-        st,
-        'GET',
-        '/permission'
-      ),
+      this.req<
+        Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown; tool?: RawPerm['tool'] }>
+      >(st, 'GET', '/permission'),
       this.req<Array<{ id?: string; sessionID?: string }>>(st, 'GET', '/question')
     ])
     if (!status.ok || !perms.ok || !questions.ok) {
@@ -499,13 +498,14 @@ export class TasksMonitor {
       .map(([id]) => id)
     const permList: RawPerm[] = (Array.isArray(perms.data) ? perms.data : [])
       .filter(
-        (p): p is { id: string; sessionID: string; permission: string; patterns?: unknown; metadata?: unknown } =>
+        (p): p is { id: string; sessionID: string; permission: string; patterns?: unknown; metadata?: unknown; tool?: RawPerm['tool'] } =>
           typeof p?.id === 'string' && typeof p?.sessionID === 'string' && typeof p?.permission === 'string'
       )
       .map((p) => ({
         id: p.id,
         sessionID: p.sessionID,
         permission: p.permission,
+        tool: p.tool && typeof p.tool.messageID === 'string' && typeof p.tool.callID === 'string' ? p.tool : undefined,
         patterns: Array.isArray(p.patterns) ? p.patterns.filter((x): x is string => typeof x === 'string') : undefined,
         metadata:
           p.metadata && typeof p.metadata === 'object' && !Array.isArray(p.metadata) ? (p.metadata as Record<string, unknown>) : undefined

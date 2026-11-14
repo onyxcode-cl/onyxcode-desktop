@@ -19,8 +19,8 @@ export const shellBgToolId = (tool: ShellBgTool): string => `${SHELL_BG_SERVER}_
  * (`rulesetForMode(effectiveModeFor(modo, agente))`, de `src/shared/permission-rules.ts`, la misma fuente que usa el bloque de modo de
  * Code al hacer `session.update({ permission })`):
  *   Preguntar siempre / Editar sin preguntar / Solo explorar / Automático → `ask`;  Todo sin preguntar → `allow`.
- * `bgshell_start` no hereda la aprobación automática de comandos de solo lectura de «Automático» (la hace la app mirando el comando de
- * `bash`): un trabajo en segundo plano siempre pregunta salvo en «Todo sin preguntar». Si no hubiera regla de `bash *` se devuelve `ask`.
+ * `bgshell_start` en «Automático» también recibe aprobación de la app: se inspecciona el comando y el cwd de la herramienta enlazada,
+ * y se responde «una vez» salvo patrones delicados. El `ask` del motor permite conservar la tarjeta para esos casos. Si no hubiera regla de `bash *` se devuelve `ask`.
  */
 export function bgshellToolAction(mode: PermissionModeId, agent?: string): RuleAction {
   const block = rulesetForMode(effectiveModeFor(mode, agent))

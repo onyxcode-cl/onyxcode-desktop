@@ -191,6 +191,7 @@ const SETTINGS_FIELDS: Record<string, PolicyClass> = {
   defaultModel: 'M',
   theme: 'M',
   language: 'M',
+  summaryCardOrder: 'X', // Preferencia de las tarjetas del escritorio.
   tasksGlobalInstructions: 'D',
   // Instrucciones personalizadas de Chat y Code: condicionan al modelo de forma persistente; no se tocan desde el celular.
   userInstructions: 'X',

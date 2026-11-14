@@ -24,7 +24,7 @@
     "src/main/tasks/backends/wsl.ts": "5ecefa80bc2c1b30a73779faf3f66997aa80404267c27ddaf20849ca0bae46c5",
     "src/main/tasks/folder-policy-win.ts": "5483ac4eedc3a8ac1c38a30b87a936995a8ac85bda6cb6ef4225d1cfabb52f41",
     "src/main/tasks/folder-policy.ts": "e88ab3a59150aaa6fdc72762136c9195a578e60f9c1c3d3572cf03230c63262f",
-    "src/main/tasks/opencode-config.ts": "020238bef02b12ece1b440fadb6f9c4b83759aa2826d34618608a281d88dbc72",
+    "src/main/tasks/opencode-config.ts": "fdf9b1fd3f478f520d93d0d78f3455b1dd3997b278407a10bc18aae40dac3bf5",
     "src/main/tasks/provider-egress.ts": "b583eee1a78a18524b3b89b19f0cd1b4533731b31ba1e8aa56310ffe9247f20e",
     "src/main/tasks/proxy-policy.ts": "af8f39d6172c0f187af542162ab790382f232d0ffc869d5d4cd567f2c1afa3f3",
     "src/main/tasks/proxy.ts": "f568b7cfd6c003d834f142efbfe0a3c0984126681d085b406c56db0b4c918f39",
@@ -327,6 +327,24 @@
       "motivo": "V27: conservar unidades buenas menos de 120 s con fecha original; revisión independiente aprobada sin hallazgos",
       "cambiados": [
         "src/main/tasks/win-context.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-14",
+      "motivo": "V27 ronda 2: atribuir equipo_* a la sesión real para listar y parar sus trabajos; revisión independiente del agente raíz",
+      "cambiados": [
+        "src/main/tasks/opencode-config.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-14",
+      "motivo": "V27 ronda 2: documentar la atribución de equipo_* a su sesión; revisión independiente del agente raíz",
+      "cambiados": [
+        "src/main/tasks/opencode-config.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

@@ -363,6 +363,10 @@ export class HostExecMcpServer extends LoopbackMcpServer<HostBinding> {
       if (background) {
         const r: BackgroundResult = await (this.deps.start ?? startBackground)(command, binding.folder, {
           cwd: binding.folder,
+          sessionID:
+            typeof args.lazunox_session === 'string' && /^[A-Za-z0-9_-]{1,200}$/.test(args.lazunox_session)
+              ? args.lazunox_session
+              : undefined,
           platform,
           extraEnv: this.deps.envFor?.(binding.folder)
         })
