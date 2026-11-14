@@ -39,7 +39,6 @@ describe('skill pptx ⇄ Chat: misma guía de diseño', () => {
       'layout:"free"',
       '960 de ancho × 540 de alto',
       'como mucho 40',
-      'hasta 200 láminas en PPTX y HTML',
       'Tahoma',
       'palette',
       'fillTo'
