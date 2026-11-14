@@ -42,6 +42,9 @@ import { useSessions, type MessageEntry } from '../../../stores/sessions'
 import { openTaskAnywhere } from './actions'
 import { ScreenshotThumbs } from './ComputerAccess'
 import { TasksProjectCard } from './TasksProjectCard'
+import { isChatFolderForDisplay, useUnifiedApps } from './unified'
+import { ReorderableCards } from '../../../components/ReorderableCards'
+import { TasksBackgroundJobs } from './TasksBackgroundJobs'
 import { ContextDetail } from '../../../components/ContextDetail'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useModeModel } from '../../settings/impl/extras'
@@ -368,6 +371,9 @@ function ScheduledSection({ sessionID }: { sessionID: string }): React.JSX.Eleme
 export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; busy: boolean }): React.JSX.Element {
   const tr = useT()
   const tasksClient = useTasks((s) => s.client)
+  const folder = useTasks((s) => s.folder)
+  const unified = useUnifiedApps()
+  const showProject = !!folder && !(unified && isChatFolderForDisplay(folder))
   const tasksDir = useTasks((s) => s.conn?.directory ?? s.conn?.folder)
   const storeTodos = useTasks((s) => (sessionID ? (s.todos[sessionID] ?? EMPTY_TODOS) : EMPTY_TODOS))
   const files = useTasks((s) => (sessionID ? (s.deliverables[sessionID] ?? EMPTY_FILES) : EMPTY_FILES))
@@ -424,121 +430,155 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
     <div className="h-full overflow-y-auto text-sm">
       {usingComputer && <LiveSection entries={entries} />}
 
-      <TasksProjectCard busy={busy} />
-
-      <Section
-        icon={ListChecks}
-        title={tr('tasks.prog.plan')}
-        badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}
-        badgeTone="plain"
-      >
-        {todos.length === 0 ? (
-          <>
-            {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
-            <p className="text-xs text-subtle">{busy ? tr('tasks.prog.planPreparing') : tr('tasks.prog.planNone')}</p>
-          </>
-        ) : (
-          <>
-            <div className="mb-3 flex items-center gap-2 desk:hidden">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-hover">
-                <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${pct}%` }} />
-              </div>
-              <span className="text-[11px] desk:text-meta text-muted tabular-nums">{pct}%</span>
-            </div>
-            {stepLabel && <p className="mb-2 text-xs font-medium text-muted desk:hidden">{stepLabel}</p>}
-            {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
-            {unconfirmed && <p className="mb-2 text-xs text-muted">{tr('code.plan.unconfirmed.help')}</p>}
-            <ol className="space-y-1">
-              {todos.map((t, i) => {
-                const current = t.status === 'in_progress' && busy
-                return (
-                  <li
-                    key={`${i}-${t.content}`}
-                    className={`flex items-start gap-2 rounded-lg px-2 py-1.5 desk:min-h-7 desk:items-center desk:gap-2.5 desk:rounded-none desk:px-0 desk:py-0 ${current ? 'bg-accent-soft desk:bg-transparent' : ''}`}
+      <ReorderableCards
+        mode="tasks"
+        cards={[
+          ...(showProject ? [{ id: 'project', label: tr('project.card.title'), content: <TasksProjectCard busy={busy} /> }] : []),
+          {
+            id: 'plan',
+            label: tr('tasks.prog.plan'),
+            content: (
+              <Section
+                icon={ListChecks}
+                title={tr('tasks.prog.plan')}
+                badge={todos.length > 0 ? `${done}/${todos.length}` : undefined}
+                badgeTone="plain"
+              >
+                {todos.length === 0 ? (
+                  <>
+                    {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
+                    <p className="text-xs text-subtle">{busy ? tr('tasks.prog.planPreparing') : tr('tasks.prog.planNone')}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-3 flex items-center gap-2 desk:hidden">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-hover">
+                        <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[11px] desk:text-meta text-muted tabular-nums">{pct}%</span>
+                    </div>
+                    {stepLabel && <p className="mb-2 text-xs font-medium text-muted desk:hidden">{stepLabel}</p>}
+                    {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
+                    {unconfirmed && <p className="mb-2 text-xs text-muted">{tr('code.plan.unconfirmed.help')}</p>}
+                    <ol className="space-y-1">
+                      {todos.map((t, i) => {
+                        const current = t.status === 'in_progress' && busy
+                        return (
+                          <li
+                            key={`${i}-${t.content}`}
+                            className={`flex items-start gap-2 rounded-lg px-2 py-1.5 desk:min-h-7 desk:items-center desk:gap-2.5 desk:rounded-none desk:px-0 desk:py-0 ${current ? 'bg-accent-soft desk:bg-transparent' : ''}`}
+                          >
+                            <span className="mt-px shrink-0">
+                              <TodoIcon status={t.status} live={busy} />
+                            </span>
+                            <span
+                              className={`text-[13px] leading-snug ${
+                                t.status === 'completed'
+                                  ? 'text-subtle line-through desk:no-underline desk:text-muted'
+                                  : current
+                                    ? 'font-medium text-fg'
+                                    : t.status === 'cancelled'
+                                      ? 'text-subtle line-through'
+                                      : 'text-muted'
+                              }`}
+                            >
+                              {t.content}
+                            </span>
+                            {plan?.steps[i]?.state === 'unconfirmed' && (
+                              <span className="shrink-0 text-xs text-muted">{tr('code.plan.unconfirmed')}</span>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  </>
+                )}
+              </Section>
+            )
+          },
+          { id: 'background', label: tr('helpers.backgroundCard.title'), content: <TasksBackgroundJobs /> },
+          {
+            id: 'context-window',
+            label: tr('tasks.prog.ctxWindow'),
+            content: (
+              <Section
+                icon={Gauge}
+                title={tr('tasks.prog.ctxWindow')}
+                right={<UsageMeter messages={entries} model={model} />}
+                defaultOpen={false}
+              >
+                <p className="text-xs text-subtle">{tr('tasks.prog.ctxWindow.help')}</p>
+                <ContextDetail messages={entries} model={model} breakdownClient={tasksClient} directory={tasksDir} />
+              </Section>
+            )
+          },
+          {
+            id: 'deliverables',
+            label: tr('tasks.prog.deliverables'),
+            content: (
+              <Section
+                icon={Package}
+                title={tr('tasks.prog.deliverables')}
+                badge={files.length > 0 ? files.length : undefined}
+                right={
+                  <button
+                    type="button"
+                    title={tr('tasks.prog.refresh')}
+                    className="rounded p-1 text-subtle hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
+                    onClick={() => void refreshDeliverables(sessionID)}
                   >
-                    <span className="mt-px shrink-0">
-                      <TodoIcon status={t.status} live={busy} />
-                    </span>
-                    <span
-                      className={`text-[13px] leading-snug ${
-                        t.status === 'completed'
-                          ? 'text-subtle line-through desk:no-underline desk:text-muted'
-                          : current
-                            ? 'font-medium text-fg'
-                            : t.status === 'cancelled'
-                              ? 'text-subtle line-through'
-                              : 'text-muted'
-                      }`}
-                    >
-                      {t.content}
-                    </span>
-                    {plan?.steps[i]?.state === 'unconfirmed' && (
-                      <span className="shrink-0 text-xs text-muted">{tr('code.plan.unconfirmed')}</span>
-                    )}
-                  </li>
-                )
-              })}
-            </ol>
-          </>
-        )}
-      </Section>
-
-      <Section icon={Gauge} title={tr('tasks.prog.ctxWindow')} right={<UsageMeter messages={entries} model={model} />} defaultOpen={false}>
-        <p className="text-xs text-subtle">{tr('tasks.prog.ctxWindow.help')}</p>
-        <ContextDetail messages={entries} model={model} breakdownClient={tasksClient} directory={tasksDir} />
-      </Section>
-
-      <Section
-        icon={Package}
-        title={tr('tasks.prog.deliverables')}
-        badge={files.length > 0 ? files.length : undefined}
-        right={
-          <button
-            type="button"
-            title={tr('tasks.prog.refresh')}
-            className="rounded p-1 text-subtle hover:bg-hover hover:text-fg desk:grid desk:size-8 desk:place-items-center desk:rounded-ctl desk:p-0 desk:text-muted desk:hover:bg-hover desk:[&_svg]:size-4"
-            onClick={() => void refreshDeliverables(sessionID)}
-          >
-            <RefreshCw size={12} />
-          </button>
-        }
-      >
-        {files.length === 0 ? (
-          <p className="text-xs text-subtle">{tr('tasks.prog.deliverablesEmpty')}</p>
-        ) : (
-          <DeliverableList files={files} onChanged={() => void refreshDeliverables(sessionID)} />
-        )}
-      </Section>
-
-      <ChangesSection sessionID={sessionID} busy={busy} />
-
+                    <RefreshCw size={12} />
+                  </button>
+                }
+              >
+                {files.length === 0 ? (
+                  <p className="text-xs text-subtle">{tr('tasks.prog.deliverablesEmpty')}</p>
+                ) : (
+                  <DeliverableList files={files} onChanged={() => void refreshDeliverables(sessionID)} />
+                )}
+              </Section>
+            )
+          },
+          { id: 'changes', label: tr('code.panel.changes'), content: <ChangesSection sessionID={sessionID} busy={busy} /> },
+          {
+            id: 'context',
+            label: tr('tasks.prog.context'),
+            content: (
+              <Section icon={Plug} title={tr('tasks.prog.context')} badge={contextCount > 0 ? contextCount : undefined} defaultOpen={false}>
+                {contextCount === 0 ? (
+                  <p className="text-xs text-subtle">{tr('tasks.prog.contextEmpty')}</p>
+                ) : (
+                  <>
+                    <ContextGroup icon={FileInput} label={tr('tasks.prog.filesRead')} items={context.filesRead} />
+                    <ContextGroup icon={FileOutput} label={tr('tasks.prog.filesWritten')} items={context.filesWritten} />
+                    <ContextGroup icon={Terminal} label={tr('tasks.prog.commands')} items={context.commands} />
+                    <ContextGroup icon={Globe} label={tr('tasks.prog.web')} items={context.web} />
+                    <ContextGroup icon={Plug} label={tr('tasks.prog.connectors')} items={context.connectors} />
+                  </>
+                )}
+              </Section>
+            )
+          },
+          {
+            id: 'activity',
+            label: tr('tasks.prog.activity'),
+            content: (
+              <Section icon={Activity} title={tr('tasks.prog.activity')} badge={toolCount > 0 ? toolCount : undefined} defaultOpen={busy}>
+                {groups.length === 0 ? (
+                  <p className="text-xs text-subtle">{tr('tasks.prog.noActivity')}</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {groups.map((g, i) => (
+                      <ActivityGroup key={`${i}-${g.title ?? ''}`} title={g.title} tools={g.tools} live={busy && i === groups.length - 1} />
+                    ))}
+                  </ul>
+                )}
+              </Section>
+            )
+          }
+        ]}
+      />
       <ScheduledSection sessionID={sessionID} />
-
-      <Section icon={Plug} title={tr('tasks.prog.context')} badge={contextCount > 0 ? contextCount : undefined} defaultOpen={false}>
-        {contextCount === 0 ? (
-          <p className="text-xs text-subtle">{tr('tasks.prog.contextEmpty')}</p>
-        ) : (
-          <>
-            <ContextGroup icon={FileInput} label={tr('tasks.prog.filesRead')} items={context.filesRead} />
-            <ContextGroup icon={FileOutput} label={tr('tasks.prog.filesWritten')} items={context.filesWritten} />
-            <ContextGroup icon={Terminal} label={tr('tasks.prog.commands')} items={context.commands} />
-            <ContextGroup icon={Globe} label={tr('tasks.prog.web')} items={context.web} />
-            <ContextGroup icon={Plug} label={tr('tasks.prog.connectors')} items={context.connectors} />
-          </>
-        )}
-      </Section>
-
-      <Section icon={Activity} title={tr('tasks.prog.activity')} badge={toolCount > 0 ? toolCount : undefined} defaultOpen={busy}>
-        {groups.length === 0 ? (
-          <p className="text-xs text-subtle">{tr('tasks.prog.noActivity')}</p>
-        ) : (
-          <ul className="space-y-2">
-            {groups.map((g, i) => (
-              <ActivityGroup key={`${i}-${g.title ?? ''}`} title={g.title} tools={g.tools} live={busy && i === groups.length - 1} />
-            ))}
-          </ul>
-        )}
-      </Section>
     </div>
   )
 }

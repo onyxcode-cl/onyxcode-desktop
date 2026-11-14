@@ -944,6 +944,23 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:chatIndex:remove': obj({ folder: absPath, sessionId: optional(sessionId) }),
   'tasks:removeFolder': folderReq,
   'tasks:start': obj({ folder: absPath, fullAccess: optional(bool) }),
+  'tasks:jobs:list': obj({
+    folder: absPath,
+    fullAccess: optional(bool),
+    sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ })
+  }),
+  'tasks:jobs:stop': obj({
+    folder: absPath,
+    fullAccess: optional(bool),
+    sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
+    jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ })
+  }),
+  'tasks:jobs:resume': obj({
+    folder: absPath,
+    fullAccess: optional(bool),
+    sessionID: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }),
+    jobId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ })
+  }),
   'tasks:grantFullAccess': folderReq,
   'tasks:revokeFullAccess': folderReq,
   'tasks:fullAccess:state': none,

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { ChevronRight, Gauge, GitCompare, ListChecks } from 'lucide-react'
 import { ContextDetail } from '../../../components/ContextDetail'
 import { UsageMeter } from '../../../components/UsageMeter'
+import { ReorderableCards } from '../../../components/ReorderableCards'
 import { useT } from '../../../lib/i18n'
 import { useModeModel } from '../../settings/impl/extras'
 import { ProjectCard } from '../../project-profile/ProjectCard'
@@ -44,43 +45,75 @@ export function CodeSummary({
   const hasPlan = useCode((s) => !!(sessionID && s.todos[sessionID]?.length))
   return (
     <div className="h-full overflow-y-auto py-1" data-testid="code-summary">
-      {/* En Code el nivel «Total» no se ofrece: el control del equipo es cosa de Tareas. */}
-      <ProjectCard folder={directory} full={false} branch={branch} folders={folders} />
-      <section className={card}>
-        <h3 className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
-          <ListChecks size={15} className="text-muted" aria-hidden />
-          {t('tasks.prog.plan')}
-        </h3>
-        {sessionID && hasPlan ? (
-          <PlanCard sessionID={sessionID} busy={run === 'busy' || run === 'retry'} />
-        ) : (
-          <p className="text-xs text-subtle">{t('tasks.prog.planNone')}</p>
-        )}
-      </section>
-      <section className={card}>
-        <h3 className="flex items-center gap-2 text-[13px] font-semibold">
-          <Gauge size={15} className="text-muted" aria-hidden />
-          {t('tasks.prog.ctxWindow')}
-          <span className="ml-auto">
-            <UsageMeter messages={messages ?? []} model={effective} />
-          </span>
-        </h3>
-        <p className="mt-1 text-xs text-subtle">{t('tasks.prog.ctxWindow.help')}</p>
-        <ContextDetail messages={messages ?? []} model={effective} directory={directory} />
-      </section>
-      <div ref={jobsRef} tabIndex={-1} data-testid="code-summary-jobs" className="outline-none">
-        <CodeBackgroundJobs />
-      </div>
-      <button
-        type="button"
-        onClick={() => togglePanel('changes')}
-        className={`no-drag ${card} flex w-[calc(100%-1.5rem)] items-center gap-2 text-left hover:bg-hover`}
-      >
-        <GitCompare size={15} className="text-muted" aria-hidden />
-        <span className="text-[13px] font-semibold">{t('code.panel.changes')}</span>
-        {changes > 0 && <span className="rounded-full bg-active px-1.5 text-meta font-medium tabular-nums">{changes}</span>}
-        <ChevronRight size={14} className="ml-auto text-subtle" aria-hidden />
-      </button>
+      <ReorderableCards
+        mode="code"
+        cards={[
+          {
+            id: 'project',
+            label: t('project.card.title'),
+            content: <ProjectCard folder={directory} full={false} branch={branch} folders={folders} />
+          },
+          {
+            id: 'plan',
+            label: t('tasks.prog.plan'),
+            content: (
+              <section className={card}>
+                <h3 className="mb-1 flex items-center gap-2 text-[13px] font-semibold">
+                  <ListChecks size={15} className="text-muted" aria-hidden />
+                  {t('tasks.prog.plan')}
+                </h3>
+                {sessionID && hasPlan ? (
+                  <PlanCard sessionID={sessionID} busy={run === 'busy' || run === 'retry'} />
+                ) : (
+                  <p className="text-xs text-subtle">{t('tasks.prog.planNone')}</p>
+                )}
+              </section>
+            )
+          },
+          {
+            id: 'background',
+            label: t('helpers.backgroundCard.title'),
+            content: (
+              <div ref={jobsRef} tabIndex={-1} data-testid="code-summary-jobs" className="outline-none">
+                <CodeBackgroundJobs />
+              </div>
+            )
+          },
+          {
+            id: 'context',
+            label: t('tasks.prog.ctxWindow'),
+            content: (
+              <section className={card}>
+                <h3 className="flex items-center gap-2 text-[13px] font-semibold">
+                  <Gauge size={15} className="text-muted" aria-hidden />
+                  {t('tasks.prog.ctxWindow')}
+                  <span className="ml-auto">
+                    <UsageMeter messages={messages ?? []} model={effective} />
+                  </span>
+                </h3>
+                <p className="mt-1 text-xs text-subtle">{t('tasks.prog.ctxWindow.help')}</p>
+                <ContextDetail messages={messages ?? []} model={effective} directory={directory} />
+              </section>
+            )
+          },
+          {
+            id: 'changes',
+            label: t('code.panel.changes'),
+            content: (
+              <button
+                type="button"
+                onClick={() => togglePanel('changes')}
+                className={`no-drag ${card} flex w-[calc(100%-1.5rem)] items-center gap-2 text-left hover:bg-hover`}
+              >
+                <GitCompare size={15} className="text-muted" aria-hidden />
+                <span className="text-[13px] font-semibold">{t('code.panel.changes')}</span>
+                {changes > 0 && <span className="rounded-full bg-active px-1.5 text-meta font-medium tabular-nums">{changes}</span>}
+                <ChevronRight size={14} className="ml-auto text-subtle" aria-hidden />
+              </button>
+            )
+          }
+        ]}
+      />
     </div>
   )
 }

@@ -50,6 +50,13 @@ describe('selectEngineJobs', () => {
     expect(rows[0]).toMatchObject({ kind: 'ayudante', resumable: true, live: false })
   })
 
+  it('la tarjeta conserva ayudantes del motor sin sesión y deduplica los ya representados', () => {
+    const jobs = [job({ id: 'known', kind: 'ayudante' }), job({ id: 'unknown', kind: 'ayudante' }), job({ id: 'shell' })]
+    const rows = selectEngineJobs(jobs, NOW, new Set(['known']))
+    expect(rows.map((r) => r.id)).toEqual(['unknown', 'shell'])
+    expect(rows[0]).toMatchObject({ live: true, kind: 'ayudante' })
+  })
+
   it('un comando o celda perdido no es reanudable', () => {
     const [r] = selectEngineJobs([job({ state: 'perdido', endedAt: NOW - 1000 })], NOW)
     expect(r).toMatchObject({ resumable: false })

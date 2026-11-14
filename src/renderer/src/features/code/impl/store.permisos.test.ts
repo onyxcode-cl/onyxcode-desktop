@@ -4,7 +4,16 @@
  * y «Manual» no preguntaba nada.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { makeSession, resetEventIds, sessionCreated, type TraceEvent } from '../../../../../test/fixtures/events'
+import {
+  makeSession,
+  msgUpdated,
+  partUpdated,
+  resetEventIds,
+  sessionCreated,
+  toolPart,
+  userMessage,
+  type TraceEvent
+} from '../../../../../test/fixtures/events'
 import { rulesetFor } from './permission-rules'
 import { approvalKindOf, rulesetForMode } from '@shared/permission-rules'
 
@@ -206,7 +215,7 @@ describe('modo de permisos → sesión del motor', () => {
     expect(update.mock.calls[0]![0].permission).toEqual(rulesetFor('plan'))
   })
 
-  describe('aprobación automática de comandos de lectura (Automático y Solo explorar)', () => {
+  describe('aprobación automática de terminal (Automático y Solo explorar)', () => {
     const asked = (id: string, command: string): void =>
       st().applyEvent(
         {
@@ -229,13 +238,196 @@ describe('modo de permisos → sesión del motor', () => {
       expect(st().permissions['p1']).toBeUndefined()
     })
 
-    it('si el comando redirige, encadena o no está en la lista, sale la tarjeta y no se responde', () => {
+    it('Automático permite crear archivos, encadenar y ejecutar instaladores dentro del proyecto', () => {
       const { reply } = setup(rulesetFor('auto'))
+      asked('p2', 'ls && ls > b.txt')
+      asked('p3', 'echo hola > prueba.txt')
+      asked('p4', 'npm install')
+      expect(reply).toHaveBeenCalledTimes(3)
+      expect(st().permissions).toEqual({})
+    })
+
+    it('Solo explorar conserva su lista simple de lectura', () => {
+      const { reply } = setup(rulesetFor('plan'))
       asked('p2', 'ls && ls > b.txt')
       asked('p3', 'echo hola > prueba.txt')
       asked('p4', 'npm install')
       expect(reply).not.toHaveBeenCalled()
       expect(Object.keys(st().permissions).sort()).toEqual(['p2', 'p3', 'p4'])
+    })
+
+    it('las órdenes delicadas y las peticiones sin comando completo conservan tarjeta', () => {
+      const { reply } = setup(rulesetFor('auto'))
+      for (const [i, command] of ['rm x.txt', 'cat ../secreto', 'cat .env', 'ls; sudo npm install'].entries()) asked(`risk${i}`, command)
+      st().applyEvent(
+        {
+          type: 'permission.asked',
+          properties: {
+            id: 'missing',
+            sessionID: 's1',
+            permission: 'bash',
+            patterns: ['ls'],
+            metadata: {},
+            always: []
+          }
+        } as never,
+        D
+      )
+      expect(reply).not.toHaveBeenCalled()
+      expect(Object.keys(st().permissions)).toHaveLength(5)
+    })
+
+    it('las rutas marcadas protegidas preguntan aunque el comando parezca inocuo', () => {
+      const { reply } = setup(rulesetFor('auto'))
+      st().applyEvent(
+        {
+          type: 'permission.asked',
+          properties: {
+            id: 'protected',
+            sessionID: 's1',
+            permission: 'bash',
+            patterns: ['npm test'],
+            metadata: { command: 'npm test', lazunoxProtegido: true },
+            always: []
+          }
+        } as never,
+        D
+      )
+      expect(reply).not.toHaveBeenCalled()
+      expect(st().permissions['protected']).toBeDefined()
+    })
+
+    it('usa el proyecto de la sesión y el directorio de trabajo, aunque otra carpeta esté activa', () => {
+      const { reply } = setup(rulesetFor('auto'))
+      useCode.setState({ directory: '/other' })
+      asked('inside', `cat ${D}/README.md`)
+      asked('outside', 'cat /other/README.md')
+      st().applyEvent(
+        {
+          type: 'permission.asked',
+          properties: {
+            id: 'cwd',
+            sessionID: 's1',
+            permission: 'bash',
+            patterns: ['npm test'],
+            metadata: { command: 'npm test', workdir: '/other' },
+            always: []
+          }
+        } as never,
+        D
+      )
+      expect(reply).toHaveBeenCalledTimes(1)
+      expect(reply).toHaveBeenCalledWith({ requestID: 'inside', reply: 'once', directory: D })
+      expect(st().permissions['outside']).toBeDefined()
+      expect(st().permissions['cwd']).toBeDefined()
+    })
+
+    it('v2 responde una vez para comandos de PowerShell y conserva los delicados', () => {
+      setup(rulesetFor('auto'))
+      const reply = vi.fn(() => Promise.resolve({ data: true }))
+      useServer.setState({ client: { v2: { session: { permission: { reply } } } } as never })
+      const win = 'C:\\work\\code'
+      useCode.setState({ sessionProject: { s1: win } })
+      for (const [id, command] of [
+        ['v2ok', 'Get-ChildItem -Recurse | Select-Object FullName, Length'],
+        ['v2risk', 'Remove-Item .\\x.txt']
+      ])
+        st().applyEvent(
+          {
+            type: 'permission.v2.asked',
+            properties: {
+              id,
+              sessionID: 's1',
+              action: 'bash',
+              resources: [command],
+              metadata: { command },
+              save: []
+            }
+          } as never,
+          win
+        )
+      expect(reply).toHaveBeenCalledTimes(1)
+      expect(reply).toHaveBeenCalledWith({ sessionID: 's1', requestID: 'v2ok', reply: 'once' })
+      expect(st().permissions['v2risk']).toBeDefined()
+    })
+
+    it('resuelve workdir desde la herramienta asociada y comprueba que su comando coincide', () => {
+      const { reply } = setup(rulesetFor('auto'))
+      apply(msgUpdated(userMessage('m1', 's1'), D))
+      const send = (id: string, command: string, input: Record<string, unknown>): void => {
+        apply(partUpdated(toolPart(id, 'm1', 's1', 'bash', { status: 'running', input, time: { start: 1000 } }, `call_${id}`), D))
+        st().applyEvent(
+          {
+            type: 'permission.asked',
+            properties: {
+              id,
+              sessionID: 's1',
+              permission: 'bash',
+              patterns: [command],
+              metadata: { command },
+              always: [],
+              tool: { messageID: 'm1', callID: `call_${id}` }
+            }
+          } as never,
+          D
+        )
+      }
+      send('nested', 'cat ../README.md', { command: 'cat ../README.md', workdir: `${D}/src` })
+      send('outside-tool', 'npm test', { command: 'npm test', workdir: '/other' })
+      send('mismatch', 'npm test', { command: 'rm x.txt', workdir: D })
+      st().applyEvent(
+        {
+          type: 'permission.asked',
+          properties: {
+            id: 'tool-missing',
+            sessionID: 's1',
+            permission: 'bash',
+            patterns: ['npm test'],
+            metadata: { command: 'npm test' },
+            always: [],
+            tool: { messageID: 'missing', callID: 'missing' }
+          }
+        } as never,
+        D
+      )
+      expect(reply).toHaveBeenCalledTimes(1)
+      expect(reply).toHaveBeenCalledWith({ requestID: 'nested', reply: 'once', directory: D })
+      expect(st().permissions['outside-tool']).toBeDefined()
+      expect(st().permissions['mismatch']).toBeDefined()
+      expect(st().permissions['tool-missing']).toBeDefined()
+    })
+
+    it('web, carpetas externas y preguntas de herramientas no se autoaprueban', () => {
+      const { reply } = setup(rulesetFor('auto'))
+      for (const permission of ['webfetch', 'external_directory'])
+        st().applyEvent(
+          {
+            type: 'permission.asked',
+            properties: {
+              id: permission,
+              sessionID: 's1',
+              permission,
+              patterns: ['npm test'],
+              metadata: { command: 'npm test' },
+              always: []
+            }
+          } as never,
+          D
+        )
+      st().applyEvent(
+        {
+          type: 'question.asked',
+          properties: {
+            id: 'delete-question',
+            sessionID: 's1',
+            questions: [{ question: '¿Borrar?', header: 'Borrado', options: [] }]
+          }
+        } as never,
+        D
+      )
+      expect(reply).not.toHaveBeenCalled()
+      expect(Object.keys(st().permissions)).toHaveLength(2)
+      expect(st().questions['delete-question']).toBeDefined()
     })
 
     it('en «Editar sin preguntar» y «Preguntar siempre» nunca se aprueba solo', () => {

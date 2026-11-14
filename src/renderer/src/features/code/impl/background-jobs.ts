@@ -6,7 +6,7 @@
  * Qué cuenta como trabajo: una sesión HIJA de la sesión raíz actual a la que apunta una parte `task` de la raíz
  * (`state.metadata.sessionId`) marcada como de fondo (`metadata.background` o `input.background`). `parentID` solo NO basta:
  * la «Consulta lateral» de Tareas también es una sesión hija y no tiene parte `task`, así que nunca entra.
- * Los subagentes en primer plano ya tienen su propia tarjeta en la conversación y tampoco entran.
+ * El compositor conserva ese filtro; `includeForeground` reúne también los ayudantes de primer plano y sus descendientes en las tarjetas del panel.
  */
 import type { Part, Session } from '@opencode-ai/sdk/v2/client'
 
@@ -54,6 +54,8 @@ export interface BackgroundJobsInput {
   /** Sesiones con un permiso o una pregunta sin responder. */
   pendingSessionIds?: ReadonlySet<string> | readonly string[]
   now: number
+  /** En las tarjetas del panel también entran los ayudantes de primer plano. */
+  includeForeground?: boolean
 }
 
 interface TaskRef {
@@ -98,14 +100,26 @@ export function selectBackgroundJobs(input: BackgroundJobsInput): BackgroundJobs
   const { rootId, sessions, status, messages, errors = {}, now } = input
   if (!rootId) return empty
   const pending = new Set(input.pendingSessionIds ?? [])
-  const refs = taskRefs(messages[rootId] ?? [])
+  const refs = new Map<string, TaskRef>()
+  const queue = [rootId]
+  const visited = new Set<string>()
+  for (let i = 0; i < queue.length; i++) {
+    const parent = queue[i]
+    if (visited.has(parent)) continue
+    visited.add(parent)
+    for (const ref of taskRefs(messages[parent] ?? []).values()) {
+      if (sessions[ref.childId]?.parentID !== parent) continue
+      refs.set(ref.childId, ref)
+      if (input.includeForeground) queue.push(ref.childId)
+    }
+  }
 
   const live: BackgroundJob[] = []
   const finished: BackgroundJob[] = []
   for (const ref of refs.values()) {
-    if (!ref.background) continue
+    if (!ref.background && !input.includeForeground) continue
     const sess = sessions[ref.childId]
-    if (!sess || sess.parentID !== rootId) continue
+    if (!sess) continue
     const startedAt = sess.time?.created ?? ref.start ?? now
     const run = status[ref.childId]
     const fresh = now - startedAt < FRESH_MS && (messages[ref.childId]?.length ?? 0) === 0
@@ -133,12 +147,12 @@ export function selectBackgroundJobs(input: BackgroundJobsInput): BackgroundJobs
 
   live.sort((a, b) => a.startedAt - b.startedAt)
   finished.sort((a, b) => a.startedAt - b.startedAt)
-  const shown = live.slice(0, MAX_VISIBLE_JOBS)
+  const shown = input.includeForeground ? live : live.slice(0, MAX_VISIBLE_JOBS)
   return {
     jobs: [...shown, ...finished],
     liveCount: live.length,
     hidden: live.length - shown.length,
-    overLimit: live.length > MAX_VISIBLE_JOBS
+    overLimit: live.length > shown.length
   }
 }
 

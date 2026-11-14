@@ -74,6 +74,36 @@ describe('selectBackgroundJobs', () => {
     expect(v.jobs).toEqual([])
   })
 
+  it('la tarjeta incluye ayudantes de primer plano y todos los vivos sin ocultarlos', () => {
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f']
+    const sessions: Record<string, never> = { [ROOT]: sess(ROOT, undefined) }
+    ids.forEach((id) => (sessions[id] = sess(id, ROOT)))
+    const v = selectBackgroundJobs(
+      input({
+        includeForeground: true,
+        parts: ids.map((id) => taskPart(id, { background: false })),
+        sessions,
+        status: Object.fromEntries(ids.map((id) => [id, 'busy' as const]))
+      })
+    )
+    expect(v.jobs.map((j) => j.id)).toEqual(ids)
+    expect(v.liveCount).toBe(6)
+    expect(v.overLimit).toBe(false)
+  })
+
+  it('la tarjeta incluye subagentes anidados solo por referencias task de su padre', () => {
+    const v = selectBackgroundJobs(
+      input({
+        includeForeground: true,
+        parts: [taskPart('child')],
+        sessions: { [ROOT]: sess(ROOT, undefined), child: sess('child', ROOT), nested: sess('nested', 'child'), side: sess('side', ROOT) },
+        messages: { [ROOT]: [{ parts: [taskPart('child')] }], child: [{ parts: [taskPart('nested'), taskPart('side')] }] },
+        status: { child: 'busy', nested: 'busy', side: 'busy' }
+      })
+    )
+    expect(v.jobs.map((j) => j.id)).toEqual(['child', 'nested'])
+  })
+
   it('sin raíz no hay nada', () => {
     expect(selectBackgroundJobs(input({ rootId: null })).jobs).toEqual([])
   })

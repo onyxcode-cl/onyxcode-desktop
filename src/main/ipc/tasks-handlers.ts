@@ -44,6 +44,7 @@ import { registerTasksFoldersHandlers } from './tasks-folders-handlers'
 import { registerTasksCraftHandlers } from './tasks-craft-handlers'
 import { registerTasksViewerHandlers } from './tasks-viewer-handlers'
 import { registerTasksLifecycleHandlers } from './tasks-lifecycle-handlers'
+import { registerTasksJobsHandlers } from './tasks-jobs-handlers'
 import { registerTasksProjectHandlers } from './tasks-project-handlers'
 import { registerTasksMemoryHandlers } from './tasks-memory-handlers'
 import { registerTasksFilesHandlers } from './tasks-files-handlers'
@@ -342,6 +343,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksCraftHandlers(ctx),
     registerTasksLifecycleHandlers(ctx),
     registerTasksProjectHandlers(ctx),
+    registerTasksJobsHandlers(ctx),
     registerTasksMemoryHandlers(ctx),
     registerTasksFilesHandlers(ctx),
     registerTasksAutoHandlers(ctx),

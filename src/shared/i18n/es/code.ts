@@ -1,4 +1,7 @@
 export const code = {
+  'code.summary.move': 'Mover «{title}»',
+  'code.summary.moveHelp': 'Arrastra para mover. Con el teclado, usa las flechas arriba y abajo, Inicio o Fin.',
+  'code.summary.moved': '«{title}» movida a la posición {position} de {count}.',
   'code.ui.cancel': 'Cancelar',
   'code.time.now': 'ahora',
   'code.time.minutes': 'hace {m} min',
@@ -126,7 +129,7 @@ export const code = {
   'code.mode.plan.short': 'Explorar',
   'code.mode.auto': 'Automático',
   'code.mode.auto.hint':
-    'Edita y lee sin preguntar y deja pasar comandos de solo lectura (ls, git status…); los demás comandos (también las pruebas), la web y las carpetas fuera del proyecto te los pregunta',
+    'Edita y ejecuta comandos sin pedir permiso; pregunta antes de borrar, salir de la carpeta del proyecto, tocar archivos sensibles, cambiar el sistema o usar la web',
   'code.mode.auto.short': 'Auto',
   'code.mode.bypass': 'Todo sin preguntar',
   'code.mode.bypass.hint':

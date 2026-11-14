@@ -2,6 +2,8 @@ import type { Messages } from '../index'
 import type { helpers as es } from '../es/helpers'
 
 export const helpers = {
+  'helpers.backgroundCard.title': 'In the background',
+  'helpers.backgroundCard.empty': 'No background jobs.',
   'helpers.title': 'Helpers',
   'helpers.count': { one: '{count} working', other: '{count} working' },
   'helpers.total': { one: '{count} helper', other: '{count} helpers' },

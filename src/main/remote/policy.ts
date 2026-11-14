@@ -307,6 +307,9 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'diag:copy': 'X',
   'jobs:list': 'X', // trabajos del motor en el panel: solo la ventana principal (el celular no los usa)
   'jobs:stop': 'X',
+  'tasks:jobs:list': 'X', // mismo límite de superficie que jobs:*: solo ventana principal
+  'tasks:jobs:stop': 'X',
+  'tasks:jobs:resume': 'X',
   // Objetivo, Presupuesto y Revisar cambios de Code (experimentales): decisiones de quien está en el Mac; el celular no ve estas pantallas.
   // `goal:set` y `review:run` hacen trabajar a la IA (y un `verificar` corre una orden en el Mac); `budget:set` escribe en la sesión.
   'goal:get': 'X',

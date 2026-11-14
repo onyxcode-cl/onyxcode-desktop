@@ -125,7 +125,7 @@ describe.each(['darwin', 'win32'])('trabajos en Resumen (%s)', (platform) => {
     ]
     await mount()
     expect(host.querySelector('[data-testid="code-jobs-indicator"]')?.textContent).toBe('1')
-    expect(host.querySelector('section[aria-label="Trabajos en segundo plano"]')).toBeNull()
+    expect(host.querySelector('section[aria-label="En segundo plano"]')).toBeNull()
     const button = host.querySelector('button[aria-label^="Resumen ·"]') as HTMLButtonElement
     expect(button.getAttribute('aria-label')).toContain('Trabajos en segundo plano')
     const reads = vi.mocked(call).mock.calls.filter(([ch]) => ch === 'jobs:list').length
@@ -136,7 +136,7 @@ describe.each(['darwin', 'win32'])('trabajos en Resumen (%s)', (platform) => {
     expect(card.textContent).toContain('Servidor parado')
     expect(card.closest('[data-testid="code-summary"]')).not.toBeNull()
     expect(document.activeElement).toBe(card)
-    expect(host.querySelectorAll('section[aria-label="Trabajos en segundo plano"]')).toHaveLength(1)
+    expect(host.querySelectorAll('section[aria-label="En segundo plano"]')).toHaveLength(1)
   })
 
   it('incluye ayudantes vivos aunque la raíz esté inactiva', async () => {

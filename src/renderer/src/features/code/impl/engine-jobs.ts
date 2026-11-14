@@ -26,13 +26,13 @@ export interface EngineJobRow {
   resumable: boolean
 }
 
-export function selectEngineJobs(jobs: readonly EngineJob[], now: number): EngineJobRow[] {
+export function selectEngineJobs(jobs: readonly EngineJob[], now: number, sessionJobIds?: ReadonlySet<string>): EngineJobRow[] {
   const live: EngineJobRow[] = []
   const finished: EngineJobRow[] = []
   for (const j of jobs) {
-    // Ayudantes de fondo: los vivos ya salen en la lista de ayudantes de la app (con «Cancelar»); aquí solo los PERDIDOS tras un
-    // reinicio del motor, que se quedan a la vista (la lápida dura 24 h) con «Reanudar», sin el plazo de gracia de los demás.
-    if (j.kind === 'ayudante' && j.state !== 'perdido') continue
+    // El compositor conserva el filtro histórico de ayudantes. En las tarjetas solo se deduplican las sesiones ya representadas;
+    // un ayudante que aún no llegó por eventos sigue visible. Los perdidos conservan «Reanudar» sin plazo de gracia.
+    if (j.kind === 'ayudante' && j.state !== 'perdido' && (sessionJobIds === undefined || sessionJobIds.has(j.id))) continue
     const isLive = j.state === 'en_curso'
     const endedAt = isLive ? null : (j.endedAt ?? j.startedAt)
     const row: EngineJobRow = {

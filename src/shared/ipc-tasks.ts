@@ -4,6 +4,7 @@
  * Expuesto en el renderer como `window.api.tasks` (ver src/preload/tasks-api.ts).
  * Todas las respuestas vienen envueltas en `IpcResult<T>` (nunca lanzan por el puente).
  */
+import type { EngineJobsResult, EngineJobResumeResult } from './engine-jobs'
 import type { PasteRejected } from './paste-files'
 import type { DoctorReport } from './doctor'
 import type { CraftInstallResult, CraftUiSnapshot } from './craft'
@@ -1136,6 +1137,10 @@ export interface TasksInvokeContract {
    * `fullAccess: true` ⇒ servidor aparte SIN sandbox, con el agente `computer` y el MCP de control del Mac.
    */
   'tasks:start': { req: { folder: string; fullAccess?: boolean }; res: TasksConnection }
+  /** Trabajos del servidor ya vivo de esta carpeta y modo. main decide la conexión y la ruta SDK. */
+  'tasks:jobs:list': { req: { folder: string; fullAccess?: boolean; sessionID: string }; res: EngineJobsResult }
+  'tasks:jobs:stop': { req: { folder: string; fullAccess?: boolean; sessionID: string; jobId: string }; res: { ok: boolean } }
+  'tasks:jobs:resume': { req: { folder: string; fullAccess?: boolean; sessionID: string; jobId: string }; res: EngineJobResumeResult }
   /** Registra en main el consentimiento de acceso total (requerido por `tasks:start {fullAccess}`). */
   'tasks:grantFullAccess': { req: { folder: string }; res: void }
   /** Retira la concesión antigua de acceso total de esa carpeta y detiene ese servidor (no toca el consentimiento del equipo). */
@@ -1592,6 +1597,9 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:chatIndex:remove',
   'tasks:removeFolder',
   'tasks:start',
+  'tasks:jobs:list',
+  'tasks:jobs:stop',
+  'tasks:jobs:resume',
   'tasks:grantFullAccess',
   'tasks:revokeFullAccess',
   'tasks:fullAccess:state',

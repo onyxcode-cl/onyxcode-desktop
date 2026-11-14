@@ -1,4 +1,6 @@
 export const helpers = {
+  'helpers.backgroundCard.title': 'En segundo plano',
+  'helpers.backgroundCard.empty': 'No hay trabajos en segundo plano.',
   'helpers.title': 'Ayudantes',
   'helpers.count': { one: '{count} trabajando', other: '{count} trabajando' },
   'helpers.total': { one: '{count} ayudante', other: '{count} ayudantes' },

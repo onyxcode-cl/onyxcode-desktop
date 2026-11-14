@@ -7,13 +7,14 @@
  * al cancelar o parar. Los ayudantes no tienen «Pedir resultado» (su resultado vuelve solo a la conversación), así que tampoco
  * se ofrece para los trabajos del motor.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, Ban, Bot, Check, Loader2, Play, ShieldQuestion, TimerOff, X } from 'lucide-react'
 import type { EngineJobResumeResult, EngineJobState } from '@shared/engine-jobs'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
 import { formatElapsed, MAX_VISIBLE_JOBS, type BackgroundJob, type BackgroundJobsView } from './background-jobs'
 import type { EngineJobRow } from './engine-jobs'
+import type { HelperLine } from './HelpersBoard'
 
 /** Reloj que avanza cada segundo solo mientras `active` (sin trabajos vivos no hay temporizador). */
 export function useNow(active: boolean): number {
@@ -30,6 +31,8 @@ export function useNow(active: boolean): number {
 interface Props {
   /** La tarjeta del panel usa todo el ancho disponible y permite repartir las filas en varias líneas. */
   layout?: 'card' | 'composer'
+  onLoadConversation?: (sessionId: string) => Promise<HelperLine[]>
+  conversationVersion?: (sessionId: string) => string
   view: BackgroundJobsView
   /** Aborta la sesión hija. Si rechaza, se avisa en la propia fila. */
   onCancel: (sessionId: string) => Promise<void> | void
@@ -101,16 +104,19 @@ export function BackgroundJobs({
   engineJobs = [],
   onStopEngineJob,
   onResumeEngineJob,
-  layout = 'composer'
+  layout = 'composer',
+  onLoadConversation,
+  conversationVersion
 }: Props): React.JSX.Element | null {
   const t = useT()
+  const [viewing, setViewing] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState<Record<string, boolean>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [stopping, setStopping] = useState<Record<string, boolean>>({})
   const [stopFailed, setStopFailed] = useState<Record<string, boolean>>({})
   const [resuming, setResuming] = useState<Record<string, boolean>>({})
   const [resumeMsg, setResumeMsg] = useState<Record<string, string>>({})
-  if (view.jobs.length === 0 && engineJobs.length === 0) return null
+  if (layout !== 'card' && view.jobs.length === 0 && engineJobs.length === 0) return null
   const liveCount = view.liveCount + engineJobs.filter((j) => j.live).length
 
   const touch = isRemoteSurface()
@@ -153,16 +159,17 @@ export function BackgroundJobs({
 
   return (
     <section
-      aria-label={t('code.bg.title')}
+      aria-label={t(card ? 'helpers.backgroundCard.title' : 'code.bg.title')}
       className={card ? 'mx-3 my-2' : `mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${touch ? 'px-3' : 'px-6'}`}
       data-layout={layout}
     >
       <div className="rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px]">
         <div className="mb-1 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
           <Bot size={13} aria-hidden />
-          <h3 className="font-medium">{t('code.bg.title')}</h3>
+          <h3 className="font-medium">{t(card ? 'helpers.backgroundCard.title' : 'code.bg.title')}</h3>
           <span className="text-subtle">{t('code.bg.count', { count: liveCount })}</span>
         </div>
+        {view.jobs.length === 0 && engineJobs.length === 0 && <p className="text-xs text-subtle">{t('helpers.backgroundCard.empty')}</p>}
         {view.overLimit && (
           <p role="status" className="mb-1 text-xs text-warning">
             {t('code.bg.over', { count: view.liveCount, shown: MAX_VISIBLE_JOBS })}
@@ -172,33 +179,56 @@ export function BackgroundJobs({
           {view.jobs.map((job) => {
             const live = job.state === 'running' || job.state === 'waiting'
             return (
-              <li key={job.id} className={`flex items-center gap-2 ${card ? 'flex-wrap py-1' : touch ? 'min-h-11 flex-wrap' : ''}`}>
-                <StateIcon state={job.state} />
-                <span
-                  className={`min-w-0 flex-1 ${card ? 'basis-[calc(100%-1.5rem)] break-words' : 'truncate'} ${live ? 'text-fg' : 'text-muted'}`}
-                  title={job.title}
-                >
-                  {job.title}
-                  {job.agent && <span className="text-subtle"> · {t('code.bg.agent', { agent: job.agent })}</span>}
-                </span>
-                <span className="shrink-0 text-xs text-muted">{t(STATE_KEY[job.state])}</span>
-                <span className="shrink-0 text-xs tabular-nums text-subtle">{formatElapsed(job.elapsedMs)}</span>
-                {failed[job.id] && (
-                  <span role="alert" className="shrink-0 text-xs text-danger">
-                    {t('code.bg.cancelFailed')}
-                  </span>
-                )}
-                {live && (
-                  <button
-                    type="button"
-                    disabled={cancelling[job.id]}
-                    aria-label={t('code.bg.cancelFor', { title: job.title })}
-                    onClick={() => void cancel(job.id)}
-                    className={`flex shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted hover:bg-hover hover:text-fg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 ${touch ? 'h-11' : 'h-6'}`}
+              <li key={job.id}>
+                <div className={`flex items-center gap-2 ${card ? 'flex-wrap py-1' : touch ? 'min-h-11 flex-wrap' : ''}`}>
+                  <StateIcon state={job.state} />
+                  <span
+                    className={`min-w-0 flex-1 ${card ? 'basis-[calc(100%-1.5rem)] break-words' : 'truncate'} ${live ? 'text-fg' : 'text-muted'}`}
+                    title={job.title}
                   >
-                    <X size={12} aria-hidden />
-                    {t('code.bg.cancel')}
-                  </button>
+                    {onLoadConversation ? (
+                      <button
+                        type="button"
+                        className="text-left hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                        aria-expanded={viewing === job.id}
+                        aria-label={t('helpers.viewFor', { title: job.title })}
+                        onClick={() => setViewing((id) => (id === job.id ? null : job.id))}
+                      >
+                        {job.title}
+                      </button>
+                    ) : (
+                      job.title
+                    )}
+                    {job.agent && <span className="text-subtle"> · {t('code.bg.agent', { agent: job.agent })}</span>}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted">{t(STATE_KEY[job.state])}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-subtle">{formatElapsed(job.elapsedMs)}</span>
+                  {failed[job.id] && (
+                    <span role="alert" className="shrink-0 text-xs text-danger">
+                      {t(card ? 'code.bg.engine.stopFailed' : 'code.bg.cancelFailed')}
+                    </span>
+                  )}
+                  {live && (
+                    <button
+                      type="button"
+                      disabled={cancelling[job.id]}
+                      aria-label={t(card ? 'code.bg.engine.stopFor' : 'code.bg.cancelFor', { title: job.title })}
+                      onClick={() => void cancel(job.id)}
+                      className={`flex shrink-0 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted hover:bg-hover hover:text-fg focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 ${touch ? 'h-11' : 'h-6'}`}
+                    >
+                      <X size={12} aria-hidden />
+                      {t(card ? 'code.bg.engine.stop' : 'code.bg.cancel')}
+                    </button>
+                  )}
+                </div>
+                {viewing === job.id && onLoadConversation && (
+                  <JobConversation
+                    key={job.id}
+                    id={job.id}
+                    title={job.title}
+                    load={onLoadConversation}
+                    version={conversationVersion?.(job.id) ?? ''}
+                  />
                 )}
               </li>
             )
@@ -213,7 +243,19 @@ export function BackgroundJobs({
                 className={`min-w-0 flex-1 ${card ? 'basis-[calc(100%-1.5rem)] break-words' : 'truncate'} ${job.live ? 'text-fg' : 'text-muted'}`}
                 title={job.title}
               >
-                {job.title}
+                {job.kind === 'ayudante' && onLoadConversation ? (
+                  <button
+                    type="button"
+                    className="text-left hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+                    aria-expanded={viewing === job.id}
+                    aria-label={t('helpers.viewFor', { title: job.title })}
+                    onClick={() => setViewing((id) => (id === job.id ? null : job.id))}
+                  >
+                    {job.title}
+                  </button>
+                ) : (
+                  job.title
+                )}
                 <span className="text-subtle"> · {t(KIND_KEY[job.kind])}</span>
               </span>
               <span className="shrink-0 text-xs text-muted">
@@ -258,10 +300,98 @@ export function BackgroundJobs({
                   {t('code.bg.engine.stop')}
                 </button>
               )}
+              {viewing === job.id && job.kind === 'ayudante' && onLoadConversation && (
+                <div className="w-full">
+                  <JobConversation
+                    key={job.id}
+                    id={job.id}
+                    title={job.title}
+                    load={onLoadConversation}
+                    version={conversationVersion?.(job.id) ?? ''}
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
       </div>
     </section>
+  )
+}
+
+/** Vista de lectura de un ayudante, con recarga por eventos y sin cambiar la sesión raíz. */
+function JobConversation({
+  id,
+  title,
+  load,
+  version
+}: {
+  id: string
+  title: string
+  load: (id: string) => Promise<HelperLine[]>
+  version: string
+}): React.JSX.Element {
+  const t = useT()
+  const [lines, setLines] = useState<HelperLine[] | null>(null)
+  const first = useRef(true)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latest = useRef({ id, load })
+  const alive = useRef(true)
+  const request = useRef(0)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      if (timer.current !== null) clearTimeout(timer.current)
+      timer.current = null
+    }
+  }, [])
+  useEffect(() => {
+    latest.current = { id, load }
+    const run = (): void => {
+      timer.current = null
+      const mine = ++request.current
+      void latest.current.load(latest.current.id).then(
+        (result) => {
+          if (alive.current && mine === request.current) {
+            setLines(result)
+            setFailed(false)
+          }
+        },
+        () => {
+          if (alive.current && mine === request.current) setFailed(true)
+        }
+      )
+    }
+    if (first.current) {
+      first.current = false
+      run()
+    } else if (timer.current === null) timer.current = setTimeout(run, 1200)
+  }, [id, load, version])
+  return (
+    <div
+      role="region"
+      aria-label={t('helpers.conv.title', { title })}
+      className="my-2 max-h-64 overflow-y-auto rounded-lg border border-border bg-bg/60 p-2 text-xs"
+    >
+      {failed ? (
+        <p role="alert">{t('helpers.conv.failed')}</p>
+      ) : lines === null ? (
+        <p>{t('helpers.conv.loading')}</p>
+      ) : lines.length === 0 ? (
+        <p>{t('helpers.conv.empty')}</p>
+      ) : (
+        lines.map((line) => (
+          <div key={line.id} className="mb-2">
+            <p className="font-medium text-muted">{t(line.role === 'user' ? 'helpers.conv.user' : 'helpers.conv.assistant')}</p>
+            <p className="whitespace-pre-wrap break-words">{line.text}</p>
+            {line.tools.length > 0 && (
+              <p className="text-subtle">{line.tools.map((tool) => t('helpers.conv.tool', { tool })).join(' · ')}</p>
+            )}
+          </div>
+        ))
+      )}
+    </div>
   )
 }

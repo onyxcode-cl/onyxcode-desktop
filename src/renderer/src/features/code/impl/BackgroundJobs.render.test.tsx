@@ -54,6 +54,27 @@ describe('BackgroundJobs', () => {
     expect(host.innerHTML).toBe('')
   })
 
+  it('la tarjeta vacía sigue visible e informa que no hay trabajos', () => {
+    act(() => root.render(createElement(BackgroundJobs, { layout: 'card', view: view([]), onCancel: vi.fn() })))
+    expect(host.querySelector('section')?.getAttribute('aria-label')).toBe('En segundo plano')
+    expect(host.textContent).toContain('No hay trabajos en segundo plano.')
+  })
+
+  it('la fila abre la conversación de lectura y conserva la acción Parar', async () => {
+    const load = vi.fn(async () => [{ id: 'm', role: 'assistant' as const, text: 'Estoy revisando los archivos', tools: ['read'] }])
+    const stop = vi.fn()
+    act(() => root.render(createElement(BackgroundJobs, { layout: 'card', view: view([job()]), onCancel: stop, onLoadConversation: load })))
+    act(() => host.querySelector<HTMLButtonElement>('[aria-expanded]')!.click())
+    await flush()
+    expect(load).toHaveBeenCalledWith('c1')
+    expect(host.querySelector('[role="region"]')?.textContent).toContain('Estoy revisando los archivos')
+    const stopButton = host.querySelector<HTMLButtonElement>('[aria-label="Parar «Revisar pruebas»"]')!
+    act(() => stopButton.click())
+    expect(stop).toHaveBeenCalledWith('c1')
+    act(() => host.querySelector<HTMLButtonElement>('[aria-expanded]')!.click())
+    expect(host.querySelector('[role="region"]')).toBeNull()
+  })
+
   it('lista con nombre accesible, estado en texto, tiempo y un botón Cancelar con nombre propio', () => {
     mount(view([job(), job({ id: 'c2', title: 'Buscar usos', state: 'waiting', elapsedMs: 9000 })]))
     const sec = host.querySelector('section')!

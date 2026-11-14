@@ -40,7 +40,9 @@ import { useTasks } from './store'
 import { useSessions } from '../../../stores/sessions'
 
 beforeEach(() => {
+  localStorage.clear()
   useTasks.setState({
+    folder: '/project',
     todos: {
       task: [
         { content: 'Paso hecho', status: 'completed', priority: 'medium' },
@@ -65,4 +67,27 @@ describe('Plan del panel de Tareas', () => {
     expect(html).not.toContain('sin confirmar')
     expect(html).not.toContain('El modelo no marcó')
   })
+})
+
+describe('Orden de las tarjetas de Overdrive', () => {
+  it('sitúa En segundo plano justo debajo de Plan', () => {
+    const html = renderToStaticMarkup(<ProgressPanel sessionID="task" busy={false} />)
+    const ids = [...html.matchAll(/data-summary-card="([^"]+)"/g)].map((m) => m[1])
+    expect(ids.slice(0, 4)).toEqual(['project', 'plan', 'background', 'context-window'])
+    expect(ids).toContain('changes')
+  })
+  it('recupera su orden guardado sin adoptar el de Código', () => {
+    localStorage.setItem('lazunox.summary-order.v1.tasks', JSON.stringify(['changes', 'background', 'plan']))
+    localStorage.setItem('lazunox.summary-order.v1.code', JSON.stringify(['project', 'context']))
+    const html = renderToStaticMarkup(<ProgressPanel sessionID="task" busy={false} />)
+    const ids = [...html.matchAll(/data-summary-card="([^"]+)"/g)].map((m) => m[1])
+    expect(ids.slice(0, 3)).toEqual(['changes', 'background', 'plan'])
+  })
+})
+
+it('no crea asas vacías para Programada ni para una ficha sin carpeta', () => {
+  useTasks.setState({ folder: null })
+  const html = renderToStaticMarkup(<ProgressPanel sessionID="task" busy={false} />)
+  expect(html).not.toContain('data-summary-card="project"')
+  expect(html).not.toContain('data-summary-card="scheduled"')
 })

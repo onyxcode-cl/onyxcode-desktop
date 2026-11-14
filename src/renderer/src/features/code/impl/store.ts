@@ -29,6 +29,7 @@ function linkedOf(dir: string): Array<{ path: string; mode: 'rw' | 'ro' }> {
 }
 import { PERMISSION_REPLACE_BODY, approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
 import { isProtectedPermission } from '@shared/protected-path'
+import { isAutoApprovableCodeCommand } from './auto-command'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
@@ -869,16 +870,30 @@ export const useCode = create<CodeState>((set, get) => {
   }
 
   /**
-   * «Automático» y «Solo explorar»: el motor pregunta por todo comando (`bash * ask`) y la app aprueba sola, con «una vez», los de solo
-   * lectura, pero únicamente tras comprobar el comando COMPLETO (el motor evalúa por separado cada parte de una orden compuesta y sin
-   * su redirección). Solo si la sesión termina con el bloque de ese modo; cualquier otra cosa sigue su camino normal (la tarjeta).
+   * El motor conserva `bash * ask`: comprobamos el comando COMPLETO y respondemos «una vez».
+   * V27: Código «Automático» permite trabajo dentro del proyecto salvo órdenes delicadas o ambiguas;
+   * «Solo explorar» conserva su lista de lectura. Las rutas protegidas siempre quedan a la persona.
    */
-  const autoApproveReadOnly = (p: PendingPermission): boolean => {
+  const autoApproveCommand = (p: PendingPermission): boolean => {
     if (p.permission !== 'bash' || isProtectedPermission(p.metadata)) return false
     const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
     if (!kind) return false
-    const command = (p.metadata as Record<string, unknown> | undefined)?.command
-    if (!isAutoApprovableCommand(kind, typeof command === 'string' ? command : undefined)) return false
+    const md = p.metadata as Record<string, unknown> | undefined
+    const command = typeof md?.command === 'string' ? md.command : undefined
+    // El motor manda `command` en metadata pero el cwd vive en la entrada de la herramienta.
+    const tool = p.tool
+      ? get()
+          .messages[p.sessionID]?.find((m) => m.info.id === p.tool!.messageID)
+          ?.parts.find((part) => part.type === 'tool' && part.callID === p.tool!.callID)
+      : undefined
+    const input = tool?.type === 'tool' ? tool.state.input : undefined
+    if (kind === 'auto' && p.tool && !input) return false
+    if (kind === 'auto' && input && input.command !== command) return false
+    const allowed =
+      kind === 'auto'
+        ? isAutoApprovableCodeCommand(command, get().sessionProject[p.sessionID], input?.workdir ?? md?.workdir)
+        : isAutoApprovableCommand(kind, command)
+    if (!allowed) return false
     void get().replyPermission(p, 'once')
     return true
   }
@@ -2262,7 +2277,7 @@ export const useCode = create<CodeState>((set, get) => {
             tool: p.tool,
             api: 'v1'
           }
-          if (autoApproveReadOnly(pending)) break
+          if (autoApproveCommand(pending)) break
           markUnread(rootSessionID(get().sessions, p.sessionID))
           notifyCode(p.sessionID, t('code.store.notifyApproval'), t('code.store.notifyApprovalSub'))
           set((s) => ({ permissions: { ...s.permissions, [p.id]: pending } }))
@@ -2281,7 +2296,7 @@ export const useCode = create<CodeState>((set, get) => {
             tool: p.source ? { messageID: p.source.messageID, callID: p.source.callID } : undefined,
             api: 'v2'
           }
-          if (autoApproveReadOnly(pending)) break
+          if (autoApproveCommand(pending)) break
           markUnread(rootSessionID(get().sessions, p.sessionID))
           notifyCode(p.sessionID, t('code.store.notifyApproval'), t('code.store.notifyApprovalSub'))
           set((s) => ({ permissions: { ...s.permissions, [p.id]: pending } }))

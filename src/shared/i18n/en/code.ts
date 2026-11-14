@@ -2,6 +2,9 @@ import type { Messages } from '../index'
 import type { code as es } from '../es/code'
 
 export const code = {
+  'code.summary.move': 'Move “{title}”',
+  'code.summary.moveHelp': 'Drag to move. With the keyboard, use the up and down arrows, Home or End.',
+  'code.summary.moved': '“{title}” moved to position {position} of {count}.',
   'code.ui.cancel': 'Cancel',
   'code.time.now': 'just now',
   'code.time.minutes': '{m} min ago',
@@ -129,7 +132,7 @@ export const code = {
   'code.mode.plan.short': 'Explore',
   'code.mode.auto': 'Automatic',
   'code.mode.auto.hint':
-    'Edits and reads without asking and lets read-only commands (ls, git status…) through; asks about all other commands (tests too), the web and folders outside the project',
+    'Edits and runs commands without asking; asks before deleting, leaving the project folder, touching sensitive files, changing the system or using the web',
   'code.mode.auto.short': 'Auto',
   'code.mode.bypass': 'Allow everything',
   'code.mode.bypass.hint':

@@ -4522,3 +4522,10 @@ Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word;
 
 - El aviso de documento inválido muestra su explicación como texto principal y «Pedir de nuevo» se la pasa al modelo, como ya ocurría con las fotos ausentes. Sin detalle conserva el mensaje genérico.
 - Pruebas: `ChatDocPanel.photos.test.tsx` comprueba aviso, petición de corrección y ausencia de detalle, además de la regresión de foto ausente. El comportamiento es compartido por macOS y Windows.
+
+## F8-B304 — Trabajos reunidos y tarjetas ordenables en Código y Tareas (V27)
+
+- La tarjeta «En segundo plano» reúne ayudantes de primer plano, de fondo y anidados con los comandos y servidores que ya informa el motor. Cada fila conserva estado, tiempo y «Parar»; los ayudantes abren su conversación de lectura. Se deduplican los ayudantes conocidos por su sesión y se muestra un estado vacío cuando no hay trabajos.
+- Tareas sustituye la banda del compositor por una tarjeta del panel Progreso. El indicador sigue contando con el panel cerrado; consultar o parar usa su servidor vivo exacto por carpeta y nivel de acceso, con directorio decidido en main (también WSL). Los tres canales nuevos tienen esquema estricto y clase remota X. La ejecución de comandos y el motor no cambian.
+- Las tarjetas de Código y Tareas se reordenan mediante arrastre o flechas/Inicio/Fin desde un asa accesible; el orden persiste por modo. De entrada, En segundo plano aparece después de Plan. Las secciones condicionales sin contenido no dejan asas vacías.
+- Verificación: 106 pruebas dirigidas en 18 archivos pasan, incluidos contador/foco en Mac y Windows simulados, tarjeta de Tareas, lectura/parada, deduplicación, IPC y persistencia accesible. Pasan typecheck y lint (advertencias previas). El informe externo `V27-SEGUNDO-PLANO-TERMINAL-INFORME.md` recoge build, formato, límites del entorno y comprobación manual pendiente con Electron real y Windows. Sin app, commit ni publicación.

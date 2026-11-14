@@ -80,7 +80,7 @@ import { useFolderDrop } from './useFolderDrop'
 import { ConfirmFolderDialog } from './ConfirmFolderDialog'
 import { hideRevertedEntries } from './conversation-logic'
 import { TasksComposer, type TasksComposerHandle } from './TasksComposer'
-import { TasksBackgroundJobs } from './TasksBackgroundJobs'
+import { TasksBackgroundJobsProvider, useTasksBackgroundJobs } from './TasksBackgroundJobs'
 import { DeleteGrantHintCard } from './DeleteGrant'
 import { SandboxDenialNotice } from './SandboxDenialNotice'
 import { isMacPlatform } from '../../../lib/platform'
@@ -358,7 +358,8 @@ function FollowUps({ items, onPick }: { items: FollowUpId[]; onPick: (text: stri
   )
 }
 
-export function TasksWorkspace(): React.JSX.Element {
+function TasksWorkspaceContent(): React.JSX.Element {
+  const backgroundJobs = useTasksBackgroundJobs()
   const t = useT()
   // Modo unificado: el título de la cabecera no se queda en «Hola, respo…» (ancho mínimo, tope y el título entero al pasar el cursor).
   const unifiedHeader = useUnifiedApps()
@@ -806,13 +807,25 @@ export function TasksWorkspace(): React.JSX.Element {
                     <button
                       key={p.id}
                       type="button"
-                      title={p.label}
-                      aria-label={p.label}
+                      title={
+                        p.id === 'progress' && backgroundJobs?.liveCount
+                          ? `${p.label} · ${t('code.bg.count', { count: backgroundJobs.liveCount })}`
+                          : p.label
+                      }
+                      aria-label={
+                        p.id === 'progress' && backgroundJobs?.liveCount
+                          ? `${p.label} · ${t('code.bg.count', { count: backgroundJobs.liveCount })}`
+                          : p.label
+                      }
                       aria-pressed={on}
                       className={`no-drag inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1.5 transition-colors ${on ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                       onClick={() => {
                         if (sideOpen) closeSideChat()
-                        if (on) setPanelOpen(false)
+                        if (p.id === 'progress' && backgroundJobs?.liveCount) {
+                          setAsideTab('progress')
+                          setPanelOpen(true)
+                          backgroundJobs.requestFocus()
+                        } else if (on) setPanelOpen(false)
                         else {
                           setAsideTab(p.id)
                           setPanelOpen(true)
@@ -820,6 +833,14 @@ export function TasksWorkspace(): React.JSX.Element {
                       }}
                     >
                       <p.icon size={16} />
+                      {p.id === 'progress' && !!backgroundJobs?.liveCount && (
+                        <span
+                          data-testid="tasks-jobs-indicator"
+                          className="ml-1 rounded-full bg-accent-soft px-1.5 text-meta font-medium tabular-nums text-accent"
+                        >
+                          {backgroundJobs.liveCount}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -896,7 +917,6 @@ export function TasksWorkspace(): React.JSX.Element {
               </p>
             )}
             <VisionModelHint />
-            <TasksBackgroundJobs />
             <TasksComposer
               ref={composerRef}
               onSend={send}
@@ -934,7 +954,10 @@ export function TasksWorkspace(): React.JSX.Element {
             <div className="contents desk:inline-flex desk:gap-0.5">
               <button
                 type="button"
-                onClick={() => setAsideTab('progress')}
+                onClick={() => {
+                  setAsideTab('progress')
+                  if (backgroundJobs?.liveCount) backgroundJobs.requestFocus()
+                }}
                 title={t('tasks.ws.progress')}
                 aria-label={t('tasks.ws.progress')}
                 className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:rounded-ctl-sm desk:py-0 desk:px-2.5 desk:text-ui ${
@@ -943,6 +966,11 @@ export function TasksWorkspace(): React.JSX.Element {
               >
                 <ListChecks size={16} className="hidden desk:block" />
                 <span className="inline desk:hidden">{t('tasks.ws.progress')}</span>
+                {!!backgroundJobs?.liveCount && (
+                  <span className="ml-1 rounded-full bg-accent-soft px-1.5 text-meta font-medium tabular-nums text-accent">
+                    {backgroundJobs.liveCount}
+                  </span>
+                )}
               </button>
               {hasBrowserBridge() && (
                 <button
@@ -1000,6 +1028,14 @@ export function TasksWorkspace(): React.JSX.Element {
       <FolderAccessCard owner="tasks" onOpen={reopenBlockedFolder} onPickOther={() => void chooseFolder()} />
       {pending && <ConfirmFolderDialog folder={pending} onConfirm={() => void approvePending()} onCancel={cancelPending} />}
     </div>
+  )
+}
+
+export function TasksWorkspace(): React.JSX.Element {
+  return (
+    <TasksBackgroundJobsProvider>
+      <TasksWorkspaceContent />
+    </TasksBackgroundJobsProvider>
   )
 }
 

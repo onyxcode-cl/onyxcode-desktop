@@ -76,7 +76,7 @@ describe('BackgroundJobs con trabajos del motor', () => {
       expect(title.classList.contains('truncate')).toBe(false)
     }
     const buttons = [...host.querySelectorAll('button')]
-    expect(buttons.map((b) => b.textContent)).toEqual(['Cancelar', 'Parar', 'Reanudar'])
+    expect(buttons.map((b) => b.textContent)).toEqual(['Parar', 'Parar', 'Reanudar'])
     for (const button of buttons) act(() => button.click())
     await flush()
     expect(onCancel).toHaveBeenCalledWith('kid')
