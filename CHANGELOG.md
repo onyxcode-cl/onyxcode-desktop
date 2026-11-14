@@ -4,6 +4,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.26] - 2026-11-14
+
+### Presentaciones
+
+- **Presentaciones en HTML con fotos.** Al pedir una presentación, sigue preguntando si la quieres editable (PowerPoint) o con diseño libre (HTML). La de HTML ahora puede llevar fotos, también desde el Chat.
+- **Presentar dentro de Lazunox.** El botón «Presentar» la muestra a pantalla completa: avanzas con las flechas, la barra espaciadora o un clic, ves el número de lámina y sales con Esc. Si tienes varias pantallas, te pregunta en cuál presentar y recuerda la última.
+- **PowerPoint nítido.** «Descargar ▾ › PowerPoint (imagen 4K)» guarda cada lámina en 4K, así se ve nítida en pantallas grandes y proyectores. En el mismo menú están el PDF y el HTML.
+- **Abre y presenta un PowerPoint que te mandaron.** Adjúntalo o arrástralo al Chat, a Código o a Tareas para verlo y presentarlo.
+- **Presentaciones menos repetidas.** Cada tema sale con colores, letras y composición propios, en vez de parecerse todas.
+
+### Fotos
+
+- **Fotos gratis y de uso libre.** Lazunox busca fotos libres (Wikimedia Commons), elige las que calzan con el tema y las pone dentro del documento, en Word, PowerPoint, PDF y HTML.
+- **Sin créditos encima.** La app no agrega créditos ni pies de foto; si los quieres, pídelos.
+- **Las fotos se conservan** al pasar un Word o un PowerPoint a PDF.
+- **Si falta una foto, el aviso dice cuál** y qué hacer, en vez de «datos no válidos».
+
 ## [1.8.25] - 2026-11-13
 
 ### Más claro
