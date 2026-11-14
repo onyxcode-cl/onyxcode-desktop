@@ -453,6 +453,9 @@ describe('ámbito de directory y de sesión', () => {
 })
 
 describe('settings:set y setters por campos', () => {
+  it('el orden de las tarjetas del escritorio no se cambia desde el celular', () => {
+    expect(cls(ipc('settings:set', { summaryCardOrder: { code: ['context'] } }))).toBe('deny:field-forbidden:summaryCardOrder')
+  })
   it('settings:set{opencodeBin} rechazado (y cualquier mezcla con él)', () => {
     expect(cls(ipc('settings:set', { opencodeBin: '/tmp/evil' }))).toBe('deny:field-forbidden:opencodeBin')
     expect(cls(ipc('settings:set', { theme: 'dark', opencodeBin: '/tmp/evil' }))).toBe('deny:field-forbidden:opencodeBin')

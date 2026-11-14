@@ -17,7 +17,7 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
-type P = { id: string; sessionID: string; permission: string; patterns: string[] }
+type P = { id: string; sessionID: string; permission: string; patterns: string[]; metadata?: Record<string, unknown> }
 
 function make(opts: { sessions: Record<string, string | undefined>; pending?: P[] }) {
   const replies: string[] = []
@@ -52,7 +52,13 @@ function make(opts: { sessions: Record<string, string | undefined>; pending?: P[
   return { a, replies, grants }
 }
 
-const ls = (id: string, sessionID: string): P => ({ id, sessionID, permission: 'bash', patterns: ['ls -la'] })
+const ls = (id: string, sessionID: string): P => ({
+  id,
+  sessionID,
+  permission: 'bash',
+  patterns: ['ls *'],
+  metadata: { command: 'ls -la' }
+})
 const sessions = { root: undefined, kid: 'root', grandkid: 'kid' }
 
 describe('AutoApprover: peticiones de hijas', () => {

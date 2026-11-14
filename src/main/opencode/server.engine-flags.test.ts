@@ -300,6 +300,7 @@ describe('sidecar principal: bgshell (F8-B204)', () => {
     )
     expect(bg.environment.LAZUNOX_SHELL_BG_DIR).toBe(join(root, 'work'))
     expect(bg.environment.LAZUNOX_SHELL_BG_EVENTS).toBe(join(root, 'events.jsonl'))
+    expect(server.getShellBgEventsFile()).toBe(join(root, 'events.jsonl'))
     if (process.platform !== 'win32') expect(statSync(root).mode & 0o777).toBe(0o700)
     const perm = cfg.permission as Record<string, string>
     // Aunque alguien marcara «bgshell» como de confianza a mano, `start` pregunta (no hay `bgshell_*: allow`).
@@ -315,6 +316,7 @@ describe('sidecar principal: bgshell (F8-B204)', () => {
     expect(state.wakes).toHaveLength(2)
     await server.stop()
     expect(state.wakes[1]!.stopped).toBeGreaterThan(0)
+    expect(server.getShellBgEventsFile()).toBeNull()
   }, 15_000) // el proceso falso no sale solo: cada `stop` espera la gracia de 3 s
 
   it('sin Node incluido: no hay bloque bgshell ni despertador ni carpetas, el motor arranca igual', async () => {

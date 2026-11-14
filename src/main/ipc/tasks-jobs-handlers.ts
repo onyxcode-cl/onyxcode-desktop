@@ -1,6 +1,7 @@
 /** Trabajos del motor de Tareas, sin arrancar servidores ni aceptar conexiones o rutas SDK del renderer. */
 import { t } from '@shared/i18n'
 import { fetchEngineJobs, resumeEngineJob, stopEngineJob } from './engine-jobs'
+import { isAppBackgroundJob, mergeAppBackgroundJobs, stopAppBackgroundJob } from './app-background-jobs'
 import { IpcError } from './handle'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
@@ -14,11 +15,15 @@ export function registerTasksJobsHandlers(ctx: TasksIpcContext): TasksSubmodule 
   }
   handle('tasks:jobs:list', (req) => {
     const server = serverFor(req)
-    return fetchEngineJobs(server, { sessionID: req.sessionID, directory: server.directory })
+    return fetchEngineJobs(server, { sessionID: req.sessionID, directory: server.directory }).then((result) =>
+      mergeAppBackgroundJobs(server, req.sessionID, { hostFolder: server.folder }, result)
+    )
   })
   handle('tasks:jobs:stop', (req) => {
     const server = serverFor(req)
-    return stopEngineJob(server, { sessionID: req.sessionID, jobId: req.jobId, directory: server.directory })
+    return isAppBackgroundJob(req.jobId)
+      ? stopAppBackgroundJob(server, req.sessionID, req.jobId, { hostFolder: server.folder }).then((ok) => ({ ok }))
+      : stopEngineJob(server, { sessionID: req.sessionID, jobId: req.jobId, directory: server.directory })
   })
   handle('tasks:jobs:resume', (req) => {
     const server = serverFor(req)

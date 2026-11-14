@@ -294,9 +294,24 @@ export class AutoApprover {
     // Una petición de una HIJA (subagente) nunca se aprueba sola: el opt-in es de la tarea raíz y lo que
     // pide un subagente lo decide la persona. Si la raíz no se pudo resolver, tampoco (podría ser una hija).
     if (rootId !== p.sessionID) return false
+    let metadata = p.metadata
+    // MCP pregunta con metadata:{} y patrón '*': la entrada vive en la parte enlazada por tool.
+    if (p.permission === 'bgshell_start' || (p.permission === 'bash' && p.tool)) {
+      if (!p.tool || typeof p.tool.messageID !== 'string' || typeof p.tool.callID !== 'string') return false
+      const message = await this.fetchJson<{
+        parts?: Array<{ type?: string; tool?: string; callID?: string; state?: { input?: Record<string, unknown> } }>
+      }>(server, `/session/${encodeURIComponent(p.sessionID)}/message/${encodeURIComponent(p.tool.messageID)}`, HTTP_TIMEOUT_MS)
+      const part = Array.isArray(message?.parts)
+        ? message.parts.find((part) => part?.type === 'tool' && part.tool === p.permission && part.callID === p.tool!.callID)
+        : undefined
+      const input = part?.state?.input
+      if (typeof input?.command !== 'string' || (p.permission === 'bgshell_start' && typeof input.cwd !== 'string')) return false
+      if (p.permission === 'bash' && input.command !== metadata?.command) return false
+      metadata = { ...metadata, command: input.command, workdir: p.permission === 'bgshell_start' ? input.cwd : input.workdir }
+    }
     const verdict = classifyPermission(
-      { permission: p.permission, patterns: p.patterns ?? [], metadata: p.metadata },
-      { mcpServers: this.deps.mcpServers() }
+      { permission: p.permission, patterns: p.patterns ?? [], metadata },
+      { mcpServers: this.deps.mcpServers(), projectRoot: server.directory ?? server.folder }
     )
     if (verdict.decision !== 'allow') return false
     this.markSeen(key)
@@ -339,7 +354,7 @@ export class AutoApprover {
     const server = this.deps.servers().find((s) => s.folder === folder && s.fullAccess === fullAccess)
     if (!server) return false
     const list = await this.fetchJson<
-      Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown }>
+      Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown; tool?: RawPerm['tool'] }>
     >(server, '/permission', HTTP_TIMEOUT_MS)
     const found = Array.isArray(list) ? list.find((p) => p?.id === requestId) : null
     if (!found || typeof found.sessionID !== 'string' || typeof found.permission !== 'string') return false
@@ -347,6 +362,7 @@ export class AutoApprover {
       id: requestId,
       sessionID: found.sessionID,
       permission: found.permission,
+      tool: found.tool,
       patterns: Array.isArray(found.patterns) ? found.patterns.filter((x): x is string => typeof x === 'string') : undefined,
       metadata:
         found.metadata && typeof found.metadata === 'object' && !Array.isArray(found.metadata)

@@ -32,6 +32,7 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { BackgroundShellManager } from './manager'
 import { ShellBgMcpServer, formatEvent } from './mcp-server'
+import { createPanelControl } from './panel-control'
 
 function envInt(name: string): number | undefined {
   const v = process.env[name]
@@ -78,16 +79,25 @@ async function main(): Promise<void> {
     /* sin limpieza de restos el servidor igualmente funciona */
   }
 
+  const panel = eventsFile ? createPanelControl(eventsFile, manager, (id) => server.ownerOf(id)) : null
+  const panelTimer = panel ? setInterval(() => void panel.poll(), 500) : null
+  panelTimer?.unref()
+  panel?.publish()
+
   let closing = false
   const close = (code: number): void => {
     if (closing) return
     closing = true
+    if (panelTimer) clearInterval(panelTimer)
     const hard = setTimeout(() => {
       manager.killAllSync()
       process.exit(code)
     }, 8000)
     hard.unref()
-    manager.shutdown().finally(() => process.exit(code))
+    manager.shutdown().finally(() => {
+      panel?.publish()
+      process.exit(code)
+    })
   }
   process.on('SIGTERM', () => close(0))
   process.on('SIGINT', () => close(0))
@@ -98,7 +108,10 @@ async function main(): Promise<void> {
   const rl = createInterface({ input: process.stdin, crlfDelay: Infinity })
   const pending = new Set<Promise<void>>()
   rl.on('line', (line) => {
-    const p = server.handleLine(line).catch(() => undefined)
+    const p = server
+      .handleLine(line)
+      .finally(() => panel?.publish())
+      .catch(() => undefined)
     pending.add(p)
     void p.finally(() => pending.delete(p))
   })

@@ -2,6 +2,12 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { DEFAULT_SETTINGS, type Settings } from '@shared/types'
+import { fakeApi } from '../../../test/setup'
+import { useSettings } from '../stores/settings'
 import { ReorderableCards, type SummaryCard } from './ReorderableCards'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -16,6 +22,7 @@ let root: Root
 beforeEach(() => {
   vi.unstubAllGlobals()
   localStorage.clear()
+  useSettings.setState({ settings: DEFAULT_SETTINGS, loaded: false })
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -116,5 +123,63 @@ describe('ReorderableCards', () => {
     mount()
     key('background', 'Home')
     expect(ids()[0]).toBe('background')
+  })
+
+  it.each(['code', 'tasks'] as const)('%s guarda en disco en el drop, sin cierre ni caché de Chromium', async (mode) => {
+    const dir = mkdtempSync(join(tmpdir(), 'lazunox-card-order-'))
+    try {
+      vi.resetModules()
+      vi.doMock('electron', () => ({ app: { getPath: () => dir } }))
+      // El puente cruza dos proyectos TS separados (web/main): las rutas dinámicas dejan el código
+      // main fuera del grafo de compilación web, pero ejecutan sus módulos reales en esta prueba.
+      const storePath = '../../../main/store'
+      const schemasPath = '../../../main/ipc/schemas'
+      const { settingsStore } = (await import(storePath)) as {
+        settingsStore: { set: (patch: Partial<Settings>) => Settings }
+      }
+      const { IPC_SCHEMAS } = (await import(schemasPath)) as {
+        IPC_SCHEMAS: { 'settings:set': (value: unknown) => Partial<Settings> }
+      }
+      vi.spyOn(fakeApi, 'invoke').mockImplementation(async (...args: unknown[]) => {
+        const [channel, patch] = args
+        expect(channel).toBe('settings:set')
+        const validated = IPC_SCHEMAS['settings:set'](patch)
+        return { ok: true, data: settingsStore.set(validated) } as never
+      })
+      mount(mode)
+      const transfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' }
+      for (const [element, type] of [
+        [handle('context'), 'dragstart'],
+        [host.querySelector('[data-summary-card="project"]')!, 'drop']
+      ] as const) {
+        const event = new Event(type, { bubbles: true, cancelable: true })
+        Object.defineProperty(event, 'dataTransfer', { value: transfer })
+        act(() => element.dispatchEvent(event))
+      }
+      const expected = ['context', 'project', 'plan', 'background', 'changes']
+      expect(ids()).toEqual(expected)
+      // La escritura ocurrió ya durante drop: no hay beforeunload, cierre de ventana ni timers.
+      expect(JSON.parse(readFileSync(join(dir, 'settings.json'), 'utf8')).summaryCardOrder[mode]).toEqual(expected)
+      localStorage.clear()
+      vi.resetModules()
+      const reopened = ((await import(storePath)) as { settingsStore: { get: () => Settings } }).settingsStore.get()
+      act(() => {
+        root.unmount()
+        useSettings.setState({ settings: reopened, loaded: true })
+      })
+      root = createRoot(host)
+      mount(mode)
+      expect(ids()).toEqual(expected)
+    } finally {
+      vi.doUnmock('electron')
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('una hidratación tardía no revierte el último movimiento', () => {
+    mount('code')
+    key('changes', 'Home')
+    act(() => useSettings.setState({ settings: { ...DEFAULT_SETTINGS, summaryCardOrder: { code: ['plan'] } }, loaded: true }))
+    expect(ids()).toEqual(['changes', 'project', 'plan', 'background', 'context'])
   })
 })

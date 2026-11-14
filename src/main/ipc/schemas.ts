@@ -760,6 +760,10 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
     defaultModel: modelRef,
     theme: literal('system', 'light', 'dark'),
     sidebarGlass: literal('solid', 'soft', 'glass'),
+    summaryCardOrder: partial({
+      code: arr(literal('project', 'plan', 'background', 'context', 'changes'), 5),
+      tasks: arr(literal('project', 'plan', 'background', 'context', 'changes'), 5)
+    }),
     recentFolders: arr(absPath, 50),
     tasksGlobalInstructions: str({ max: 20_000 }),
     userInstructions: str({ max: 4_000 }),

@@ -875,11 +875,12 @@ export const useCode = create<CodeState>((set, get) => {
    * «Solo explorar» conserva su lista de lectura. Las rutas protegidas siempre quedan a la persona.
    */
   const autoApproveCommand = (p: PendingPermission): boolean => {
-    if (p.permission !== 'bash' || isProtectedPermission(p.metadata)) return false
+    const background = p.permission === 'bgshell_start'
+    if ((p.permission !== 'bash' && !background) || isProtectedPermission(p.metadata)) return false
     const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
-    if (!kind) return false
+    if (!kind || (background && kind !== 'auto')) return false
     const md = p.metadata as Record<string, unknown> | undefined
-    const command = typeof md?.command === 'string' ? md.command : undefined
+    const commandMetadata = typeof md?.command === 'string' ? md.command : undefined
     // El motor manda `command` en metadata pero el cwd vive en la entrada de la herramienta.
     const tool = p.tool
       ? get()
@@ -887,11 +888,13 @@ export const useCode = create<CodeState>((set, get) => {
           ?.parts.find((part) => part.type === 'tool' && part.callID === p.tool!.callID)
       : undefined
     const input = tool?.type === 'tool' ? tool.state.input : undefined
+    const command = background ? (typeof input?.command === 'string' ? input.command : undefined) : commandMetadata
     if (kind === 'auto' && p.tool && !input) return false
     if (kind === 'auto' && input && input.command !== command) return false
+    if (background && (!input || typeof input.cwd !== 'string' || tool?.type !== 'tool' || tool.tool !== 'bgshell_start')) return false
     const allowed =
       kind === 'auto'
-        ? isAutoApprovableCodeCommand(command, get().sessionProject[p.sessionID], input?.workdir ?? md?.workdir)
+        ? isAutoApprovableCodeCommand(command, get().sessionProject[p.sessionID], (background ? input?.cwd : input?.workdir) ?? md?.workdir)
         : isAutoApprovableCommand(kind, command)
     if (!allowed) return false
     void get().replyPermission(p, 'once')

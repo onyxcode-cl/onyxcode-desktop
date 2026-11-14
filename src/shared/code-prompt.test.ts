@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { buildCodeSystemPrompt } from './code-prompt'
 
 describe('buildCodeSystemPrompt', () => {
+  it('pide publicar primero todowrite en trabajos de 3 o más pasos, también sin memoria', () => {
+    for (const learningEnabled of [true, false]) {
+      expect(buildCodeSystemPrompt({ learningEnabled })).toContain(
+        'Si el trabajo tiene 3 o más pasos, publica primero el plan con `todowrite` antes de ejecutar el trabajo.'
+      )
+    }
+  })
   it('learningEnabled: false → aviso de apagado, sin memoria aprendida aunque haya contenido', () => {
     const s = buildCodeSystemPrompt({ learningEnabled: false, learnedUser: 'ya aprobado' })
     expect(s).toContain('desactivado')

@@ -2,15 +2,16 @@
  * Modo auto: clasificador PURO de permisos y peticiones de acceso a apps.
  *
  * Sin Electron, sin `node:fs`, sin red: solo texto y regex, para poder probarlo sin la app (ver el
- * arnés del paquete C3). La allowlist de aquí es la FRONTERA de seguridad real, no el motor
- * (`auto-approver.ts`): ante la duda, todo lo que sigue devuelve 'ask'. Nunca se amplía esta lista
- * sin repetir la verificación completa del plan (`docs/TASKS-LOTE-C-PLAN.md`, B.9).
+ * arnés del paquete C3). V27 ronda 2: el shell con carpeta conocida permite por defecto salvo
+ * patrones delicados; es una heurística, no aislamiento. Los MCP de consulta conservan su lista
+ * cerrada y Control del PC, navegador y comandos del equipo conservan su aprobación propia.
  *
  * Decisión del usuario (2026-09-28): Modo auto es SOLO motor de reglas, sin clasificador por modelo.
  */
 import type { AppTier, AutoRuleId } from '@shared/ipc-tasks'
 import { looksLikeInjection } from '@shared/injection-patterns'
 import { NEVER_ALONE_PERMISSIONS as NEVER_ALONE_LIST } from '@shared/permission-persist'
+import { isAutoApprovableCodeCommand } from '@shared/auto-command'
 import { isProtectedPermission } from '@shared/protected-path'
 export { looksLikeInjection } from '@shared/injection-patterns'
 
@@ -286,7 +287,7 @@ const NEVER_ALONE_PERMISSIONS: ReadonlySet<string> = new Set(NEVER_ALONE_LIST)
  */
 export function classifyPermission(
   p: { permission: string; patterns: string[]; metadata?: Record<string, unknown> },
-  ctx: { mcpServers: string[] }
+  ctx: { mcpServers: string[]; projectRoot?: string }
 ): AutoVerdict {
   const permission = typeof p.permission === 'string' ? p.permission : ''
   const patterns = Array.isArray(p.patterns) ? p.patterns.filter((x): x is string => typeof x === 'string') : []
@@ -309,11 +310,17 @@ export function classifyPermission(
     return ask('el contenido de la petición puede contener instrucciones inyectadas')
   }
 
-  if (permission === 'bash') {
-    const cmdMeta = typeof metadata?.command === 'string' ? metadata.command : null
-    const toCheck = cmdMeta ? [...patterns, cmdMeta] : patterns
-    if (toCheck.length === 0) return ask('sin comando de bash que comprobar')
-    if (!toCheck.every((c) => isReadOnlyBash(c))) return ask('el comando no está en la lista de bash de solo lectura')
+  if (permission === 'bash' || permission === 'bgshell_start') {
+    const command = typeof metadata?.command === 'string' ? metadata.command : undefined
+    if (ctx.projectRoot) {
+      if (!isAutoApprovableCodeCommand(command, ctx.projectRoot, metadata?.workdir ?? metadata?.cwd))
+        return ask('comando delicado o fuera de la carpeta')
+      // El identificador se conserva para leer los registros de versiones anteriores.
+      return allow('bash-readonly', `comando en automático: ${truncate(command!, 140)}`)
+    }
+    const toCheck = command ? [...patterns, command] : patterns
+    if (permission !== 'bash' || !toCheck.length || !toCheck.every((c) => isReadOnlyBash(c)))
+      return ask('sin comando completo o carpeta de confianza')
     return allow('bash-readonly', `bash de solo lectura: ${truncate(toCheck[0], 140)}`)
   }
 

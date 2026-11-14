@@ -44,6 +44,13 @@ describe('plugin lazunox-session: inyecta la sesión que llama', () => {
     }
   })
 
+  it('equipo_*: la sesión pertenece al llamante', async () => {
+    for (const tool of ['equipo_ejecutar', 'equipo_detener']) {
+      expect(await call(tool, { lazunox_session: 'FALSA' })).toEqual({ lazunox_session: 'ses_real' })
+    }
+    expect(await call('equipox_ejecutar', { lazunox_session: 'FALSA' })).toEqual({ lazunox_session: 'FALSA' })
+  })
+
   it('Code Mode: la llamada interna (callID <execute>/<n>) también se inyecta', async () => {
     expect(await call('bgshell_start', { command: 'ls', lazunox_session: 'FALSA' }, 'call_9/2')).toMatchObject({
       lazunox_session: 'ses_real'
@@ -87,6 +94,15 @@ describe('plugin lazunox-session con el puente de apps (modo unificado)', () => 
     await b({ tool, sessionID: 'ses_real' }, output)
     return output.args
   }
+
+  it('equipo_* recibe la sesión real en todas las variantes del puente', async () => {
+    for (const bridge of [undefined, '0', '1']) {
+      const b = await load(true, bridge)
+      expect(await run(b, 'equipo_ejecutar')).toEqual({ lazunox_session: 'ses_real' })
+      expect(await run(b, 'equipo_detener')).toEqual({ lazunox_session: 'ses_real' })
+      expect(await run(b, 'equipox_ejecutar')).toEqual({ lazunox_session: 'FALSA' })
+    }
+  })
 
   it('con el modo unificado apagado el texto es idéntico al de siempre (computer_* no se toca)', () => {
     const prev = process.env.LAZUNOX_UNIFIED_APPS

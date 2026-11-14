@@ -63,6 +63,8 @@ export interface Settings {
   defaultModel: ModelRef
   theme: ThemePreference
   sidebarGlass: SidebarGlass
+  /** Orden de las tarjetas de Resumen; main lo guarda al mover, sin depender del vaciado de localStorage al salir. */
+  summaryCardOrder?: Partial<Record<'code' | 'tasks', string[]>>
   recentFolders: string[]
   /** Instrucciones globales aplicadas a todas las tareas de Tareas (además de las del proyecto). */
   tasksGlobalInstructions: string

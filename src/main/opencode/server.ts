@@ -95,6 +95,11 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private appliedInline: string | null = null
   /** Despertador de `bgshell` (aviso de fin al modelo) del proceso actual; vive y muere con la conexión (F8-B204). */
   private shellBgWake: ShellBgWake | null = null
+  private shellBgEventsFile: string | null = null
+
+  getShellBgEventsFile(): string | null {
+    return this.shellBgEventsFile
+  }
   /** Token real de la herramienta `documentos` de este arranque: se revoca al parar, al caerse el proceso o al relanzar. */
   private documentsToken: string | null = null
   private chatPhotosToken: string | null = null
@@ -399,7 +404,10 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       this.connection = connection
       console.log(`[opencode] listo en ${baseUrl} (v${version ?? '?'}) pid=${child.pid}${launch.disclaimed ? ' (TCC desvinculado)' : ''}`)
       this.setStatus({ state: 'ready', error: undefined, version })
-      if (shellBg) this.startShellBgWake(shellBg.eventsFile, connection)
+      if (shellBg) {
+        this.startShellBgWake(shellBg.eventsFile, connection)
+        this.shellBgEventsFile = shellBg.eventsFile
+      }
       this.emit('connection', connection)
       return connection
     } catch (err) {
@@ -474,6 +482,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private stopShellBgWake(): void {
     this.shellBgWake?.stop()
     this.shellBgWake = null
+    this.shellBgEventsFile = null
   }
 
   private onExit(child: ChildProcess, code: number | null, signal: NodeJS.Signals | null, spawnedAt: number): void {

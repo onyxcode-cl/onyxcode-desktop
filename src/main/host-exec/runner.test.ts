@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, readdirSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { posixOnly } from '../../test/platform'
 import {
   backgroundCount,
+  hostBackgroundJobs,
   runHostCommand,
   shellInvocation,
   startBackground,
@@ -108,6 +109,32 @@ describe.skipIf(!posixOnly)('segundo plano', () => {
     expect(r.stdout).toContain('listo')
     expect(r.exitCode).toBe(0)
     expect(backgroundCount('tarea-2')).toBe(0)
+  })
+
+  it('al terminar naturalmente conserva estado y tiempo, y limpia su registro privado', async () => {
+    const marker = `natural-log-${process.pid}`
+    const r = await startBackground(`echo ${marker}; sleep 0.4`, 'natural', { graceMs: 50, sessionID: 'ses_natural' })
+    expect(r.running).toBe(true)
+    const dir = join(tmpdir(), 'lazunox-host-exec')
+    const log = readdirSync(dir)
+      .map((f) => join(dir, f))
+      .find((f) => {
+        try {
+          return readFileSync(f, 'utf8').includes(marker)
+        } catch {
+          return false
+        }
+      })
+    expect(log).toBeDefined()
+    const end = Date.now() + 3000
+    while (hostBackgroundJobs('natural')[0]?.job.state === 'en_curso' && Date.now() < end) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+    expect(hostBackgroundJobs('natural')[0]).toMatchObject({
+      sessionID: 'ses_natural',
+      job: { state: 'terminado', code: 0, endedAt: expect.any(Number) }
+    })
+    expect(existsSync(log!)).toBe(false)
   })
 
   it('stopAllBackground mata solo los de esa tarea', async () => {
