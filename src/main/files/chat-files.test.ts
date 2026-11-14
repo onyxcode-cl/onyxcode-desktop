@@ -208,3 +208,17 @@ describe('IPC de archivos del Chat', () => {
     }
   })
 })
+
+describe('HTML autónomo con fotos', () => {
+  it('conserva HTML mayor que el límite de texto, sin truncar imágenes base64', () => {
+    const html = '<!doctype html><!--' + 'x'.repeat(3 * 1024 * 1024) + '--><section class="slide"></section>'
+    const path = join(root, 'fotos.html')
+    writeFileSync(path, html)
+    expect(readChatFile([root], path)).toEqual({ ok: true, kind: 'html', text: html, truncated: false })
+  })
+  it('rechaza HTML que supera 24 MiB en vez de entregar media presentación', () => {
+    const path = join(root, 'demasiadas-fotos.html')
+    writeFileSync(path, 'x'.repeat(24 * 1024 * 1024 + 1))
+    expect(readChatFile([root], path)).toEqual({ ok: false, reason: 'too-large' })
+  })
+})

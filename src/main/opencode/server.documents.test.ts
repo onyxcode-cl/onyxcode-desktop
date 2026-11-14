@@ -56,6 +56,7 @@ vi.mock('./pids', () => ({ killTree: () => [], killPids: () => {}, trackPid: () 
 vi.mock('./catalog-wait', () => ({ catalogFile: () => '/x', waitForCatalog: async () => 'present' }))
 vi.mock('../process/disclaim', () => ({ withDisclaim: (command: string, args: string[]) => ({ command, args, disclaimed: false }) }))
 vi.mock('../documents', () => ({
+  chatPhotosMcp: { configFor: async () => null, revokeToken: () => true },
   documentsMcp: {
     configFor: async (binding: { folder: string; code?: { roots: () => readonly string[] } }) => {
       state.bindings.push(binding)
@@ -103,6 +104,9 @@ describe('sidecar principal: documentos en Code', () => {
     expect(cfg.instructions).toEqual(['/cfg/code-documentos.md'])
     expect(cfg.permission.documentos_crear).toBe('ask')
     expect(cfg.permission.documentos_renderizar).toBe('allow')
+    expect(cfg.permission.documentos_imagenes_buscar).toBe('ask')
+    expect(cfg.permission.documentos_imagenes_ver).toBe('ask')
+    expect(cfg.permission.documentos_imagenes_usar).toBe('ask')
     // No hay regla general `documentos_*` (el servidor es de reglas fijas, no un conector configurable).
     expect(cfg.permission['documentos_*']).toBeUndefined()
     // El agente chat sigue sin poder usarla.

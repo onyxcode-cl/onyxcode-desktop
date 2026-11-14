@@ -3,6 +3,33 @@ import { GPT_DOCX, GPT_PPTX, GPT_XLSX, LONG_BULLET } from '../test/fixtures/chat
 import { sanitizeDoc, sniffDocKind } from './chat-doc-sanitize'
 import { isDocxSpec, isPptxSpec, isXlsxSpec, MAX_BULLET_CHARS, type DocxSpec, type PptxSpec, type XlsxSpec } from './chat-doc-spec'
 
+describe('identidad conservada al sanear', () => {
+  const identity = {
+    concept: 'Editorial',
+    palette: { bg: '#FFFFFF', text: '#222222', accent: '#703020' },
+    fonts: { title: 'Georgia', body: 'Tahoma' },
+    cover: 'band',
+    headers: 'accent'
+  }
+  it.each(['pptx', 'docx'] as const)('%s conserva decisiones válidas entre normalización y reparación', (kind) => {
+    const spec =
+      kind === 'pptx'
+        ? { slides: [{ title: 'Portada' }] }
+        : { title: 'Portada', cover: true, blocks: [{ type: 'paragraph', text: 'Texto' }] }
+    const result = sanitizeDoc(kind, { ...spec, identity })
+    expect(result).toMatchObject({ identity })
+    expect(sanitizeDoc(kind, result)).toEqual(result)
+    expect(kind === 'pptx' ? isPptxSpec(result) : isDocxSpec(result)).toBe(true)
+    if (kind === 'docx') expect(result).toMatchObject({ cover: true })
+  })
+  it('descarta claves desconocidas y una decisión inválida sin perder paleta y fuentes válidas', () => {
+    const result = sanitizeDoc('pptx', { slides: [{ title: 'Portada' }], identity: { ...identity, command: 'file.delete', titles: 'bad' } })
+    expect(result).toMatchObject({ identity })
+    expect((result as PptxSpec).identity).not.toHaveProperty('command')
+    expect((result as PptxSpec).identity).not.toHaveProperty('titles')
+  })
+})
+
 describe('sanitizeDoc: pptx de GPT', () => {
   const raw = GPT_PPTX
   it('sin sanear, el esquema estricto lo rechaza entero', () => {

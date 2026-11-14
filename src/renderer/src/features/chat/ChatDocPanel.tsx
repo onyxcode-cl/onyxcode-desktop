@@ -1,3 +1,4 @@
+import type { ArtifactContext } from '@shared/ipc-extras'
 /**
  * Panel de documento de Chat: la vista nativa (misma del visor de documentos) ya está abierta
  * (`useChatDocPanel` llamó a `extras:chatDoc:open`); esto solo mide el hueco y pone la cabecera.
@@ -8,7 +9,7 @@ import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { getExtras } from '../../lib/extrasApi'
 import { parseDataBlock } from '../../lib/chatDocBlocks'
 import { useT } from '../../lib/i18n'
-import { DownloadPdfButton, DownloadSlidesPptxButton, PresentSlidesButton } from '../../components/artifacts/ArtifactButton'
+import { DownloadMenuButton, PresentSlidesButton } from '../../components/artifacts/ArtifactButton'
 import { DownloadDataDocButton } from '../../components/artifacts/DataDocButton'
 import { DocNotice, docProblemKey } from '../../components/artifacts/DocNotice'
 import { askAboutChatDoc, canAskAboutChatDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
@@ -27,7 +28,7 @@ const KIND_LABEL: Record<ChatDocBlockKind, 'chat.doc.kindPdf' | 'chat.doc.kindXl
 interface Props {
   creating: boolean
   title: string
-  doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
+  doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean; context?: ArtifactContext } | null
   problem: ChatDocProblem | null
   /** Archivo del disco (PDF/Office) abierto en el visor nativo; `null` si el panel muestra un documento del chat. */
   file?: ChatFileView | null
@@ -63,7 +64,8 @@ export function ChatDocPanel({
     setOpenFailed(false)
     try {
       let res: { ok: boolean } | undefined
-      if (doc.kind === 'html') res = await extras.invoke('extras:chatDoc:openExternal', { kind: 'pdf', title, html: doc.rawText })
+      if (doc.kind === 'html')
+        res = await extras.invoke('extras:chatDoc:openExternal', { kind: 'pdf', title, html: doc.rawText, context: doc.context })
       else {
         const parsed = parseDataBlock(doc.kind, doc.rawText)
         if (doc.kind === 'xlsx' && isXlsxSpec(parsed))
@@ -98,7 +100,9 @@ export function ChatDocPanel({
 
   // JSON roto / forma incorrecta / datos no válidos: reintentar el mismo texto no sirve, hay que pedirle al modelo que lo vuelva a escribir.
   const askAgain =
-    !!problem && (problem.reason === 'json' || problem.reason === 'schema' || problem.reason === 'invalid') && canAskAboutChatDoc()
+    !!problem &&
+    (problem.reason === 'json' || problem.reason === 'schema' || problem.reason === 'invalid' || problem.reason === 'photo-missing') &&
+    canAskAboutChatDoc()
   const noCraft = problem?.reason === 'no-craft'
 
   return (
@@ -108,12 +112,11 @@ export function ChatDocPanel({
           {title || t('chat.doc.title')} {doc && <span className="text-subtle">· {t(KIND_LABEL[doc.kind])}</span>}
         </span>
         {file && <ChatFileButtons info={file.info} compact />}
-        {doc && !problem && doc.kind === 'html' && <DownloadPdfButton html={doc.rawText} title={title} compact className="py-1" />}
         {doc && !problem && doc.kind === 'html' && doc.isSlides && (
-          <>
-            <PresentSlidesButton html={doc.rawText} title={title} compact className="py-1" />
-            <DownloadSlidesPptxButton html={doc.rawText} title={title} compact className="py-1" />
-          </>
+          <PresentSlidesButton html={doc.rawText} context={doc.context} title={title} className="py-1" />
+        )}
+        {doc && !problem && doc.kind === 'html' && (
+          <DownloadMenuButton html={doc.rawText} context={doc.context} title={title} isSlides={doc.isSlides} className="py-1" />
         )}
         {doc && !problem && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
           <DownloadDataDocButton kind={doc.kind} rawText={doc.rawText} title={title} compact className="py-1" />
@@ -172,12 +175,14 @@ export function ChatDocPanel({
                     ? () =>
                         askAboutChatDoc(
                           t('chat.doc.retryPrompt', {
-                            reason: t(docProblemKey(problem.reason))
+                            reason: problem.reason === 'photo-missing' && problem.detail ? problem.detail : t(docProblemKey(problem.reason))
                           })
                         )
                     : onRetry
               }
-              detail={askAgain && problem.reason !== 'invalid' ? doc.rawText.slice(0, 4000) : problem.detail}
+              detail={
+                askAgain && problem.reason !== 'invalid' && problem.reason !== 'photo-missing' ? doc.rawText.slice(0, 4000) : problem.detail
+              }
             />
           </div>
         )}

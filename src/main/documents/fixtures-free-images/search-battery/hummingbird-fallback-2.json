@@ -1,0 +1,1383 @@
+{
+  "capturedAt": "2026-11-13T17:52:04.474Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=hummingbird+flowers+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 12373874,
+          "ns": 6,
+          "title": "File:Antillean crested hummingbird feeding.jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2690162,
+              "width": 1846,
+              "height": 1343,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Antillean_crested_hummingbird_feeding.jpg/1280px-Antillean_crested_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 931,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Antillean_crested_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Antillean_crested_hummingbird_feeding.jpg/1280px-Antillean_crested_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 931,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Antillean_crested_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Antillean_crested_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Antillean_crested_hummingbird_feeding.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=12373874",
+              "sha1": "dc13068094ce41d04e8a4ae98414f40ed811acdc",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-03-08 14:14:14",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Antillean crested hummingbird feeding",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Orthorhyncus cristatus|Birds of Dominica|Photographs by Charlesjsharp|Self-published work|Files with coordinates missing SDC location of creation|Trochilinae feeding on flowers|Birds feeding on Lantana flowers|Animals with Lantana camara",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "15.489155",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-61.431501",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Antillean crested hummingbird (<i><a href=\"//commons.wikimedia.org/wiki/Orthorhyncus_cristatus\" title=\"Orthorhyncus cristatus\">Orthorhyncus cristatus</a></i>) feeding photographed in its natural habitat in the Morne Diablotins National Park in Dominica. Guide was local expert 'Dr Birdy' Bertrand Baptiste.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-12-01",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"http://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 12374160,
+          "ns": 6,
+          "title": "File:Purple-throated carib hummingbird feeding.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1397863,
+              "width": 1692,
+              "height": 1057,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Purple-throated_carib_hummingbird_feeding.jpg/1280px-Purple-throated_carib_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 800,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/46/Purple-throated_carib_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Purple-throated_carib_hummingbird_feeding.jpg/1280px-Purple-throated_carib_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 800,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/46/Purple-throated_carib_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/46/Purple-throated_carib_hummingbird_feeding.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Purple-throated_carib_hummingbird_feeding.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=12374160",
+              "sha1": "19a26aebd1a7e180f1d151b4231313f38713223f",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-03-08 14:42:00",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Purple-throated carib hummingbird feeding",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Eulampis jugularis|Birds of Dominica|Photographs by Charlesjsharp|Self-published work|Images with extracted images|Files with coordinates missing SDC location of creation|Trochilinae feeding on flowers",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "15.489155",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-61.431501",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Purple-throated Carib hummingbird (<i>Eulampis jugularis</i>) feeding photographed in its natural habitat in the Morne Diablotins National Park in Dominica. Guide was local expert 'Dr Birdy' Bertrand Baptiste.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-12-01",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"http://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 19036989,
+          "ns": 6,
+          "title": "File:Green-and-white hummingbird feeding.JPG",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 127135,
+              "width": 910,
+              "height": 748,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Green-and-white_hummingbird_feeding.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1052,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Green-and-white_hummingbird_feeding.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1052
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Green-and-white_hummingbird_feeding.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Green-and-white_hummingbird_feeding.JPG",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=19036989",
+              "sha1": "9ce9865b306b08200d15520f7e089ad404f58746",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2012-04-10 17:47:07",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Green-and-white hummingbird feeding",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Amazilia viridicauda|Taken with Canon EOS 300D|Photographs by Charlesjsharp|Self-published work|Unidentified plants in Peru|Files with coordinates missing SDC location of creation|Apodiformes of Peru|Amazilia feeding on flowers|Unidentified Elleanthus",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-13.160668",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-72.532753",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Green-and-white Hummingbird (<i>Amazilia viridicauda</i>), Machu Picchu Sanctuary Lodge, Peru",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2012-03-21",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"http://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 76891220,
+          "ns": 6,
+          "title": "File:Hummingbird hawk moth (Macroglossum stellatarum) in flight.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3804087,
+              "width": 3042,
+              "height": 2372,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg/1280px-Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 998,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg/1280px-Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 998,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_hawk_moth_(Macroglossum_stellatarum)_in_flight.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=76891220",
+              "sha1": "7fe75fd16c2763a2227236c1b099a8b048c65048",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-03-21 20:10:08",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird hawk moth (Macroglossum stellatarum) in flight",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Featured pictures of Bulgaria|Photographs by Charlesjsharp|Self-published work|Featured pictures on Wikipedia, English|Commons featured desktop backgrounds|Featured pictures of animals in flight|Featured pictures by Charlesjsharp|Unidentified Lamiaceae|Bulgaria photographs taken on 2017-07-28|Sphingidae of Bulgaria|Files with coordinates missing SDC location of creation|Featured pictures of Sphingidae|Featured pictures by Charlesjsharp/Bulgaria|Featured pictures on English Wikipedia by Charlesjsharp|Macroglossum stellatarum on Lamiales flowers|Featured pictures of arthropods by Charlesjsharp|Featured pictures of moths by Charlesjsharp",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued|potd",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "42.226370",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "23.581172",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Hummingbird hawk moth (<i>Macroglossum stellatarum</i>) in flight, Yastrebets, Rila Mountains, Bulgaria",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-07-28 16:13:42",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 80004827,
+          "ns": 6,
+          "title": "File:Volcano hummingbird (Selasphorus flammula) female in flight 2.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2996631,
+              "width": 3381,
+              "height": 2339,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg/1280px-Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 886,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg/1280px-Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 886,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Volcano_hummingbird_(Selasphorus_flammula)_female_in_flight_2.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=80004827",
+              "sha1": "edca69501255e7866acaea01854308a8390c3f52",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-28 10:15:22",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Volcano hummingbird (Selasphorus flammula) female in flight 2",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Selasphorus flammula|2019 in Panama|Photographs by Charlesjsharp|Self-published work|Featured pictures on Wikipedia, English|Unidentified Abutilon|Featured pictures by Charlesjsharp|Files with coordinates missing SDC location of creation|Featured pictures by Charlesjsharp/Panama|Panama photographs taken on 2019-05-13|Images used in A Sharp Eye on wildlife photography|Featured pictures of Trochilidae|Featured pictures of birds by Charlesjsharp|Featured pictures of birds in flight|Apodiformes of Panama|Featured pictures of animals in Panama|Birds in flight facing right|Featured pictures on English Wikipedia by Charlesjsharp|Brand guideline portal images|Animals with Abutilon|Images used in A Sharp Eye on wildlife photography/Issue Five, September 2020",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued|potd",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "8.884455",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-82.683689",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Volcano hummingbird (Selasphorus flammula) female feeding on <i>Abutilon</i> sp. nectar, #2 of a set of 3. Mount Totumas cloud forest, Panama.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-05-13 14:32:05",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 93053838,
+          "ns": 6,
+          "title": "File:Ruby-Throated hummingbird on red flower.jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4001352,
+              "width": 3276,
+              "height": 2184,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3a/Ruby-Throated_hummingbird_on_red_flower.jpg/1280px-Ruby-Throated_hummingbird_on_red_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Ruby-Throated_hummingbird_on_red_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3a/Ruby-Throated_hummingbird_on_red_flower.jpg/1280px-Ruby-Throated_hummingbird_on_red_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Ruby-Throated_hummingbird_on_red_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Ruby-Throated_hummingbird_on_red_flower.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Ruby-Throated_hummingbird_on_red_flower.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=93053838",
+              "sha1": "7a8346826344a4bbdf501535bcd531431f4c0444",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-08-11 18:22:25",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Ruby-Throated hummingbird on red flower",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Archilochus colubris feeding on flowers|Birds feeding on Stachytarpheta flowers",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Ruby throated hummingbird hovering near a red flower while sucking up the nectar",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2020-08-08 07:28:37",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Jnevitt47&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Jnevitt47 (page does not exist)\">Jack Nevitt</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 97450539,
+          "ns": 6,
+          "title": "File:Martin Johnson Heade - Study of Varied Flowers with a Hummingbird - 2007.205 - Crystal Bridges Museum of American Art.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 136956,
+              "width": 1080,
+              "height": 845,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Martin_Johnson_Heade_-_Study_of_Varied_Flowers_with_a_Hummingbird_-_2007.205_-_Crystal_Bridges_Museum_of_American_Art.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1001,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Martin_Johnson_Heade_-_Study_of_Varied_Flowers_with_a_Hummingbird_-_2007.205_-_Crystal_Bridges_Museum_of_American_Art.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1001
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Martin_Johnson_Heade_-_Study_of_Varied_Flowers_with_a_Hummingbird_-_2007.205_-_Crystal_Bridges_Museum_of_American_Art.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Martin_Johnson_Heade_-_Study_of_Varied_Flowers_with_a_Hummingbird_-_2007.205_-_Crystal_Bridges_Museum_of_American_Art.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=97450539",
+              "sha1": "c4e1e2ee1bfd86403d8fafecaa435e8dd00abcfb",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-12-11 00:58:50",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\n<div style=\"font-weight:bold;display:inline-block;\"><div style=\"display:inline-block\" dir=\"ltr\" lang=\"en\"><i>Study of Varied Flowers with a Hummingbird <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q103967074#P1476\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span></i></div></div><div style=\"display: none;\">title QS:P1476,en:\"Study of Varied Flowers with a Hummingbird <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q103967074#P1476\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>\"</div><div style=\"display: none;\">label QS:Len,\"Study of Varied Flowers with a Hummingbird <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"https://www.wikidata.org/wiki/Q103967074#P1476\" title=\"Edit this at Wikidata\"><img alt=\"Edit this at Wikidata\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>\"</div></div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Paintings by Martin Johnson Heade|PD-old-100-expired|PD-Art (PD-old-auto-expired)|Artworks with Wikidata item|Artworks with known accession number|CC-PD-Mark|Artworks with accession number from Wikidata|Artworks with Wikidata item missing genre|PD-Art missing SDC copyright status|PD-old missing SDC copyright status|Artworks digital representation of 2D work|1870s paintings by Martin Johnson Heade|Paintings by Martin Johnson Heade in the Crystal Bridges Museum of American Art|Paintings of hummingbirds and orchids by Martin Johnson Heade",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Martin_Johnson_Heade\" class=\"extiw\" title=\"w:en:Martin Johnson Heade\"><span title=\"American painter (1819-1904)\">Martin Johnson Heade</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1870",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://collection.crystalbridges.org/objects/664/study-of-varied-flowers-with-a-hummingbird\">Crystal Bridges Museum of American Art</a> <span class=\"mw-valign-text-top noprint\" typeof=\"mw:File/Frameless\"><a href=\"//commons.wikimedia.org/wiki/File:OOjs_UI_icon_edit-ltr-progressive.svg\" class=\"mw-file-description\" title=\"Edit this at Structured Data on Commons\"><img alt=\"Edit this at Structured Data on Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8a/OOjs_UI_icon_edit-ltr-progressive.svg/20px-OOjs_UI_icon_edit-ltr-progressive.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"10\" height=\"10\" class=\"mw-file-element\" data-file-width=\"20\" data-file-height=\"20\"></a></span>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 117092460,
+          "ns": 6,
+          "title": "File:Martin Johnson Heade, \"Study of Varied Flowers with a Hummingbird\" 2007 205v1.jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 772766,
+              "width": 1080,
+              "height": 845,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/c/cd/Martin_Johnson_Heade%2C_%22Study_of_Varied_Flowers_with_a_Hummingbird%22_2007_205v1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1001,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/c/cd/Martin_Johnson_Heade%2C_%22Study_of_Varied_Flowers_with_a_Hummingbird%22_2007_205v1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1001
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/cd/Martin_Johnson_Heade%2C_%22Study_of_Varied_Flowers_with_a_Hummingbird%22_2007_205v1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Martin_Johnson_Heade,_%22Study_of_Varied_Flowers_with_a_Hummingbird%22_2007_205v1.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=117092460",
+              "sha1": "53952e093ea9da1ed67f726a8e903de38f2e7d61",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2022-04-21 16:45:57",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "<div class=\"fn\">\nStudy of Varied Flowers with a Hummingbird</div>",
+                  "source": "commons-desc-page"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Paintings by Martin Johnson Heade|Artworks without Wikidata item|Pages with complex technique templates|1870s paintings by Martin Johnson Heade|Paintings by Martin Johnson Heade in the Crystal Bridges Museum of American Art|Paintings of hummingbirds and orchids by Martin Johnson Heade|Images from Crystal Bridges Museum of American Art",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Martin_Johnson_Heade\" class=\"extiw\" title=\"w:en:Martin Johnson Heade\"><span title=\"American painter (1819-1904)\">Martin Johnson Heade</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "ca. 1870",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://collection.crystalbridges.org/objects/664/\">https://collection.crystalbridges.org/objects/664/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "<table style=\"width:100%; clear:both; text-align:center; margin:0.5em auto; background-color:var(--background-color-neutral-subtle, #f8f9fa); border: 2px solid var(--border-color-subtle, #c8ccd1); padding: 0; border-spacing: 8px; color:var(--color-base, #202122);\" dir=\"ltr\" class=\"layouttemplate licensetpl\" lang=\"en\">\n<tbody><tr>\n<td style=\"width:90px;\" rowspan=\"2\"><span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"Creative Commons\"><img alt=\"Creative Commons\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a3/Cc.logo.circle.svg/40px-Cc.logo.circle.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"28\" height=\"28\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a3/Cc.logo.circle.svg/60px-Cc.logo.circle.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"64\" data-file-height=\"64\"></span></span> <span class=\"skin-invert\" typeof=\"mw:File\"><span title=\"CC-Zero\"><img alt=\"CC-Zero\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Cc-zero.svg/40px-Cc-zero.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"28\" height=\"28\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Cc-zero.svg/60px-Cc-zero.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"64\" data-file-height=\"64\"></span></span>\n</td>\n<td>This file is made available under the <a href=\"https://en.wikipedia.org/wiki/en:Creative_Commons\" class=\"extiw\" title=\"w:en:Creative Commons\">Creative Commons</a> <a href=\"https://creativecommons.org/publicdomain/zero/1.0/deed.en\" class=\"extiw\" title=\"ccorg:publicdomain/zero/1.0/deed.en\">CC0 1.0 Universal Public Domain Dedication</a>.\n</td></tr>\n<tr style=\"text-align:left;\">\n<td>The person who associated a work with this deed has dedicated the work to the <a href=\"https://en.wikipedia.org/wiki/en:public_domain\" class=\"extiw\" title=\"w:en:public domain\">public domain</a> by waiving all of their rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law. You can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission.\n<p><span class=\"licensetpl_link\" style=\"display:none;\">http://creativecommons.org/publicdomain/zero/1.0/deed.en</span><span class=\"licensetpl_short\" style=\"display:none;\">CC0</span><span class=\"licensetpl_long\" style=\"display:none;\">Creative Commons Zero, Public Domain Dedication</span><span class=\"licensetpl_link_req\" style=\"display:none;\">false</span><span class=\"licensetpl_attr_req\" style=\"display:none;\">false</span>\n</p>\n</td></tr></tbody></table>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 129680978,
+          "ns": 6,
+          "title": "File:Cinnamon hummingbird (Amazilia rutila) in flight Los Tarrales.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4272683,
+              "width": 4267,
+              "height": 2845,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/1280px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/3840px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/1280px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/3840px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Cinnamon_hummingbird_(Amazilia_rutila)_in_flight_Los_Tarrales.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=129680978",
+              "sha1": "60db79f6760303290ff9ccc55eb663ab33b26959",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-03-17 18:12:04",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Cinnamon hummingbird (Amazilia rutila) in flight Los Tarrales",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Amazilia rutila|Photographs by Charlesjsharp|2023 in Guatemala|Self-published work|Featured pictures on Wikipedia, English|Featured pictures of Guatemala|Featured pictures by Charlesjsharp|Files with coordinates missing SDC location of creation|Featured pictures by Charlesjsharp/Guatemala|Apodiformes of Guatemala|Featured pictures of Trochilidae|Featured pictures of birds by Charlesjsharp|Featured pictures of birds in flight|Taken with Canon EOS R6 Mark II|Featured pictures on English Wikipedia by Charlesjsharp|Amazilia feeding on flowers|Birds feeding on Stachytarpheta flowers|Birds in March 2023",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "14.520000",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-91.140000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cinnamon hummingbird (<i>Amazilia rutila</i>) in flight, Los Tarrales, Suchitepéquez Department, Guatemala",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-03-05 09:52:24",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 137857441,
+          "ns": 6,
+          "title": "File:Speckled hummingbird (Adelomyia melanogenys cervina) feeding on Campsis Caldas.jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 6976354,
+              "width": 4509,
+              "height": 3006,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg/1280px-Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg/3840px-Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg/1280px-Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg/3840px-Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Speckled_hummingbird_%28Adelomyia_melanogenys_cervina%29_feeding_on_Campsis_Caldas.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Speckled_hummingbird_(Adelomyia_melanogenys_cervina)_feeding_on_Campsis_Caldas.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=137857441",
+              "sha1": "77ce7a89a9a1f1e778974db82dbf2423cbc249e5",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-09-20 11:19:41",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Speckled hummingbird (Adelomyia melanogenys cervina) feeding on Campsis Caldas",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Adelomyia melanogenys|Photographs by Charlesjsharp|Self-published work|Files with coordinates missing SDC location of creation|Trochilidae of Colombia|Trochilinae feeding on flowers|Animals with Campsis",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "5.070000",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-75.440000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Speckled hummingbird (<i>Adelomyia melanogenys melanogenys</i>), Reserva Ecologica Rio Blanco, Manizales, Caldas",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-08-06 12:23:55",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 167463881,
+          "ns": 6,
+          "title": "File:Rufous-tailed Hummingbird (54567044907).jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 8334918,
+              "width": 4249,
+              "height": 3399,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Rufous-tailed_Hummingbird_%2854567044907%29.jpg/1280px-Rufous-tailed_Hummingbird_%2854567044907%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Rufous-tailed_Hummingbird_%2854567044907%29.jpg/3840px-Rufous-tailed_Hummingbird_%2854567044907%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Rufous-tailed_Hummingbird_%2854567044907%29.jpg/1280px-Rufous-tailed_Hummingbird_%2854567044907%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/27/Rufous-tailed_Hummingbird_%2854567044907%29.jpg/3840px-Rufous-tailed_Hummingbird_%2854567044907%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/27/Rufous-tailed_Hummingbird_%2854567044907%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Rufous-tailed_Hummingbird_(54567044907).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=167463881",
+              "sha1": "b6c3f8c5c9a55ac2499ec3683bfd03de1fb168a2",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-06-12 09:36:53",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Rufous-tailed Hummingbird (54567044907)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Canon EOS 7D Mark II|Flowers of Ecuador|September 2015 in Ecuador|Flickr images reviewed by FlickreviewR 2|Apodiformes of Ecuador|Ecuador photographs taken on 2015-09-19|Featured pictures of Trochilidae|Featured pictures of birds in flight|Photographs by Andy Morffew|Featured pictures from Flickr|Amazilia feeding on flowers|Amazilia tzacatl in flight|Featured pictures of birds in Ecuador",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Rufous-tailed Hummingbird in flight, feeding on flower in Ecuador.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken on 19 September 2015",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/andymorffew/54567044907/\">Rufous-tailed Hummingbird</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/66020093@N03\">Andy  Morffew</a> from Itchen Abbas, Hampshire, UK",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 194069789,
+          "ns": 6,
+          "title": "File:Hummingbird hawk-moth feeding on flowers in Yerevan.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 8942305,
+              "width": 6240,
+              "height": 4160,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg/1280px-Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg/3840px-Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg/1280px-Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b2/Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg/3840px-Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/b2/Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_hawk-moth_feeding_on_flowers_in_Yerevan.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=194069789",
+              "sha1": "363b220d3e2b5342a5ed5a3be72e0c137f0ee423",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-06-18 07:22:33",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird hawk-moth feeding on flowers in Yerevan",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Natural heritage sites in Armenia with known IDs|Uploaded via Campaign:wle-am|Images from Wiki Loves Earth missing SDC location of creation|Images from Wiki Loves Earth missing SDC participant in|Macroglossum stellatarum on flowers|Images from Wiki Loves Earth 2026|Images from Wiki Loves Earth 2026 in Armenia",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "This is a photo of a natural site in Armenia identified by the ID",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-10-15 15:54:12",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Wowan1978&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Wowan1978 (page does not exist)\">Wowan1978</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

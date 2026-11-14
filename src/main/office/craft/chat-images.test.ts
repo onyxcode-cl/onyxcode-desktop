@@ -89,7 +89,15 @@ describe('DeckCraft', () => {
     const [x, y, w, h] = p.rect as number[]
     expect(w / h).toBeCloseTo(2, 1)
     expect(x).toBeGreaterThanOrEqual(60)
-    expect(x + w).toBeLessThanOrEqual(600) // deja sitio a las viñetas de al lado
+    expect(x + w).toBeLessThanOrEqual(900)
+    const textBoxes = cmds
+      .filter((c) => c.startsWith('insert.textBox='))
+      .map(j)
+      .filter((box) => ['Simple', 'Reconocible'].includes(box.text))
+    for (const box of textBoxes) {
+      const [tx, ty, tw, th] = box.rect
+      expect(tx >= x + w || tx + tw <= x || ty >= y + h || ty + th <= y).toBe(true)
+    }
     expect(y + h).toBeLessThanOrEqual(146 + 336)
     expect(cmds.some((c) => c.startsWith('shape.altText=') && j(c).text === 'Logo de la empresa')).toBe(true)
     expect(cmds.join('\n')).not.toContain('img/logo.png') // la ruta del modelo no llega a ArtCraft

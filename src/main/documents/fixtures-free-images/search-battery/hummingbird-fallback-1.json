@@ -1,0 +1,1408 @@
+{
+  "capturedAt": "2026-11-13T17:52:03.086Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=hummingbird+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 540433,
+          "ns": 6,
+          "title": "File:Haeckel Trochilidae.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2029889,
+              "width": 2359,
+              "height": 3308,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Haeckel_Trochilidae.jpg/1280px-Haeckel_Trochilidae.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1795,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Haeckel_Trochilidae.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8e/Haeckel_Trochilidae.jpg/1280px-Haeckel_Trochilidae.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1795,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Haeckel_Trochilidae.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/8e/Haeckel_Trochilidae.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Haeckel_Trochilidae.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=540433",
+              "sha1": "697f9a853543c1ad08a1b849e01d5b548673b4c7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2006-01-28 17:42:44",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Haeckel Trochilidae",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Augastes lumachella|Lophornis gouldii|Lophornis ornatus|Eutoxeres condamini|Topaza pella|Heliactin bilophus|Ernst Haeckel|PD Old|Featured pictures on Wikipedia, English|Images requiring extraction|Archilochus colubris (illustrations)|Images with extracted images|Hummingbirds in art|CC-PD-Mark|Posted to Wikimedia Foundation Pinterest|Files with Assessments template missing SDC Commons no value quality assessment|Colibri serrirostris (illustrations)|Ensifera ensifera (illustrations)|Kunstformen der Natur - plate 99 (Trochilidae)|Ocreatus underwoodii (illustrations)|Sappho sparganurus (illustrations)|Sephanoides fernandensis (illustrations)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Hummingbirds (drawn from millinery specimens, body positions are not natural)<br>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Ruby-throated_Hummingbird\" class=\"extiw\" title=\"en:Ruby-throated Hummingbird\">Ruby-throated Hummingbird</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Horned_Sungem\" class=\"extiw\" title=\"en:Horned Sungem\">Horned Sungem</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Crimson_Topaz\" class=\"extiw\" title=\"en:Crimson Topaz\">Crimson Topaz</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Red-tailed_Comet\" class=\"extiw\" title=\"en:Red-tailed Comet\">Red-tailed Comet</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Tufted_Coquette\" class=\"extiw\" title=\"en:Tufted Coquette\">Tufted Coquette</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Sword-billed_Hummingbird\" class=\"extiw\" title=\"en:Sword-billed Hummingbird\">Sword-billed Hummingbird</a></li>\n<li><a href=\"https://en.wikipedia.org/wiki/Buff-tailed_Sicklebill\" class=\"extiw\" title=\"en:Buff-tailed Sicklebill\">Buff-tailed Sicklebill</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Dot-eared_Coquette\" class=\"extiw\" title=\"en:Dot-eared Coquette\">Dot-eared Coquette</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/White-vented_Violetear\" class=\"extiw\" title=\"en:White-vented Violetear\">White-vented Violetear</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Hooded_Visorbearer\" class=\"extiw\" title=\"en:Hooded Visorbearer\">Hooded Visorbearer</a></li>\n<li>Female <a href=\"https://en.wikipedia.org/wiki/Juan_Fern%C3%A1ndez_Firecrown\" class=\"extiw\" title=\"en:Juan Fernández Firecrown\">Juan Fernández Firecrown</a></li>\n<li>Male <a href=\"https://en.wikipedia.org/wiki/Booted_Racket-tail\" class=\"extiw\" title=\"en:Booted Racket-tail\">Booted Racket-tail</a></li>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "1904",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<i><a href=\"//commons.wikimedia.org/wiki/Kunstformen_der_Natur\" title=\"Kunstformen der Natur\">Kunstformen der Natur</a></i> (1904), plate 99: Trochilidae (see <a rel=\"nofollow\" class=\"external text\" href=\"http://caliban.mpiz-koeln.mpg.de/haeckel/kunstformen/high/Tafel_099_300.html\">here</a>, <a rel=\"nofollow\" class=\"external text\" href=\"http://caliban.mpiz-koeln.mpg.de/haeckel/kunstformen/high/Tafel_099_text_1_200.html\">here</a> and <a rel=\"nofollow\" class=\"external text\" href=\"http://caliban.mpiz-koeln.mpg.de/haeckel/kunstformen/high/Tafel_099_text_2_200.html\">here</a> and <a rel=\"nofollow\" class=\"external text\" href=\"https://www.biodiversitylibrary.org/page/47388491\">Biodiversity Heritage Library</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:Ernst_Haeckel\" class=\"extiw\" title=\"w:en:Ernst Haeckel\"><span title=\"German zoologist (1834-1919)\">Ernst Haeckel</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "<table class=\"licensetpl\" style=\"display:none\">\n<tbody><tr>\n<td><span class=\"licensetpl_short\">Public domain</span><span class=\"licensetpl_long\">Public domain</span><span class=\"licensetpl_link_req\">false</span><span class=\"licensetpl_attr_req\">false</span>\n</td></tr></tbody></table>\n<table style=\"width: 100%; clear: both; margin: 0.5em auto; background-color: var(--background-color-progressive-subtle, #f7f8ff); color: var(--color-base, #202122); border: var(--border-subtle, 2px solid #8888aa); border-spacing: 8px; padding: 0px;\" dir=\"ltr\" class=\"layouttemplate\" lang=\"en\">\n<tbody><tr>\n<td rowspan=\"2\"><span typeof=\"mw:File\"><span title=\"Public domain\"><img alt=\"Public domain\" src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/PD-icon.svg/120px-PD-icon.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"64\" height=\"64\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/PD-icon.svg/250px-PD-icon.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"196\" data-file-height=\"196\"></span></span>\n</td>\n<td>\n<p>This work is in the <b><a href=\"https://en.wikipedia.org/wiki/public_domain\" class=\"extiw\" title=\"en:public domain\">public domain</a></b> in its country of origin and other countries and areas where the <a href=\"https://en.wikipedia.org/wiki/List_of_countries%27_copyright_lengths\" class=\"extiw\" title=\"w:List of countries' copyright lengths\">copyright term</a> is the author's <b>life plus 70 years or fewer</b>.\n</p>\n<hr>\n<span typeof=\"mw:File\"><span><img src=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Dialog-warning.svg/40px-Dialog-warning.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail\" decoding=\"async\" loading=\"lazy\" width=\"25\" height=\"25\" class=\"mw-file-element\" srcset=\"https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6e/Dialog-warning.svg/60px-Dialog-warning.svg.png?utm_source=commons.wikimedia.org&amp;utm_campaign=parser&amp;utm_content=thumbnail 2x\" data-file-width=\"48\" data-file-height=\"48\"></span></span> <small>You must also include a <a href=\"//commons.wikimedia.org/wiki/Commons:Copyright_tags/Country-specific_tags#United_States_of_America\" title=\"Commons:Copyright tags/Country-specific tags\">United States public domain tag</a> to indicate why this work is in the public domain in the United States.<div class=\"navigation-not-searchable\"> Note that a few countries have copyright terms longer than 70 years: Mexico has 100 years, Jamaica has 95 years, Colombia has 80 years, and Guatemala and Samoa have 75 years. This image may <i>not</i> be in the public domain in these countries, which moreover do <i>not</i> implement the <a href=\"https://en.wikipedia.org/wiki/rule_of_the_shorter_term\" class=\"extiw\" title=\"w:rule of the shorter term\">rule of the shorter term</a>. Honduras has a general copyright term of 75 years, but it <i>does</i> implement the rule of the shorter term. Copyright may extend on works created by French who died for France in <a href=\"https://en.wikipedia.org/wiki/World_War_II\" class=\"extiw\" title=\"w:World War II\">World War II</a> (<a href=\"//commons.wikimedia.org/wiki/Commons:Copyright_rules_by_territory/France\" title=\"Commons:Copyright rules by territory/France\">more information</a>), Russians who served in <a href=\"https://en.wikipedia.org/wiki/Eastern_Front_(World_War_II)\" class=\"extiw\" title=\"w:Eastern Front (World War II)\">the Eastern Front of World War II</a> (known as the Great Patriotic War in Russia) and posthumously <a href=\"https://en.wikipedia.org/wiki/Rehabilitation_(Soviet)\" class=\"extiw\" title=\"w:Rehabilitation (Soviet)\">rehabilitated</a> victims of Soviet repressions (<a href=\"//commons.wikimedia.org/wiki/Template:PD-Russia\" title=\"Template:PD-Russia\">more information</a>).</div></small>\n</td></tr>\n<tr>\n<td colspan=\"2\" style=\"text-align:center;font-size:x-small;line-height:140%;\"><a href=\"https://creativecommons.org/publicdomain/mark/1.0/deed.en\" class=\"extiw\" title=\"ccorg:publicdomain/mark/1.0/deed.en\">This file has been identified as being free of known restrictions under copyright law, including all related and neighboring rights.</a>\n</td></tr></tbody></table><span class=\"licensetpl_link\" style=\"display:none;\">https://creativecommons.org/publicdomain/mark/1.0/</span><span class=\"licensetpl_short\" style=\"display:none;\">PDM</span><span class=\"licensetpl_long\" style=\"display:none;\">Creative Commons Public Domain Mark 1.0</span><span class=\"licensetpl_link_req\" style=\"display:none;\">false</span><span class=\"licensetpl_attr_req\" style=\"display:none;\">false</span>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 1327025,
+          "ns": 6,
+          "title": "File:Archilochus-alexandri-002-edit.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 605389,
+              "width": 1536,
+              "height": 1024,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Archilochus-alexandri-002-edit.jpg/1280px-Archilochus-alexandri-002-edit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/1/16/Archilochus-alexandri-002-edit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Archilochus-alexandri-002-edit.jpg/1280px-Archilochus-alexandri-002-edit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/1/16/Archilochus-alexandri-002-edit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/16/Archilochus-alexandri-002-edit.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Archilochus-alexandri-002-edit.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=1327025",
+              "sha1": "434ec9baefe2873defe7f91a17377213d40919a6",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2006-10-31 14:16:48",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Archilochus-alexandri-002-edit",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "License migration completed|Featured pictures on Wikipedia, English|GFDL-en|Files with Assessments template missing SDC Commons no value quality assessment|Archilochus alexandri in flight",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<a href=\"https://en.wikipedia.org/wiki/Black-chinned_Hummingbird\" class=\"extiw\" title=\"w:Black-chinned Hummingbird\">Black-chinned Hummingbird</a> (female) (<i><a href=\"//commons.wikimedia.org/wiki/Archilochus_alexandri\" title=\"Archilochus alexandri\">Archilochus alexandri</a></i>), Moab, Utah, USA",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2006-06",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/File:Archilochus-alexandri-002.jpg\" title=\"File:Archilochus-alexandri-002.jpg\">Image:Archilochus-alexandri-002.jpg</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Mdf\" title=\"User:Mdf\">User:Mdf</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/licenses/by-sa/3.0/",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 17291678,
+          "ns": 6,
+          "title": "File:Colibrí Cola de Oro (Golden-tailed Sapphire Hummingbird) Bigger File.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1313592,
+              "width": 2944,
+              "height": 2039,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg/1280px-Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 887,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/41/Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg/1280px-Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 887,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/41/Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/41/Colibr%C3%AD_Cola_de_Oro_%28Golden-tailed_Sapphire_Hummingbird%29_Bigger_File.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Colibr%C3%AD_Cola_de_Oro_(Golden-tailed_Sapphire_Hummingbird)_Bigger_File.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=17291678",
+              "sha1": "0003c72ae90e3d88f11fb395035a950224b46c7f",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2011-11-14 12:23:57",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Colibrí Cola de Oro (Golden-tailed Sapphire Hummingbird) Bigger File",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Chrysuronia oenone|Taken with Canon EOS 7D|Self-published work|Trochilinae in flight|Files with coordinates missing SDC location of creation|Featured pictures of Trochilidae|Birds in November 2011|Featured pictures of birds in flight|Featured pictures of animals in Venezuela",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "10.348803",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-66.891937",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Hummingbird on flying. Golden-tailed Sapphire (<i>Chrysuronia oenone</i>) in NE Venezuela.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-11-05",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Marcial4&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Marcial4 (page does not exist)\">Marcial4</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 38247462,
+          "ns": 6,
+          "title": "File:Vervain hummingbird (Mellisuga minima).jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1649718,
+              "width": 3683,
+              "height": 2455,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Vervain_hummingbird_%28Mellisuga_minima%29.jpg/1280px-Vervain_hummingbird_%28Mellisuga_minima%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Vervain_hummingbird_%28Mellisuga_minima%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Vervain_hummingbird_%28Mellisuga_minima%29.jpg/1280px-Vervain_hummingbird_%28Mellisuga_minima%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Vervain_hummingbird_%28Mellisuga_minima%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Vervain_hummingbird_%28Mellisuga_minima%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Vervain_hummingbird_(Mellisuga_minima).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=38247462",
+              "sha1": "9328705709e912f7a05910063c559672039a6a52",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-05-01 16:54:33",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Vervain hummingbird (Mellisuga minima)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Mellisuga minima|Featured pictures of Jamaica|Blue Mountains, Jamaica|Photographs by Charlesjsharp|Self-published work|Featured pictures on Wikipedia, English|Featured pictures by Charlesjsharp|Files with coordinates missing SDC location of creation|Jamaica photographs taken on 2014-12-19|Featured pictures by Charlesjsharp/Jamaica|Images used in A Sharp Eye on wildlife photography/Issue One, May 2020|Featured pictures of Trochilidae|Featured pictures of birds by Charlesjsharp|Apodiformes of Jamaica|Pictures of the day by Charlesjsharp|Featured pictures on English Wikipedia by Charlesjsharp",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued|potd",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "18.034374",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-76.899342",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Vervain hummingbird (<i>Mellisuga minima</i>), Strawberry Hill, Jamaica.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2014-12-19 13:18:16",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"http://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 47658671,
+          "ns": 6,
+          "title": "File:Bee hummingbird (Mellisuga helenae) immature male.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3481081,
+              "width": 2476,
+              "height": 2476,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg/1280px-Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1280,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg/1280px-Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1280,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Bee_hummingbird_%28Mellisuga_helenae%29_immature_male.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Bee_hummingbird_(Mellisuga_helenae)_immature_male.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=47658671",
+              "sha1": "12744f49f0dfc9b5e54e62ceea9228d5659440b2",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-03-07 15:53:20",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Bee hummingbird (Mellisuga helenae) immature male",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Mellisuga helenae|Photographs by Charlesjsharp|Self-published work|Featured pictures on Wikipedia, English|Featured pictures by Charlesjsharp|Perched hummingbirds|Birds in trees|Featured pictures of Cuba|Featured pictures on Wikipedia, Persian|Featured pictures on Wikipedia, Bengali|Files with coordinates missing SDC location of creation|Cuba photographs taken on 2016-02-20|Featured pictures by Charlesjsharp/Cuba|Images used in A Sharp Eye on wildlife photography|Featured pictures of Trochilidae|Birds in 2016|Featured pictures of birds by Charlesjsharp|Apodiformes of Cuba|Images used in A Sharp Eye on wildlife photography/Issue Four, August 2020|Featured pictures on English Wikipedia by Charlesjsharp",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued|potd",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "22.324809",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-81.184955",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Bee hummingbird (<i>Mellisuga helenae</i>) immature male, Cuba",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2016-02-20 15:33:06",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"http://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 61980654,
+          "ns": 6,
+          "title": "File:Sword-billed hummingbird (male) at Guango Lodge, Ecuador (21310837273).jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 8269439,
+              "width": 4560,
+              "height": 3648,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg/1280px-Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg/3840px-Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg/1280px-Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg/3840px-Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Sword-billed_hummingbird_%28male%29_at_Guango_Lodge%2C_Ecuador_%2821310837273%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Sword-billed_hummingbird_(male)_at_Guango_Lodge,_Ecuador_(21310837273).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=61980654",
+              "sha1": "26e2537c8316a8d45cad088ac67745fe4545228e",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2017-08-28 01:45:49",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Sword-billed hummingbird (male) at Guango Lodge, Ecuador (21310837273)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Ensifera ensifera|Taken with Canon EOS 7D Mark II|Featured pictures on Wikipedia, English|Flickr images reviewed by FlickreviewR|Trochilidae in flight|Photographs taken on 2015-09-24|September 2015 Ecuador photographs|Apodiformes of Ecuador|Featured pictures of Trochilidae|Featured pictures of birds in flight|Birds on green background|Photographs by Andy Morffew|Featured pictures from Flickr|Pictures of the Year/2021 (finalist)|Featured pictures of birds in Ecuador",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "featured|poty",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "The amazing Sword-billed Hummingbird.  Taken at Guango Lodge, Ecuador.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-09-24 20:07",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/andymorffew/21310837273/\">En Garde</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/66020093@N03\">Andy Morffew</a> from Itchen Abbas, Hampshire, UK",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Attribution": {
+                  "value": "Andy Morffew",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 76891220,
+          "ns": 6,
+          "title": "File:Hummingbird hawk moth (Macroglossum stellatarum) in flight.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3804087,
+              "width": 3042,
+              "height": 2372,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg/1280px-Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 998,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg/1280px-Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 998,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Hummingbird_hawk_moth_%28Macroglossum_stellatarum%29_in_flight.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hummingbird_hawk_moth_(Macroglossum_stellatarum)_in_flight.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=76891220",
+              "sha1": "7fe75fd16c2763a2227236c1b099a8b048c65048",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-03-21 20:10:08",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hummingbird hawk moth (Macroglossum stellatarum) in flight",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Featured pictures of Bulgaria|Photographs by Charlesjsharp|Self-published work|Featured pictures on Wikipedia, English|Commons featured desktop backgrounds|Featured pictures of animals in flight|Featured pictures by Charlesjsharp|Unidentified Lamiaceae|Bulgaria photographs taken on 2017-07-28|Sphingidae of Bulgaria|Files with coordinates missing SDC location of creation|Featured pictures of Sphingidae|Featured pictures by Charlesjsharp/Bulgaria|Featured pictures on English Wikipedia by Charlesjsharp|Macroglossum stellatarum on Lamiales flowers|Featured pictures of arthropods by Charlesjsharp|Featured pictures of moths by Charlesjsharp",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued|potd",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "42.226370",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "23.581172",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Hummingbird hawk moth (<i>Macroglossum stellatarum</i>) in flight, Yastrebets, Rila Mountains, Bulgaria",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-07-28 16:13:42",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 77221631,
+          "ns": 6,
+          "title": "File:Anna's hummingbird (41124).jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3178807,
+              "width": 2787,
+              "height": 1806,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Anna%27s_hummingbird_%2841124%29.jpg/1280px-Anna%27s_hummingbird_%2841124%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 829,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Anna%27s_hummingbird_%2841124%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Anna%27s_hummingbird_%2841124%29.jpg/1280px-Anna%27s_hummingbird_%2841124%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 829,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Anna%27s_hummingbird_%2841124%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Anna%27s_hummingbird_%2841124%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Anna%27s_hummingbird_(41124).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=77221631",
+              "sha1": "bfff37b46d48b3951a1b65c87991cb069e59f07d",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-09-24 21:19:31",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Anna's hummingbird (41124)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Featured pictures of California|February 2019 in California|Blue sky in California|Self-published work|Files uploaded by Rhododendrites (all)|Aves in right lateral aspect|Birds of San Mateo County, California|Featured pictures by Rhododendrites|Files with coordinates missing SDC location of creation|United States photographs taken on 2019-02-04|Featured pictures of Trochilidae|Animals with blue sky background|Calypte anna (female)|Photographs taken by Rhododendrites - birds|Photographs taken by Rhododendrites - Pacifica|Featured pictures of birds in the United States|Nature of Pacifica, California|Birds on branches in California",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "37.596242",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-122.509587",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "<a href=\"https://en.wikipedia.org/wiki/Anna%27s_hummingbird\" class=\"extiw\" title=\"w:Anna's hummingbird\">Anna's hummingbird</a> (<i>Calypte anna</i>) in <a href=\"https://en.wikipedia.org/wiki/Pacifica,_California\" class=\"extiw\" title=\"w:Pacifica, California\">Pacifica</a>, <a href=\"https://en.wikipedia.org/wiki/California\" class=\"extiw\" title=\"w:California\">California</a>",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken on 4 February 2019, 18:13:03",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Rhododendrites\" title=\"User:Rhododendrites\">Rhododendrites</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 80004827,
+          "ns": 6,
+          "title": "File:Volcano hummingbird (Selasphorus flammula) female in flight 2.jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2996631,
+              "width": 3381,
+              "height": 2339,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg/1280px-Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 886,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg/1280px-Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 886,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Volcano_hummingbird_%28Selasphorus_flammula%29_female_in_flight_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Volcano_hummingbird_(Selasphorus_flammula)_female_in_flight_2.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=80004827",
+              "sha1": "edca69501255e7866acaea01854308a8390c3f52",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-28 10:15:22",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Volcano hummingbird (Selasphorus flammula) female in flight 2",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Selasphorus flammula|2019 in Panama|Photographs by Charlesjsharp|Self-published work|Featured pictures on Wikipedia, English|Unidentified Abutilon|Featured pictures by Charlesjsharp|Files with coordinates missing SDC location of creation|Featured pictures by Charlesjsharp/Panama|Panama photographs taken on 2019-05-13|Images used in A Sharp Eye on wildlife photography|Featured pictures of Trochilidae|Featured pictures of birds by Charlesjsharp|Featured pictures of birds in flight|Apodiformes of Panama|Featured pictures of animals in Panama|Birds in flight facing right|Featured pictures on English Wikipedia by Charlesjsharp|Brand guideline portal images|Animals with Abutilon|Images used in A Sharp Eye on wildlife photography/Issue Five, September 2020",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued|potd",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "8.884455",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-82.683689",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Volcano hummingbird (Selasphorus flammula) female feeding on <i>Abutilon</i> sp. nectar, #2 of a set of 3. Mount Totumas cloud forest, Panama.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-05-13 14:32:05",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 129680978,
+          "ns": 6,
+          "title": "File:Cinnamon hummingbird (Amazilia rutila) in flight Los Tarrales.jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4272683,
+              "width": 4267,
+              "height": 2845,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/1280px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/3840px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/1280px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg/3840px-Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Cinnamon_hummingbird_%28Amazilia_rutila%29_in_flight_Los_Tarrales.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Cinnamon_hummingbird_(Amazilia_rutila)_in_flight_Los_Tarrales.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=129680978",
+              "sha1": "60db79f6760303290ff9ccc55eb663ab33b26959",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-03-17 18:12:04",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Cinnamon hummingbird (Amazilia rutila) in flight Los Tarrales",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Amazilia rutila|Photographs by Charlesjsharp|2023 in Guatemala|Self-published work|Featured pictures on Wikipedia, English|Featured pictures of Guatemala|Featured pictures by Charlesjsharp|Files with coordinates missing SDC location of creation|Featured pictures by Charlesjsharp/Guatemala|Apodiformes of Guatemala|Featured pictures of Trochilidae|Featured pictures of birds by Charlesjsharp|Featured pictures of birds in flight|Taken with Canon EOS R6 Mark II|Featured pictures on English Wikipedia by Charlesjsharp|Amazilia feeding on flowers|Birds feeding on Stachytarpheta flowers|Birds in March 2023",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "14.520000",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-91.140000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cinnamon hummingbird (<i>Amazilia rutila</i>) in flight, Los Tarrales, Suchitepéquez Department, Guatemala",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-03-05 09:52:24",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 167463871,
+          "ns": 6,
+          "title": "File:Fawn-breasted Brilliant hummingbird in Ecuador - (54564276957).jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 6133650,
+              "width": 3548,
+              "height": 2838,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg/1280px-Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg/1280px-Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_%2854564276957%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Fawn-breasted_Brilliant_hummingbird_in_Ecuador_-_(54564276957).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=167463871",
+              "sha1": "0f7eeab0235fe4ba5cf2ff608cf4bdc8f7958fb1",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-06-12 09:36:46",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Fawn-breasted Brilliant hummingbird in Ecuador - (54564276957)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Heliodoxa rubinoides|Taken with Canon EOS-1D X|Perched hummingbirds|Bryophyta in Ecuador|September 2015 in Ecuador|Flickr images reviewed by FlickreviewR 2|Apodiformes of Ecuador|Ecuador photographs taken on 2015-09-15|Featured pictures of Trochilidae|Photographs by Andy Morffew|Featured pictures from Flickr|Featured pictures of birds in Ecuador",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Perching fawn-breasted brilliant hummingbird (<i>Heliodoxa rubinoides</i>) in Ecuador.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken on 15 September 2015",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/andymorffew/54564276957/\">Fawn-breasted Brilliant</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/66020093@N03\">Andy  Morffew</a> from Itchen Abbas, Hampshire, UK",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 167463878,
+          "ns": 6,
+          "title": "File:Sword-billed hummingbird in Ecuador - (54572220117).jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4566100,
+              "width": 3831,
+              "height": 3064,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg/1280px-Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1024,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/0/07/Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg/1280px-Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1024,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/0/07/Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Sword-billed_hummingbird_in_Ecuador_-_%2854572220117%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Sword-billed_hummingbird_in_Ecuador_-_(54572220117).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=167463878",
+              "sha1": "f80d5d867d14e673884f5e0c7e79467f31dd9068",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-06-12 09:36:51",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Sword-billed hummingbird in Ecuador - (54572220117)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Ensifera ensifera|Taken with Canon EOS 7D Mark II|Trochilinae in flight|September 2015 in Ecuador|Flickr images reviewed by FlickreviewR 2|Apodiformes of Ecuador|Ecuador photographs taken on 2015-09-22|Featured pictures of Trochilidae|Featured pictures of birds in flight|Photographs by Andy Morffew|Featured pictures from Flickr|Featured pictures of birds in Ecuador",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Sword-billed hummingbird (<i>Ensifera ensifera</i>) in flight, Ecuador.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "Taken on 22 September 2015",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/andymorffew/54572220117/\">Sword-billed Hummingbird</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/66020093@N03\">Andy  Morffew</a> from Itchen Abbas, Hampshire, UK",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

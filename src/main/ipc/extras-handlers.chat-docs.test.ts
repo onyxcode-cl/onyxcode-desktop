@@ -17,8 +17,13 @@ const mock = vi.hoisted(() => ({
   web: vi.fn(),
   openDoc: vi.fn(),
   classic: vi.fn(),
-  gallery: vi.fn()
+  gallery: vi.fn(),
+  photos: vi.fn(),
+  allowed: vi.fn(),
+  present: vi.fn()
 }))
+vi.mock('../viewer/present-pptx', () => ({ presentPptxFile: mock.present }))
+vi.mock('../documents', () => ({ documentsMcp: {}, resolveChatHtmlPhotos: mock.photos }))
 vi.mock('electron', () => ({ app: { getPath: () => mock.temp, on: vi.fn() }, dialog: { showSaveDialog: mock.save }, shell: {} }))
 vi.mock('./handle', () => ({
   makeInvokeHandler: () => (_ipc: unknown, channel: string, handler: Handler) => mock.handlers.set(channel, handler)
@@ -34,12 +39,16 @@ vi.mock('../documents/engine', () => ({
 vi.mock('../office/craft/chat-word', () => ({ docxToPdf: mock.pdf }))
 vi.mock('../office/craft/chat-grid', () => ({ gridToPdf: mock.pdf }))
 vi.mock('../office/craft/chat-deck', () => ({ deckToPdf: mock.pdf }))
-vi.mock('../office/craft/web-open', () => ({ openInCraftWeb: mock.web, useClassicViewer: mock.classic }))
+vi.mock('../office/craft/web-open', () => ({ openInCraftWeb: mock.web, useClassicViewer: mock.classic, panelClose: vi.fn() }))
 vi.mock('../office/craft/web-view', () => ({ onWebEvent: vi.fn() }))
 vi.mock('../viewer/scheme', () => ({ registerViewerPathValidator: vi.fn(), installViewerScheme: vi.fn() }))
 vi.mock('../viewer/view', () => ({ onViewerEvent: vi.fn(), openDoc: mock.openDoc }))
 vi.mock('../security/app-protocol', () => ({ VIEWER_SCHEME: 'lazunox-viewer' }))
-vi.mock('../files/gallery-runtime', () => ({ galleryRecordChat: mock.gallery, configureGalleryChat: vi.fn() }))
+vi.mock('../files/gallery-runtime', () => ({
+  galleryRecordChat: mock.gallery,
+  configureGalleryChat: vi.fn(),
+  getGallery: () => ({ extraRoots: () => [] })
+}))
 vi.mock('../extras', () => ({ initExtras: vi.fn() }))
 vi.mock('../extras/voice-worker-host', () => ({
   voiceWorkerScriptPath: 'unused',
@@ -59,7 +68,10 @@ vi.mock('../extras/slides-deck-export', () => ({}))
 vi.mock('../office/craft/craft-problems', () => ({}))
 vi.mock('../office/craft/open-external', () => ({}))
 vi.mock('../office/craft/service', () => ({}))
-vi.mock('../diagnostics/problem-log', () => ({}))
+vi.mock('../diagnostics/problem-log', () => ({
+  describeError: (err: Error) => ({ message: err.message }),
+  recordProblem: vi.fn()
+}))
 vi.mock('../runtimes/service', () => ({}))
 vi.mock('../extras/local-connectors', () => ({}))
 vi.mock('../extras/prefs', () => ({}))
@@ -67,9 +79,9 @@ vi.mock('../tasks/opencode-config', () => ({}))
 vi.mock('./tasks-memory-handlers', () => ({}))
 vi.mock('../tasks/projects', () => ({}))
 vi.mock('../extras/quick-entry', () => ({}))
-vi.mock('../store', () => ({}))
+vi.mock('../store', () => ({ settingsStore: { get: () => ({ recentFolders: [] }) } }))
 vi.mock('../files/gallery-index', () => ({}))
-vi.mock('../files/chat-files', () => ({}))
+vi.mock('../files/chat-files', () => ({ assertNativeViewable: mock.allowed }))
 
 const invoke = <C extends keyof IpcExtrasInvokeContract>(channel: C, request: IpcExtrasInvokeContract[C]['req']) =>
   mock.handlers.get(channel)!(request as never, { sender: {} } as IpcMainInvokeEvent)
@@ -85,6 +97,7 @@ beforeEach(async () => {
   vi.clearAllMocks()
   mock.handlers.clear()
   mock.temp = mkdtempSync(join(tmpdir(), 'lzx-chat-handlers-'))
+  mock.photos.mockImplementation(async (html: string) => html)
   mock.render.mockResolvedValue(Buffer.from('%PDF-original'))
   mock.save.mockResolvedValue({ canceled: false, filePath: join(mock.temp, 'descarga.pdf') })
   mock.pdf.mockImplementation(async (_cli: string, _source: string, out: string) => {
@@ -98,6 +111,24 @@ beforeEach(async () => {
 afterEach(() => rmSync(mock.temp, { recursive: true, force: true }))
 
 describe('documentos de Chat: ruta real del handler', () => {
+  it('cerrar durante la conversión HTML impide que el PDF abra un visor tardío', async () => {
+    let finish!: (bytes: Buffer) => void
+    mock.render.mockImplementationOnce(
+      () =>
+        new Promise<Buffer>((resolve) => {
+          finish = resolve
+        })
+    )
+    const opening = invoke('extras:chatDoc:open', { ...common, kind: 'pdf', html: '<p>Conversión lenta</p>' })
+    await vi.waitFor(() => expect(mock.render).toHaveBeenCalledOnce())
+    await invoke('extras:chatDoc:close', { sessionId: common.sessionId })
+    finish(Buffer.from('%PDF-tardío'))
+    expect(await opening).toEqual({ ok: false, reason: 'failed' })
+    expect(mock.web).not.toHaveBeenCalled()
+    expect(mock.openDoc).not.toHaveBeenCalled()
+    expect(mock.gallery).not.toHaveBeenCalled()
+  })
+
   it.each(office)('$kind: vista web correcta evita el PDF de respaldo', async (input) => {
     const result = await invoke('extras:chatDoc:open', { ...common, ...input })
     expect(result).toEqual({ ok: true, bytes: 13 })
@@ -133,4 +164,57 @@ describe('documentos de Chat: ruta real del handler', () => {
       })
     )
   })
+})
+
+describe('guardar HTML autónomo por IPC', () => {
+  it('el panel recibe un fallo específico con el id de la foto y la acción para recuperarla', async () => {
+    const { MissingPreparedPhotoError } = await import('../documents/html-photos')
+    const error = new MissingPreparedPhotoError('imagen:foto-perdida')
+    mock.photos.mockRejectedValue(error)
+    expect(
+      await invoke('extras:chatDoc:open', {
+        ...common,
+        kind: 'pdf',
+        html: '<section class="slide"><img src="imagen:foto-perdida"></section>'
+      })
+    ).toEqual({ ok: false, reason: 'photo-missing', detail: error.message })
+    expect(mock.render).not.toHaveBeenCalled()
+    expect(mock.openDoc).not.toHaveBeenCalled()
+  })
+  it('guarda los bytes preparados de la conversación y registra solo ese archivo', async () => {
+    mock.photos.mockResolvedValue('<section class="slide"><img src="data:image/jpeg;base64,cGhvdG8="><aside>Crédito</aside></section>')
+    const path = join(mock.temp, 'fotos.html')
+    mock.save.mockResolvedValue({ canceled: false, filePath: path })
+    const context = { kind: 'chat' as const, sessionId: 'ses_one' }
+    expect(await invoke('extras:downloadHtml', { title: 'Fotos', html: '<img src="imagen:p1">', context })).toBe(path)
+    expect(mock.photos).toHaveBeenCalledWith('<img src="imagen:p1">', 'ses_one')
+    expect(readFileSync(path, 'utf8')).toContain('data:image/jpeg;base64,')
+    expect(readFileSync(path, 'utf8')).not.toContain('imagen:p1')
+    expect(mock.gallery).toHaveBeenCalledWith(path, { exact: true, title: 'Fotos' })
+  })
+  it('cancelar no escribe ni registra un archivo', async () => {
+    mock.save.mockResolvedValue({ canceled: true })
+    expect(await invoke('extras:downloadHtml', { title: 'Fotos', html: '<p>Hola</p>' })).toBeNull()
+    expect(mock.gallery).not.toHaveBeenCalled()
+  })
+  it('un id fuera del contexto falla antes del diálogo', async () => {
+    mock.photos.mockRejectedValue(new Error('Foto de otra conversación'))
+    await expect(
+      invoke('extras:downloadHtml', { title: 'Fotos', html: '<img src="imagen:p1">', context: { kind: 'chat', sessionId: 'ses_other' } })
+    ).rejects.toThrow('otra conversación')
+    expect(mock.save).not.toHaveBeenCalled()
+    expect(mock.gallery).not.toHaveBeenCalled()
+  })
+})
+
+it('Presentar PPTX de Chat revalida rutas antes del motor y no admite un archivo fuera del ámbito', async () => {
+  mock.allowed.mockReturnValueOnce('/permitida/real.pptx')
+  await invoke('extras:presentPptx', { path: '/visible/enlace.pptx' })
+  expect(mock.present).toHaveBeenCalledWith('/permitida/real.pptx', expect.any(Function))
+  mock.present.mockClear()
+  mock.allowed.mockImplementationOnce(() => {
+    throw new Error('fuera de ámbito')
+  })
+  await expect(invoke('extras:presentPptx', { path: '/fuera/archivo.pptx' })).rejects.toThrow('fuera de ámbito')
+  expect(mock.present).not.toHaveBeenCalled()
 })

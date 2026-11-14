@@ -512,7 +512,7 @@ describe('extras:chatDoc:open — gráficos de Excel y libertad de diseño de Po
   it.each([
     ['color sin #', { palette: { bg: '0E2A2F', text: '#FFFFFF', accent: '#000000' }, slides: [{ title: 'x' }] }],
     ['color con script', { palette: { bg: '#0E2A2F', text: '#FFFFFF', accent: 'red;rm -rf' }, slides: [{ title: 'x' }] }],
-    ['fuente fuera de la lista', { fonts: { title: 'Comic Sans MS' }, slides: [{ title: 'x' }] }],
+    ['fuente fuera de la lista', { fonts: { title: 'Missing Font' }, slides: [{ title: 'x' }] }],
     ['forma desconocida', { slides: [{ layout: 'free', elements: [{ type: 'shape', shape: 'bomba', x: 0, y: 0, w: 1, h: 1 }] }] }],
     ['tipo de elemento desconocido', { slides: [{ layout: 'free', elements: [{ type: 'image', x: 0, y: 0, w: 1, h: 1 }] }] }],
     ['posición absurda', { slides: [{ layout: 'free', elements: [{ type: 'text', x: 99999, y: 0, w: 10, h: 10, text: 'a' }] }] }],

@@ -1,3 +1,4 @@
+import { showExportSaveDialog } from './export-dialog'
 /**
  * Documentos generados en Chat (PDF vía HTML, Excel/PowerPoint vía datos estructurados): Chat NO
  * tiene acceso a archivos del usuario ni carpeta propia (a diferencia de Tareas). Esto genera el
@@ -7,7 +8,7 @@
  * así que no hay conflicto por compartir la vista, y el visor ya sabe pintar los cuatro formatos sin
  * que le importe cómo se generaron).
  */
-import { app, dialog, type BrowserWindow } from 'electron'
+import { app, type BrowserWindow } from 'electron'
 import { t } from '@shared/i18n'
 import { realpathSync } from 'node:fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -172,7 +173,7 @@ export async function downloadChatDoc(input: ChatDocInput, title: string, win: B
     defaultPath: join(app.getPath('downloads'), `${safe}.${EXT[input.kind]}`),
     filters: [{ name: EXT[input.kind].toUpperCase(), extensions: [EXT[input.kind]] }]
   }
-  const res = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+  const res = await showExportSaveDialog(win, options)
   if (res.canceled || !res.filePath) return null
   const bytes = await bytesFor(input, title)
   await writeFile(res.filePath, bytes)

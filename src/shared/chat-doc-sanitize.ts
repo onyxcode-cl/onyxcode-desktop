@@ -61,7 +61,8 @@ import {
   PPTX_TRANSITIONS,
   XLSX_CHART_TYPES,
   XLSX_COLUMN_FORMATS,
-  isFreeElement
+  isFreeElement,
+  isDocumentIdentity
 } from './chat-doc-spec'
 import { fixElement, normalizePptx } from './chat-doc-normalize'
 
@@ -91,6 +92,17 @@ const pickKeys = (o: Obj, keys: readonly string[]): Obj => {
   const out: Obj = {}
   for (const k of keys) if (o[k] !== undefined) out[k] = o[k]
   return out
+}
+
+/** Conservar decisiones válidas aun si otro campo de identidad trae un desliz de forma. */
+function sanitizeIdentity(value: unknown): Obj | undefined {
+  if (!isObj(value)) return undefined
+  const result: Obj = {}
+  for (const key of ['concept', 'palette', 'fonts', 'titles', 'cards', 'background', 'rhythm', 'photos', 'cover', 'headers']) {
+    const candidate = key === 'concept' ? toText(value[key], 500) : value[key]
+    if (candidate !== undefined && isDocumentIdentity({ [key]: candidate })) result[key] = structuredClone(candidate)
+  }
+  return Object.keys(result).length ? result : undefined
 }
 
 // ───────────────────────── xlsx ─────────────────────────
@@ -307,6 +319,8 @@ function sanitizePptx(doc: Obj): unknown {
   const slides = asArray(doc.slides)
   if (!slides) return doc
   const out: Obj = {}
+  const identity = sanitizeIdentity(doc.identity)
+  if (identity) out.identity = identity
   const pickEnum = (k: string, list: readonly string[]): void => {
     const v = doc[k]
     if (typeof v === 'string' && list.includes(v.toLowerCase())) out[k] = v.toLowerCase()
@@ -420,11 +434,13 @@ function sanitizeDocx(doc: Obj): unknown {
   const blocks = asArray(doc.blocks)
   if (!blocks) return doc
   const out: Obj = {}
+  const identity = sanitizeIdentity(doc.identity)
+  if (identity) out.identity = identity
   for (const k of ['title', 'subtitle', 'author', 'date', 'header', 'footer']) {
     const v = toText(doc[k], MAX_DOCX_META_CHARS)
     if (v) out[k] = v
   }
-  for (const k of ['page_numbers', 'toc']) if (typeof doc[k] === 'boolean') out[k] = doc[k]
+  for (const k of ['page_numbers', 'toc', 'cover']) if (typeof doc[k] === 'boolean') out[k] = doc[k]
   out.blocks = blocks
     .slice(0, MAX_DOCX_BLOCKS)
     .map(docxBlock)

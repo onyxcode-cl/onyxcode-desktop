@@ -1,0 +1,672 @@
+{
+  "capturedAt": "2026-11-13T17:48:39.758Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=puerto+de+Valpara%C3%ADso&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 3616695,
+          "ns": 6,
+          "title": "File:Puerto de Valparaíso (dic 2007).JPG",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 591200,
+              "width": 1632,
+              "height": 1232,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG/1280px-Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 966,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/5/59/Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/59/Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG/1280px-Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 966,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/5/59/Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/59/Puerto_de_Valpara%C3%ADso_%28dic_2007%29.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Puerto_de_Valpara%C3%ADso_(dic_2007).JPG",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=3616695",
+              "sha1": "42785179acffb07440412d15a832bacca071956a",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2008-02-26 02:55:37",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Puerto de Valparaíso (dic 2007)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "GFDL|License migration redundant|Port of Valparaíso|Self-published work|New year in Valparaíso",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Balsa de fuegos artificiales en el puerto de Valparaíso.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "<p><b>es:</b> diciembre de 2007\n</p>\n<b>en:</b> december of 2007",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p><b>es:</b> trabajo propio\n</p>\n<b>en:</b> self-made",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Macarron&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Macarron (page does not exist)\">Macarron</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 35128306,
+          "ns": 6,
+          "title": "File:Puerto de Valparaíso, Chile.JPG",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 531990,
+              "width": 1280,
+              "height": 960,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/5/59/Puerto_de_Valpara%C3%ADso%2C_Chile.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/Puerto_de_Valpara%C3%ADso%2C_Chile.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/59/Puerto_de_Valpara%C3%ADso%2C_Chile.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Puerto_de_Valpara%C3%ADso,_Chile.JPG",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=35128306",
+              "sha1": "e0fb0c13bb20f833738ecc61a0ea0c4e016a2c46",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2014-09-03 23:36:15",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Puerto de Valparaíso, Chile",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Sony DSC-P93|Port of Valparaíso|Self-published work|Views from Cerro Artillería|Container terminal Valparaíso|Photographs by User:Luisalvaz|2005 photographs by User:Luisalvaz|Photographs of Chile by User:Luisalvaz",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Puerto de Valparaíso, Chile",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2005-07-02 15:59:17",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Luisalvaz\" title=\"User:Luisalvaz\">Luisalvaz</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 57949042,
+          "ns": 6,
+          "title": "File:J28 130 Bf Valparaíso, Marineschiffe.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7417112,
+              "width": 5667,
+              "height": 3778,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg/1280px-J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg/3840px-J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg/1280px-J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg/3840px-J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/J28_130_Bf_Valpara%C3%ADso%2C_Marineschiffe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:J28_130_Bf_Valpara%C3%ADso,_Marineschiffe.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=57949042",
+              "sha1": "245b2037b1b5f03e7657578d5a8060d5a8be11af",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2017-04-12 08:17:03",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "J28 130 Bf Valparaíso, Marineschiffe",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Canon EOS 5D Mark III and Canon EF 70–200mm F4L IS USM|Molo de Abrigo de Valparaíso|Araucano (AO-53) (ship, 1984)|Galvarino (ATF-66) (ship, 1974)|Port of Valparaíso|Self-published work|Almirante Lynch (FF-07)|Almirante Williams (FF-19)|Falk2/2017 Chile|Chile photographs taken on 2017-02-19|Views from Cerro Artillería|Naval ships in Valparaíso|February 2017 in Valparaíso",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "… an der »Molo de Abrigo«, die Hafenseite wird von der »Armada de Chile« als Liegeplatz genutzt.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-02-19",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Falk2\" title=\"User:Falk2\">Falk2</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 85643420,
+          "ns": 6,
+          "title": "File:Desde el cerro Artillería, puerto de Valparaíso de noche. Valparaíso. Chile.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7272960,
+              "width": 4896,
+              "height": 3672,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg/1280px-Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg/3840px-Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg/1280px-Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg/3840px-Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/02/Desde_el_cerro_Artiller%C3%ADa%2C_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Desde_el_cerro_Artiller%C3%ADa,_puerto_de_Valpara%C3%ADso_de_noche._Valpara%C3%ADso._Chile.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=85643420",
+              "sha1": "bed033ade2aa983d37808a553d46fc6435532d60",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-01-05 19:47:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Desde el cerro Artillería, puerto de Valparaíso de noche. Valparaíso. Chile",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CMA CGM Jean Gabriel (ship, 2018)|Port of Valparaíso|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Puerto de Valparaíso desde el cerro Artillería, de noche. Buque portacontenedores \"CMA CGM JEAN GABRIEL\" (IMO 9729128), matriculado en el puerto maltés \"Valletta\" (La Valeta). Atracado en el muelle, descargando contenedores.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-03-15 22:22:10",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:CARLOS_TEIXIDOR_CADENAS\" title=\"User:CARLOS TEIXIDOR CADENAS\">CARLOS TEIXIDOR CADENAS</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 95775503,
+          "ns": 6,
+          "title": "File:Estación Puerto, Valparaíso 20201102 12.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3676193,
+              "width": 4945,
+              "height": 3771,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg/1280px-Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 976,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg/3840px-Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg/1280px-Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 976,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1e/Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg/3840px-Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Estaci%C3%B3n_Puerto%2C_Valpara%C3%ADso_20201102_12.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Estaci%C3%B3n_Puerto,_Valpara%C3%ADso_20201102_12.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=95775503",
+              "sha1": "cbef6676b3daa10b7111c777efe0422a20d19766",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-11-03 18:54:24",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Estación Puerto, Valparaíso 20201102 12",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Estación Puerto|Self-published work|Media supported by Wikimedia Chile|2020 in Valparaíso|Files with coordinates missing SDC location of creation|Chile photographs taken on 2020-11-02|Images by User:Carlos yo|Images by User:Carlos yo taken in 2020",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-33.038099",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.627374",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Estación Puerto, Valparaíso, Región de Valparaíso, Chile",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2020-11-02 10:22:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Carlos_yo\" title=\"User:Carlos yo\">Carlos Figueroa</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 130030291,
+          "ns": 6,
+          "title": "File:El Puerto de Valparaíso. Región de Valparaíso, Chile.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 7948288,
+              "width": 5184,
+              "height": 3888,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg/1280px-El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg/3840px-El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg/1280px-El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg/3840px-El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/88/El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso%2C_Chile.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:El_Puerto_de_Valpara%C3%ADso._Regi%C3%B3n_de_Valpara%C3%ADso,_Chile.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=130030291",
+              "sha1": "99c1b8cd10ddd0a1803c3fde615a3d03576d84c4",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-03-26 11:17:30",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "El Puerto de Valparaíso. Región de Valparaíso, Chile",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Standard Fruit Company|Valparaíso Bay|Port of Valparaíso|Self-published work|Tropical Star (ship, 1986)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "A la derecha, el buque \"Tropical Star\". Número IMO: 8408894. Bandera: Bahamas. Año de construcción: 1986. Tipo de buque: carga, frigorífico. Naviera o propiedad: Dole (Dole Food Company, antes: Standard Fruit Company).",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-02-08 19:25:28",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:CARLOS_TEIXIDOR_CADENAS\" title=\"User:CARLOS TEIXIDOR CADENAS\">CARLOS TEIXIDOR CADENAS</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

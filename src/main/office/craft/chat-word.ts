@@ -7,14 +7,11 @@ import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DocxSpec } from '@shared/chat-doc-spec'
+import { accessibleIdentityColor, identityContrast, identityMix, resolveDocumentIdentity } from '@shared/document-identity'
 import type { ImageMap } from '../../documents/image-files'
 import { craftBatch, runCraft } from './craft-run'
 import { prepareWordReport, WORD_REPORT } from './word-report-layout'
 
-const ACCENT = '1F3864'
-const TH_FG = 'FFFFFF'
-const ZEBRA = 'F2F4F8'
-const TOTAL = 'E7E9EE'
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 const INLINE = /(\*\*[^*]+\*\*|\*[^*]+\*)/
 const NUM_RE = /^[\s$€£]*[-+(]?\s*[$€£]?\s*\d[\d.,\s]*%?\)?\s*(CLP|UF|USD|EUR|UTM)?\s*$/
@@ -39,6 +36,18 @@ const looksNumeric = (s: string): boolean => NUM_RE.test(s) && /\d/.test(s)
  * Asume `DocxSpec` ya validado (`isDocxSpec`). La agrupación permite partir un documento grande en varias ejecuciones sin cortar un bloque.
  */
 export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] {
+  const identity = resolveDocumentIdentity(spec)
+  const color = (hex: string): string => hex.replace('#', '')
+  // Word conserva papel blanco imprimible; toda tinta solicitada se comprueba contra ese soporte.
+  let ink = color(accessibleIdentityColor(identity.palette.text, '#FFFFFF'))
+  const accent = color(accessibleIdentityColor(identity.palette.accent, '#FFFFFF'))
+  const muted = color(accessibleIdentityColor(identity.palette.muted, '#FFFFFF'))
+  const tableInk = identityContrast('#FFFFFF', '#' + accent) >= 4.5 ? 'FFFFFF' : '000000'
+  const zebra = color(identityMix('#FFFFFF', '#' + accent, 0.06))
+  const totalFill = color(identityMix('#FFFFFF', '#' + accent, 0.12))
+  ink = color(accessibleIdentityColor('#' + ink, '#' + totalFill))
+  const headingInk = identity.titles === 'plain' ? ink : accent
+  const titleSize = identity.titles === 'bold' ? 30 : WORD_REPORT.title_size
   spec = prepareWordReport(spec)
   const groups: string[][] = [[]]
   const lines = (): string[] => groups[groups.length - 1]
@@ -70,13 +79,16 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     })
     return tail
   }
-  const par = (t: string, style?: string, align?: string): void => {
+  const par = (t: string, style?: string, align?: string, size?: number, caption = false): void => {
     if (style) cmd('para.style', { style })
-    cmd('para.set', { props: { keepNext: style === 'Title' || style === 'Subtitle', keepLines: false, widowControl: true } })
-    cmd('format.size', { size: style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size })
+    cmd('format.font', { name: style === 'Title' ? identity.fonts.title : identity.fonts.body })
+    cmd('format.color', { color: style === 'Title' ? headingInk : caption ? muted : ink })
+    cmd('para.set', { props: { keepNext: style === 'Title' || style === 'Subtitle', keepLines: caption, widowControl: true } })
+    cmd('format.size', { size: size ?? (style === 'Title' ? titleSize : style === 'Subtitle' ? 14 : WORD_REPORT.size) })
     if (style === 'Title') cmd('format.bold', { value: true })
-    cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
-    cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
+    // El pie ocupa el mínimo legible y no se divide entre páginas: la foto ya lo une con keepNext.
+    cmd('para.lineSpacing', { value: caption ? 1 : WORD_REPORT.line_spacing })
+    cmd('para.spacing', { before: 0, after: caption ? 3 : WORD_REPORT.space_after_pt })
     cmd('para.align', { value: align ?? 'left' })
     const tail = inline(t)
     cmd('text.newParagraph')
@@ -84,19 +96,24 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     if (style === 'Title') cmd('format.bold', { value: false })
   }
 
-  cmd('design.themeFonts', { heading: 'Arial', body: 'Arial' })
+  cmd('design.themeFonts', { heading: identity.fonts.title, body: identity.fonts.body })
   cmd('layout.size', { name: 'Letter' })
   const margin = (WORD_REPORT.margin_cm * 72) / 2.54
   cmd('layout.margins', { top: margin, bottom: margin, left: margin, right: margin })
   // Encabezado y pie: cada comando deja el cursor DENTRO de él (el cuerpo se ve atenuado); `insert.closeHeader` vuelve al cuerpo.
   if (spec.header) {
-    cmd('insert.header', { text: spec.header })
+    cmd('insert.header', { text: '' })
+    cmd('format.font', { name: identity.fonts.body })
+    cmd('format.color', { color: identity.headers === 'accent' ? accent : muted })
+    cmd('format.bold', { value: identity.headers === 'accent' })
+    cmd('text.insert', { text: spec.header })
     cmd('insert.closeHeader')
   }
   if (spec.footer || (spec.page_numbers ?? true)) {
     cmd('insert.footer', { text: '' })
     cmd('format.size', { size: 9 })
-    cmd('format.color', { color: '595959' })
+    cmd('format.color', { color: muted })
+    cmd('format.font', { name: identity.fonts.body })
     cmd('para.align', { value: 'center' })
     if (spec.footer) cmd('text.insert', { text: spec.footer })
     if (spec.page_numbers ?? true) {
@@ -106,7 +123,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
       cmd('insert.field', { instr: 'NUMPAGES', result: '1' })
     }
     cmd('insert.closeHeader')
-    cmd('format.color', { color: 'auto' })
+    cmd('format.color', { color: ink })
   }
   const meta = [spec.author, spec.date === 'hoy' ? fechaEs() : spec.date].filter((x): x is string => !!x)
   if (spec.cover && spec.title) {
@@ -114,25 +131,33 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     if (spec.header || spec.footer || (spec.page_numbers ?? true)) cmd('layout.differentFirstPage')
     const cover = (t: string, style: string, before: number, after: number): void => {
       cmd('para.style', { style })
-      cmd('format.size', { size: style === 'Title' ? WORD_REPORT.title_size : style === 'Subtitle' ? 14 : WORD_REPORT.size })
-      cmd('para.align', { value: 'left' })
+      cmd('format.size', { size: style === 'Title' ? titleSize : style === 'Subtitle' ? 14 : WORD_REPORT.size })
+      cmd('format.font', { name: style === 'Title' ? identity.fonts.title : identity.fonts.body })
+      const band = identity.cover === 'band' && style === 'Title'
+      cmd('format.color', { color: band ? tableInk : style === 'Title' ? headingInk : ink })
+      cmd('format.bold', { value: style === 'Title' })
+      cmd('para.shading', { color: band ? accent : null })
+      cmd('para.align', { value: identity.cover === 'center' ? 'center' : 'left' })
       cmd('para.spacing', { before, after })
       cmd('para.borders', { kind: 'none' })
       const tail = inline(t)
       cmd('text.newParagraph')
       for (const [c, p] of tail) cmd(c, p)
     }
-    cover(spec.title, 'Title', WORD_REPORT.cover_before_pt, 12)
+    cover(spec.title, 'Title', identity.cover === 'center' ? 100 : identity.cover === 'band' ? 36 : WORD_REPORT.cover_before_pt, 12)
     if (spec.subtitle) cover(spec.subtitle, 'Subtitle', 0, 18)
     if (meta.length) cover(meta.join(' · '), 'Normal', 24, 0)
     cmd('text.pageBreak')
     cmd('para.style', { style: 'Normal' })
+    cmd('para.shading', { color: null })
+    cmd('format.bold', { value: false })
     cmd('para.borders', { kind: 'none' })
     cmd('para.spacing', { before: 0, after: 8 })
   } else {
-    if (spec.title) par(spec.title, 'Title', 'center')
-    if (spec.subtitle) par(spec.subtitle, 'Subtitle', 'center')
-    if (meta.length) par(meta.join(' · '), 'Normal', 'center')
+    const align = identity.cover === 'center' ? 'center' : 'left'
+    if (spec.title) par(spec.title, 'Title', align)
+    if (spec.subtitle) par(spec.subtitle, 'Subtitle', align)
+    if (meta.length) par(meta.join(' · '), 'Normal', align)
   }
   if (spec.toc) {
     cmd('references.toc', { levels: 3, title: 'Contenido' })
@@ -143,9 +168,15 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
   let numberedSeen = false
   for (const b of spec.blocks) {
     groups.push([])
+    cmd('format.font', { name: identity.fonts.body })
+    cmd('format.color', { color: ink })
+    cmd('format.bold', { value: false })
     switch (b.type) {
       case 'heading':
         cmd(`para.heading${b.level}`)
+        cmd('format.font', { name: identity.fonts.title })
+        cmd('format.color', { color: headingInk })
+        cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
         cmd('format.size', { size: WORD_REPORT.heading_sizes[b.level - 1] })
         cmd('format.bold', { value: true })
         cmd('para.set', { props: { keepNext: true, keepLines: true, spaceBefore: 16, spaceAfter: 6 } })
@@ -161,6 +192,8 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
       case 'bullets':
       case 'numbered': {
         cmd('format.size', { size: WORD_REPORT.size })
+        cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
+        cmd('para.lineSpacing', { value: WORD_REPORT.line_spacing })
         const flat = b.items.flat()
         if (b.type === 'numbered') cmd('para.numbering', { kind: 'numbered' })
         else cmd('para.bullets')
@@ -187,22 +220,25 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         ]
         cmd('insert.table', { rows: cells.length, cols: n })
         cmd('table.cellMargins', { top: 3, bottom: 3, left: 6, right: 6 }) // aire en cada celda: el texto no pega con la línea
-        cmd('table.borders', { kind: 'all', width: 0.5, color: 'BFC4CC' })
+        cmd('table.borders', { kind: 'all', width: 0.5, color: color(identityMix('#FFFFFF', '#' + accent, 0.3)) })
         cells.forEach((row, r) => {
           const total = !!b.total_row && r === cells.length - 1
           row.forEach((v, k) => {
+            cmd('format.font', { name: identity.fonts.body })
+            cmd('format.color', { color: ink })
+            cmd('table.shading', { color: 'FFFFFF' })
             cmd('format.size', { size: WORD_REPORT.size - 1 })
             cmd('para.lineSpacing', { value: 1.1 })
             if (r === 0) {
-              cmd('table.shading', { color: ACCENT })
+              cmd('table.shading', { color: accent })
               cmd('format.bold', { value: true })
-              cmd('format.color', { color: TH_FG })
+              cmd('format.color', { color: tableInk })
               const w = b.widths_cm?.[k]
               if (typeof w === 'number' && w >= 1 && w <= 40) cmd('table.columnWidth', { width: Math.round(w * 28.35 * 10) / 10 })
             } else if (total) {
-              cmd('table.shading', { color: TOTAL })
+              cmd('table.shading', { color: totalFill })
               cmd('format.bold', { value: true })
-            } else if ((b.zebra ?? true) && r % 2 === 0) cmd('table.shading', { color: ZEBRA })
+            } else if ((b.zebra ?? true) && r % 2 === 0) cmd('table.shading', { color: zebra })
             const al = b.align?.[k] ?? (r > 0 && looksNumeric(v) ? 'right' : 'left')
             cmd('para.align', { value: al })
             cmd('text.insert', { text: v })
@@ -215,7 +251,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
             if (r === 0 && k === 0) cmd('table.repeatHeader')
             if (r === 0) {
               cmd('format.bold', { value: false })
-              cmd('format.color', { color: 'auto' })
+              cmd('format.color', { color: ink })
             } else if (total) cmd('format.bold', { value: false })
             if (!(r === cells.length - 1 && k === n - 1)) cmd('text.tab')
           })
@@ -235,6 +271,10 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         if (!img) break
         // Ancho en puntos (1 cm = 28,35 pt), 12 cm por defecto; WordCraft conserva la proporción. Nunca más ancho que la página útil (16 cm).
         const width = Math.round(Math.min(b.width_cm ?? 12, 16) * 28.35 * 10) / 10
+        cmd('para.style', { style: 'Normal' })
+        cmd('para.set', { props: { keepNext: !!b.caption, keepLines: false, widowControl: false } })
+        cmd('para.spacing', { before: 0, after: WORD_REPORT.space_after_pt })
+        cmd('para.lineSpacing', { value: 1 })
         cmd('para.align', { value: 'center' })
         cmd('insert.picture', { path: img.file, width, alt: b.alt ?? b.caption ?? '' })
         // Tras insertar, la imagen queda SELECCIONADA: un `text.newParagraph` sin más la reemplaza y desaparece. Se lleva el cursor al final.
@@ -243,7 +283,7 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
         cmd('para.style', { style: 'Normal' })
         if (b.caption) {
           cmd('format.italic', { value: true })
-          par(b.caption, 'Normal', 'center')
+          par(b.caption, 'Normal', 'center', 9, true)
           cmd('format.italic', { value: false })
         }
         break
@@ -258,12 +298,15 @@ export function chatDocxCommands(spec: DocxSpec, images?: ImageMap): string[][] 
     groups.push([])
     cmd('references.updateToc')
   }
-  // Word obliga a un párrafo vacío tras una tabla final: si la tabla llena la página, ese párrafo caía en una hoja en blanco. Se deja de 1 pt.
+  // Todos los bloques terminan en un párrafo vacío. También tras fotos y créditos puede desbordar a una hoja en blanco.
+  // Solo cambia ese párrafo de cola, nunca el último texto/imagen. Los saltos explícitos conservan su semántica.
   const last = spec.blocks[spec.blocks.length - 1]
-  if (last && last.type === 'table' && !last.caption) {
+  if (last && last.type !== 'page_break') {
     groups.push([])
     cmd('caret.docEnd')
+    cmd('para.set', { props: { keepNext: false, keepLines: false, widowControl: false } })
     cmd('para.spacing', { before: 0, after: 0 })
+    cmd('para.lineSpacing', { value: 1 })
     cmd('format.size', { size: 1 })
   }
   return groups.filter((g) => g.length > 0)

@@ -1,3 +1,4 @@
+import { MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Archivos que la IA crea o menciona en el Chat: qué son, si se pueden mostrar dentro de la app y si se pueden abrir con el programa
  * del sistema. Todo lo que llega del renderer se valida aquí (texto del modelo = dato no confiable):
@@ -247,11 +248,13 @@ export function readChatFile(roots: readonly string[], path: string): ChatFileRe
       const mime = IMAGE_MIME[extname(info.path).toLowerCase()] ?? 'application/octet-stream'
       return { ok: true, kind: 'image', dataUrl: `data:${mime};base64,${buf.toString('base64')}` }
     }
-    const { buf, total } = readHead(info.path, MAX_TEXT_BYTES)
+    const max = info.kind === 'html' ? MAX_ARTIFACT_HTML_BYTES : MAX_TEXT_BYTES
+    if (info.kind === 'html' && info.bytes > max) return { ok: false, reason: 'too-large' }
+    const { buf, total } = readHead(info.path, max)
     if (buf.subarray(0, 8192).includes(0)) return { ok: false, reason: 'unsupported' }
     // Si se truncó a mitad de un carácter UTF-8, el último carácter inválido se descarta.
     const text = buf.toString('utf8').replace(/�$/, '')
-    return { ok: true, kind: info.kind as 'text' | 'markdown' | 'code' | 'html', text, truncated: total > MAX_TEXT_BYTES }
+    return { ok: true, kind: info.kind as 'text' | 'markdown' | 'code' | 'html', text, truncated: total > max }
   } catch {
     return { ok: false, reason: 'unreadable' }
   }

@@ -13,6 +13,7 @@ import { MAX_IMAGES_PER_DOC } from '@shared/chat-doc-spec'
 import { privateTmp } from '../office/craft/private-tmp'
 import { readTaskFile } from './input-path'
 import { OutputPathError } from './output-path'
+import { isFreeImagePreview } from './free-image-preview'
 
 /** Más píxeles que esto (≈ 40 megapíxeles) y la imagen se rechaza: un archivo chico puede descomprimirse a algo enorme. */
 export const MAX_IMAGE_PIXELS = 40_000_000
@@ -119,6 +120,11 @@ export async function prepareImages(
     let n = 0
     for (const p of paths) {
       const f = await readFile(root, p, agentRoots, {}, 'image')
+      if (isFreeImagePreview(f.bytes))
+        throw new OutputPathError(
+          'name',
+          'Esta imagen es una vista previa, no un recurso autorizado. Usa imagenes_usar; no copies la caché ni uses bash para saltarte la procedencia.'
+        )
       const info = sniffImage(f.bytes)
       if (!info) throw new OutputPathError('name', `«${p}» no es una imagen PNG, JPEG, WebP o GIF válida.`)
       if (info.width * info.height > MAX_IMAGE_PIXELS)

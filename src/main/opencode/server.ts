@@ -97,6 +97,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
   private shellBgWake: ShellBgWake | null = null
   /** Token real de la herramienta `documentos` de este arranque: se revoca al parar, al caerse el proceso o al relanzar. */
   private documentsToken: string | null = null
+  private chatPhotosToken: string | null = null
+  private chatPhotosApi: { revokeToken(token: string): boolean } | null = null
   /** Servidor de `documentos` con el que se emitió ese token (import perezoso: `../documents` arrastra Electron y el motor de documentos). */
   private documentsApi: { revokeToken(token: string): boolean } | null = null
 
@@ -302,6 +304,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // Si el MCP no arranca (`configFor` devuelve null), el motor arranca igual sin ella. Un arranque nuevo trae token nuevo: el viejo deja de valer.
       this.revokeDocumentsToken()
       const documents = await this.documentsBlock()
+      const chatPhotos = await this.chatPhotosBlock()
       // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
       const permission = this.codeMcpPermission()
       const chatSubagents = this.chatSubagents()
@@ -336,6 +339,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
             browserMcp,
             bgshellMcp: shellBg?.block ?? null,
             documentsMcp: documents,
+            chatPhotosMcp: chatPhotos,
             permission,
             chatSubagents,
             modelFallback: settingsStore.get().modelFallback,
@@ -443,7 +447,26 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     }
   }
 
+  private async chatPhotosBlock(): Promise<Record<string, unknown> | null> {
+    try {
+      const { chatPhotosMcp } = await import('../documents')
+      const { activeChatPhotoSession } = await import('../documents/chat-photos')
+      this.chatPhotosApi = chatPhotosMcp
+      const block = await chatPhotosMcp.configFor({
+        folder: '<chat-fotos>',
+        activeSession: async () => (this.connection ? activeChatPhotoSession(this.connection, this.options.chatDirectory) : null)
+      })
+      this.chatPhotosToken = bearerOf(block)
+      return block
+    } catch (err) {
+      console.warn('[opencode] fotos de Chat no disponibles:', err instanceof Error ? err.message : err)
+      return null
+    }
+  }
+
   private revokeDocumentsToken(): void {
+    if (this.chatPhotosToken) this.chatPhotosApi?.revokeToken(this.chatPhotosToken)
+    this.chatPhotosToken = null
     if (this.documentsToken) this.documentsApi?.revokeToken(this.documentsToken)
     this.documentsToken = null
   }

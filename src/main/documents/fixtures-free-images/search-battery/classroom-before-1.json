@@ -1,0 +1,703 @@
+{
+  "capturedAt": "2026-11-13T17:48:37.759Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=sala+de+clases&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 19792555,
+          "ns": 6,
+          "title": "File:Grande salle ENC n1.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 10804068,
+              "width": 3926,
+              "height": 2608,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Grande_salle_ENC_n1.jpg/1280px-Grande_salle_ENC_n1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 850,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Grande_salle_ENC_n1.jpg/3840px-Grande_salle_ENC_n1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Grande_salle_ENC_n1.jpg/1280px-Grande_salle_ENC_n1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 850,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9a/Grande_salle_ENC_n1.jpg/3840px-Grande_salle_ENC_n1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Grande_salle_ENC_n1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Grande_salle_ENC_n1.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=19792555",
+              "sha1": "712d9ba782620adf4a4e8ad7bf6842753e919f98",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2012-12-11 06:32:59",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Grande salle ENC n1",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Nikon D300s|Fluorescent lamps|Images with annotations|Featured pictures of Paris|Self-published work|Featured pictures by Jastrow|Media supported by Wikimedia France|Images used in valued image sets|Information field template with formatting|Featured pictures supported by Wikimedia France|Images made by courtesy of the École Nationale des Chartes|Classrooms in France|Main room of the École Nationale des Chartes|Files with coordinates missing SDC location of creation (48° N, 2° E)|Empty classrooms|School blackboards",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured|valued",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "48.848889",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "2.342778",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Main room of the <a href=\"https://fr.wikipedia.org/wiki/%C3%89cole_nationale_des_chartes\" class=\"extiw\" title=\"fr:École nationale des chartes\">École nationale des chartes</a>, Paris.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-10-04",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<p><a href=\"//commons.wikimedia.org/wiki/User:Jastrow\" title=\"User:Jastrow\">Marie-Lan Nguyen</a>\n</p>",
+                  "source": "commons-desc-page"
+                },
+                "Attribution": {
+                  "value": "© Marie-Lan Nguyen / <a href=\"//commons.wikimedia.org/wiki/Main_Page\" title=\"Main Page\">Wikimedia Commons</a>",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.5",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.5",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.5",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.5",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 21814411,
+          "ns": 6,
+          "title": "File:Palamuse kihelkonnakooli klassiruum.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4866368,
+              "width": 2486,
+              "height": 1651,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Palamuse_kihelkonnakooli_klassiruum.jpg/1280px-Palamuse_kihelkonnakooli_klassiruum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 850,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Palamuse_kihelkonnakooli_klassiruum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Palamuse_kihelkonnakooli_klassiruum.jpg/1280px-Palamuse_kihelkonnakooli_klassiruum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 850,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Palamuse_kihelkonnakooli_klassiruum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Palamuse_kihelkonnakooli_klassiruum.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Palamuse_kihelkonnakooli_klassiruum.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=21814411",
+              "sha1": "c509ad8c6aa171040785c55880ddd5ef363d2a15",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2014-02-08 13:57:50",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Palamuse kihelkonnakooli klassiruum",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "History of education|Palamuse Museum|Cultural heritage monuments in Jõgeva County|Self-published work|Cultural heritage monuments in Estonia (with known IDs)|Classrooms in Estonia|Images from Wiki Loves Monuments 2012|Images from Wiki Loves Monuments 2012 in Estonia|Files with coordinates missing SDC location of creation|Estonia photographs taken on 2011-06-16|Featured pictures of museums|Images from Wiki Loves Monuments missing SDC location of creation|Cultural heritage monuments in Estonia missing SDC location of creation|Featured pictures of building interiors in Estonia|Featured pictures of Jõgeva County|Classrooms in museums|Globes in classrooms",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality|featured",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "58.683222",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "26.582943",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Palamuse Parish School's classroom. This 19th century classroom is now a part of a museum that bears the name of writer <a href=\"https://en.wikipedia.org/wiki/Oskar_Luts\" class=\"extiw\" title=\"en:Oskar Luts\">Oskar Luts</a>, who studied there and wrote the book <i>Kevade</i> about his schooldays. It remains his best know work and <a href=\"https://en.wikipedia.org/wiki/Spring_(film)\" class=\"extiw\" title=\"en:Spring (film)\">the film adaption</a> of the novel (that was also shot in Palamuse) is regarded as the best Estonian film in the 20th century.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-06-16 09:39:14",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Kaldar&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Kaldar (page does not exist)\">Rauno Kalda</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0 ee",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0 ee",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0/ee/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0-ee",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 29787928,
+          "ns": 6,
+          "title": "File:Sala de clases (3217639603).jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1157779,
+              "width": 2048,
+              "height": 1536,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Sala_de_clases_%283217639603%29.jpg/1280px-Sala_de_clases_%283217639603%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/3/39/Sala_de_clases_%283217639603%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/Sala_de_clases_%283217639603%29.jpg/1280px-Sala_de_clases_%283217639603%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/3/39/Sala_de_clases_%283217639603%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/39/Sala_de_clases_%283217639603%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Sala_de_clases_(3217639603).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=29787928",
+              "sha1": "d617c5aa6c9a3d47d4433ca1033447ff1df4ec80",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2013-11-23 05:23:01",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Sala de clases (3217639603)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Taken with Panasonic Lumix DMC-LC50|Instituto Nacional General José Miguel Carrera|Flickr images reviewed by File Upload Bot (Magnus Manske)|Files uploaded by Diego Grez-Cañete",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Sala de clases",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-01-22 12:45",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<p><a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/institutanos/3217639603/\">Sala de clases</a>\n</p>\n<ul><li>Uploaded by <a href=\"//commons.wikimedia.org/w/index.php?title=User:Diego_Grez&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Diego Grez (page does not exist)\">Diego Grez</a></li></ul>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/11893502@N03\">Institutanos</a> from Santigago, Chile",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 101982369,
+          "ns": 6,
+          "title": "File:Clases Sala de informática Altomonte.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 256174,
+              "width": 454,
+              "height": 608,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/7/78/Clases_Sala_de_inform%C3%A1tica_Altomonte.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1714,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/7/78/Clases_Sala_de_inform%C3%A1tica_Altomonte.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1714
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/78/Clases_Sala_de_inform%C3%A1tica_Altomonte.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Clases_Sala_de_inform%C3%A1tica_Altomonte.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=101982369",
+              "sha1": "80de838786466c013458057d7e00103c4190eb3a",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-03-21 02:09:10",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Clases Sala de informática Altomonte",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Altomonte|Self-published work|Students using computers",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "IT Altomonte",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2021-03-01",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Larrylynchbraun&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Larrylynchbraun (page does not exist)\">Larrylynchbraun</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 131475667,
+          "ns": 6,
+          "title": "File:FOTO 4. Estudiantes en clases y en sala de la facultad de educación.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 426256,
+              "width": 3021,
+              "height": 1743,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg/1280px-FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 739,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/f/f9/FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg/1280px-FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 739,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/f/f9/FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/f9/FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:FOTO_4._Estudiantes_en_clases_y_en_sala_de_la_facultad_de_educaci%C3%B3n.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=131475667",
+              "sha1": "8adf8aec0a726808a231d193a92632b43bfb6c69",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-05-03 07:16:16",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "FOTO 4. Estudiantes en clases y en sala de la facultad de educación",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Files with coordinates missing SDC location of creation|Facultad de Educación de la UNMSM",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-12.054694",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-77.084786",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Se puede observar un salón de clases y estudiantes mayormente de una edad adulta. Ellos se muestran atentos a clases. En sala se muestran comunicativos y concentrados en su portátil.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-04-29 14:20:37",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Lucero_Echevarr%C3%ADa_Sanchez&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Lucero Echevarría Sanchez (page does not exist)\">Lucero Echevarría Sanchez</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 146511702,
+          "ns": 6,
+          "title": "File:Sala de clases FEN.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 99592,
+              "width": 1920,
+              "height": 1080,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Sala_de_clases_FEN.jpg/1280px-Sala_de_clases_FEN.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 720,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/0/09/Sala_de_clases_FEN.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/09/Sala_de_clases_FEN.jpg/1280px-Sala_de_clases_FEN.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 720,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/0/09/Sala_de_clases_FEN.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/09/Sala_de_clases_FEN.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Sala_de_clases_FEN.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=146511702",
+              "sha1": "29d96a4df48ce4ea2849416c4e3e6b21114cadea",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-03-17 22:03:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Sala de clases FEN",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Unidentified people|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Sala de clases FEN",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2024-03-17",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Nmellas&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Nmellas (page does not exist)\">Nmellas</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

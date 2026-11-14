@@ -11,9 +11,9 @@ import JSZip from 'jszip'
 import { docUrl } from '../params'
 import type { ViewerLang } from '../i18n'
 import { tv } from '../i18n'
-import { parseDeck, type ChartData, type Deck, type Shape } from './model'
+import { parseDeck, SlideRenderError, type ChartData, type Deck, type Shape } from './model'
 
-type Phase = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; deck: Deck }
+type Phase = { kind: 'loading' } | { kind: 'error'; slide?: number } | { kind: 'ready'; deck: Deck }
 
 const EMU_PER_PT = 12700
 
@@ -39,9 +39,9 @@ export function PptxViewer({ token, lang, capture }: { token: string; lang: View
         // Solo en el render oculto de la IA: cuántas diapositivas hay (el visor de la persona no marca nada).
         if (capture) document.documentElement.dataset.captureReady = String(deck.slides.length)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) return
-        setPhase({ kind: 'error' })
+        setPhase({ kind: 'error', slide: error instanceof SlideRenderError ? error.slide : undefined })
         if (capture) document.documentElement.dataset.captureReady = 'error'
       })
 
@@ -66,6 +66,11 @@ export function PptxViewer({ token, lang, capture }: { token: string; lang: View
     return (
       <div className="viewer-center">
         <p>{tv(lang, 'errorTitle')}</p>
+        {phase.slide && (
+          <p>
+            {phase.slide}: {tv(lang, 'slideIncomplete')}
+          </p>
+        )}
       </div>
     )
   }
@@ -77,6 +82,13 @@ export function PptxViewer({ token, lang, capture }: { token: string; lang: View
   return (
     <div className="pptx-root">
       <div className="pptx-banner">{lang === 'es' ? 'Vista simplificada' : 'Simplified view'}</div>
+      {slide.shapes.some(
+        (shape) => shape.kind === 'unknown' || (shape.kind === 'picture' && !shape.dataUrl) || (shape.kind === 'chart' && !shape.chart)
+      ) && (
+        <div className="pptx-banner" role="alert">
+          {index + 1}: {tv(lang, 'slideIncomplete')}
+        </div>
+      )}
       <div className="pptx-stage">
         <button type="button" className="pptx-nav" disabled={index <= 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>
           ‹

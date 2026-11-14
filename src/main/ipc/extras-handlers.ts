@@ -1,3 +1,11 @@
+import { importPptxAttachment, presentPptxFile } from '../viewer/present-pptx'
+import { showExportSaveDialog } from '../extras/export-dialog'
+import { SlidesHtmlError } from '@shared/slides-html'
+import { OutputPathError } from '../documents/output-path'
+import { prepareArtifactPhotos } from '../extras/artifact-photos'
+import { documentsMcp, resolveChatHtmlPhotos } from '../documents'
+import { MissingPreparedPhotoError, resolvePreparedHtml } from '../documents/html-photos'
+import type { ArtifactContext } from '@shared/ipc-extras'
 /**
  * Handlers IPC de extras (`extras:*`, `mcp:*`). Registrar en main con:
  *   registerExtrasHandlers(ipcMain, { server, createMainWindow, getMainWindow })
@@ -5,14 +13,14 @@
  */
 import { app, dialog, shell, type IpcMain } from 'electron'
 import { closeSync, openSync, readSync, statSync } from 'node:fs'
-import { stat } from 'node:fs/promises'
+import { rm, stat, writeFile } from 'node:fs/promises'
 import { release } from 'node:os'
 import { basename, join } from 'node:path'
 import { t } from '@shared/i18n'
 import type { IpcExtrasInvokeContract } from '@shared/ipc-extras'
 import type { OpencodeServer } from '../opencode/server'
 import { broadcastExtras, getPrefsState, initExtras } from '../extras'
-import { openArtifact, presentSlides } from '../extras/artifact-window'
+import { openArtifact, presentSlides, safeDocumentName } from '../extras/artifact-window'
 import { exportConversation } from '../extras/export-conversation'
 import { downloadSlidesAsPptx } from '../extras/slides-deck-export'
 import { VoiceWorkerHost, voiceWorkerScriptPath } from '../extras/voice-worker-host'
@@ -135,42 +143,82 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     arch: process.arch,
     osRelease: release()
   }))
-  handle(ipcMain, 'extras:openArtifact', (payload) => {
+  const prepareHtml = (html: string, context?: ArtifactContext): Promise<string> =>
+    prepareArtifactPhotos(html, context, context?.kind === 'file' ? allFileRoots() : [], {
+      standalone: (source) => resolvePreparedHtml(source),
+      chat: resolveChatHtmlPhotos,
+      file: (source, scope) => documentsMcp.resolveHtmlPhotos(source, scope)
+    })
+  handle(ipcMain, 'extras:openArtifact', async (payload) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
-    openArtifact({ title: String(payload.title ?? ''), html: payload.html })
+    openArtifact({ title: String(payload.title ?? ''), html: await prepareHtml(payload.html, payload.context) })
   })
   // «Descargar/Guardar»: el archivo elegido por la persona se anota en la galería (solo ese archivo, no su carpeta).
   const recordSaved = (path: string | null, title: string): string | null => {
     if (path) galleryRecordChat(path, { exact: true, title: title.trim() || undefined })
     return path
   }
+  handle(ipcMain, 'extras:downloadHtml', async (payload, event) => {
+    const html = await prepareHtml(payload.html, payload.context)
+    const options: Electron.SaveDialogOptions = {
+      title: t('merr.menu.saveHtml'),
+      defaultPath: join(app.getPath('downloads'), `${safeDocumentName(payload.title, 'presentacion')}.html`),
+      filters: [{ name: 'HTML', extensions: ['html'] }]
+    }
+    const win = windowOfSender(event.sender)
+    const saved = await showExportSaveDialog(win, options)
+    if (saved.canceled || !saved.filePath) return null
+    await writeFile(saved.filePath, html, 'utf8')
+    return recordSaved(saved.filePath, payload.title)
+  })
   handle(ipcMain, 'extras:downloadHtmlAsPdf', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     const title = String(payload.title ?? '')
-    return recordSaved(await downloadChatDoc({ kind: 'pdf', html: payload.html }, title, windowOfSender(event.sender)), title)
+    return recordSaved(
+      await downloadChatDoc({ kind: 'pdf', html: await prepareHtml(payload.html, payload.context) }, title, windowOfSender(event.sender)),
+      title
+    )
   })
   handle(ipcMain, 'extras:downloadSlidesAsPptx', async (payload, event) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
     const title = String(payload.title ?? '')
-    return recordSaved(await downloadSlidesAsPptx({ title, html: payload.html }, windowOfSender(event.sender)), title)
+    return recordSaved(
+      await downloadSlidesAsPptx({ title, html: await prepareHtml(payload.html, payload.context) }, windowOfSender(event.sender)),
+      title
+    )
   })
-  handle(ipcMain, 'extras:presentSlides', (payload) => {
+  handle(ipcMain, 'extras:presentSlides', async (payload) => {
     if (!payload || typeof payload.html !== 'string') throw new Error('Vista previa sin HTML')
-    presentSlides({ title: String(payload.title ?? ''), html: payload.html })
+    await presentSlides({ title: String(payload.title ?? ''), html: await prepareHtml(payload.html, payload.context) })
   })
   handle(ipcMain, 'extras:transcribeAudio', (payload) => voiceWorker.transcribe(payload.samples))
   // Panel de documento de Chat: MISMA vista nativa que Tareas (un solo modo visible a la vez, sin conflicto).
   onViewerEvent((event) => broadcastExtras('extras:chatDoc:event', event))
   onWebEvent((event) => broadcastExtras('extras:chatDoc:event', event))
+  let documentRequest = 0
+  let documentSession: string | undefined
   handle(ipcMain, 'extras:chatDoc:open', async (req) => {
+    const request = ++documentRequest
+    documentSession = req.sessionId
+    const cancelled = (): boolean => request !== documentRequest
+    const closed = { ok: false as const, reason: 'failed' as const }
     try {
       const { title, sessionId, lang, theme } = req
       let input: ChatDocInput
-      if (req.kind === 'pdf') input = { kind: 'pdf', html: req.html }
-      else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
+      if (req.kind === 'pdf') {
+        if (req.context?.kind === 'chat' && req.context.sessionId !== sessionId)
+          throw new ChatDocError('invalid', 'Las fotos pertenecen a otra conversación.')
+        input = { kind: 'pdf', html: await prepareHtml(req.html, req.context ?? { kind: 'chat', sessionId }) }
+      } else if (req.kind === 'xlsx') input = { kind: 'xlsx', data: req.data }
       else if (req.kind === 'docx') input = { kind: 'docx', data: req.data }
       else input = { kind: 'pptx', data: req.data }
+      if (cancelled()) return closed
       const doc = await generateChatDoc(input, title, sessionId)
+      if (cancelled()) {
+        // La limpieza al cerrar pudo ocurrir antes de terminar la conversión. Solo quita esta copia.
+        await rm(doc.file, { force: true }).catch(() => undefined)
+        return closed
+      }
       galleryRecordChat(doc.file, { session: sessionId, title: title.trim() || undefined })
       // Con el programa de ArtCraft instalado, el panel muestra su versión WEB (misma pantalla y motor que el programa de escritorio);
       // si no está o falla, el visor de siempre.
@@ -178,8 +226,12 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
       const bytes = await stat(doc.file)
         .then((s) => s.size)
         .catch(() => undefined)
-      if (await openInCraftWeb(input.kind, doc.file, title)) return { ok: true, bytes }
+      if (cancelled()) return closed
+      // Un PDF no usa la vista Office. El cierre durante su generación invalida la apertura pendiente.
+      if (input.kind !== 'pdf' && (await openInCraftWeb(input.kind, doc.file, title))) return { ok: true, bytes }
+      if (cancelled()) return closed
       const preview = await prepareChatDocPreview(doc)
+      if (cancelled()) return closed
       installViewerScheme()
       openDoc(`${VIEWER_SCHEME}://viewer/index.html#t=${preview.token}&kind=${preview.kind}&lang=${lang}&theme=${theme}`)
       useClassicViewer()
@@ -201,6 +253,8 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
           detail: { tipo: kind }
         })
       }
+      if (e instanceof MissingPreparedPhotoError) return { ok: false, reason: 'photo-missing', detail: e.message }
+      if (e instanceof OutputPathError || e instanceof SlidesHtmlError) return { ok: false, reason: 'invalid', detail: e.message }
       if (e instanceof ChatDocError) return { ok: false, reason: e.code, detail: e.message }
       return { ok: false, reason: 'failed' }
     }
@@ -210,6 +264,9 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     if (win) panelAttach(win, rect, visible)
   })
   handle(ipcMain, 'extras:chatDoc:close', ({ sessionId }) => {
+    if (documentSession !== undefined && documentSession !== sessionId) return
+    documentRequest++
+    documentSession = undefined
     panelClose()
     void cleanChatDocuments(sessionId)
   })
@@ -222,7 +279,7 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     try {
       const input: ChatDocInput =
         req.kind === 'pdf'
-          ? { kind: 'pdf', html: req.html }
+          ? { kind: 'pdf', html: await prepareHtml(req.html, req.context) }
           : req.kind === 'xlsx'
             ? { kind: 'xlsx', data: req.data }
             : req.kind === 'docx'
@@ -254,6 +311,13 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
   })
   const allFileRoots = (): string[] => [...chatFileRoots(), ...getGallery().extraRoots()]
   let chatFileValidatorRegistered = false
+  handle(ipcMain, 'extras:presentPptx', async ({ path }) => {
+    await presentPptxFile(assertNativeViewable(allFileRoots(), path), (candidate) => assertNativeViewable(allFileRoots(), candidate))
+  })
+  handle(ipcMain, 'extras:importPptx', async ({ name, base64 }) => {
+    const path = await importPptxAttachment(chatDocsRoot(), name, base64)
+    return chatFilesInfo(allFileRoots(), [path])[0]!
+  })
   handle(ipcMain, 'extras:chatFile:info', ({ paths }) => chatFilesInfo(allFileRoots(), paths))
   handle(ipcMain, 'extras:chatFile:read', ({ path }) => readChatFile(allFileRoots(), path))
   handle(ipcMain, 'extras:chatFile:viewNative', async ({ path, lang, theme }) => {

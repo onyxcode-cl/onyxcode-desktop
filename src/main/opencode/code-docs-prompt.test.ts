@@ -30,6 +30,15 @@ describe('guía de documentos para Code', () => {
     expect(CODE_DOCS_PROMPT).toContain('solo si tienes')
   })
 
+  it('exporta el original en seguimientos, conserva fotos y anuncia pérdidas antes de enlaces', () => {
+    expect(CODE_DOCS_PROMPT).toContain('documentos_exportar_pdf')
+    expect(CODE_DOCS_PROMPT).toContain('Word/PowerPoint original')
+    expect(CODE_DOCS_PROMPT).toContain('Revisa fotos y páginas')
+    expect(CODE_DOCS_PROMPT).toContain('no requiere `computer_request_access`')
+    expect(CODE_DOCS_PROMPT).toContain('«Versión parcial: falta…», antes de enlaces')
+    expect(CODE_DOCS_PROMPT).toContain('Si falla, conserva el original')
+  })
+
   it('no supera 1.200 caracteres', () => {
     expect(CODE_DOCS_PROMPT.length).toBeLessThanOrEqual(1200)
   })

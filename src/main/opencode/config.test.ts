@@ -83,6 +83,9 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
       expect(text).toContain('Presentar')
       expect(text).toContain('para proyectar')
       expect(text).toContain('¿Cuál prefieres?')
+      expect(text).toContain('se presenta dentro de Lazunox')
+      expect(text).toContain('Descargar PowerPoint (imagen 4K)')
+      expect(text).toContain('3840×2160 por lámina')
     }
   })
 
@@ -127,7 +130,16 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
   it('el agente chat permite `question` y sigue denegando todo lo demás', () => {
     const chat = (buildInlineConfig() as { agent: { chat: { permission: Record<string, unknown> } } }).agent.chat
     expect(chat.permission).toMatchObject({ '*': 'deny', webfetch: 'allow', websearch: 'allow', question: 'allow' })
-    expect(Object.keys(chat.permission).sort()).toEqual(['*', 'question', 'read', 'webfetch', 'websearch'])
+    expect(Object.keys(chat.permission).sort()).toEqual([
+      '*',
+      'chat_fotos_imagenes_buscar',
+      'chat_fotos_imagenes_usar',
+      'chat_fotos_imagenes_ver',
+      'question',
+      'read',
+      'webfetch',
+      'websearch'
+    ])
     expect(chatMd).toMatch(/permission: "\*": deny webfetch: allow websearch: allow question: allow/)
   })
 
@@ -249,5 +261,19 @@ describe('modelo de respaldo (B6): config del motor', () => {
   it('basura en el ajuste nunca llega al motor', () => {
     const c = buildInlineConfig({ modelFallback: { models: ['malo', 'a/b c', 'ok/uno'], otherProvider: 'true' } }) as { respaldo: unknown }
     expect(c.respaldo).toEqual({ modelos: ['ok/uno'], otro_proveedor: false })
+  })
+})
+
+describe('Chat photo capability', () => {
+  it('allows only its three photo tools when its own MCP exists; fails closed without it', () => {
+    type ChatConfig = { agent: { chat: { permission: Record<string, unknown> } } }
+    const ready = buildInlineConfig({ chatPhotosMcp: { type: 'remote', url: 'http://127.0.0.1:1/mcp' } }) as ChatConfig
+    const absent = buildInlineConfig() as ChatConfig
+    for (const name of ['imagenes_buscar', 'imagenes_ver', 'imagenes_usar']) {
+      expect(ready.agent.chat.permission['chat_fotos_' + name]).toBe('allow')
+      expect(absent.agent.chat.permission['chat_fotos_' + name]).toBe('deny')
+    }
+    expect(ready.agent.chat.permission['*']).toBe('deny')
+    expect(ready.agent.chat.permission).not.toHaveProperty('documentos_crear')
   })
 })

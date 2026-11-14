@@ -39,6 +39,17 @@ describe('relativeInputPath', () => {
 })
 
 describe('readTaskFile', () => {
+  it('lee procedencia JSON con límite propio, sin enlaces y sin ampliar los archivos de oficina admitidos', async () => {
+    writeFileSync(join(root, 'foto.json'), '{"status":"licencia-comprobada"}')
+    expect((await readTaskFile(root, 'foto.json', [], {}, 'provenance')).bytes.toString()).toContain('licencia-comprobada')
+    await fails(readTaskFile(root, 'foto.json'), /Solo se puede/)
+    await fails(readTaskFile(root, 'foto.jpg', [], {}, 'provenance'), /archivo .json/)
+    symlinkSync(join(root, 'foto.json'), join(root, 'enlace.json'))
+    await fails(readTaskFile(root, 'enlace.json', [], {}, 'provenance'), /enlace/)
+    writeFileSync(join(root, 'grande.json'), Buffer.alloc(128 * 1024 + 1))
+    await fails(readTaskFile(root, 'grande.json', [], {}, 'provenance'), /demasiado grande/)
+  })
+
   it('lee un archivo normal de la carpeta (relativo, en subcarpeta o con la ruta absoluta de la tarea)', async () => {
     mkdirSync(join(root, 'sub'))
     writeFileSync(join(root, 'sub', 'a.docx'), ZIP)

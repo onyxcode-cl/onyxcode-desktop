@@ -30,6 +30,7 @@ import { projects } from './projects'
 import { telegram } from './telegram'
 import { pr } from './pr'
 import { helpers } from './helpers'
+import { presentation } from './presentation'
 
 export const en = {
   ...common,
@@ -63,7 +64,8 @@ export const en = {
   ...projects,
   ...telegram,
   ...pr,
-  ...helpers
+  ...helpers,
+  ...presentation
 }
 
 export const AREAS = {
@@ -98,5 +100,6 @@ export const AREAS = {
   projects,
   telegram,
   pr,
-  helpers
+  helpers,
+  presentation
 }

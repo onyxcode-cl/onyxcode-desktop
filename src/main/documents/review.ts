@@ -272,6 +272,7 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
   const noTitle: string[] = []
   const outside: string[] = []
   const tiny: string[] = []
+  const smallFooters: string[] = []
   const stacked: string[] = []
   const tight: string[] = []
   const lowContrast: ContrastProblem[] = []
@@ -300,6 +301,11 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
       for (const run of ts.runs) {
         // El número de página («2 / 3») y el pie son texto de apoyo: se admite más chico.
         if (run.sizePt == null || /^\s*\d+(\s*\/\s*\d+)?\s*$/.test(run.text)) continue
+        // Los motores generan notas y créditos a 11 pt: en el pie es un aviso, no obliga a rehacer la presentación.
+        if (run.sizePt === 11 && ts.box && ts.box.y >= sh * 0.85 && run.text.trim().length <= 240) {
+          smallFooters.push(`${i + 1} («${run.text.trim().slice(0, 20)}»)`)
+          continue
+        }
         if (run.sizePt < 12) tiny.push(`${i + 1} («${run.text.trim().slice(0, 20)}» ${run.sizePt} pt)`)
       }
       // El número de página («02», «2 / 9») pegado a la esquina es normal: no se avisa.
@@ -369,6 +375,8 @@ async function reviewPptx(zip: JSZip, spec?: unknown): Promise<ReviewResult> {
     'Ninguna letra de menos de 12 pt',
     `Letra demasiado chica (menos de 12 pt) en diapositiva ${short(tiny)}: usa 14 pt o más para el cuerpo; si una tabla o lista no cabe, pon menos filas o divídela en dos láminas, no achiques la letra`
   )
+  if (smallFooters.length)
+    r.note(`Pie de 11 pt en diapositiva ${short(smallFooters)}: comprueba su legibilidad; no hace falta recrear por este tamaño.`)
   r.check(
     lowContrast.length === 0,
     'Contraste suficiente en los colores de texto comprobables (WCAG 4,5:1 / 3:1)',

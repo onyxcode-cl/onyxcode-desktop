@@ -494,6 +494,12 @@ async function readRels(zip: JSZip, partPath: string): Promise<Map<string, strin
   return parseRels(await file.async('string'))
 }
 /** Parsea un `.pptx` entero a un `Deck` (Fase 4). Único punto async: lee del zip, resuelve layout/maestro/tema por diapositiva (con caché) e incrusta imágenes como `data:`. */
+export class SlideRenderError extends Error {
+  constructor(readonly slide: number) {
+    super(`slide ${slide} cannot be rendered`)
+  }
+}
+
 export async function parseDeck(zip: JSZip): Promise<Deck> {
   const presentationPath = 'ppt/presentation.xml'
   const presentationXml = await zip.file(presentationPath)!.async('string')
@@ -519,11 +525,13 @@ export async function parseDeck(zip: JSZip): Promise<Deck> {
   }
 
   const slides: Slide[] = []
-  for (const rId of slideRIds) {
+  for (const [index, rId] of slideRIds.entries()) {
     const target = presRels.get(rId)
-    if (!target) continue
+    if (!target) throw new SlideRenderError(index + 1)
     const slidePath = resolveRelPath(presentationPath, target)
-    const slideXml = await zip.file(slidePath)!.async('string')
+    const slideFile = zip.file(slidePath)
+    if (!slideFile) throw new SlideRenderError(index + 1)
+    const slideXml = await slideFile.async('string')
     const slideDoc = parseXml(slideXml)
     const slideRels = await readRels(zip, slidePath)
 

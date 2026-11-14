@@ -12,9 +12,12 @@ const mock = vi.hoisted(() => ({
   webActive: false,
   webAttach: vi.fn(),
   webOpen: vi.fn(),
-  log: vi.fn()
+  log: vi.fn(),
+  approved: vi.fn(),
+  present: vi.fn()
 }))
 
+vi.mock('../viewer/present-pptx', () => ({ presentPptxFile: mock.present }))
 vi.mock('node:fs', () => ({
   openSync: () => 1,
   closeSync: vi.fn(),
@@ -81,6 +84,7 @@ const attach = (visible: boolean, bounds = rect) => handlers['tasks:viewer:attac
 beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, 'info').mockImplementation(mock.log)
+  mock.approved.mockImplementation((path: string) => path)
   mock.header = Buffer.from('%PDF-1.7')
   mock.loaded = undefined
   mock.installed = false
@@ -107,7 +111,7 @@ beforeEach(() => {
     handle: (ch: TasksInvokeChannel, fn: TasksHandler<typeof ch>) => {
       Object.assign(handlers, { [ch]: fn })
     },
-    tasks: { assertInsideApproved: (path: string) => path },
+    tasks: { assertInsideApproved: mock.approved },
     send: vi.fn(),
     getWindow: () => win
   } as unknown as TasksIpcContext)
@@ -152,6 +156,7 @@ describe('superficie del respaldo de Tareas', () => {
   )
 
   it.each(['docx', 'xlsx', 'pptx'] as const)('Office %s mantiene Craft y el respaldo visible si no está instalado', async (kind) => {
+    mock.approved.mockImplementation((path: string) => path)
     mock.header = Buffer.from([0x50, 0x4b, 3, 4])
     const request = { path: `C:\\Trabajo\\archivo.${kind}`, lang: 'es' as const, theme: 'light' as const, openingId: kind }
     mock.installed = true
@@ -171,4 +176,16 @@ describe('superficie del respaldo de Tareas', () => {
     expect(children[0].visible).toBe(true)
     expect(children[0].bounds).toEqual(rect)
   })
+})
+
+it('Presentar valida el ámbito otra vez y solo pasa al motor la ruta autorizada', async () => {
+  mock.approved.mockReturnValueOnce('/autorizada/real.pptx')
+  await handlers['tasks:presentPptx']!({ path: '/visible/enlace.pptx' }, event)
+  expect(mock.present).toHaveBeenCalledWith('/autorizada/real.pptx', expect.any(Function))
+  mock.present.mockClear()
+  mock.approved.mockImplementationOnce(() => {
+    throw new Error('fuera de ámbito')
+  })
+  await expect(handlers['tasks:presentPptx']!({ path: '/fuera/archivo.pptx' }, event)).rejects.toThrow('fuera de ámbito')
+  expect(mock.present).not.toHaveBeenCalled()
 })

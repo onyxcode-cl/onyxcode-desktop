@@ -15,7 +15,7 @@
 import { modelFallbackInline } from '@shared/model-fallback'
 import { CHAT_AGENT } from '@shared/types'
 import { SHELL_BG_SERVER } from '@shared/shell-bg-permissions'
-import { DOCUMENTS_SERVER } from '@shared/documents-permissions'
+import { DOCUMENTS_SERVER, CHAT_PHOTOS_SERVER, chatPhotoPermissions } from '@shared/documents-permissions'
 
 /**
  * Patrón de `read` que no corresponde a ningún archivo real (ver `permission.read` del agente `chat`). Debe
@@ -46,6 +46,8 @@ export interface InlineConfigOptions {
    * El agente `chat` conserva `'*': deny`, así que no la puede usar.
    */
   documentsMcp?: Record<string, unknown> | null
+  /** MCP propio con solo tres herramientas de fotos, atado a la conversación activa por main. */
+  chatPhotosMcp?: Record<string, unknown> | null
   /**
    * Archivos de instrucciones extra (clave `instructions` del motor, rutas absolutas) que el motor añade al prompt de todos los agentes del
    * proceso. Vacío o ausente = no se escribe la clave. Los textos deben ser condicionales («solo si tienes la herramienta…»): también los
@@ -93,12 +95,13 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
-    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp
+    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp || opts.chatPhotosMcp
       ? {
           mcp: {
             ...(opts.browserMcp ? { browser: opts.browserMcp } : {}),
             ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {}),
-            ...(opts.documentsMcp ? { [DOCUMENTS_SERVER]: opts.documentsMcp } : {})
+            ...(opts.documentsMcp ? { [DOCUMENTS_SERVER]: opts.documentsMcp } : {}),
+            ...(opts.chatPhotosMcp ? { [CHAT_PHOTOS_SERVER]: opts.chatPhotosMcp } : {})
           }
         }
       : {}),
@@ -205,32 +208,21 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           ' table y próximos pasos. **Negrita** solo en cifras o términos clave (como mucho dos por párrafo), nunca texto' +
           ' en mayúsculas sostenidas, títulos sin punto final, page_break solo antes de una sección grande y toc:true ' +
           'solo desde 5 secciones. ' +
-          'Reglas numéricas: la tipografía, los márgenes y los colores los fija el motor, así que no los pidas ni los simules con espacios; lo que controlas es la estructura: como mucho 3 niveles de encabezado, párrafos de 3 a 5 líneas (60 a 90 palabras), listas de 3 a 7 ítems de una sola línea, tablas de hasta 6 columnas y unas 25 filas (si hay más, divídelas por tema) y la misma cantidad de decimales en toda una columna. Fechas escritas como «27 de septiembre de 2026». No hagas esto: títulos con punto final o en mayúsculas sostenidas, negrita en frases enteras, listas dentro de listas, columnas hechas con espacios o tabuladores, párrafos vacíos para separar, saltos de página sueltos, una portada y un índice en una carta o en un documento de menos de 5 secciones, tablas de una sola fila o columna, y cifras o citas inventadas. ' +
+          'Reglas numéricas: decide primero la identidad en una línea y guárdala en `identity.concept`; usa `identity.fonts` (title/body: Arial, Georgia, Verdana, Trebuchet MS, Times New Roman, Courier New, Tahoma, Arial Black, Comic Sans MS o Impact), `identity.palette` (bg/text/accent, con # y seis dígitos; panel/muted opcionales), `titles` (editorial/plain/bold), `cover` (left/center/band) y `headers` (plain/accent) dentro de `identity`. Conserva la identidad al corregir y respeta la marca aportada; si falta, el motor la deriva del contenido. Los márgenes los fija el motor; no los simules con espacios. Mantén como mucho 3 niveles de encabezado, párrafos de 3 a 5 líneas (60 a 90 palabras), listas de 3 a 7 ítems de una sola línea, tablas de hasta 6 columnas y unas 25 filas (si hay más, divídelas por tema) y la misma cantidad de decimales en toda una columna. Fechas escritas como «27 de septiembre de 2026». No hagas esto: títulos con punto final o en mayúsculas sostenidas, negrita en frases enteras, listas dentro de listas, columnas hechas con espacios o tabuladores, párrafos vacíos para separar, saltos de página sueltos, una portada y un índice en una carta o en un documento de menos de 5 secciones, tablas de una sola fila o columna, y cifras o citas inventadas. ' +
           'Imágenes (SOLO si tienes la herramienta `documentos_crear`, es decir en Tareas o Code con carpeta; en el Chat no hay imágenes): bloque {"type":"image","path":"img/logo.png","alt":"Logo de la empresa","width_cm":10,"caption":"Figura 1. Logo"} con la ruta RELATIVA a la carpeta de la tarea (png, jpg, webp o gif, de hasta 5 MB, hasta 10 por documento; nunca una URL); escribe siempre `alt` con una frase que diga qué muestra y deja una imagen por idea, entre dos párrafos. ' +
           'Si te piden una PRESENTACIÓN DE POWERPOINT, NO digas que no puedes: escribe un bloque ```pptx con JSON de ' +
-          'esta forma — {"theme":"blue","footer":"Empresa · Q3 2026","slides":[{"title":"...","eyebrow":"...",' +
+          'esta forma — {"footer":"Empresa · Q3 2026","slides":[{"title":"...","eyebrow":"...",' +
           '"note":"...","bullets":["...","..."]}]} — la primera diapositiva es la portada (si trae "bullets" se ven ' +
           'como subtítulo, no como viñetas). ' +
-          '"theme" (opcional, por defecto "blue") elige la paleta de COLOR de TODA la presentación: "blue", "green", ' +
-          '"dark" (fondo oscuro), "warm" (tonos cálidos) o "mono" (gris neutro). ' +
-          '"style" (opcional, por defecto "classic") elige la FORMA de TODA la presentación — tarjetas, decoración, ' +
-          'tipografía de forma — un eje DISTINTO del color: "classic" (el look de siempre: un círculo sutil de ' +
-          'textura, tarjetas redondeadas con borde), "editorial" (una línea fina de acento en vez del círculo, ' +
-          'tarjetas de esquina recta sin relleno — tono revista/sobrio), "geometric" (una barra diagonal de acento, ' +
-          'tarjetas bien redondeadas tipo "pill" — tono gráfico/audaz) o "minimal" (sin ninguna decoración, tarjetas ' +
-          'de esquina recta solo con borde fino — tono informe ejecutivo ultra limpio). Elige AMBOS ("theme" y ' +
-          '"style") según el TONO del contenido, y varía los dos entre presentaciones: no dejes ni "blue" ni ' +
-          '"classic" por inercia — un informe financiero serio puede pedir "mono"+"minimal", un pitch de producto ' +
-          '"warm"+"geometric", una nota de prensa "blue"+"editorial". ' +
+          'Antes del contenido, decide la identidad en una línea y guárdala en `identity.concept`: tema, público y tono. Aplica esa decisión con `identity`: `palette` (bg/text/accent en hex con #; muted/accent2/panel/edge opcionales), `fonts` (title/body de la lista permitida), `titles` (editorial/plain/bold), `cards` (square/rounded/outline), `background` (plain/panel/split), `rhythm` (calm/balanced/dynamic) y `photos` (contain/wide/portrait). Conserva ese bloque al corregir datos; la marca aportada manda. Si falta, el motor deriva una identidad estable del contenido. `theme` (opcional) y `style` son ejemplos de partida, no un menú que debas elegir: temas `blue`, `green`, `dark`, `warm`, `mono`; estilos `classic`, `editorial`, `geometric`, `minimal`. Define una paleta propia adecuada al pedido; los temas nombrados son solo inspiración y el motor los varía según el contenido; puedes conservar `palette` y `fonts` en la raíz por compatibilidad. Sin elecciones explícitas no hay un tema azul fijo. ' +
           '"footer" (opcional, del deck entero) es una línea chica al pie, p.ej. el nombre de la empresa o el período ' +
           '— solo si hay algo real que poner ahí, NUNCA inventes algo tipo "Datos ilustrativos". ' +
-          'Libertad de diseño (opcional, y animada: no hace falta que todas las presentaciones se vean iguales). Además de ' +
-          'theme y style puedes: - Inventar tu propia palette de TODA la presentación (en vez de theme): ' +
+          'Composición propia. Además de la identidad aplicada puedes: - Inventar tu propia palette de TODA la presentación (en vez de theme): ' +
           '{"bg":"#0E2A2F","text":"#F4F1EA","accent":"#F2B544"} — colores SIEMPRE en hex con # de 6 dígitos; muted, ' +
           'accent2, panel y edge son opcionales (si faltan se derivan solos). Elige los colores según el tema (un café → ' +
           'verdes profundos y ámbar; una fintech → azules y blanco; un informe serio → grises) y cuida el contraste: texto ' +
           'claro sobre fondo oscuro o al revés. - Elegir fonts: {"title":"Georgia","body":"Arial"} — solo de esta lista, ' +
-          'que existe en Mac y Windows: Arial, Georgia, Verdana, Trebuchet MS, Times New Roman, Courier New, Tahoma. - ' +
+          'que existe en Mac y Windows: Arial, Georgia, Verdana, Trebuchet MS, Times New Roman, Courier New, Tahoma, Arial Black, Comic Sans MS, Impact. Elige el par según el tono; las fuentes se referencian en el archivo, no se incrustan. - ' +
           'Poner un background (hex con #) distinto en UNA diapositiva, p.ej. un fondo de color fuerte para una cifra ' +
           'destacada. Con un background fuerte cuida el contraste del texto de ESA diapositiva: elige el color de letra (en una free, color de cada texto) para que se lea sobre ese fondo; el pie, la nota y la numeración los ajusta el motor solos. - Usar layout:"free" (lienzo libre): TÚ decides qué va y dónde. Trae elements, un array (como mucho ' +
           '40) de textos y formas sobre un lienzo de 960 de ancho × 540 de alto (puntos; origen arriba a la izquierda; se ' +
@@ -318,18 +310,18 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'Si eligen la opción HTML/CSS (o piden que se vea MUY bien sin necesidad de editarla), ármala como un deck en ' +
           'HTML/CSS en vez de ```pptx: controlas ' +
           'tipografía, color y layout directo en CSS, sin las limitaciones de forma/texto de PowerPoint — avisa que el ' +
-          'resultado no es un archivo .pptx editable: se puede presentar en Lazunox, bajar como PDF o bajar como PowerPoint para proyectar (cada diapositiva como imagen). Escríbelo como UN bloque ```slides con ' +
+          'resultado no es un archivo .pptx editable. En la descripción de la opción HTML aclara que se presenta dentro de Lazunox, a pantalla completa y eligiendo pantalla si hay varias. «Descargar PowerPoint (imagen 4K)» es una copia opcional para compartir, de 3840×2160 por lámina y sin textos editables; también se puede guardar HTML y PDF. Escríbelo como UN bloque ```slides con ' +
           'un documento HTML completo (con su propio <style>, sin imágenes/fuentes de internet — no hay red, igual ' +
           'que con ```html): un <section class="slide"> por diapositiva, con esta base de CSS para que cada ' +
           '<section> salga como una página aparte, panorámica, sin márgenes — ' +
-          '@page { size: 960px 540px landscape; margin: 0; } .slide { width: 960px; height: 540px; ' +
+          '@page { size: 960px 540px; margin: 0; } html, body { margin: 0; } .slide { width: 960px; height: 540px; box-sizing: border-box; margin: 0; ' +
           'page-break-after: always; overflow: hidden; position: relative; } .slide:last-child { ' +
           'page-break-after: auto; } — y a partir de ahí, diseño libre dentro de cada <section> (tu propio padding, ' +
           'tipografía, color, posicionamiento). Mismas reglas que para que una presentación no se vea "hecha por IA": ' +
           'varía el layout entre diapositivas (no repitas el mismo molde de título+lista siempre), un color de acento ' +
           'intencional (no el típico celeste genérico salvo que el tema lo pida), un elemento visual real por ' +
           'diapositiva de contenido (no solo texto corrido), texto del cuerpo alineado a la izquierda (nunca centrado ' +
-          'en bloques largos), y los títulos sin punto final. ' +
+          'en bloques largos), y los títulos sin punto final. Decide primero la idea y qué debe mirar el público: el animal, el producto o la gente. En temas visuales (infantil, producto, turismo, música, comida, eventos), intenta al menos una foto libre pertinente aunque no la pidan; solo omítela si la búsqueda no ofrece una buena candidata. Usa imagenes_buscar → imagenes_ver → imagenes_usar y coloca el identificador corto en src="imagen:ID" o url("imagen:ID"). No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida. Nunca URLs de internet ni vistas previas MUESTRA NO USAR. Nada de vacíos ni adornos sin función. Para «lo más lindo» sin edición, HTML con fotos y exportación PowerPoint 4K fija (3840×2160 por lámina). ' +
           'Si te piden CAMBIAR un documento que ya hiciste en la conversación (más corto, otro color, agregar una fila, ' +
           'otra diapositiva…), sea HTML, slides, Excel o PowerPoint, NUNCA describas el cambio en prosa ni mandes solo la parte ' +
           'que cambió: vuelve a escribir el documento COMPLETO, de nuevo como UN bloque entero del mismo tipo — la vista ' +
@@ -344,6 +336,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'Si piden editar un Word, Excel o PowerPoint adjunto, no lo reconstruyas ni lo sustituyas por uno nuevo: indica que la edición del original se hace en Overdrive.',
         permission: {
           '*': 'deny',
+          ...chatPhotoPermissions(opts.chatPhotosMcp ? 'allow' : 'deny'),
           webfetch: 'allow',
           websearch: 'allow',
           question: 'allow', // preguntas con opciones (tarjeta de botones); el resto sigue denegado

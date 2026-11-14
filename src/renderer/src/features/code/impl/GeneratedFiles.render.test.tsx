@@ -121,6 +121,24 @@ describe('tarjeta de documentos de Código y panel compartido', () => {
     expect(invoke).not.toHaveBeenCalledWith('extras:chatFile:open', expect.anything())
   })
 
+  it('un PowerPoint del proyecto ofrece Presentar y comunica el rechazo sin abrir otra ruta', async () => {
+    file = { ...file, path: '/proyecto/Charla.pptx', name: 'Charla.pptx' }
+    info = { ...info, ...file }
+    invoke.mockImplementation(async (channel: string) => {
+      if (channel === 'extras:presentPptx') throw new Error('No se pudo representar la lámina 2.')
+      return undefined
+    })
+    render()
+    await flush()
+    const present = cardButtons().find((button) => button.textContent === 'Presentar')!
+    expect(present).toBeTruthy()
+    await act(async () => present.click())
+    await flush()
+    expect(invoke).toHaveBeenCalledWith('extras:presentPptx', { path: file.path })
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('lámina 2')
+    expect(openDoc).not.toHaveBeenCalled()
+  })
+
   it('renderizar muestra la copia editada sin una llamada previa a crear', async () => {
     render([tool('documentos_documentos_renderizar', { ruta: file.name, carpeta: cwd }, 'Vista previa: 1 página(s).')])
     await flush()

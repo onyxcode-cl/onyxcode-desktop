@@ -53,13 +53,20 @@ const DEFAULTS: Rule[] = [
   r('read', 'ask', '*.env.*'),
   r('read', 'allow', '*.env.example')
 ]
-const CONFIG: Rule[] = fromConfig({ ...bgshellConfigPermission(), ...documentsConfigPermission() })
+const CONFIG_PERMISSION = { ...bgshellConfigPermission(), ...documentsConfigPermission() }
+const CONFIG: Rule[] = fromConfig(CONFIG_PERMISSION)
 const BUILD: Rule[] = [
   ...DEFAULTS.map((x) => (x.permission === 'question' || x.permission === 'plan_enter' ? r(x.permission, 'allow') : x)),
   ...CONFIG
 ]
-const declarado = (): Rule[] => {
-  const agent = (buildInlineConfig() as { agent: Record<string, { permission?: Record<string, unknown> }> }).agent
+const declarado = (permission?: Record<string, unknown>): Rule[] => {
+  // Como server.ts: la config inline recibe el MISMO bloque global que el motor fusiona antes del agente.
+  // Omitirlo aquí impediría que `general` reafirme los deny de la app (p. ej. las fotos exclusivas del Chat).
+  const agent = (
+    buildInlineConfig({ permission: { ...CONFIG_PERMISSION, ...permission } }) as {
+      agent: Record<string, { permission?: Record<string, unknown> }>
+    }
+  ).agent
   return fromConfig(agent.general?.permission ?? {})
 }
 /** `general` según el motor: defaults, `todowrite: allow`, config, y lo declarado por la app al final. */
@@ -139,6 +146,14 @@ describe('W-A3: general en Code (el guardián lo deja pasar porque declara «pre
     })
   }
 
+  it('conserva el deny global de las fotos del Chat; si la hija lo pierde, el guardián bloquea', async () => {
+    const fotos = Object.keys(documentsConfigPermission()).filter((key) => key.startsWith('chat_fotos_'))
+    const g = general()
+    for (const key of fotos) expect(g.filter((rule) => rule.permission === key).at(-1)?.action, key).toBe('deny')
+    const sinDeny = g.filter((rule) => !fotos.includes(rule.permission))
+    await expect(task(await load('build', BUILD, rulesetFor('auto'), sinDeny), 'general')).rejects.toThrow(/chat_fotos_/)
+  })
+
   it('sin el bloque nuevo (permisos del motor a secas) sigue bloqueado en los tres modos que preguntan: la prueba no pasa en vacío', async () => {
     const sinBloque = [...DEFAULTS, r('todowrite', 'allow'), ...CONFIG]
     for (const mode of ['manual', 'acceptEdits', 'auto'] as const) {
@@ -186,16 +201,7 @@ describe('general en una carpeta con conectores (W-A2 + W-A3)', () => {
     ...(rulesetForMode(mode) as Rule[])
   ]
   const generalCon = (permission?: Record<string, unknown>): Rule[] => {
-    const agent = (
-      buildInlineConfig(permission ? { permission } : {}) as { agent: Record<string, { permission?: Record<string, unknown> }> }
-    ).agent
-    return [
-      ...DEFAULTS,
-      r('todowrite', 'allow'),
-      ...CONFIG,
-      ...fromConfig(permission ?? {}),
-      ...fromConfig(agent.general?.permission ?? {})
-    ]
+    return [...DEFAULTS, r('todowrite', 'allow'), ...CONFIG, ...fromConfig(permission ?? {}), ...declarado(permission)]
   }
 
   for (const mode of ['manual', 'acceptEdits', 'auto', 'bypass'] as const) {
@@ -259,15 +265,7 @@ describe('general en una carpeta con conectores (W-A2 + W-A3)', () => {
   it('H1 (falla cerrado): un `deny` con comodín que SOLO está en el opencode.json del proyecto (la app no lo conoce) hace que el guardián bloquee a general', async () => {
     const proyecto = { '*start*': 'deny' }
     // El motor pone la config del proyecto en el permiso del padre Y de la hija (antes de lo declarado); la app no lo re-afirma.
-    const g = [
-      ...DEFAULTS,
-      r('todowrite', 'allow'),
-      ...CONFIG,
-      ...fromConfig(proyecto),
-      ...fromConfig(
-        (buildInlineConfig() as { agent: Record<string, { permission?: Record<string, unknown> }> }).agent.general?.permission ?? {}
-      )
-    ]
+    const g = [...DEFAULTS, r('todowrite', 'allow'), ...CONFIG, ...fromConfig(proyecto), ...declarado()]
     const b = await load('build', [...BUILD, ...fromConfig(proyecto)], sesion('auto'), g)
     await expect(task(b, 'general')).rejects.toThrow(/\*start\* \(padre: deny, subagente: ask\)/)
   })

@@ -1,3 +1,4 @@
+import { MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Esquema del payload de CADA canal IPC invoke (renderer → main) y qué ventanas pueden usarlo.
  *
@@ -17,6 +18,7 @@ import { DIAG_SOURCES } from '@shared/diagnostics'
 import { RATING_ID_RE, RATING_LABEL_RE, RATING_VALUES } from '@shared/ratings'
 import { MAX_ATTACHMENTS } from '@shared/attach-classify'
 import { OFFICE_MAX_BYTES } from '@shared/attach-office'
+import { PASTE_MAX_FILE_BYTES } from '@shared/paste-files'
 import { TRANSLATE_CLEAN_HTML_MAX, TRANSLATE_LANGS, TRANSLATE_PDF_MAX_BYTES, TRANSLATE_PDF_MAX_SEGMENTS } from '@shared/translate-pdf'
 import { PROJECT_LIMITS } from '@shared/project-knowledge'
 import { EXPORT_LIMITS, type ExportDoc } from '@shared/conversation-export'
@@ -440,7 +442,21 @@ const pptxPalette = obj({
   panel: optional(hexColor),
   edge: optional(hexColor)
 })
+/** Mismo contrato visual que DocumentIdentity; conserva la validación estricta de claves anidadas. */
+const documentIdentity = obj({
+  concept: optional(str({ min: 1, max: 500, pattern: /\S/ })),
+  palette: optional(pptxPalette),
+  fonts: optional(obj({ title: optional(pptxFont), body: optional(pptxFont) })),
+  titles: optional(literal('editorial', 'plain', 'bold')),
+  cards: optional(literal('square', 'rounded', 'outline')),
+  background: optional(literal('plain', 'panel', 'split')),
+  rhythm: optional(literal('calm', 'balanced', 'dynamic')),
+  photos: optional(literal('contain', 'wide', 'portrait')),
+  cover: optional(literal('left', 'center', 'band')),
+  headers: optional(literal('plain', 'accent'))
+})
 const pptxData = obj({
+  identity: optional(documentIdentity),
   palette: optional(pptxPalette),
   fonts: optional(obj({ title: optional(pptxFont), body: optional(pptxFont) })),
   theme: optional(pptxTheme),
@@ -497,6 +513,7 @@ const docxBlock = tagged('type', {
   page_break: obj({ type: literal('page_break') })
 })
 const docxData = obj({
+  identity: optional(documentIdentity),
   title: docxMeta,
   subtitle: docxMeta,
   author: docxMeta,
@@ -949,9 +966,17 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     }
   }),
   'tasks:importFiles': folderReq,
+  'tasks:attachDroppedFile': obj({
+    folder: absPath,
+    name: str({ min: 1, max: 255, pattern: /^(?!.*[. ]$)[^/\\:<>"|?*\x00-\x1f]+$/ }),
+    base64: str({
+      max: 4 * Math.ceil(PASTE_MAX_FILE_BYTES / 3),
+      pattern: /^[A-Za-z0-9+/]*={0,2}$/
+    })
+  }),
   'tasks:pasteFromClipboard': folderReq,
   'tasks:reviewFile': pathReq,
-  'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: 20 * 1024 * 1024 })) }),
+  'tasks:previewFile': obj({ path: absPath, maxBytes: optional(num({ int: true, min: 1, max: MAX_ARTIFACT_HTML_BYTES })) }),
   'tasks:project:get': folderReq,
   'tasks:project:save': obj({
     folder: absPath,
@@ -1002,6 +1027,7 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'tasks:learn:pending:discardAll': none,
   'tasks:learn:pending:ackDropped': none,
   'tasks:viewer:open': obj({ path: absPath, lang: literal('es', 'en'), theme: literal('light', 'dark'), openingId: compareId }),
+  'tasks:presentPptx': pathReq,
   'tasks:viewer:attach': obj({ rect: browserRect, visible: bool }),
   'tasks:viewer:close': obj({ openingId: compareId, reason: optional(literal('timeout', 'error')) }),
   'tasks:network:state': none,
@@ -1217,6 +1243,11 @@ const exportConversationReq = obj({
   options: obj({ reasoning: bool, tools: bool, attachments: bool }),
   lang: literal('es', 'en')
 })
+const artifactContext = tagged('kind', {
+  chat: obj({ kind: literal('chat'), sessionId: str({ min: 1, max: 200, pattern: /^[A-Za-z0-9_-]+$/ }) }),
+  file: obj({ kind: literal('file'), path: absPath, root: optional(absPath) })
+})
+const artifactPayload = obj({ title: str({ max: 500 }), html: str({ max: MAX_ARTIFACT_HTML_BYTES }), context: optional(artifactContext) })
 type ExtrasReq<C extends IpcExtrasInvokeChannel> = IpcExtrasInvokeContract[C]['req']
 const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> } = {
   'extras:getPrefs': none,
@@ -1230,16 +1261,18 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
     keybindings: record(nullable(str({ max: 60 })), 100)
   }),
   'extras:versions': none,
-  'extras:openArtifact': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
-  'extras:downloadHtmlAsPdf': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
-  'extras:downloadSlidesAsPptx': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
-  'extras:presentSlides': obj({ title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+  'extras:openArtifact': artifactPayload,
+  'extras:downloadHtml': artifactPayload,
+  'extras:downloadHtmlAsPdf': artifactPayload,
+  'extras:downloadSlidesAsPptx': artifactPayload,
+  'extras:presentSlides': artifactPayload,
   'extras:transcribeAudio': obj({ samples: audioSamples }),
   'extras:chatDoc:open': tagged('kind', {
     pdf: obj({
       kind: literal('pdf'),
       title: str({ max: 500 }),
-      html: str({ max: 5 * 1024 * 1024 }),
+      html: str({ max: MAX_ARTIFACT_HTML_BYTES }),
+      context: optional(artifactContext),
       sessionId: str({ max: 200 }),
       lang: literal('es', 'en'),
       theme: literal('light', 'dark')
@@ -1272,10 +1305,20 @@ const EXTRAS_SCHEMAS: { [C in IpcExtrasInvokeChannel]: Validator<ExtrasReq<C>> }
   'extras:chatDoc:attach': obj({ rect: browserRect, visible: bool }),
   'extras:chatDoc:close': obj({ sessionId: str({ max: 200 }) }),
   'extras:chatDoc:openExternal': tagged('kind', {
-    pdf: obj({ kind: literal('pdf'), title: str({ max: 500 }), html: str({ max: 5 * 1024 * 1024 }) }),
+    pdf: obj({
+      kind: literal('pdf'),
+      title: str({ max: 500 }),
+      html: str({ max: MAX_ARTIFACT_HTML_BYTES }),
+      context: optional(artifactContext)
+    }),
     xlsx: obj({ kind: literal('xlsx'), title: str({ max: 500 }), data: xlsxData }),
     pptx: obj({ kind: literal('pptx'), title: str({ max: 500 }), data: pptxData }),
     docx: obj({ kind: literal('docx'), title: str({ max: 500 }), data: docxData })
+  }),
+  'extras:presentPptx': pathReq,
+  'extras:importPptx': obj({
+    name: str({ min: 1, max: 255, pattern: /\.pptx$/i }),
+    base64: str({ min: 4, max: Math.ceil(OFFICE_MAX_BYTES / 3) * 4, pattern: /^[A-Za-z0-9+/]+={0,2}$/ })
   }),
   'extras:chatFile:info': obj({ paths: arr(str({ max: 4096, min: 1 }), 40) }),
   'extras:chatFile:read': pathReq,

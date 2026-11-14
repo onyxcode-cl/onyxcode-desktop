@@ -1,4 +1,7 @@
 export const chat = {
+  'chat.doc.download': 'Descargar',
+  'chat.doc.download.pptx': 'PowerPoint (imagen 4K)',
+  'chat.doc.saveHtml': 'Guardar HTML',
   'chat.file.group': 'Archivos de esta respuesta',
   'chat.file.view': 'Ver aquí',
   'chat.file.open': 'Abrir con tu programa',
@@ -49,6 +52,9 @@ export const chat = {
   'chat.doc.problem.schema': 'El documento no tiene la forma esperada y no se pudo abrir.',
   'chat.doc.problem.failed': 'No se pudo generar el documento.',
   'chat.doc.problem.invalid': 'Los datos del documento no son válidos.',
+  'chat.doc.problem.photoMissing': 'Falta una foto preparada para este documento. Pide prepararla en esta conversación.',
+  'chat.doc.problem.photoMissingDetail':
+    'La foto «{reference}» no está preparada en esta conversación o carpeta. Pide preparar esa foto con imagenes_usar aquí; si el resultado de búsqueda caducó, vuelve a buscar y sustituye la referencia en el documento.',
   'chat.doc.problem.noCraft': 'Falta el programa de ArtCraft que necesita este documento.',
   'chat.doc.problem.cut': 'El documento se cortó',
   'chat.doc.problem.cutHint': 'La respuesta terminó antes de cerrar el documento.',

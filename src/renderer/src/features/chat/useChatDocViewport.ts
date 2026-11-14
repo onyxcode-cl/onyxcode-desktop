@@ -8,9 +8,10 @@ import { getExtras } from '../../lib/extrasApi'
 
 const OVERLAY_SELECTOR = '[role="dialog"],[role="menu"],[role="listbox"],[data-floating]'
 
-function hasOverlay(): boolean {
+function hasOverlay(host: Element | null = null): boolean {
   try {
-    return !!document.querySelector(OVERLAY_SELECTOR)
+    // El propio diálogo que aloja el visor no lo tapa; cualquier otro overlay sí.
+    return Array.from(document.querySelectorAll(OVERLAY_SELECTOR)).some((overlay) => !host || !overlay.contains(host))
   } catch {
     return false
   }
@@ -26,7 +27,7 @@ export function useChatDocViewport(panelVisible: boolean): ChatDocViewportState 
   const [overlayActive, setOverlayActive] = useState(hasOverlay)
 
   useEffect(() => {
-    const check = (): void => setOverlayActive(hasOverlay())
+    const check = (): void => setOverlayActive(hasOverlay(hostRef.current))
     check()
     const mo = new MutationObserver(check)
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['role', 'data-floating'] })

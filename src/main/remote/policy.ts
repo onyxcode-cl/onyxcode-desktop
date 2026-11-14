@@ -364,6 +364,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:openPath': 'X',
   'tasks:chatOffice:prepare': 'X',
   'tasks:importFiles': 'X',
+  'tasks:attachDroppedFile': 'X', // X: arrastre local de archivos; el celular no crea adjuntos por este canal.
   'tasks:pasteFromClipboard': 'X',
   'tasks:reviewFile': (p, ctx) => (!inDirs(p.path, scopeIpc(ctx)) ? deny('out-of-scope') : 'R'),
   'tasks:previewFile': (p, ctx) =>
@@ -406,6 +407,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:learn:pending:ackDropped': 'X',
   'tasks:viewer:open': 'X', // lee bytes de cualquier archivo aprobado de Tareas: la vista es nativa de la ventana del Mac/PC
   'tasks:viewer:attach': 'X',
+  'tasks:presentPptx': 'X',
   'tasks:viewer:close': 'X',
   'tasks:network:state': 'R',
   'tasks:network:setToggle': 'D',
@@ -552,6 +554,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:setPrefs': fieldwise(EXTRAS_PREF_FIELDS),
   'extras:versions': 'R',
   'extras:openArtifact': 'X',
+  'extras:downloadHtml': 'X',
   'extras:downloadHtmlAsPdf': 'X',
   'extras:downloadSlidesAsPptx': 'X',
   'extras:presentSlides': 'X',
@@ -563,6 +566,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'extras:chatFile:info': 'X',
   'extras:chatFile:read': 'X',
   'extras:chatFile:viewNative': 'X',
+  'extras:presentPptx': 'X',
+  'extras:importPptx': 'X',
   'extras:chatFile:open': 'X',
   'extras:chatFile:reveal': 'X',
   'extras:gallery:list': 'X',

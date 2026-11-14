@@ -8,10 +8,19 @@ import { effectiveModeFor, rulesetForMode, type PermissionModeId, type Permissio
 
 /** Clave del servidor en el bloque `mcp` del motor (y prefijo de las herramientas: `documentos_crear`). Debe coincidir con `DOCUMENTS_ROUTE_NAME` de main. */
 export const DOCUMENTS_SERVER = 'documentos'
+export const CHAT_PHOTOS_SERVER = 'chat_fotos'
+export function chatPhotoPermissions(action: RuleAction = 'allow'): Record<string, RuleAction> {
+  return Object.fromEntries(['imagenes_buscar', 'imagenes_ver', 'imagenes_usar'].map((name) => [`${CHAT_PHOTOS_SERVER}_${name}`, action]))
+}
 /** `folder` de la atadura de Code en main: NO es una ruta, solo la clave que hace que un arranque nuevo del motor sustituya el token anterior. */
 export const CODE_BINDING_FOLDER = '<code>'
 export const DOCUMENTS_CREATE_TOOL = `${DOCUMENTS_SERVER}_crear`
+export const DOCUMENTS_PREPARE_HTML_TOOL = `${DOCUMENTS_SERVER}_preparar_html`
+export const DOCUMENTS_EXPORT_PDF_TOOL = `${DOCUMENTS_SERVER}_exportar_pdf`
 export const DOCUMENTS_RENDER_TOOL = `${DOCUMENTS_SERVER}_renderizar`
+export const DOCUMENTS_IMAGE_SEARCH_TOOL = `${DOCUMENTS_SERVER}_imagenes_buscar`
+export const DOCUMENTS_IMAGE_VIEW_TOOL = `${DOCUMENTS_SERVER}_imagenes_ver`
+export const DOCUMENTS_IMAGE_USE_TOOL = `${DOCUMENTS_SERVER}_imagenes_usar`
 
 /**
  * Acción de `documentos_crear` en un modo/agente: LA MISMA que la regla efectiva de `write` con patrón `*` del bloque del modo
@@ -19,10 +28,19 @@ export const DOCUMENTS_RENDER_TOOL = `${DOCUMENTS_SERVER}_renderizar`
  * nuevo en el proyecto: no puede ser más permisivo que `write`. Si no hubiera regla se devuelve `ask` (lo más restrictivo que deja trabajar).
  */
 export function documentsCreateAction(mode: PermissionModeId, agent?: string): RuleAction {
+  return documentsModeAction('write', mode, agent)
+}
+
+/** Buscar fotos conserva el permiso de búsqueda web; descargarlas conserva el de escritura. */
+export function documentsSearchAction(mode: PermissionModeId, agent?: string): RuleAction {
+  return documentsModeAction('websearch', mode, agent)
+}
+
+function documentsModeAction(permission: string, mode: PermissionModeId, agent?: string): RuleAction {
   const block = rulesetForMode(effectiveModeFor(mode, agent))
   for (let i = block.length - 1; i >= 0; i--) {
     const r = block[i]!
-    if (r.permission === 'write' && r.pattern === '*') return r.action
+    if (r.permission === permission && r.pattern === '*') return r.action
   }
   return 'ask'
 }
@@ -35,7 +53,12 @@ export function documentsCreateAction(mode: PermissionModeId, agent?: string): R
 export function documentsSessionRules(mode: PermissionModeId, agent?: string): PermissionRuleLike[] {
   return [
     { permission: DOCUMENTS_CREATE_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) },
-    { permission: DOCUMENTS_RENDER_TOOL, pattern: '*', action: 'allow' }
+    { permission: DOCUMENTS_RENDER_TOOL, pattern: '*', action: 'allow' },
+    { permission: DOCUMENTS_IMAGE_SEARCH_TOOL, pattern: '*', action: documentsSearchAction(mode, agent) },
+    { permission: DOCUMENTS_IMAGE_VIEW_TOOL, pattern: '*', action: documentsSearchAction(mode, agent) },
+    { permission: DOCUMENTS_IMAGE_USE_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) },
+    { permission: DOCUMENTS_EXPORT_PDF_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) },
+    { permission: DOCUMENTS_PREPARE_HTML_TOOL, pattern: '*', action: documentsCreateAction(mode, agent) }
   ]
 }
 
@@ -44,5 +67,15 @@ export function documentsSessionRules(mode: PermissionModeId, agent?: string): P
  * `documentos_renderizar` pasa. El bloque de sesión lo ajusta después según el modo.
  */
 export function documentsConfigPermission(): Record<string, RuleAction> {
-  return { [DOCUMENTS_CREATE_TOOL]: 'ask', [DOCUMENTS_RENDER_TOOL]: 'allow' }
+  return {
+    [`${CHAT_PHOTOS_SERVER}_*`]: 'deny',
+    ...chatPhotoPermissions('deny'),
+    [DOCUMENTS_CREATE_TOOL]: 'ask',
+    [DOCUMENTS_RENDER_TOOL]: 'allow',
+    [DOCUMENTS_IMAGE_SEARCH_TOOL]: 'ask',
+    [DOCUMENTS_IMAGE_VIEW_TOOL]: 'ask',
+    [DOCUMENTS_IMAGE_USE_TOOL]: 'ask',
+    [DOCUMENTS_EXPORT_PDF_TOOL]: 'ask',
+    [DOCUMENTS_PREPARE_HTML_TOOL]: 'ask'
+  }
 }

@@ -1,0 +1,1391 @@
+{
+  "capturedAt": "2026-11-13T17:48:51.914Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=Humboldt+penguin+Chile+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 29331961,
+          "ns": 6,
+          "title": "File:Spheniscus humboldti, Quelalmahue, Chile 1.jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 344200,
+              "width": 1459,
+              "height": 1094,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg/1280px-Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/9/93/Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg/1280px-Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/9/93/Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/93/Spheniscus_humboldti%2C_Quelalmahue%2C_Chile_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Spheniscus_humboldti,_Quelalmahue,_Chile_1.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=29331961",
+              "sha1": "3e1889485077f268fdd28986a9f5f06d5dd36edb",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2013-11-01 13:47:25",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Spheniscus humboldti, Quelalmahue, Chile 1",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Chiloé Archipelago|Flickr images reviewed by FlickreviewR|Files with coordinates missing SDC location of creation|Files from krebsmaus07 Flickr stream",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-41.873587",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-73.929576",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "A group of Humboldt Penguins <i><a href=\"//commons.wikimedia.org/wiki/Spheniscus_humboldti\" title=\"Spheniscus humboldti\">Spheniscus humboldti</a></i>, Quelalmahue, Los Lagos Region, Chile",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2008-01-10 14:15",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/koadla/2182350521/\">Pinguinkolonie</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/13891036@N07\">krebsmaus07</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 42256273,
+          "ns": 6,
+          "title": "File:Young Magellanic Penguins.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3987097,
+              "width": 3038,
+              "height": 3277,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Young_Magellanic_Penguins.jpg/1280px-Young_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1381,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Young_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fe/Young_Magellanic_Penguins.jpg/1280px-Young_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1381,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Young_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fe/Young_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Young_Magellanic_Penguins.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=42256273",
+              "sha1": "bebf839ebdfeadf4c4ac317da3051f2e79ad1fd7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-08-11 09:59:17",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Young Magellanic Penguins",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus magellanicus|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "near Otway Sound, Chile",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-03-20",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:ThartmannWiki&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:ThartmannWiki (page does not exist)\">ThartmannWiki</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 42256275,
+          "ns": 6,
+          "title": "File:Two Magellanic Penguins.jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 4711493,
+              "width": 3226,
+              "height": 3328,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/Two_Magellanic_Penguins.jpg/1280px-Two_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1320,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/2/24/Two_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/Two_Magellanic_Penguins.jpg/1280px-Two_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1320,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/2/24/Two_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/24/Two_Magellanic_Penguins.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Two_Magellanic_Penguins.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=42256275",
+              "sha1": "82c8cb664a471262e14824f4806e0ca6fee869bf",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2015-08-11 09:59:17",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Two Magellanic Penguins",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus magellanicus|Self-published work",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "near Otway Sound, Chile",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-03-20",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:ThartmannWiki&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:ThartmannWiki (page does not exist)\">ThartmannWiki</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 51822278,
+          "ns": 6,
+          "title": "File:Day trip from Puerto Varas to Isla Grande de Chiloe - a visit and boat trip to Pinguinera Isloto de Punihuil on the open Ocean - Peruvian (Humboldt) Penguin (Spheniscus humboldt), mostly ? - (25185182305).jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 37241977,
+              "width": 8318,
+              "height": 5545,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2825185182305%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2825185182305%29.jpg/3840px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2825185182305%29.jpg/1280px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/26/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2825185182305%29.jpg/3840px-thumbnail.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/26/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2825185182305%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_(Humboldt)_Penguin_(Spheniscus_humboldt),_mostly_%3F_-_(25185182305).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=51822278",
+              "sha1": "1666bf1ca90f274055abc4dd01b9e0b14a849202",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2016-09-28 06:26:28",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Day trip from Puerto Varas to Isla Grande de Chiloe - a visit and boat trip to Pinguinera Isloto de Punihuil on the open Ocean - Peruvian (Humboldt) Penguin (Spheniscus humboldt), mostly ? - (25185182305)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Photos uploaded from Flickr by Fæ using a script|Flickr images reviewed by FlickreviewR|Photographs by Murray Foubister|Sphenisciformes of Chile|Spheniscus magellanicus (groups)",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "day trip from Puerto Varas to Isla Grande de Chiloe...a visit and boat trip to Pinguinera Isloto de Punihuil on the open Ocean...Peruvian (Humboldt) Penguin (Spheniscus humboldt), mostly ?...",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-13 08:23:17",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/mfoubister/25185182305/\">https://www.flickr.com/photos/mfoubister/25185182305/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/61456446@N06\">Murray Foubister</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "At the time of upload, the image license was automatically confirmed using the Flickr <a href=\"https://en.wikipedia.org/wiki/API\" class=\"extiw\" title=\"en:API\">API</a>. For more information see <a href=\"//commons.wikimedia.org/wiki/User:F%C3%A6/Flickr_API_detail\" title=\"User:Fæ/Flickr API detail\">Flickr API detail</a>.",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 51822311,
+          "ns": 6,
+          "title": "File:Day trip from Puerto Varas to Isla Grande de Chiloe - a visit and boat trip to Pinguinera Isloto de Punihuil on the open Ocean - Peruvian (Humboldt) Penguin (Spheniscus humboldt), mostly ? - (24889558310).jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1985296,
+              "width": 1214,
+              "height": 1821,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/5/51/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2824889558310%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1920,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/5/51/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2824889558310%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1920
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/51/Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_%28Humboldt%29_Penguin_%28Spheniscus_humboldt%29%2C_mostly_%3F_-_%2824889558310%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Day_trip_from_Puerto_Varas_to_Isla_Grande_de_Chiloe_-_a_visit_and_boat_trip_to_Pinguinera_Isloto_de_Punihuil_on_the_open_Ocean_-_Peruvian_(Humboldt)_Penguin_(Spheniscus_humboldt),_mostly_%3F_-_(24889558310).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=51822311",
+              "sha1": "331841ed1ef7ff0a9c349ce5a2ec50b745d5d92c",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2016-09-28 06:27:52",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Day trip from Puerto Varas to Isla Grande de Chiloe - a visit and boat trip to Pinguinera Isloto de Punihuil on the open Ocean - Peruvian (Humboldt) Penguin (Spheniscus humboldt), mostly ? - (24889558310)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Photos uploaded from Flickr by Fæ using a script|Flickr images reviewed by FlickreviewR|Photographs by Murray Foubister|Sphenisciformes of Chile|Flickr images missing SDC Flickr photo ID|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "day trip from Puerto Varas to Isla Grande de Chiloe...a visit and boat trip to Pinguinera Isloto de Punihuil on the open Ocean...Peruvian (Humboldt) Penguin (Spheniscus humboldt), mostly ?...",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2015-12-13 08:28:56",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/mfoubister/24889558310/\">0I7A2585.jpg</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/61456446@N06\">Murray Foubister</a>",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "At the time of upload, the image license was automatically confirmed using the Flickr <a href=\"https://en.wikipedia.org/wiki/API\" class=\"extiw\" title=\"en:API\">API</a>. For more information see <a href=\"//commons.wikimedia.org/wiki/User:F%C3%A6/Flickr_API_detail\" title=\"User:Fæ/Flickr API detail\">Flickr API detail</a>.",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 80047262,
+          "ns": 6,
+          "title": "File:Lonely Humboldt Penguin.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1934382,
+              "width": 4940,
+              "height": 3864,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Lonely_Humboldt_Penguin.jpg/1280px-Lonely_Humboldt_Penguin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1001,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Lonely_Humboldt_Penguin.jpg/3840px-Lonely_Humboldt_Penguin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Lonely_Humboldt_Penguin.jpg/1280px-Lonely_Humboldt_Penguin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1001,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0a/Lonely_Humboldt_Penguin.jpg/3840px-Lonely_Humboldt_Penguin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Lonely_Humboldt_Penguin.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Lonely_Humboldt_Penguin.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=80047262",
+              "sha1": "e58b15fbfda44ecd2c82c7bef750f458d959b526",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-30 05:31:37",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Lonely Humboldt Penguin",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Pingüino de Humboldt Nature Reserve|Self-published work|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Images from Wiki Loves Earth missing SDC location of creation|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Solitario Pingüino de Humboldt",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2018-07-16 14:52:27",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:O.gomez01&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:O.gomez01 (page does not exist)\">O.gomez01</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 80047266,
+          "ns": 6,
+          "title": "File:Humboldt Penguin in a cliff.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1812465,
+              "width": 4825,
+              "height": 3537,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Humboldt_Penguin_in_a_cliff.jpg/1280px-Humboldt_Penguin_in_a_cliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 938,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Humboldt_Penguin_in_a_cliff.jpg/3840px-Humboldt_Penguin_in_a_cliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Humboldt_Penguin_in_a_cliff.jpg/1280px-Humboldt_Penguin_in_a_cliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 938,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a2/Humboldt_Penguin_in_a_cliff.jpg/3840px-Humboldt_Penguin_in_a_cliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/Humboldt_Penguin_in_a_cliff.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Humboldt_Penguin_in_a_cliff.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=80047266",
+              "sha1": "70b6f23bdc06e6ae6874782554b6236f3eca930b",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-06-30 05:31:41",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Humboldt Penguin in a cliff",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Pingüino de Humboldt Nature Reserve|Self-published work|Images from Wiki Loves Earth 2019|Images from Wiki Loves Earth 2019 in Chile|Images from Wiki Loves Earth missing SDC location of creation|Uploaded via Campaign:wle-cl",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Pingüino de Humboldt en un acantilado",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2018-07-16 14:44:58",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:O.gomez01&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:O.gomez01 (page does not exist)\">O.gomez01</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 82146169,
+          "ns": 6,
+          "title": "File:Magellanic & Humboldt Penguins (48368399497).jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1673997,
+              "width": 1418,
+              "height": 1119,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg/1280px-Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1010,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/46/Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg/1280px-Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1010,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/46/Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/46/Magellanic_%26_Humboldt_Penguins_%2848368399497%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Magellanic_%26_Humboldt_Penguins_(48368399497).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=82146169",
+              "sha1": "fc166097d76702f40ac22cd70e8a7b09d6b34581",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-09-14 07:28:27",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Magellanic & Humboldt Penguins (48368399497)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Spheniscus magellanicus|Cachagua|Files with coordinates missing SDC location of creation|Photographs by S. Rae|Flickr images reviewed by FlickreviewR 2|Chile photographs taken on 2019-06-29|Sphenisciformes of Chile",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-32.584012",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-71.455807",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cachagua, Chile",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-06-29 16:32",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/35142635@N05/48368399497/\">Magellanic &amp; Humboldt Penguins</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/35142635@N05\">S. Rae</a> from Scotland, UK",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 96664912,
+          "ns": 6,
+          "title": "File:Humboldt Penguins (49656575256).jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 200450,
+              "width": 1024,
+              "height": 768,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Humboldt_Penguins_%2849656575256%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Humboldt_Penguins_%2849656575256%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Humboldt_Penguins_%2849656575256%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Humboldt_Penguins_(49656575256).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=96664912",
+              "sha1": "aaddef1aaceacd8352dab69065c24989c4baeef7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2020-11-23 17:28:55",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Humboldt Penguins (49656575256)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Photographs by David Stanley|Uploads by Matlin|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Sphenisciformes of Chile",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-26.168059",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-70.685584",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Humboldt penguins thrive in the cool waters around Isla Pan de Azucar off northern Chile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-11-05 13:47",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/photos/davidstanleytravel/49656575256/\">Humboldt Penguins</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/79721788@N00\">David Stanley</a> from Nanaimo, Canada",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 142169342,
+          "ns": 6,
+          "title": "File:Penguin Spheniscus humboldti.jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 8439081,
+              "width": 3456,
+              "height": 5184,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Penguin_Spheniscus_humboldti.jpg/1280px-Penguin_Spheniscus_humboldti.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1920,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Penguin_Spheniscus_humboldti.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Penguin_Spheniscus_humboldti.jpg/1280px-Penguin_Spheniscus_humboldti.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1920,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Penguin_Spheniscus_humboldti.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Penguin_Spheniscus_humboldti.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Penguin_Spheniscus_humboldti.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=142169342",
+              "sha1": "da30befe9278073419d94daef4e035c8e3797bd4",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-12-14 21:53:22",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Penguin Spheniscus humboldti",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Living organisms images from Wiki Science Competition 2023 in Ukraine|Images from Wiki Science Competition 2023 in Ukraine|Files with coordinates missing SDC location of creation|Uploaded via Campaign:espc-ua|Spheniscus humboldti in Tiergarten Schönbrunn",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "48.180444",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "16.309778",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "The Humboldt penguin (Spheniscus humboldti) at Schönbrunn Zoo in Vienna.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2022-03-19 13:38:55",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Ruf Korniienko, Grylitska",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 179315444,
+          "ns": 6,
+          "title": "File:Humboldt penguin (Spheniscus humboldti) Chiloe 2.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 10323788,
+              "width": 4700,
+              "height": 3134,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg/1280px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 854,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg/3840px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg/1280px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 854,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg/3840px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/6/69/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Humboldt_penguin_(Spheniscus_humboldti)_Chiloe_2.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=179315444",
+              "sha1": "dd14d7181321e565e0054aa187801ddb5718eaf3",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-12-02 16:13:56",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Humboldt penguin (Spheniscus humboldti) Chiloe 2",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Photographs by Charlesjsharp|Self-published work|Files with coordinates missing SDC location of creation|Sphenisciformes of Chile",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-41.920000",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-74.040000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Humboldt penguin (<i>Spheniscus humboldti</i>), Puñihuil, Ancud, Chiloé Island",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-10-13 12:13:36",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 179315445,
+          "ns": 6,
+          "title": "File:Humboldt penguin (Spheniscus humboldti) Chiloe.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 12239046,
+              "width": 4872,
+              "height": 3246,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg/1280px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg/3840px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg/1280px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg/3840px-Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/a/ad/Humboldt_penguin_%28Spheniscus_humboldti%29_Chiloe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Humboldt_penguin_(Spheniscus_humboldti)_Chiloe.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=179315445",
+              "sha1": "d7c4e09a2e6962d194ad07a38df04e1fc2e40486",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-12-02 16:13:56",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Humboldt penguin (Spheniscus humboldti) Chiloe",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Spheniscus humboldti|Photographs by Charlesjsharp|Self-published work|Files with coordinates missing SDC location of creation|Sphenisciformes of Chile",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "quality",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-41.920000",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-74.040000",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Humboldt penguin (<i>Spheniscus humboldti</i>), Puñihuil, Ancud, Chiloé Island",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-10-13 12:13:10",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>, from <a rel=\"nofollow\" class=\"external text\" href=\"https://www.sharpphotography.co.uk/\">Sharp Photography, sharpphotography.co.uk</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<bdi><a href=\"https://www.wikidata.org/wiki/Q54800218\" class=\"extiw\" title=\"d:Q54800218\"><span title=\"Scottish wildlife photographer\">Charles J. Sharp</span></a></bdi>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

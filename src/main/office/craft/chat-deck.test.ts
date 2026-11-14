@@ -1,3 +1,4 @@
+import { resolveDocumentIdentity } from '@shared/document-identity'
 import { describe, expect, it } from 'vitest'
 import { existsSync, mkdtempSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -126,8 +127,12 @@ describe('chatDeckCommands (prueba Craft)', () => {
   it('el tema cambia el color de acento', () => {
     const blue = chatDeckCommands({ theme: 'blue', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).join('\n')
     const warm = chatDeckCommands({ theme: 'warm', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).join('\n')
-    expect(blue).toContain('#3B82F6')
-    expect(warm).toContain('#F59E0B')
+    expect(blue).toContain(
+      resolveDocumentIdentity({ theme: 'blue', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).palette.accent
+    )
+    expect(warm).toContain(
+      resolveDocumentIdentity({ theme: 'warm', slides: [{ title: 'Un título', bullets: ['x'] }, { title: 'Sección' }] }).palette.accent
+    )
   })
 
   it('portada: tamaño según el largo del título', () => {
@@ -205,7 +210,7 @@ describe('libertad de diseño del Chat (paleta propia, fuentes, fondo y lienzo l
   it.each([
     ['color sin #', { palette: { bg: '0E2A2F', text: '#FFFFFF', accent: '#000000' }, slides: [{ title: 'x' }] }],
     ['color con script', { palette: { bg: '#0E2A2F', text: '#FFFFFF', accent: 'red;rm -rf' }, slides: [{ title: 'x' }] }],
-    ['fuente fuera de la lista', { fonts: { title: 'Comic Sans MS' }, slides: [{ title: 'x' }] }],
+    ['fuente fuera de la lista', { fonts: { title: 'Missing Font' }, slides: [{ title: 'x' }] }],
     ['forma desconocida', { slides: [{ layout: 'free', elements: [{ type: 'shape', shape: 'bomba', x: 0, y: 0, w: 1, h: 1 }] }] }],
     ['libre sin elementos', { slides: [{ layout: 'free' }] }],
     ['posición absurda', { slides: [{ layout: 'free', elements: [{ type: 'text', x: 99999, y: 0, w: 10, h: 10, text: 'a' }] }] }],
@@ -286,12 +291,12 @@ describe('pie, nota y numeración legibles sobre un background propio', () => {
   })
   it('legibleInk/contrastRatio', () => {
     expect(contrastRatio('000000', 'FFFFFF')).toBeCloseTo(21, 0)
-    expect(legibleInk('8A8A8A', 'F4F1EA', 'FFFFFF')).toBe('111111')
+    expect(legibleInk('8A8A8A', 'F4F1EA', 'FFFFFF')).toBe('000000')
     expect(legibleInk('222222', 'F4F1EA', 'FFFFFF')).toBe('222222')
   })
 })
 
-const customMuted = (spec: PptxSpec): string => '#' + customPalette(spec.palette!).muted
+const customMuted = (spec: PptxSpec): string => resolveDocumentIdentity(spec).palette.muted!
 
 describe('189: arreglos de PowerPoint medidos', () => {
   const j = (c: string): Record<string, unknown> => JSON.parse(c.slice(c.indexOf('=') + 1))
@@ -324,7 +329,7 @@ describe('189: arreglos de PowerPoint medidos', () => {
     const c = cmds.find((x) => x.startsWith('design.colors='))
     expect(c).toBeTruthy()
     const colors = (j(c!).colors ?? {}) as Record<string, string>
-    expect(colors.accent1).toBe('#16A34A')
+    expect(colors.accent1).toBe(resolveDocumentIdentity({ theme: 'green', slides: [{ title: 'T', bullets: ['x'] }] }).palette.accent)
     expect(Object.keys(colors)).toHaveLength(6)
     expect(Object.values(colors).every((v) => /^#[0-9A-F]{6}$/.test(v))).toBe(true)
     // no es el azul de siempre
@@ -356,13 +361,12 @@ describe('189: arreglos de PowerPoint medidos', () => {
     expect(j(bar.find((x) => x.startsWith('insert.chart='))!).categories).toEqual(['A', 'B'])
   })
 
-  it('el cierre muestra hasta 3 líneas, no solo la primera', () => {
+  it('el cierre conserva todas las líneas, sin descartar la cuarta', () => {
     const cmds = chatDeckCommands({
       slides: [{ title: 'Gracias', layout: 'closing', bullets: ['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl', 'cuarta'] }]
     })
     const texts = cmds.filter((c) => c.startsWith('insert.textBox=')).map((c) => j(c).text)
-    expect(texts).toEqual(expect.arrayContaining(['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl']))
-    expect(texts).not.toContain('cuarta')
+    for (const text of ['Escríbenos', 'contacto@empresa.cl', 'www.empresa.cl', 'cuarta']) expect(texts.join('\n')).toContain(text)
   })
 
   it('KPI: todas las cifras de la fila con el mismo tamaño', () => {
@@ -479,30 +483,29 @@ describe('189: notas del orador', () => {
 
 describe('acento legible', () => {
   const j = (command: string): Record<string, unknown> => JSON.parse(command.slice(command.indexOf('=') + 1))
-  it('sin tema usa azul profundo AA en títulos, filete, cifras y cabecera de tabla; mono también lleva acento azul', () => {
-    const pal = paletteFor(undefined)
-    expect(pal.accent).toBe('1F4E79')
-    for (const bg of [pal.bg, pal.panel, 'FFFFFF']) expect(contrastRatio(pal.accent, bg)).toBeGreaterThanOrEqual(4.5)
-    expect(paletteFor('mono').accent).toBe('1D4E89')
-    const cmds = chatDeckCommands({
+  it('sin tema deriva tinta y acento AA para títulos, cifras y tablas sin filete', () => {
+    const spec: PptxSpec = {
       slides: [
         { title: 'Resumen', layout: 'kpis', kpis: [{ label: 'Cobertura', value: '91 %' }] },
         { title: 'Resultados', table: { columns: ['Concepto', 'Valor'], rows: [['Meta', '91 %']] } }
       ]
-    })
-    expect(cmds).toContain('shape.fill={"color":"#1F4E79"}')
-    expect(cmds.some((c) => c.startsWith('table.cellFill=') && c.includes('#1F4E79'))).toBe(true)
+    }
+    const pal = resolveDocumentIdentity(spec).palette
+    for (const bg of [pal.bg, pal.panel!]) expect(contrastRatio(pal.accent.slice(1), bg.slice(1))).toBeGreaterThanOrEqual(4.5)
+    const cmds = chatDeckCommands(spec)
+    expect(cmds.some((c) => c.startsWith('table.cellFill=') && c.includes(pal.accent))).toBe(true)
     for (const title of ['Resumen', 'Resultados', '91 %']) {
       const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === title)
-      expect(cmds[i + 2]).toBe('format.color={"color":"#1F4E79"}')
+      expect(cmds[i + 2]).toBe(`format.color={"color":"${title === '91 %' ? pal.accent : pal.text}"}`)
     }
+    expect(cmds).not.toContain('shape.insert={"preset":"rect","rect":[60,128,840,4]}')
   })
 
   it.each(['Gracias', 'Preguntas'])('centra y agranda el cierre %s aunque el layout sea bullets sin contenido', (title) => {
     const cmds = chatDeckCommands({ slides: [{ title: 'Inicio' }, { title, layout: 'bullets', note: 'equipo@example.test' }] })
     const i = cmds.findIndex((c) => c.startsWith('insert.textBox=') && j(c).text === title)
-    expect(j(cmds[i]).rect).toEqual([60, 152, 840, 240])
-    expect(j(cmds[i + 1]).size).toBeGreaterThanOrEqual(100)
+    expect(j(cmds[i]).rect).toEqual([100, 124, 760, 222])
+    expect(j(cmds[i + 1]).size).toBeGreaterThanOrEqual(80)
     expect(cmds.slice(i, i + 10)).toContain('format.align={"align":"center"}')
     expect(cmds.some((c) => c.startsWith('insert.textBox=') && j(c).text === 'equipo@example.test')).toBe(true)
   })
@@ -525,5 +528,62 @@ describe('acento legible', () => {
   it('un verde claro sobre blanco se oscurece hasta 4,5:1', () => {
     const p = customPalette({ bg: '#FFFFFF', text: '#10262B', accent: '#7BC47F' })
     expect(contrastRatio(p.accent, p.bg)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('quinta ronda: crédito separado de foto, decoración y número', () => {
+  const credit = 'Foto: Takeaway · CC BY-SA 4.0 · Wikimedia Commons · con cambios'
+  const images = new Map([
+    [
+      'img/free-cafe.jpg',
+      { file: '/prepared/cafe.jpg', width: 1200, height: 1600, kind: 'jpeg' as const, mime: 'image/jpeg', ext: 'jpg', bytes: 100 }
+    ]
+  ])
+  const parse = (command: string): { rect: number[]; text?: string } => JSON.parse(command.slice(command.indexOf('=') + 1))
+  const intersects = (a: number[], b: number[]): boolean =>
+    a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1]
+
+  it.each(['classic', 'editorial', 'minimal', 'geometric'] as const)('%s: portada y lámina de foto tienen franja propia', (style) => {
+    for (const layout of ['cover', 'image'] as const) {
+      const commands = chatDeckCommands(
+        {
+          style,
+          slides: [{ title: 'Cafetería', layout, image: { path: 'img/free-cafe.jpg', alt: 'Interior' }, imageCredit: credit }]
+        },
+        images
+      )
+      const texts = commands.filter((c) => c.startsWith('insert.textBox=')).map(parse)
+      const footer = texts.find((c) => c.text === credit)!
+      expect(footer).toBeDefined()
+      const photo = parse(commands.find((c) => c.startsWith('insert.picture='))!)
+      expect(footer.rect[1] - (photo.rect[1] + photo.rect[3])).toBeGreaterThanOrEqual(12)
+      expect(footer.rect[1] + footer.rect[3]).toBeLessThanOrEqual(540)
+      for (const text of texts.filter((t) => t !== footer)) expect(intersects(footer.rect, text.rect)).toBe(false)
+      const bottomShapes = commands
+        .filter((c) => c.startsWith('shape.insert='))
+        .map(parse)
+        .filter((s) => s.rect[1] >= 480)
+      for (const shape of bottomShapes) expect(intersects(footer.rect, shape.rect)).toBe(false)
+      const next = commands.indexOf(commands.find((c) => c.startsWith('insert.textBox=') && parse(c).text === credit)!) + 1
+      expect(commands[next]).toBe('format.size={"size":12}')
+    }
+  })
+
+  it('el pie con descripción y crédito de 160 caracteres conserva 12 pt en dos líneas', () => {
+    const text = 'Figura 1. '.padEnd(100, 'a') + credit
+    const caption = text.slice(0, 160)
+    const commands = chatDeckCommands({ slides: [{ title: 'Foto', layout: 'image', imageCredit: caption }] })
+    const at = commands.findIndex((c) => c.startsWith('insert.textBox=') && parse(c).text === caption)
+    expect(commands[at + 1]).toBe('format.size={"size":12}')
+  })
+
+  it('no impone puntitos al pie de las láminas sin crédito', () => {
+    const commands = chatDeckCommands({ style: 'editorial', slides: [{ title: 'Cafetería', layout: 'image' }] })
+    expect(
+      commands
+        .filter((c) => c.startsWith('shape.insert='))
+        .map(parse)
+        .some((s) => s.rect[1] === 509)
+    ).toBe(false)
   })
 })

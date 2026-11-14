@@ -2,6 +2,9 @@ import type { Messages } from '../index'
 import type { chat as es } from '../es/chat'
 
 export const chat = {
+  'chat.doc.download': 'Download',
+  'chat.doc.download.pptx': 'PowerPoint (4K image)',
+  'chat.doc.saveHtml': 'Save HTML',
   'chat.file.group': 'Files from this reply',
   'chat.file.view': 'View here',
   'chat.file.open': 'Open with your app',
@@ -52,6 +55,9 @@ export const chat = {
   'chat.doc.problem.schema': "The document doesn't have the expected shape and could not be opened.",
   'chat.doc.problem.failed': 'The document could not be generated.',
   'chat.doc.problem.invalid': "The document's data is not valid.",
+  'chat.doc.problem.photoMissing': 'A prepared photo is missing from this document. Ask to prepare it in this conversation.',
+  'chat.doc.problem.photoMissingDetail':
+    'Photo “{reference}” is not prepared in this conversation or folder. Ask to prepare it with imagenes_usar here; if the search result has expired, search again and replace the reference in the document.',
   'chat.doc.problem.noCraft': 'The ArtCraft app this document needs is missing.',
   'chat.doc.problem.cut': 'The document was cut off',
   'chat.doc.problem.cutHint': 'The reply ended before the document was closed.',

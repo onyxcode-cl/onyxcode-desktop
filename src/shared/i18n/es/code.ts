@@ -89,6 +89,7 @@ export const code = {
   'code.perm.doom_loop': 'repetir la misma acción',
   'code.perm.todowrite': 'actualizar la lista de tareas',
   'code.perm.documentos_crear': 'crear un documento (Word, Excel, PowerPoint o PDF) en la carpeta del proyecto',
+  'code.perm.documentos_exportar_pdf': 'exportar un Word o PowerPoint del proyecto a PDF',
   'code.perm.documentos_renderizar': 'ver las páginas de un documento',
   'code.perm.once': 'Permitir una vez',
   'code.perm.always': 'Permitir siempre',

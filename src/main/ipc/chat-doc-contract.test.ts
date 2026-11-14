@@ -146,7 +146,7 @@ const PPTX: [string, unknown, boolean][] = [
   ['tabla con fila de otro largo', { slides: [{ title: 'x', layout: 'table', table: { columns: ['A', 'B'], rows: [['1']] } }] }, false],
   ['transición desconocida', { transition: 'explosion', slides: [{ title: 'x' }] }, false],
   ['color sin #', { palette: { bg: '0E2A2F', text: '#FFFFFF', accent: '#000000' }, slides: [{ title: 'x' }] }, false],
-  ['fuente fuera de la lista', { fonts: { title: 'Comic Sans MS' }, slides: [{ title: 'x' }] }, false],
+  ['fuente fuera de la lista', { fonts: { title: 'Missing Font' }, slides: [{ title: 'x' }] }, false],
   ['forma desconocida', { slides: [{ layout: 'free', elements: [{ type: 'shape', shape: 'bomba', x: 0, y: 0, w: 1, h: 1 }] }] }, false],
   ['libre sin elementos', { slides: [{ layout: 'free' }] }, false],
   ['fondo inválido', { slides: [{ title: 'x', background: 'url(x)' }] }, false]

@@ -25,20 +25,23 @@ describe('renderPreview', () => {
     expect(res!.truncated).toBe(false)
   })
 
-  it('docx: una llamada por página hasta que el programa dice que no hay más', async () => {
-    let page = 0
-    const res = await renderPreview('docx', Buffer.from('x'), tools, {
-      run: async (_bin, args) => {
-        page = Number(args[args.indexOf('--page') + 1])
-        if (page > 2) throw new Error('bad parameters: no page 3')
-        writeFileSync(args[2]!, png(page))
-      }
-    })
-    expect(res!.pages).toBe(2)
-    expect(res!.images.length).toBe(2)
-    expect(res!.status).toBe('complete')
-    expect(res!.truncated).toBe(false)
-  })
+  it.each(['bad parameters: no page 3', 'wordcraft-cli: bad parameters: no page 3\n'])(
+    'docx: reconoce fin de páginas del CLI: %s',
+    async (missingPage) => {
+      let page = 0
+      const res = await renderPreview('docx', Buffer.from('x'), tools, {
+        run: async (_bin, args) => {
+          page = Number(args[args.indexOf('--page') + 1])
+          if (page > 2) throw new Error(missingPage)
+          writeFileSync(args[2]!, png(page))
+        }
+      })
+      expect(res!.pages).toBe(2)
+      expect(res!.images.length).toBe(2)
+      expect(res!.status).toBe('complete')
+      expect(res!.truncated).toBe(false)
+    }
+  )
 
   it('docx: nunca más de 12 páginas', async () => {
     const res = await renderPreview('docx', Buffer.from('x'), tools, {

@@ -1,3 +1,4 @@
+import { hasHtmlSlides, MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Entregables de la tarea: lista con iconos, vista previa (md / csv / imágenes / texto / docx),
  * acciones (abrir, Vista rápida, Finder), «Descargar todo» (zip), y para HTML «Abrir como artifact»
@@ -26,13 +27,14 @@ import {
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
-import { ArtifactButton } from '../../../components/artifacts/ArtifactButton'
+import { ArtifactButton, DownloadMenuButton, PresentSlidesButton } from '../../../components/artifacts/ArtifactButton'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
 import { FileReview } from './FileReview'
+import { HtmlPreviewDialog } from './HtmlPreviewDialog'
 import { cw } from './bridge'
-import { requestViewerOpen } from './store'
+import { requestViewerOpen, useTasks } from './store'
 import { baseName, extOf, formatSize, isViewerExt, relTime } from './util'
 
 const IMAGE = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp'])
@@ -42,8 +44,8 @@ const TEXT = new Set(['txt', 'json', 'html', 'htm', 'xml', 'yaml', 'yml', 'log',
 /** Documentos que main convierte a texto con `textutil` para la vista previa. */
 const DOCUMENT = new Set(['docx', 'doc', 'odt'])
 const HTML = new Set(['html', 'htm'])
-/** Un HTML mayor que esto no se ofrece como artifact (límite de la ventana de artifacts: 5 MB). */
-const ARTIFACT_MAX_BYTES = 2 * 1024 * 1024
+/** Un HTML mayor que esto no se ofrece como artifact (presupuesto de HTML y fotos: 24 MiB). */
+const ARTIFACT_MAX_BYTES = MAX_ARTIFACT_HTML_BYTES
 
 export function canPreview(path: string): boolean {
   const e = extOf(path)
@@ -137,7 +139,11 @@ function CsvTable({ text, sep }: { text: string; sep: string }): React.JSX.Eleme
   )
 }
 
-function usePreview(path: string | null, maxBytes?: number): { data: TasksFilePreview | null; error: string | null; loading: boolean } {
+function usePreview(
+  path: string | null,
+  maxBytes?: number,
+  version?: number
+): { data: TasksFilePreview | null; error: string | null; loading: boolean } {
   const [state, setState] = useState<{ data: TasksFilePreview | null; error: string | null; loading: boolean }>({
     data: null,
     error: null,
@@ -153,7 +159,7 @@ function usePreview(path: string | null, maxBytes?: number): { data: TasksFilePr
     return () => {
       alive = false
     }
-  }, [path, maxBytes])
+  }, [path, maxBytes, version])
   return state
 }
 
@@ -271,14 +277,22 @@ const ACTION_BTN =
 
 /** «Abrir como artifact» para un HTML entregable: carga su contenido y usa el `ArtifactButton` de siempre. */
 function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Element | null {
-  const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES + 1)
+  const { data } = usePreview(file.size <= ARTIFACT_MAX_BYTES ? file.path : null, ARTIFACT_MAX_BYTES, file.mtime)
+  const folder = useTasks((s) => s.folder)
   if (!data || data.kind !== 'text' || data.truncated || !data.content?.trim()) return null
+  const props = {
+    html: data.content,
+    title: baseName(file.path).replace(/\.[^.]+$/, ''),
+    context: { kind: 'file' as const, path: file.path, root: file.root ?? folder ?? undefined },
+    className: '!border-transparent !bg-transparent !px-1.5 !py-0.5 !text-[11px] desk:text-meta'
+  }
+  const slides = hasHtmlSlides(data.content)
   return (
-    <ArtifactButton
-      html={data.content}
-      title={baseName(file.path).replace(/\.[^.]+$/, '')}
-      className="!border-transparent !bg-transparent !px-1.5 !py-0.5 !text-[11px] desk:text-meta"
-    />
+    <>
+      <ArtifactButton {...props} isSlides={slides} />
+      {slides && <PresentSlidesButton {...props} />}
+      <DownloadMenuButton {...props} isSlides={slides} />
+    </>
   )
 }
 
@@ -434,7 +448,12 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
           </ul>
         </div>
       ))}
-      {preview && <PreviewDialog file={preview} onClose={() => setPreview(null)} />}
+      {preview &&
+        (isHtmlFile(preview.path) ? (
+          <HtmlPreviewDialog key={preview.path} file={preview} onClose={() => setPreview(null)} />
+        ) : (
+          <PreviewDialog file={preview} onClose={() => setPreview(null)} />
+        ))}
     </>
   )
 }

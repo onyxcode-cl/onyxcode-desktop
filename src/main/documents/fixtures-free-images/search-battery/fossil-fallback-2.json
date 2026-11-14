@@ -1,0 +1,1296 @@
+{
+  "capturedAt": "2026-11-13T17:50:11.488Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=dinosaur+fossil+filetype%3Abitmap&gsrlimit=12&gsrsort=relevance",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 12,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 138733455,
+          "ns": 6,
+          "title": "File:Dinosaur Fossil Population Graph Mesozoic.png",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 889218,
+              "width": 5671,
+              "height": 4014,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Dinosaur_Fossil_Population_Graph_Mesozoic.png/1280px-Dinosaur_Fossil_Population_Graph_Mesozoic.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 906,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Dinosaur_Fossil_Population_Graph_Mesozoic.png/3840px-Dinosaur_Fossil_Population_Graph_Mesozoic.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Dinosaur_Fossil_Population_Graph_Mesozoic.png/1280px-Dinosaur_Fossil_Population_Graph_Mesozoic.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 906,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/29/Dinosaur_Fossil_Population_Graph_Mesozoic.png/3840px-Dinosaur_Fossil_Population_Graph_Mesozoic.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/2/29/Dinosaur_Fossil_Population_Graph_Mesozoic.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_Fossil_Population_Graph_Mesozoic.png",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=138733455",
+              "sha1": "1385117bf9d7186f1ddd2cccc9df025360d98051",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2023-10-11 20:30:03",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur Fossil Population Graph Mesozoic",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Dinosauria|Mesozoic|Dinosauria fossils|Animalia fossils|Charts|Self-published work|Paleontological diagrams",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Graph of relative Dinosaur fossil populations from each period of geologic time in the Mesozoic, ordered by major clade",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2023-10-11",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Aec1383&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Aec1383 (page does not exist)\">Aec1383</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/png"
+            }
+          ]
+        },
+        {
+          "pageid": 150286632,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 4.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 955405,
+              "width": 1600,
+              "height": 1200,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Dinosaur_bone_jewelry_-_4.jpg/1280px-Dinosaur_bone_jewelry_-_4.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/46/Dinosaur_bone_jewelry_-_4.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Dinosaur_bone_jewelry_-_4.jpg/1280px-Dinosaur_bone_jewelry_-_4.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/46/Dinosaur_bone_jewelry_-_4.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/46/Dinosaur_bone_jewelry_-_4.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_4.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286632",
+              "sha1": "6b066fe0d406694c8329ba7fd88c9b9892fecb72",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:40:46",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 4",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-04-23 22:14:05",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/3470325336/\">https://www.flickr.com/photos/58902192@N00/3470325336/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286642,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 13.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2887270,
+              "width": 2816,
+              "height": 2112,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Dinosaur_bone_jewelry_-_13.jpg/1280px-Dinosaur_bone_jewelry_-_13.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/9/97/Dinosaur_bone_jewelry_-_13.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/Dinosaur_bone_jewelry_-_13.jpg/1280px-Dinosaur_bone_jewelry_-_13.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/9/97/Dinosaur_bone_jewelry_-_13.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/97/Dinosaur_bone_jewelry_-_13.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_13.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286642",
+              "sha1": "997216d7778223001cceb212ed2b7b2ddb22c23d",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:40:56",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 13",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-04-23 22:31:50",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/3470338960/\">https://www.flickr.com/photos/58902192@N00/3470338960/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286666,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 33.jpg",
+          "index": 8,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 175739,
+              "width": 492,
+              "height": 500,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/6/61/Dinosaur_bone_jewelry_-_33.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1301,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/6/61/Dinosaur_bone_jewelry_-_33.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1301
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/6/61/Dinosaur_bone_jewelry_-_33.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_33.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286666",
+              "sha1": "257bfdadfee832fb53deb49a1a7820824c6690b7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:41:21",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 33",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-11-20 12:06:45",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/4119614029/\">https://www.flickr.com/photos/58902192@N00/4119614029/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286668,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 34.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 248574,
+              "width": 490,
+              "height": 500,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Dinosaur_bone_jewelry_-_34.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1306,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Dinosaur_bone_jewelry_-_34.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1306
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Dinosaur_bone_jewelry_-_34.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_34.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286668",
+              "sha1": "38f51f4e9312bc5094529e5bf7d7e917b644f535",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:41:22",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 34",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-11-20 12:06:47",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/4119614093/\">https://www.flickr.com/photos/58902192@N00/4119614093/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286695,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 57.jpg",
+          "index": 9,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 183629,
+              "width": 1024,
+              "height": 768,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Dinosaur_bone_jewelry_-_57.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Dinosaur_bone_jewelry_-_57.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Dinosaur_bone_jewelry_-_57.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_57.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286695",
+              "sha1": "784f115c3e793d386776133834d557b0ce654cc3",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:41:50",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 57",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-11-06 11:09:37",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/5151008011/\">https://www.flickr.com/photos/58902192@N00/5151008011/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286708,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 67.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 204621,
+              "width": 1024,
+              "height": 831,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Dinosaur_bone_jewelry_-_67.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 1039,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Dinosaur_bone_jewelry_-_67.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1039
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Dinosaur_bone_jewelry_-_67.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_67.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286708",
+              "sha1": "4aa50ae119e35ed832e65240f88ac7c7b7d75d04",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:42:01",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 67",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-01-29 11:21:11",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/5398566426/\">https://www.flickr.com/photos/58902192@N00/5398566426/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286714,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 71.jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 682062,
+              "width": 1024,
+              "height": 768,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/8/81/Dinosaur_bone_jewelry_-_71.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/8/81/Dinosaur_bone_jewelry_-_71.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/81/Dinosaur_bone_jewelry_-_71.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_71.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286714",
+              "sha1": "f1cff2ca8396a92a016eb62f28db63d68c2b4a92",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:42:05",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 71",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-02-25 00:45:38",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/5476697804/\">https://www.flickr.com/photos/58902192@N00/5476697804/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286719,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 77.jpg",
+          "index": 10,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 228053,
+              "width": 1024,
+              "height": 781,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Dinosaur_bone_jewelry_-_77.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 976,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Dinosaur_bone_jewelry_-_77.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 976
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Dinosaur_bone_jewelry_-_77.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_77.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286719",
+              "sha1": "a435fa92f4f14e63c578c9c0abedad52b8fce60b",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:42:11",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 77",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-05-17 12:28:37",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/5733399026/\">https://www.flickr.com/photos/58902192@N00/5733399026/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286722,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 78.jpg",
+          "index": 12,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 254567,
+              "width": 1024,
+              "height": 768,
+              "thumburl": "https://upload.wikimedia.org/wikipedia/commons/8/87/Dinosaur_bone_jewelry_-_78.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "thumbattribs": {
+                "src": "https://upload.wikimedia.org/wikipedia/commons/8/87/Dinosaur_bone_jewelry_-_78.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/87/Dinosaur_bone_jewelry_-_78.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_78.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286722",
+              "sha1": "96b3217df44bd23e4ca0198b39d993de39fa22a5",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:42:14",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 78",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery|Flickr images missing SDC published in",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2011-09-16 00:31:29",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/6848613565/\">https://www.flickr.com/photos/58902192@N00/6848613565/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286737,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 91.jpg",
+          "index": 7,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 963177,
+              "width": 1600,
+              "height": 786,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Dinosaur_bone_jewelry_-_91.jpg/1280px-Dinosaur_bone_jewelry_-_91.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 629,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/5/53/Dinosaur_bone_jewelry_-_91.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/Dinosaur_bone_jewelry_-_91.jpg/1280px-Dinosaur_bone_jewelry_-_91.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 629,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/5/53/Dinosaur_bone_jewelry_-_91.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/5/53/Dinosaur_bone_jewelry_-_91.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_91.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286737",
+              "sha1": "7fb9013864fc5c8a79b17b0c4e599b059faebbb2",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:42:29",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 91",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Flickr images missing SDC inception|Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2014-08-13 01:47:04",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/15767189649/\">https://www.flickr.com/photos/58902192@N00/15767189649/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 150286739,
+          "ns": 6,
+          "title": "File:Dinosaur bone jewelry - 92.jpg",
+          "index": 11,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2808632,
+              "width": 3024,
+              "height": 4032,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/Dinosaur_bone_jewelry_-_92.jpg/1280px-Dinosaur_bone_jewelry_-_92.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1707,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/8/88/Dinosaur_bone_jewelry_-_92.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/Dinosaur_bone_jewelry_-_92.jpg/1280px-Dinosaur_bone_jewelry_-_92.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1707,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/8/88/Dinosaur_bone_jewelry_-_92.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/88/Dinosaur_bone_jewelry_-_92.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_bone_jewelry_-_92.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=150286739",
+              "sha1": "f6d2f2f40ece82e56cf13916db979e57b86ecb9e",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2024-07-13 05:42:29",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur bone jewelry - 92",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Dinosauria fossil jewellery",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "45.408772",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-91.739281",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Dinosaur bone jewelry",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2017-01-23 09:32:37",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/58902192@N00/32932065230/\">https://www.flickr.com/photos/58902192@N00/32932065230/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Different Seasons Jewelry",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 2.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 2.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/2.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-2.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

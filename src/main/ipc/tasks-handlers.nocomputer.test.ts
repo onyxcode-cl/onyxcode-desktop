@@ -34,8 +34,10 @@ vi.mock('../embedded-browser/mcp-server', () => ({ embeddedBrowserMcp: { setApi:
 
 import { TASKS_INVOKE_CHANNELS } from '@shared/ipc-tasks'
 import { capsFor } from '@shared/platform-caps'
-import { registerTasksHandlers } from './tasks-handlers'
 import { registerUnsupportedHandlers } from './unsupported-handlers'
+
+// Los servicios importados consultan userData al cargar: el temporal debe existir antes.
+const { registerTasksHandlers } = await import('./tasks-handlers')
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 

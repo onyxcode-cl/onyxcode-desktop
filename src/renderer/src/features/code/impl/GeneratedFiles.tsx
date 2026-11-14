@@ -17,6 +17,7 @@ import { getExtras } from '../../../lib/extrasApi'
 import { viewChatFile } from '../../../lib/chatFileView'
 import { nativeCode } from './client'
 import { detectDocFiles, isDocumentTool } from './doc-files'
+import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
 
 /** Tipo de tarjeta según la extensión (las páginas HTML usan la miniatura de presentación). */
 export function fileCardType(name: string): DocCardType {
@@ -66,7 +67,7 @@ async function viewFile(cwd: string, path: string, isCurrent: () => boolean): Pr
   if (!isCurrent() || !valid.some((f) => f.path === path)) return false
   const infos = await extras.invoke('extras:chatFile:info', { paths: [path] })
   const info = infos.find((f) => f.path === path && f.canView)
-  return info && isCurrent() ? viewChatFile(info) : false
+  return info && isCurrent() ? viewChatFile(info, { kind: 'file', path: info.path, root: cwd }) : false
 }
 
 function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.Element {
@@ -82,7 +83,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
     },
     [cwd, file.path]
   )
-  const canView = platformCaps().docViewer && /\.(pdf|docx|xlsx|pptx)$/i.test(file.name)
+  const canView = platformCaps().docViewer && /\.(pdf|docx|xlsx|pptx|html|htm)$/i.test(file.name)
   const kind = t(KIND_KEY[type])
   const meta = [kind, formatFileSize(file.bytes, getLang())].filter(Boolean).join(' · ')
   const actions = fileCardActions(nativeCode('dialogs')?.files, cwd, file.path)
@@ -128,6 +129,7 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
               {t('tasks.deliv.view')}
             </button>
           )}
+          {type === 'pptx' && <PptxFileActions source={{ kind: 'chat', path: file.path }} />}
           <button
             type="button"
             onClick={() => {

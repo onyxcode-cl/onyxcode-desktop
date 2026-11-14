@@ -1,0 +1,716 @@
+{
+  "capturedAt": "2026-11-13T17:48:33.968Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=dinosaur+fossil+museum&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 65097680,
+          "ns": 6,
+          "title": "File:Glendive entrance.JPG",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 236507,
+              "width": 1536,
+              "height": 1152,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Glendive_entrance.JPG/1280px-Glendive_entrance.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/4/41/Glendive_entrance.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Glendive_entrance.JPG/1280px-Glendive_entrance.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/4/41/Glendive_entrance.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/4/41/Glendive_entrance.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Glendive_entrance.JPG",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=65097680",
+              "sha1": "fad960114289da24cbb0f0105681af9b9c0b3660",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2017-12-29 04:45:34",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Glendive entrance",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "PD-author|Glendive Dinosaur and Fossil Museum|January 2009 in Montana",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "The entrance to the Glendive Dinosaur and Fossil Museum.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-01-28",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"http://creationwiki.org/File:Glendive_entrance.JPG\">http://creationwiki.org/File:Glendive_entrance.JPG</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Ian Juby (<a rel=\"nofollow\" class=\"external free\" href=\"http://creationwiki.org/User:Ianjuby\">http://creationwiki.org/User:Ianjuby</a>)",
+                  "source": "commons-desc-page"
+                },
+                "Permission": {
+                  "value": "\"I, Ian Juby, as the copyright owner of this image, do release this image into the public domain.\"",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 98580283,
+          "ns": 6,
+          "title": "File:Dinosaur Egg Museum, Xixia Dinosaur Park- Fossil Bird, Confuciusomis sanctus.jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1977386,
+              "width": 4752,
+              "height": 3168,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/80/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/8/80/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Bird%2C_Confuciusomis_sanctus.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_Egg_Museum,_Xixia_Dinosaur_Park-_Fossil_Bird,_Confuciusomis_sanctus.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=98580283",
+              "sha1": "219c293368870b159b576ee65aa04cae549f7e21",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-01-06 10:55:56",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur Egg Museum, Xixia Dinosaur Park- Fossil Bird, Confuciusomis sanctus",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Xixia Dinosaur Relics Park",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "33.233784",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "111.680274",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Xixia, southern Henan Province. Complete indexed photo collection at WorldHistoryPics.com.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-11-20 15:20:52",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/101561334@N08/10264500146/\">https://www.flickr.com/photos/101561334@N08/10264500146/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Gary Todd",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 98580288,
+          "ns": 6,
+          "title": "File:Dinosaur Egg Museum, Xixia Dinosaur Park- Fossil Fish, Lycoptera.jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1576768,
+              "width": 4752,
+              "height": 3168,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/9/95/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Lycoptera.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_Egg_Museum,_Xixia_Dinosaur_Park-_Fossil_Fish,_Lycoptera.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=98580288",
+              "sha1": "ee105ee01912fcd3fd6d0bc7ed3fc440e1dc4395",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-01-06 10:56:01",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur Egg Museum, Xixia Dinosaur Park- Fossil Fish, Lycoptera",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Xixia Dinosaur Relics Park|Lycoptera fossils",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "33.233784",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "111.680274",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Xixia, southern Henan Province. Complete indexed photo collection at WorldHistoryPics.com.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-11-20 15:21:02",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/101561334@N08/10264607473/\">https://www.flickr.com/photos/101561334@N08/10264607473/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Gary Todd",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 98580290,
+          "ns": 6,
+          "title": "File:Dinosaur Egg Museum, Xixia Dinosaur Park- Fossil Fish, Peipiaosteus sp.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1860484,
+              "width": 4752,
+              "height": 3168,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg/1280px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f9/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg/3840px-Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Dinosaur_Egg_Museum%2C_Xixia_Dinosaur_Park-_Fossil_Fish%2C_Peipiaosteus_sp.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Dinosaur_Egg_Museum,_Xixia_Dinosaur_Park-_Fossil_Fish,_Peipiaosteus_sp.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=98580290",
+              "sha1": "fcb47a55a751693bd9e69fcd8766c3daf3162343",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2021-01-06 10:56:02",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Dinosaur Egg Museum, Xixia Dinosaur Park- Fossil Fish, Peipiaosteus sp",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Peipiaosteus|CC-Zero|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Informational signs using Hanyu Pinyin|Xixia Dinosaur Relics Park",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "33.233784",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "111.680274",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Xixia, southern Henan Province. Complete indexed photo collection at WorldHistoryPics.com.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-11-20 15:21:08",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<a rel=\"nofollow\" class=\"external free\" href=\"https://www.flickr.com/photos/101561334@N08/10264395774/\">https://www.flickr.com/photos/101561334@N08/10264395774/</a>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Gary Todd",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 193443272,
+          "ns": 6,
+          "title": "File:Natural History Museum, London, Dinosaur Gallery - fossil design.jpg",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 3490018,
+              "width": 2816,
+              "height": 2821,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c0/Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg/1280px-Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1282,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c0/Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg/1280px-Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1282,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Natural_History_Museum%2C_London%2C_Dinosaur_Gallery_-_fossil_design.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Natural_History_Museum,_London,_Dinosaur_Gallery_-_fossil_design.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=193443272",
+              "sha1": "c23a797c8172edea282c4ed39dd583295c9b5f71",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-06-06 05:40:17",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Natural History Museum, London, Dinosaur Gallery - fossil design",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Files with coordinates missing SDC location of creation (51° N, 1° W)|Natural History Museum, London, Dinosaur Gallery|Natural History Museum, London in 2026",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "51.495842",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-0.176714",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Natural History Museum, London, Dinosaur Gallery",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2026-05-13 13:43:57",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:APK\" title=\"User:APK\">APK</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 202104531,
+          "ns": 6,
+          "title": "File:Hadrosaurine dinosaur fossil specimen - Canadian Museum of Nature (2010).jpg",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 521303,
+              "width": 2048,
+              "height": 1536,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg/1280px-Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cb/Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg/1280px-Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_%282010%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Hadrosaurine_dinosaur_fossil_specimen_-_Canadian_Museum_of_Nature_(2010).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=202104531",
+              "sha1": "1020619db6c54da3a9f13a85638344644385e2e1",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-10-21 19:47:37",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Hadrosaurine dinosaur fossil specimen - Canadian Museum of Nature (2010)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Hadrosauridae fossils|CC-Zero|Self-published work|Collection of paleontology of the Canadian Museum of Nature",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Detail view of a fossilized hadrosaurine dinosaur bone specimen (Hadrosaurinae sp.) supported by metal mounting brackets, exhibited in the Fossil Gallery at the Canadian Museum of Nature, Ottawa, Ontario, Canada. Photo taken in 2010.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2010-06-28 21:35:24",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Salwa_Farwaneh_Dameh\" title=\"User:Salwa Farwaneh Dameh\">Salwa Farwaneh Dameh</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

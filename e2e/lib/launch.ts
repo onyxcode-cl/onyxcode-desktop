@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { _electron, type ElectronApplication, type Page } from 'playwright-core'
 import { FakeClient } from './fake'
 import { alive, FAKE_BIN_NAME, killByCommandLine, killTree, PATH_SEP } from './proc'
+import { waitForMainPage } from '../../src/test/e2e-main-page'
 
 const require = createRequire(import.meta.url)
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -256,8 +257,7 @@ export async function startApp(opts: LaunchOptions = {}): Promise<E2EApp> {
     launched.on('window', watch)
     launched.windows().forEach(watch) // la ventana puede existir ya al volver de launch
 
-    const page = await launched.firstWindow({ timeout: 60_000 })
-    await page.waitForLoadState('domcontentloaded')
+    const page = await waitForMainPage(launched, MODE === 'dev' ? env.ELECTRON_RENDERER_URL : 'lazunox://app/index.html')
     // En Windows por SSH (sin escritorio) la pantalla virtual es de 1024x768 y Electron recorta la ventana de 1280x820 a ~1008x703:
     // el panel lateral de Code taparía los botones de la barra superior. Se restituye el tamaño de diseño (no cambia nada en la Mac).
     if (process.platform === 'win32') {

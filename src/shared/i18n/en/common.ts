@@ -11,7 +11,7 @@ export const common = {
   'labels.ui.htmlPreview': 'Preview',
   'labels.ui.openHtmlPreview': 'Open preview',
   'labels.ui.downloadPdf': 'Download as PDF',
-  'labels.ui.downloadSlidesPptx': 'Download as PowerPoint (to present)',
+  'labels.ui.downloadSlidesPptx': 'Download PowerPoint (4K image)',
   'labels.ui.presentSlides': 'Present',
   'labels.ui.voiceStart': 'Voice dictation',
   'labels.ui.voiceStop': 'Stop and transcribe',

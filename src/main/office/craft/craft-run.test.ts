@@ -77,9 +77,10 @@ describe('contenido grande fuera de argv y del entorno', () => {
     const doc = { blocks: Array.from({ length: 12 }, () => ({ type: 'paragraph' as const, text })) }
     expect(isDocxSpec(doc)).toBe(true)
     await renderChatDocx('/wordcraft', doc)
-    const deckText = 'á'.repeat(500)
+    // Con identidad aplicada el cuerpo no baja de 14 pt: 40 láminas (el máximo) con viñetas que caben.
+    const deckText = 'á '.repeat(25).trim()
     const gridText = 'á'.repeat(2000)
-    const deck = { slides: Array.from({ length: 30 }, () => ({ title: 'Datos', bullets: [deckText, deckText, deckText, deckText] })) }
+    const deck = { slides: Array.from({ length: 40 }, () => ({ title: 'Datos', bullets: [deckText, deckText, deckText, deckText] })) }
     const grid = { sheets: [{ name: 'Datos', rows: Array.from({ length: 30 }, () => [gridText]) }] }
     expect(isPptxSpec(deck)).toBe(true)
     expect(isXlsxSpec(grid)).toBe(true)
@@ -90,7 +91,7 @@ describe('contenido grande fuera de argv y del entorno', () => {
       expect(call.args.join(' ').length).toBeLessThan(1000)
       expect(JSON.stringify(call.env).length).toBeLessThan(4000)
       expect(call.args.join(' ') + JSON.stringify(call.env)).not.toContain(text)
-      expect(call.content.split([text, deckText, gridText][index])).toHaveLength([13, 121, 31][index])
+      expect(call.content.split([text, deckText, gridText][index])).toHaveLength([13, 161, 31][index])
       expect(call.env.SystemRoot !== undefined).toBe(platform === 'win32')
     }
   })

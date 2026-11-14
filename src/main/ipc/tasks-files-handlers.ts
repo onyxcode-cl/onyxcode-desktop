@@ -1,3 +1,7 @@
+import { hasHtmlSlides, MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
+import { prepareArtifactPhotos } from '../extras/artifact-photos'
+import { documentsMcp, resolveChatHtmlPhotos } from '../documents'
+import { resolvePreparedHtml } from '../documents/html-photos'
 /**
  * Handlers de archivos entregables: `tasks:zip`, `tasks:quickLook`, `tasks:exportMarkdown`
  * y `tasks:htmlToPdf`.
@@ -25,7 +29,7 @@ import { windowOfSender } from './sender-window'
 
 const ZIP_BIN = '/usr/bin/zip'
 const QLMANAGE_BIN = '/usr/bin/qlmanage'
-const MAX_HTML_BYTES = 5 * 1024 * 1024
+const MAX_HTML_BYTES = MAX_ARTIFACT_HTML_BYTES
 
 /** Quita del nombre lo que no sea seguro como nombre de archivo (sin separadores ni control). */
 function safeFileName(name: string, fallback: string): string {
@@ -207,12 +211,20 @@ export function registerTasksFilesHandlers(ctx: TasksIpcContext): TasksSubmodule
     if (ext !== '.html' && ext !== '.htm') throw new Error('Solo se pueden convertir archivos .html o .htm.')
     const st = statSync(real)
     if (!st.isFile()) throw new Error('No es un archivo.')
-    if (st.size > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
-    const html = await readFile(real, 'utf8')
+    if (st.size > MAX_HTML_BYTES) throw new Error('El HTML supera 24 MiB.')
+    const html = await prepareArtifactPhotos(
+      await readFile(real, 'utf8'),
+      { kind: 'file', path: real },
+      tasks.listFolders().map((f) => f.path),
+      {
+        standalone: (source) => resolvePreparedHtml(source),
+        chat: resolveChatHtmlPhotos,
+        file: (source, scope) => documentsMcp.resolveHtmlPhotos(source, scope)
+      }
+    )
     const stem = basename(real, extname(real))
-    // Ventana oculta con la misma sesión aislada que los artifacts: sin red y sin acceso a la app (las imágenes de bancos permitidos las
-    // descarga la app y las incrusta antes: `extras/remote-images.ts`).
-    const pdf = await renderHtmlToPdf(html, stem)
+    // Fotos preparadas y acreditadas antes de abrir la ventana aislada; no se descargan URL del HTML.
+    const pdf = await renderHtmlToPdf(html, stem, { remoteImages: !hasHtmlSlides(html) })
     if (!pdf.subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('No se pudo generar el PDF.')
     const dir = dirname(real)
     if (!existsSync(dir)) throw new Error('La carpeta del archivo ya no existe.')

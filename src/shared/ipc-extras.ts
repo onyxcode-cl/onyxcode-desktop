@@ -101,9 +101,12 @@ export interface AppMcpConfig {
   servers: Record<string, McpEntry>
 }
 
+export type ArtifactContext = { kind: 'chat'; sessionId: string } | { kind: 'file'; path: string; root?: string }
+
 export interface ArtifactPayload {
   title: string
   html: string
+  context?: ArtifactContext
 }
 
 export interface QuickPromptEvent {
@@ -114,10 +117,10 @@ export interface QuickPromptEvent {
 
 /**
  * Por qué `extras:chatDoc:open` no abrió nada: `failed` (la generación del archivo falló por algo inesperado), `invalid` (los datos no
- * pasaron la validación de main) o `no-craft` (falta el programa de ArtCraft que ese tipo de documento necesita). `detail` es un motivo
+ * pasaron la validación de main), `photo-missing` (una foto no está preparada en el ámbito) o `no-craft` (falta ArtCraft). `detail` es un motivo
  * corto y ya apto para mostrar (nunca un mensaje crudo del sistema: solo textos propios de la app).
  */
-export type ChatDocOpenReject = 'failed' | 'invalid' | 'no-craft'
+export type ChatDocOpenReject = 'failed' | 'invalid' | 'photo-missing' | 'no-craft'
 /** `bytes` (opcional): peso real del archivo generado, para la tarjeta de documento del Chat. */
 export type ChatDocOpenResult = { ok: true; bytes?: number } | { ok: false; reason: ChatDocOpenReject; detail?: string }
 
@@ -187,7 +190,7 @@ interface ChatDocOpenCommon {
 }
 
 export type ChatDocOpenRequest =
-  | (ChatDocOpenCommon & { kind: 'pdf'; html: string })
+  | (ChatDocOpenCommon & { kind: 'pdf'; html: string; context?: ArtifactContext })
   | (ChatDocOpenCommon & { kind: 'xlsx'; data: XlsxSpec })
   | (ChatDocOpenCommon & { kind: 'pptx'; data: PptxSpec })
   | (ChatDocOpenCommon & { kind: 'docx'; data: DocxSpec })
@@ -198,7 +201,7 @@ export type ChatDocDownloadRequest = { title: string } & (
 )
 
 /** Para `extras:chatDoc:openExternal`: como la descarga, más el PDF (HTML). */
-export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string }
+export type ChatDocExternalRequest = ChatDocDownloadRequest | { title: string; kind: 'pdf'; html: string; context?: ArtifactContext }
 
 export interface ConversationExportRequest {
   format: 'md' | 'pdf'
@@ -403,6 +406,7 @@ export interface IpcExtrasInvokeContract {
   'extras:versions': { req: void; res: VersionsInfo }
   'extras:openArtifact': { req: ArtifactPayload; res: void }
   /** `html` → PDF, con diálogo nativo "Guardar como" (el usuario elige dónde). `null` si cancela. */
+  'extras:downloadHtml': { req: ArtifactPayload; res: string | null }
   'extras:downloadHtmlAsPdf': { req: ArtifactPayload; res: string | null }
   /** Un deck `​```slides` (HTML libre) → `.pptx` PROYECTABLE: una imagen por diapositiva, no editable
    * (ver `slides-deck-export.ts`) — alternativa a `extras:downloadHtmlAsPdf` para quien necesite
@@ -423,6 +427,8 @@ export interface IpcExtrasInvokeContract {
   'extras:chatDoc:close': { req: { sessionId: string }; res: void }
   /** El documento se abre en el programa de ArtCraft de escritorio (o, si no está, en el del sistema): `via` dice cuál. */
   /** Archivos del Chat: solo dentro de las carpetas del chat y de los proyectos (`files/chat-files.ts`); cada acción revalida la ruta. */
+  'extras:presentPptx': { req: { path: string }; res: void }
+  'extras:importPptx': { req: { name: string; base64: string }; res: ChatFileInfo }
   'extras:chatFile:info': { req: { paths: string[] }; res: ChatFileInfo[] }
   'extras:chatFile:read': { req: { path: string }; res: ChatFileReadResult }
   /** PDF/Word/Excel/PowerPoint en el visor nativo del panel lateral del Chat. */
@@ -546,6 +552,7 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:setPrefs',
   'extras:versions',
   'extras:openArtifact',
+  'extras:downloadHtml',
   'extras:downloadHtmlAsPdf',
   'extras:downloadSlidesAsPptx',
   'extras:presentSlides',
@@ -554,6 +561,8 @@ export const IPC_EXTRAS_INVOKE_CHANNELS = [
   'extras:chatDoc:attach',
   'extras:chatDoc:close',
   'extras:chatDoc:openExternal',
+  'extras:presentPptx',
+  'extras:importPptx',
   'extras:chatFile:info',
   'extras:chatFile:read',
   'extras:chatFile:viewNative',
@@ -639,6 +648,7 @@ export interface ExtrasApi {
   ): () => void
   // Atajos de conveniencia
   openArtifact(payload: ArtifactPayload): Promise<void>
+  downloadHtml(payload: ArtifactPayload): Promise<string | null>
   downloadHtmlAsPdf(payload: ArtifactPayload): Promise<string | null>
   downloadSlidesAsPptx(payload: ArtifactPayload): Promise<string | null>
   presentSlides(payload: ArtifactPayload): Promise<void>

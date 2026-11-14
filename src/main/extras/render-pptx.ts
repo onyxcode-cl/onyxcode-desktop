@@ -10,6 +10,8 @@
  * Sigue sin imágenes externas ni el ciclo de revisión con visión de la skill oficial — eso
  * se investigó y se decidió dejarlo para una fase aparte, ver CHANGELOG.
  */
+import { resolveDocumentIdentity } from '@shared/document-identity'
+import { customPalette, legibleInk } from '../office/craft/deck-kit'
 import { protectSlide } from './pptx-guards'
 import { chartCategory, numericSeries, prepareSlide } from '../office/craft/deck-data'
 import type { ImageMap } from '../documents/image-files'
@@ -19,7 +21,7 @@ import { fitText, splitLabel, splitStatUnit, STYLES, THEMES, type Palette, type 
 
 export { isPptxSpec, type PptxSlideSpec, type PptxSpec } from '@shared/chat-doc-spec'
 
-const BODY_FONT = 'Arial'
+const BODY_FONT = '+mn-lt'
 const PAGE_W = 10
 const PAGE_H = 5.625
 const MARGIN_X = 0.6
@@ -101,10 +103,20 @@ function addFooterRow(
   note: string | undefined,
   page: { current: number; total: number } | undefined,
   noteColor: string,
-  pageColor: string
+  pageColor: string,
+  noteSize = 9.5
 ): void {
   if (note)
-    slide.addText(note, { x: MARGIN_X, y: FOOTER_Y, w: 7.4, h: 0.24, fontSize: 9.5, color: noteColor, fontFace: BODY_FONT, margin: 0 })
+    slide.addText(note, {
+      x: MARGIN_X,
+      y: note.length > 140 || noteSize >= 12 ? 4.98 : FOOTER_Y,
+      w: 7.4,
+      h: note.length > 140 || noteSize >= 12 ? 0.4 : 0.24,
+      fontSize: noteSize,
+      color: noteColor,
+      fontFace: BODY_FONT,
+      margin: 0
+    })
   if (page) {
     slide.addText(`${page.current} / ${page.total}`, {
       x: 8.4,
@@ -139,9 +151,15 @@ interface SlideCtx {
   footer?: string
 }
 
-function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
+function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx, images?: ImageMap): void {
+  const img = spec.image ? images?.get(spec.image.path) : undefined
   slide.background = { color: p.primary }
-  addBleedDecoration(slide, p, s, 'tr')
+  if (img) {
+    const k = Math.min(4.1 / img.width, 4.1 / img.height)
+    const w = img.width * k
+    const h = img.height * k
+    slide.addImage({ path: img.file, x: 5.3 + (4.1 - w) / 2, y: 0.65 + (4.1 - h) / 2, w, h, altText: spec.image?.alt })
+  } else addBleedDecoration(slide, p, s, 'tr')
   if (spec.eyebrow) addEyebrow(slide, spec.eyebrow, 0.6, p.accentOnDark, { charSpacing: 3, tick: s.ruleUnderEyebrow })
   if (spec.title) {
     // El ancho de `fitText` tiene que ser EXACTAMENTE el mismo que el de la caja real de `addText`
@@ -149,7 +167,7 @@ function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
     // real: con `CONTENT_W` `fitText` subestimaba cuántas líneas iba a necesitar, elegía una letra
     // más grande de la que entraba, el título pasaba a 2 líneas y (con `anchor:"b"`/altura fija) la
     // primera quedaba cortada arriba de la caja.
-    const titleW = 7.6
+    const titleW = img ? 4.2 : 7.6
     const size = fitText(spec.title, titleW, 2.1, [44, 40, 36, 32], p.headFont, { bold: p.titleBold, lineMult: 1.08 })
     slide.addText(spec.title, {
       x: MARGIN_X,
@@ -168,15 +186,15 @@ function addCoverSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
     slide.addText(spec.bullets.join('   ·   '), {
       x: MARGIN_X,
       y: 3.45,
-      w: 7.2,
-      h: 0.7,
+      w: img ? 4.2 : 7.2,
+      h: img ? 1.2 : 0.7,
       fontSize: 16,
       color: p.onDarkBody,
       fontFace: BODY_FONT,
       margin: 0
     })
   }
-  addFooterRow(slide, spec.note ?? ctx.footer, undefined, p.onDarkMuted, p.onDarkMuted)
+  addFooterRow(slide, spec.imageCredit ?? spec.note ?? ctx.footer, undefined, p.onDarkMuted, p.onDarkMuted, spec.imageCredit ? 12 : 9.5)
 }
 
 function addSectionSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, s: StyleParams, ctx: SlideCtx): void {
@@ -387,7 +405,14 @@ function addImageSlide(slide: PptxGenJS.Slide, spec: PptxSlideSpec, p: Palette, 
       }
     )
   }
-  addFooterRow(slide, spec.note ?? ctx.footer, { current: ctx.page, total: ctx.total }, p.muted, p.accent)
+  addFooterRow(
+    slide,
+    spec.imageCredit ?? spec.note ?? ctx.footer,
+    { current: ctx.page, total: ctx.total },
+    p.muted,
+    p.accent,
+    spec.imageCredit ? 12 : 9.5
+  )
 }
 
 /** Viñetas como pasos numerados (círculo de acento + número), para una secuencia/proceso en vez de una lista plana. */
@@ -913,6 +938,7 @@ export function degradeFreeSlides(data: PptxSpec): PptxSpec {
       const biggest = texts.reduce<{ t: string; size: number } | null>((m, x) => (!m || x.size > m.size ? x : m), null)
       const rest = texts.filter((x) => x !== biggest).map((x) => x.t.slice(0, 500))
       return {
+        ...s,
         title: biggest?.t.slice(0, 200) ?? s.title,
         bullets: rest.slice(0, 20),
         layout: i === 0 ? 'cover' : rest.length ? 'bullets' : 'section'
@@ -926,9 +952,37 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
   const pres = new PptxGenJS()
   pres.defineLayout({ name: 'LAZUNOX', width: PAGE_W, height: PAGE_H })
   pres.layout = 'LAZUNOX'
-  const palette = THEMES[data.theme ?? 'blue']
-  const style = STYLES[data.style ?? 'classic']
-  pres.theme = { headFontFace: palette.headFont, bodyFontFace: BODY_FONT }
+  const identity = resolveDocumentIdentity(rawData)
+  const own = customPalette(identity.palette)
+  const palette: Palette = {
+    ...THEMES[data.theme ?? 'blue'],
+    primary: own.accent,
+    primary2: own.accent2,
+    bg: own.bg,
+    surface: own.panel,
+    border: own.edge,
+    ink: own.text,
+    body: own.text,
+    muted: legibleInk(own.muted, own.text, own.bg),
+    accent: own.accent,
+    accentOnDark: legibleInk(own.bg, own.text, own.accent),
+    onDark: legibleInk(own.bg, own.text, own.accent),
+    onDarkBody: legibleInk(own.bg, own.text, own.accent),
+    onDarkMuted: legibleInk(own.bg, own.text, own.accent),
+    chart: own.marks.slice(0, 5) as Palette['chart'],
+    chartHi: own.accent,
+    chartSoft: own.accent2,
+    headFont: identity.fonts.title,
+    titleBold: identity.titles !== 'plain'
+  }
+  const style = {
+    ...STYLES[data.style ?? 'classic'],
+    cardRadius: identity.cards === 'rounded' ? 0.12 : 0,
+    cardFill: identity.cards !== 'outline',
+    cardBorder: true,
+    bleedShape: 'none' as const
+  }
+  pres.theme = { headFontFace: identity.fonts.title, bodyFontFace: identity.fonts.body }
   const total = data.slides.length
 
   let sectionCount = 0
@@ -938,7 +992,7 @@ export async function renderPptx(rawData: PptxSpec, images?: ImageMap): Promise<
     const layout = inferLayout(spec, i)
     if (layout === 'section') sectionCount += 1
     const ctx: SlideCtx = { page: i + 1, total, sectionNumber: sectionCount, footer: data.footer }
-    if (layout === 'cover') addCoverSlide(slide, spec, palette, style, ctx)
+    if (layout === 'cover') addCoverSlide(slide, spec, palette, style, ctx, images)
     else if (layout === 'section') addSectionSlide(slide, spec, palette, style, ctx)
     else if (layout === 'closing') addClosingSlide(slide, spec, palette, style, ctx)
     else if (layout === 'stat') addStatSlide(slide, spec, palette, style, ctx)

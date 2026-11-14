@@ -18,6 +18,7 @@ import { settingsStore } from '../store'
 import { TasksManager } from '../tasks/manager'
 import { importFilesInto, previewFile } from '../tasks/files'
 import { prepareChatOffice } from '../tasks/chat-office'
+import { attachDroppedFile } from '../tasks/dropped-file'
 import { reviewFile } from '../tasks/review-file'
 import { assertSafeToOpen } from '../tasks/open-policy'
 import { TasksProjectsStore, deleteMemory, getMemory, saveMemory } from '../tasks/projects'
@@ -237,6 +238,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     if (res.canceled) return []
     return importFilesInto(root, res.filePaths)
   })
+  handle('tasks:attachDroppedFile', (req) => attachDroppedFile(req, tasks))
   handle('tasks:reviewFile', ({ path }) => reviewFile(tasks.assertInsideApproved(path)))
   handle('tasks:previewFile', ({ path, maxBytes }) => previewFile(tasks.assertInsideApproved(path), maxBytes))
 

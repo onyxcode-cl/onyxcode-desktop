@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isDocxSpec, type DocxSpec } from '@shared/chat-doc-spec'
+import { resolveDocumentIdentity } from '@shared/document-identity'
 import { chatDocxCommands, chunkGroups, docxToPdf, fechaEs, fmtNum, renderChatDocx } from './chat-word'
 
 const SPEC: DocxSpec = {
@@ -68,7 +69,8 @@ describe('chat-word (prueba Craft)', () => {
 
   it('cada comando es `id` o `id={json}`; encabezado y pie cierran el modo de edición; «hoy» se reemplaza', () => {
     const c = cmds(chatDocxScript(SPEC))
-    expect(c[0]).toEqual({ command: 'design.themeFonts', params: { heading: 'Arial', body: 'Arial' } })
+    const fonts = resolveDocumentIdentity(SPEC).fonts
+    expect(c[0]).toEqual({ command: 'design.themeFonts', params: { heading: fonts.title, body: fonts.body } })
     expect(c.filter((x) => x.command === 'insert.closeHeader').length).toBe(2)
     const meta = c.find((x) => x.command === 'text.insert' && String(x.params?.text).startsWith('Equipo · '))
     expect(meta?.params?.text).toMatch(/^Equipo · \d{1,2} de [a-z]+ de \d{4}$/)
@@ -83,12 +85,14 @@ describe('chat-word (prueba Craft)', () => {
     expect(c.filter((x) => x.command === 'format.bold' && x.params?.value === true).length).toBeGreaterThan(1)
   })
 
-  it('tabla: encabezado azul, números formateados y alineados a la derecha, total en negrita', () => {
+  it('tabla: encabezado con identidad, números formateados y alineados a la derecha, total en negrita', () => {
     const c = cmds(chatDocxScript(SPEC))
     expect(c.find((x) => x.command === 'insert.table')?.params).toEqual({ rows: 3, cols: 2 })
     const texts = c.filter((x) => x.command === 'text.insert').map((x) => x.params?.text)
     expect(texts).toEqual(expect.arrayContaining(['1.234.567', '2.345.678,50']))
-    expect(c.some((x) => x.command === 'table.shading' && x.params?.color === '1F3864')).toBe(true)
+    expect(
+      c.some((x) => x.command === 'table.shading' && x.params?.color === resolveDocumentIdentity(SPEC).palette.accent.replace('#', ''))
+    ).toBe(true)
     expect(c.some((x) => x.command === 'para.align' && x.params?.value === 'right')).toBe(true)
   })
 
@@ -291,9 +295,11 @@ describe('tabla de Word: filas enteras y sin hoja en blanco', () => {
     expect(cmds(flat).filter((c) => c.command === 'para.set' && (c.params?.props as { keepLines?: boolean })?.keepLines).length).toBe(4)
     expect(flat.at(-1)).toBe('format.size={"size":1}')
   })
-  it('con un párrafo al final no encoge nada', () => {
+  it('compacta solo el párrafo vacío posterior al texto final', () => {
     const flat = chatDocxCommands({ title: 'T', blocks: [{ type: 'paragraph', text: 'fin' }] } as never).flat()
-    expect(flat).not.toContain('format.size={"size":1}')
+    expect(flat.at(-1)).toBe('format.size={"size":1}')
+    expect(flat.indexOf('text.insert={"text":"fin"}')).toBeLessThan(flat.lastIndexOf('text.newParagraph'))
+    expect(flat.lastIndexOf('text.newParagraph')).toBeLessThan(flat.indexOf('format.size={"size":1}'))
   })
 })
 
@@ -372,5 +378,65 @@ describe('informe profesional compartido con la skill', () => {
     const widths = c.filter((x) => x.command === 'table.columnWidth').map((x) => x.params?.width as number)
     expect(widths[0]).toBeGreaterThan(widths[1])
     expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(16.59 * 28.35, 0)
+  })
+})
+
+describe('informe con fotos y créditos: paginación sin estilos heredados', () => {
+  it('las listas tras un título reinician espaciado; los créditos finales conservan su tamaño', () => {
+    const groups = chatDocxCommands({
+      blocks: [
+        { type: 'heading', level: 1, text: 'Conclusiones' },
+        { type: 'bullets', items: ['Primera conclusión', 'Segunda conclusión'] },
+        { type: 'heading', level: 1, text: 'Créditos de imágenes' },
+        { type: 'paragraph', text: 'Foto: Autora, CC BY 4.0.' }
+      ]
+    })
+    const list = groups.find((group) => group.includes('para.bullets'))!
+    expect(list).toContain('para.spacing={"before":0,"after":6}')
+    const credit = groups.find((group) => group.includes('text.insert={"text":"Foto: Autora, CC BY 4.0."}'))!
+    expect(credit).toContain('format.size={"size":11}')
+    expect(credit).not.toContain('format.size={"size":1}')
+    expect(groups.at(-1)).toEqual([
+      'caret.docEnd',
+      'para.set={"props":{"keepNext":false,"keepLines":false,"widowControl":false}}',
+      'para.spacing={"before":0,"after":0}',
+      'para.lineSpacing={"value":1}',
+      'format.size={"size":1}'
+    ])
+  })
+  it('foto después de título conserva solo la unión al pie y libera la del título', () => {
+    const spec: DocxSpec = {
+      blocks: [
+        { type: 'heading', level: 1, text: 'Fauna' },
+        { type: 'image', path: 'foto.jpg', caption: 'Figura. Fauna local' },
+        { type: 'paragraph', text: 'Descripción de la foto.' },
+        { type: 'image', path: 'foto.jpg', caption: 'Segunda foto' },
+        { type: 'heading', level: 2, text: 'Siguiente sección' }
+      ]
+    }
+    const images = new Map([
+      ['foto.jpg', { kind: 'jpeg' as const, mime: 'image/jpeg', ext: 'jpg', width: 1200, height: 800, bytes: 100, file: '/tmp/foto.jpg' }]
+    ])
+    const groups = chatDocxCommands(spec, images)
+    const group = groups.find((g) => g.some((c) => c.startsWith('insert.picture=')))!
+    const before = group.slice(
+      0,
+      group.findIndex((c) => c.startsWith('insert.picture='))
+    )
+    expect(before).toContain('para.set={"props":{"keepNext":true,"keepLines":false,"widowControl":false}}')
+    expect(before).toContain('para.spacing={"before":0,"after":6}')
+    expect(before).toContain('para.lineSpacing={"value":1}')
+    const after = group.slice(group.findIndex((c) => c.startsWith('insert.picture=')) + 1)
+    expect(after).toContain('para.set={"props":{"keepNext":false,"keepLines":true,"widowControl":true}}')
+    expect(after).toContain('para.spacing={"before":0,"after":3}')
+    expect(after).toContain('para.lineSpacing={"value":1}')
+    expect(after).toContain('format.size={"size":9}')
+    const following = groups.find((g) => g.includes('text.insert={"text":"Descripción de la foto."}'))!
+    expect(following).toContain('para.set={"props":{"keepNext":false,"keepLines":false,"widowControl":true}}')
+    expect(following).toContain('para.spacing={"before":0,"after":6}')
+    expect(following).toContain('para.lineSpacing={"value":1.15}')
+    expect(following).toContain('format.size={"size":11}')
+    const heading = groups.find((g) => g.includes('para.heading2') && g.some((command) => command.includes('Siguiente sección')))!
+    expect(heading).toContain('para.lineSpacing={"value":1.15}')
   })
 })

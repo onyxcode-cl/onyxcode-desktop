@@ -14,6 +14,31 @@ const tool = (name: string, input: Record<string, unknown>, output = '', status 
 const text = (t: string): Part => ({ id: 't', type: 'text', text: t }) as unknown as Part
 
 describe('detectDocFiles', () => {
+  it('detecta la copia HTML autónoma solo tras preparación confirmada', () => {
+    expect(
+      detectDocFiles({
+        parts: [tool('documentos_preparar_html', { ruta: 'deck.html' }, `Documento creado: ${ROOT}/deck-autonomo.html (20.1 KB).`)],
+        root: ROOT
+      })
+    ).toEqual([`${ROOT}/deck-autonomo.html`])
+    expect(
+      detectDocFiles({ parts: [tool('documentos_preparar_html', { ruta: 'deck.html' }, 'La foto no está preparada')], root: ROOT })
+    ).toEqual([])
+  })
+  it('detecta el PDF exportado solo cuando la herramienta confirma el archivo', () => {
+    expect(
+      detectDocFiles({
+        parts: [tool('documentos_exportar_pdf', { ruta: 'Original.docx' }, `Documento creado: ${ROOT}/Original.pdf (20 KB).`)],
+        root: ROOT
+      })
+    ).toEqual([`${ROOT}/Original.pdf`])
+    expect(
+      detectDocFiles({
+        parts: [tool('documentos_exportar_pdf', { ruta: 'Original.docx' }, 'No se pudo convertir el documento.')],
+        root: ROOT
+      })
+    ).toEqual([])
+  })
   it('toma el archivo de write/edit, relativo o absoluto, resuelto contra el proyecto', () => {
     const r = detectDocFiles({
       parts: [tool('write', { filePath: 'out/informe.xlsx' }), tool('edit', { filePath: `${ROOT}/a.docx` })],

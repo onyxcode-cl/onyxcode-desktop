@@ -1,3 +1,4 @@
+import { hasHtmlSlides } from '@shared/slides-html'
 /**
  * Como los Artifacts de Claude: cuando el agente de Chat termina un turno cuya última respuesta
  * trae un bloque ```html/```xlsx/```pptx, el panel de documento se abre SOLO (mismo visor nativo
@@ -6,7 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getLang } from '@shared/i18n'
-import type { ChatDocOpenRequest, ChatFileInfo, ChatFileReadResult } from '@shared/ipc-extras'
+import type { ArtifactContext, ChatDocOpenRequest, ChatFileInfo, ChatFileReadResult } from '@shared/ipc-extras'
 import {
   extractBrokenDocBlocks,
   extractChatDocBlocks,
@@ -17,7 +18,13 @@ import {
 import { currentAppTheme, useAppTheme } from '../../lib/useAppTheme'
 import { getExtras } from '../../lib/extrasApi'
 import { recordChatDocSize } from '../../lib/chatDocSize'
-import { setChatDocAskHandler, setChatDocPreviewHandler, setCreatingDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
+import {
+  setArtifactContextProvider,
+  setChatDocAskHandler,
+  setChatDocPreviewHandler,
+  setCreatingDoc,
+  type ChatDocBlockKind
+} from '../../lib/chatDocPreview'
 import { docProblemMessage, reportDocProblem } from '../../lib/report-problems'
 import { setChatFileViewHandler } from '../../lib/chatFileView'
 import { sendChatMessage } from './actions'
@@ -91,7 +98,7 @@ export interface ChatDocPanelState {
   /** Lo que hace falta para el botón de descarga del header; `null` si no hay ninguno abierto.
    * `isSlides` (solo relevante para `kind:'html'`) decide si además se ofrece el botón de descarga
    * "PowerPoint (para proyectar)". */
-  doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null
+  doc: { kind: ChatDocBlockKind; rawText: string; isSlides: boolean; context?: ArtifactContext } | null
   /** El documento no se pudo abrir: el panel muestra el motivo y un botón en vez de cerrarse. */
   problem: ChatDocProblem | null
   /** Vuelve a intentar abrir el mismo documento (fallos de generación). */
@@ -105,7 +112,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   const [creating, setCreating] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
   const [title, setTitle] = useState('')
-  const [doc, setDoc] = useState<{ kind: ChatDocBlockKind; rawText: string; isSlides: boolean } | null>(null)
+  const [doc, setDoc] = useState<{ kind: ChatDocBlockKind; rawText: string; isSlides: boolean; context?: ArtifactContext } | null>(null)
   const [problem, setProblem] = useState<ChatDocProblem | null>(null)
   const [file, setFile] = useState<ChatFileView | null>(null)
   const lastRawTextRef = useRef<string | null>(null)
@@ -129,18 +136,21 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   }
 
   /** Muestra el aviso de fallo en el panel (lo deja abierto). Cierra la vista nativa de main: se pintaría POR ENCIMA del aviso. */
-  const showProblem = useCallback((kind: ChatDocBlockKind, rawText: string, title: string, isSlides: boolean, p: ChatDocProblem): void => {
-    const extras = getExtras()
-    const sid = sessionRef.current
-    if (extras && sid) void extras.invoke('extras:chatDoc:close', { sessionId: sid }).catch(() => undefined)
-    lastRawTextRef.current = rawText
-    setOpen(true)
-    setCreating(false)
-    setTitle(title)
-    setDoc({ kind, rawText, isSlides })
-    setProblem(p)
-    setCreatingDoc(null)
-  }, [])
+  const showProblem = useCallback(
+    (kind: ChatDocBlockKind, rawText: string, title: string, isSlides: boolean, p: ChatDocProblem, context?: ArtifactContext): void => {
+      const extras = getExtras()
+      const sid = sessionRef.current
+      if (extras && sid) void extras.invoke('extras:chatDoc:close', { sessionId: sid }).catch(() => undefined)
+      lastRawTextRef.current = rawText
+      setOpen(true)
+      setCreating(false)
+      setTitle(title)
+      setDoc({ kind, rawText, isSlides, context })
+      setProblem(p)
+      setCreatingDoc(null)
+    },
+    []
+  )
 
   // Abre el documento en el panel de la sesión ACTUAL (vía la ref: nunca una versión vieja de
   // sessionId). Usado tanto por la auto-apertura al terminar el turno como por "Abrir vista previa"
@@ -153,7 +163,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   // plataforma donde el visor nativo no está habilitado, no hay que intentar abrirlo — los botones de
   // vista previa/descarga de cada bloque siguen funcionando igual, sin depender de este cap.
   const openDoc = useCallback(
-    (kind: ChatDocBlockKind, rawText: string, title: string, isSlides = false): void => {
+    (kind: ChatDocBlockKind, rawText: string, title: string, isSlides = false, context?: ArtifactContext): void => {
       if (!platformCaps().docViewer) return
       const sid = sessionRef.current
       const extras = getExtras()
@@ -162,7 +172,9 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
       const common = { title, sessionId: sid, lang: getLang(), theme: currentTheme() } as const
       let req: ChatDocOpenRequest | null = null
       if (kind === 'html') {
-        req = { ...common, kind: 'pdf', html: rawText }
+        isSlides = isSlides || hasHtmlSlides(rawText)
+        context ??= { kind: 'chat', sessionId: sid }
+        req = { ...common, kind: 'pdf', html: rawText, context }
       } else {
         // Misma lectura que el resto de botones (JSON tolerante + limpieza de forma + esquema estricto).
         const parsed = parseDataBlockDetailed(kind, rawText)
@@ -180,22 +192,24 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
       setOpen(true)
       setCreating(true)
       setTitle(title)
-      setDoc({ kind, rawText, isSlides })
+      setDoc({ kind, rawText, isSlides, context })
       setCreatingDoc({ kind, rawText, title })
       void extras
         .invoke('extras:chatDoc:open', req)
         .then((res) => {
+          if (sessionRef.current !== sid) return
           setCreating(false)
           setCreatingDoc(null)
           // Antes se cerraba el panel sin decir nada; main ya anotó el motivo en el registro de problemas.
-          if (!res.ok) showProblem(kind, rawText, title, isSlides, { reason: res.reason, detail: res.detail })
+          if (!res.ok) showProblem(kind, rawText, title, isSlides, { reason: res.reason, detail: res.detail }, context)
           else recordChatDocSize(kind, rawText, res.bytes)
         })
         .catch((err: unknown) => {
+          if (sessionRef.current !== sid) return
           setCreating(false)
           setCreatingDoc(null)
           reportDocProblem(rawText, `no se pudo abrir un documento de Chat (${kind}): ${err instanceof Error ? err.message : String(err)}`)
-          showProblem(kind, rawText, title, isSlides, { reason: 'failed' })
+          showProblem(kind, rawText, title, isSlides, { reason: 'failed', detail: err instanceof Error ? err.message : undefined }, context)
         })
     },
     [showProblem]
@@ -204,7 +218,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   // «Ver aquí» de la tarjeta de un archivo. Cada tipo va por su camino: PDF/Office al visor nativo (main revalida la ruta y el tipo),
   // HTML a la vista previa de siempre (misma ventana aislada que los bloques ```html), imagen y texto dentro de la interfaz.
   const openFile = useCallback(
-    (info: ChatFileInfo): void => {
+    (info: ChatFileInfo, context?: ArtifactContext): void => {
       const extras = getExtras()
       // Sin conversación abierta (se llega desde la galería) el panel usa un id propio solo para cerrar/limpiar la vista.
       const sid = sessionRef.current ?? 'galeria'
@@ -262,7 +276,13 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
           if (res.kind === 'html') {
             if (!platformCaps().docViewer) return fail('inline', 'chat.file.unsupported')
             // Página web: la vista previa aislada de siempre (sin scripts de la app, sin acceso a nada del equipo).
-            openDoc('html', res.text, info.name.replace(/\.[^.]+$/, ''), false)
+            openDoc(
+              'html',
+              res.text,
+              info.name.replace(/\.[^.]+$/, ''),
+              hasHtmlSlides(res.text),
+              context ?? { kind: 'file', path: info.path }
+            )
             return
           }
           setFile((f) => (f && f.info.path === info.path ? { ...f, status: 'ready', content: res } : f))
@@ -273,7 +293,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   )
 
   const retry = useCallback((): void => {
-    if (doc) openDoc(doc.kind, doc.rawText, title, doc.isSlides)
+    if (doc) openDoc(doc.kind, doc.rawText, title, doc.isSlides, doc.context)
   }, [doc, title, openDoc])
 
   const toggleFullscreen = useCallback((): void => setFullscreen((v) => !v), [])
@@ -311,7 +331,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
     if (!open) return
     if (file) {
       if (file.mode === 'native' && file.status === 'ready') openFile(file.info)
-    } else if (doc && !creating && !problem) openDoc(doc.kind, doc.rawText, title, doc.isSlides)
+    } else if (doc && !creating && !problem) openDoc(doc.kind, doc.rawText, title, doc.isSlides, doc.context)
   }
   const shownThemeRef = useRef(theme)
   useEffect(() => {
@@ -332,9 +352,12 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
   // Sin `docViewer` (ver arriba) no se registra nada: así un bloque ```html cae solo en su ventana
   // aislada de siempre, en vez de llamar a un `openDoc` que no haría nada.
   useEffect(() => {
-    if (!platformCaps().docViewer) return
-    setChatDocPreviewHandler(openDoc)
-    return () => setChatDocPreviewHandler(null)
+    if (platformCaps().docViewer) setChatDocPreviewHandler(openDoc)
+    setArtifactContextProvider(() => (sessionRef.current ? { kind: 'chat', sessionId: sessionRef.current } : undefined))
+    return () => {
+      setChatDocPreviewHandler(null)
+      setArtifactContextProvider(null)
+    }
   }, [openDoc])
 
   // Las tarjetas de archivo («Ver aquí») muestran el archivo en este mismo panel. Las imágenes y el texto no necesitan el visor nativo.

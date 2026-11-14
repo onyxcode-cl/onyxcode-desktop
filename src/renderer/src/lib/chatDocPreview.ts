@@ -1,3 +1,4 @@
+import type { ArtifactContext } from '@shared/ipc-extras'
 /**
  * Registro mínimo (sin store, sin prop-drilling) para que "Abrir vista previa"/"Descargar" en un
  * bloque ```html/```xlsx/```pptx del chat usen el MISMO panel lateral que ya se abrió solo — no una
@@ -9,9 +10,16 @@
  */
 export type ChatDocBlockKind = 'html' | 'xlsx' | 'pptx' | 'docx'
 
-type PreviewHandler = (kind: ChatDocBlockKind, rawText: string, title: string, isSlides?: boolean) => void
+type PreviewHandler = (kind: ChatDocBlockKind, rawText: string, title: string, isSlides?: boolean, context?: ArtifactContext) => void
 
 let handler: PreviewHandler | null = null
+let photoContext: (() => ArtifactContext | undefined) | null = null
+export function setArtifactContextProvider(provider: (() => ArtifactContext | undefined) | null): void {
+  photoContext = provider
+}
+export function currentArtifactContext(): ArtifactContext | undefined {
+  return photoContext?.()
+}
 
 /**
  * Pedirle algo al modelo desde un aviso de documento ("Pedir de nuevo", "Pedir que continúe"): `ChatView` registra aquí cómo mandar un
@@ -41,9 +49,15 @@ export function setChatDocPreviewHandler(fn: PreviewHandler | null): void {
 /** `true` si había un panel de chat al que mostrarle el documento (y ya se le avisó). `isSlides`
  * (solo relevante para `kind:'html'`) decide si el header del panel ofrece el botón de descarga
  * alternativo "PowerPoint (para proyectar)", ver `ArtifactButton.tsx`'s `DownloadSlidesPptxButton`. */
-export function previewInChatDocPanel(kind: ChatDocBlockKind, rawText: string, title: string, isSlides = false): boolean {
+export function previewInChatDocPanel(
+  kind: ChatDocBlockKind,
+  rawText: string,
+  title: string,
+  isSlides = false,
+  context?: ArtifactContext
+): boolean {
   if (!handler) return false
-  handler(kind, rawText, title, isSlides)
+  handler(kind, rawText, title, isSlides, context)
   return true
 }
 

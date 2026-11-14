@@ -1,0 +1,666 @@
+{
+  "capturedAt": "2026-11-13T17:48:25.606Z",
+  "url": "https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&maxlag=5&prop=imageinfo&iiprop=url%7Csize%7Cmime%7Cextmetadata%7Csha1&iiurlwidth=1280&iiextmetadatalanguage=en&generator=search&gsrnamespace=6&gsrwhat=text&gsrsearch=cafeter%C3%ADa+de+barrio+interior&gsrlimit=6",
+  "response": {
+    "batchcomplete": true,
+    "continue": {
+      "gsroffset": 6,
+      "continue": "gsroffset||"
+    },
+    "query": {
+      "pages": [
+        {
+          "pageid": 7354049,
+          "ns": 6,
+          "title": "File:ElHuecoBlog - Arreglos de Mediodía.pdf",
+          "index": 6,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 63139,
+              "width": 1275,
+              "height": 1650,
+              "pagecount": 4,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/ElHuecoBlog_-_Arreglos_de_Mediod%C3%ADa.pdf/page1-960px-ElHuecoBlog_-_Arreglos_de_Mediod%C3%ADa.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1656,
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/15/ElHuecoBlog_-_Arreglos_de_Mediod%C3%ADa.pdf/page1-960px-ElHuecoBlog_-_Arreglos_de_Mediod%C3%ADa.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1656
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/1/15/ElHuecoBlog_-_Arreglos_de_Mediod%C3%ADa.pdf?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:ElHuecoBlog_-_Arreglos_de_Mediod%C3%ADa.pdf",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=7354049",
+              "sha1": "800f1739e4bd9727b2aa36b245391d6eb1f54eb6",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2009-07-21 14:38:59",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "ElHuecoBlog - Arreglos de Mediodía",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "GFDL|License migration redundant|Self-published work|Documents of Mexico",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cuento con escena en la ciudad de Medellín.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2009-07-21",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Ludwig Pursewarden",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 3.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 3.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/3.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-3.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "application/pdf"
+            }
+          ]
+        },
+        {
+          "pageid": 68179508,
+          "ns": 6,
+          "title": "File:5.01 MUSEO DE BELLAS ARTES SAN PIO V firmado.pdf",
+          "index": 5,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 704787,
+              "width": 1239,
+              "height": 1754,
+              "pagecount": 4,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/5.01_MUSEO_DE_BELLAS_ARTES_SAN_PIO_V_firmado.pdf/page1-960px-5.01_MUSEO_DE_BELLAS_ARTES_SAN_PIO_V_firmado.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 1812,
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/62/5.01_MUSEO_DE_BELLAS_ARTES_SAN_PIO_V_firmado.pdf/page1-960px-5.01_MUSEO_DE_BELLAS_ARTES_SAN_PIO_V_firmado.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 1812
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/6/62/5.01_MUSEO_DE_BELLAS_ARTES_SAN_PIO_V_firmado.pdf?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:5.01_MUSEO_DE_BELLAS_ARTES_SAN_PIO_V_firmado.pdf",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=68179508",
+              "sha1": "482e89a295d875056e7e51fa5731d6c4ea063077",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2018-04-09 12:56:33",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "5.01 MUSEO DE BELLAS ARTES SAN PIO V firmado",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Museu de Belles Arts de València|PD Spain government|Plan General de Ordenación Urbana de Valencia",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Ficha del PGOU de Valencia",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2013-03-06",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "Ajuntament de València",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "Área de Urbanismo, Vivienda y Calidad Urbana",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Public domain",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Copyrighted": {
+                  "value": "False",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "pd",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "application/pdf"
+            }
+          ]
+        },
+        {
+          "pageid": 85260698,
+          "ns": 6,
+          "title": "File:PALMA de MALLORCA, AB-112.jpg",
+          "index": 4,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 6687761,
+              "width": 5152,
+              "height": 3864,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/PALMA_de_MALLORCA%2C_AB-112.jpg/1280px-PALMA_de_MALLORCA%2C_AB-112.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 960,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/PALMA_de_MALLORCA%2C_AB-112.jpg/3840px-PALMA_de_MALLORCA%2C_AB-112.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/PALMA_de_MALLORCA%2C_AB-112.jpg/1280px-PALMA_de_MALLORCA%2C_AB-112.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 960,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/PALMA_de_MALLORCA%2C_AB-112.jpg/3840px-PALMA_de_MALLORCA%2C_AB-112.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/e/ee/PALMA_de_MALLORCA%2C_AB-112.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:PALMA_de_MALLORCA,_AB-112.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=85260698",
+              "sha1": "77e1953658ab3121c40a42923275ccb218f341ea",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2019-12-26 11:39:26",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "PALMA de MALLORCA, AB-112",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "CC-Zero|Carrer d'Aragó, Palma de Mallorca|Self-published work|Fast food restaurants in Spain|Television sets in Spain|Bars in Palma de Mallorca|May 2019 in Palma de Mallorca|El Rafal Vell|Building interiors in Mallorca",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Interior of Hamburgueseria Way, also known as Cafeteria Way or Bar Way, at 216 Carrer d'Aragó in the El Rafal Vell neighborhood of Palma. The establishment operated as a bar, café and fast-food restaurant. Tables and chairs, a television set, a cigarette vending machine and ice cream freezers are visible inside.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2019-05-24 12:29:28",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Antekbojar\" title=\"User:Antekbojar\">Antekbojar</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Zero, Public Domain Dedication",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "false",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 176911975,
+          "ns": 6,
+          "title": "File:Interior de cafetería \"Rayuela\" en barrio Agronomía.jpg",
+          "index": 1,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 13228786,
+              "width": 5568,
+              "height": 3712,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg/1280px-Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 853,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg/3840px-Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg/1280px-Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 853,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/dd/Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg/3840px-Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Interior_de_cafeter%C3%ADa_%22Rayuela%22_en_barrio_Agronom%C3%ADa.jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=176911975",
+              "sha1": "3a4d5d5bc29f273e2b74aace4c0fc1abc851e5d7",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2025-10-17 20:52:12",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Interior de cafetería \"Rayuela\" en barrio Agronomía",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Agronomía, Buenos Aires|Self-published work|Files with coordinates missing SDC location of creation|Images of Argentina by User:ProtoplasmaKid|2025 photographs by User:ProtoplasmaKid|Buenos Aires photographs taken on 2025-10-06",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "GPSLatitude": {
+                  "value": "-34.596587",
+                  "source": "commons-desc-page"
+                },
+                "GPSLongitude": {
+                  "value": "-58.486437",
+                  "source": "commons-desc-page"
+                },
+                "GPSMapDatum": {
+                  "value": "WGS-84",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Interior window of the Rayuela café in the Agronomía neighborhood, Buenos Aires.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "2025-10-06 16:40:18",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:ProtoplasmaKid\" title=\"User:ProtoplasmaKid\">ProtoplasmaKid</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 197246352,
+          "ns": 6,
+          "title": "File:Cafetería Popular al Barrio Yungay (55184).jpg",
+          "index": 2,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 1372716,
+              "width": 1840,
+              "height": 4080,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d7/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg/1280px-Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 2838,
+              "responsiveUrls": {
+                "2": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d7/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg/1280px-Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 2838,
+                "srcset": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2855184%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Cafeter%C3%ADa_Popular_al_Barrio_Yungay_(55184).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=197246352",
+              "sha1": "7154c33244f8a117e570f18847995f275db4bc98",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-08-11 16:07:59",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Cafetería Popular al Barrio Yungay (55184)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Interiors of shops in Chile|Photographs of the national flag of Chile with other flags|Uploaded with Mobile/Android|Photographs of the national flag of the People's Republic of China with other flags|August 2026 in Chile|Photographs of the national flag of Chile in Chile|Photographs of Wenufoye|Photographs of Chile by Brunnaiz|2026 photographs by Brunnaiz|Photographs taken on 2026-08-10|Cafetería Popular",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cafetería Popular al Barrio Yungay de Santiago de Xile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "10 August 2026 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data)",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Brunnaiz\" title=\"User:Brunnaiz\">Brunnaiz</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        },
+        {
+          "pageid": 197246421,
+          "ns": 6,
+          "title": "File:Cafetería Popular al Barrio Yungay (51162).jpg",
+          "index": 3,
+          "imagerepository": "local",
+          "imageinfo": [
+            {
+              "size": 2254667,
+              "width": 4080,
+              "height": 1840,
+              "thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg/1280px-Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+              "thumbwidth": 1280,
+              "thumbheight": 577,
+              "responsiveUrls": {
+                "2": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg/3840px-Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail"
+              },
+              "thumbattribs": {
+                "src": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg/1280px-Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+                "decoding": "async",
+                "loading": "lazy",
+                "width": 1280,
+                "height": 577,
+                "srcset": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg/3840px-Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail 2x"
+              },
+              "url": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Cafeter%C3%ADa_Popular_al_Barrio_Yungay_%2851162%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+              "descriptionurl": "https://commons.wikimedia.org/wiki/File:Cafeter%C3%ADa_Popular_al_Barrio_Yungay_(51162).jpg",
+              "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=197246421",
+              "sha1": "81bc719d4cbf91da81cd7251bd091958c8a0d7ca",
+              "extmetadata": {
+                "DateTime": {
+                  "value": "2026-08-11 16:09:23",
+                  "source": "mediawiki-metadata",
+                  "hidden": ""
+                },
+                "ObjectName": {
+                  "value": "Cafetería Popular al Barrio Yungay (51162)",
+                  "source": "mediawiki-metadata"
+                },
+                "CommonsMetadataExtension": {
+                  "value": 1.2,
+                  "source": "extension",
+                  "hidden": ""
+                },
+                "Categories": {
+                  "value": "Self-published work|Interiors of shops in Chile|Photographs of the national flag of Brazil with other flags|Photographs of the national flag of Chile with other flags|Photographs of the national flag of Cuba with other flags|Photographs of the national flag of Mexico with other flags|Uploaded with Mobile/Android|Photographs of the national flag of Palestine with other flags|Photographs of the national flag of the People's Republic of China with other flags|August 2026 in Chile|Photographs of the national flag of Chile in Chile|Photographs of the national flag of Palestine in Chile|Pueblo (text)|Photographs of Wenufoye|Salvador Allende in art|Photographs of Chile by Brunnaiz|2026 photographs by Brunnaiz|Photographs taken on 2026-08-10|Cafetería Popular",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "Assessments": {
+                  "value": "",
+                  "source": "commons-categories",
+                  "hidden": ""
+                },
+                "ImageDescription": {
+                  "value": "Cafetería Popular al Barrio Yungay de Santiago de Xile.",
+                  "source": "commons-desc-page"
+                },
+                "DateTimeOriginal": {
+                  "value": "10 August 2026 (according to <span lang=\"en\" dir=\"ltr\"><a href=\"https://en.wikipedia.org/wiki/Exif\" class=\"extiw\" title=\"en:Exif\">Exif</a></span> data)",
+                  "source": "commons-desc-page"
+                },
+                "Credit": {
+                  "value": "<span class=\"int-own-work\" lang=\"en\">Own work</span>",
+                  "source": "commons-desc-page"
+                },
+                "Artist": {
+                  "value": "<a href=\"//commons.wikimedia.org/wiki/User:Brunnaiz\" title=\"User:Brunnaiz\">Brunnaiz</a>",
+                  "source": "commons-desc-page"
+                },
+                "LicenseShortName": {
+                  "value": "CC BY-SA 4.0",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "UsageTerms": {
+                  "value": "Creative Commons Attribution-Share Alike 4.0",
+                  "source": "commons-desc-page"
+                },
+                "AttributionRequired": {
+                  "value": "true",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "LicenseUrl": {
+                  "value": "https://creativecommons.org/licenses/by-sa/4.0",
+                  "source": "commons-desc-page"
+                },
+                "Copyrighted": {
+                  "value": "True",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "Restrictions": {
+                  "value": "",
+                  "source": "commons-desc-page",
+                  "hidden": ""
+                },
+                "License": {
+                  "value": "cc-by-sa-4.0",
+                  "source": "commons-templates",
+                  "hidden": ""
+                }
+              },
+              "mime": "image/jpeg"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

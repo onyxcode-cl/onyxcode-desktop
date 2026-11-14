@@ -11,7 +11,7 @@
  * - webRequest cancela cualquier petición http(s)/ws/file desde esa sesión; permisos denegados;
  *   navegación y ventanas nuevas bloqueadas.
  */
-import { basePdfOptions, htmlFontSizesPt, pdfPrintOptions, printWithoutOrphanPage } from './pdf-options'
+import { basePdfOptions, htmlFontSizesPt, pdfPageCount, pdfPrintOptions, printWithoutOrphanPage } from './pdf-options'
 import { t } from '@shared/i18n'
 import { app, BrowserWindow, clipboard, dialog, Menu, net, session, type Session } from 'electron'
 import { writeFile } from 'node:fs/promises'
@@ -19,14 +19,27 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { APP_SLUG } from '@shared/brand'
 import type { ArtifactPayload } from '@shared/ipc-extras'
-import { MAX_SLIDES } from '@shared/chat-doc-spec'
+import {
+  hasHtmlSlides,
+  SlidesHtmlError,
+  MAX_ARTIFACT_HTML_BYTES,
+  SLIDE_CSS_WIDTH,
+  SLIDE_CSS_HEIGHT,
+  VALIDATE_SLIDES_SCRIPT,
+  WAIT_SLIDES_ASSETS_SCRIPT,
+  SLIDES_PRINT_STYLE
+} from '@shared/slides-html'
+import { assertSlidePng, MAX_SLIDES_PPTX_BYTES } from './slides-deck-pptx'
 import { extrasWindows } from './windows'
 import { inlineRemoteImages } from './remote-images'
 import { presentWindow } from '../e2e-headless'
+import { showExportSaveDialog } from './export-dialog'
+import { bindPresentationDisplay, choosePresentationDisplay } from './presentation-display'
+import { presentationScript } from './presentation-script'
 
 const PARTITION = 'artifact'
 const SCHEME = `${APP_SLUG}-artifact`
-const MAX_HTML_BYTES = 5 * 1024 * 1024
+const MAX_HTML_BYTES = MAX_ARTIFACT_HTML_BYTES
 
 /** Nombre de archivo sugerido a partir de un título: sin separadores de ruta ni caracteres de control. */
 export function safeDocumentName(name: string, fallback: string): string {
@@ -121,10 +134,10 @@ function withCspMeta(html: string, title: string): string {
 
 export function openArtifact(payload: ArtifactPayload): BrowserWindow {
   const html = String(payload.html ?? '')
-  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML de la vista previa supera 5 MB.')
+  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML de la vista previa supera 24 MiB.')
   const title = (payload.title ?? '').trim() || 'Vista previa'
   const id = randomUUID()
-  artifacts.set(id, { title, html })
+  artifacts.set(id, { title, html, noRemoteImages: hasHtmlSlides(html) })
 
   const win = new BrowserWindow({
     width: 960,
@@ -176,7 +189,7 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
           if (!artifact) return
           void (async () => {
             const safe = safeDocumentName(title, 'vista-previa')
-            const res = await dialog.showSaveDialog(win, {
+            const res = await showExportSaveDialog(win, {
               title: t('merr.dialog.savePreview'),
               defaultPath: `${safe}.html`,
               filters: [{ name: 'HTML', extensions: ['html', 'htm'] }]
@@ -193,6 +206,16 @@ export function openArtifact(payload: ArtifactPayload): BrowserWindow {
 
   void win.loadURL(`${SCHEME}://${id}`)
   return win
+}
+
+/** Electron no conserva el mensaje de un throw de executeJavaScript: lo transportamos como datos. */
+async function artifactScript<T>(wc: Electron.WebContents, script: string): Promise<T> {
+  const result = (await wc.executeJavaScript(
+    `(async () => { try { return { ok: true, value: await (${script}) }; } catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; } })()`,
+    true
+  )) as { ok: true; value: T } | { ok: false; error: string }
+  if (!result.ok) throw new SlidesHtmlError(result.error)
+  return result.value
 }
 
 /** Tiempo máximo para cargar y maquetar el HTML antes de abandonar la conversión a PDF. */
@@ -212,13 +235,13 @@ function smallestFontPt(html: string): number | null {
 
 export async function renderHtmlToPdf(html: string, title = 'Documento', opts: { remoteImages?: boolean } = {}): Promise<Buffer> {
   const source = String(html ?? '')
-  if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
+  if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 24 MiB.')
   const id = randomUUID()
-  artifacts.set(id, { title, html: source, ...(opts.remoteImages === false ? { noRemoteImages: true } : {}) })
+  artifacts.set(id, { title, html: source, ...(opts.remoteImages === false || hasHtmlSlides(source) ? { noRemoteImages: true } : {}) })
 
   const win = new BrowserWindow({
-    width: 1024,
-    height: 768,
+    width: hasHtmlSlides(source) ? SLIDE_CSS_WIDTH : 1024,
+    height: hasHtmlSlides(source) ? SLIDE_CSS_HEIGHT : 768,
     show: false,
     frame: false,
     skipTaskbar: true,
@@ -246,37 +269,57 @@ export async function renderHtmlToPdf(html: string, title = 'Documento', opts: {
 
   let timer: NodeJS.Timeout | undefined
   try {
-    const loaded = new Promise<void>((resolve, reject) => {
-      wc.once('did-finish-load', () => resolve())
-      wc.once('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
-        if (isMainFrame) reject(new Error(t('merr.files.htmlLoadFailed', { detail: String(desc || code) })))
-      })
-      wc.once('render-process-gone', () => reject(new Error(t('merr.files.rendererGone'))))
-    })
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(t('merr.files.pdfTimeout'))), PDF_TIMEOUT_MS)
+      timer = setTimeout(() => reject(new SlidesHtmlError(t('merr.files.pdfTimeout'))), PDF_TIMEOUT_MS)
     })
-    void win.loadURL(`${SCHEME}://${id}`).catch(() => undefined) // el fallo se informa por did-fail-load
-    await Promise.race([loaded, timeout])
-    // Deja que terminen de decodificarse las imágenes data: y las fuentes antes de imprimir.
-    await Promise.race([
-      wc.executeJavaScript('document.fonts ? document.fonts.ready.then(() => true) : true', true).catch(() => true),
-      new Promise((resolve) => setTimeout(resolve, 3000))
-    ])
-    await new Promise((resolve) => setTimeout(resolve, 250))
-    // PDF etiquetado y con marcadores (experimental en Electron): si esa impresión falla, se reintenta sin ellos para no perder el PDF.
-    const print = async (scale: number): Promise<Buffer> => {
-      try {
-        return await wc.printToPDF({ ...pdfPrintOptions(), ...(scale === 1 ? {} : { scale }) })
-      } catch (e) {
-        console.warn('[pdf] impresión con PDF etiquetado falló; se reintenta sin él:', e instanceof Error ? e.message : e)
-        return await wc.printToPDF({ ...basePdfOptions, ...(scale === 1 ? {} : { scale }) })
+    // El race abarca TODO, incluso bootstrap y CDP. Una orden que no responde nunca
+    // no puede dejar la ventana viva ni una promesa de timeout sin consumidor.
+    const run = async (): Promise<Buffer> => {
+      if (hasHtmlSlides(source)) await initializeSlideViewport(win, 1)
+      await win.loadURL(`${SCHEME}://${id}`)
+      let slideCount: number | undefined
+      if (hasHtmlSlides(source)) {
+        slideCount = await Promise.race([artifactScript<number>(wc, VALIDATE_SLIDES_SCRIPT), timeout])
+        await wc.executeJavaScript(
+          `(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(SLIDES_PRINT_STYLE)}; document.head.appendChild(s); document.querySelectorAll('.slide').item(${slideCount} - 1).setAttribute('data-lzx-last-slide', ''); })()`,
+          true
+        )
       }
+      if (hasHtmlSlides(source)) {
+        await Promise.race([artifactScript<boolean>(wc, WAIT_SLIDES_ASSETS_SCRIPT), timeout])
+      } else {
+        // Compatibilidad del PDF de documentos ordinarios (fuera del contrato de presentaciones).
+        await Promise.race([
+          wc.executeJavaScript('document.fonts ? document.fonts.ready.then(() => true) : true', true).catch(() => true),
+          new Promise((resolve) => setTimeout(resolve, 3000))
+        ])
+        await new Promise((resolve) => setTimeout(resolve, 250))
+      }
+      // PDF etiquetado y con marcadores (experimental en Electron): si esa impresión falla, se reintenta sin ellos para no perder el PDF.
+      const print = async (scale: number): Promise<Buffer> => {
+        try {
+          return await wc.printToPDF({ ...pdfPrintOptions(), ...(scale === 1 ? {} : { scale }) })
+        } catch (e) {
+          console.warn('[pdf] impresión con PDF etiquetado falló; se reintenta sin él:', e instanceof Error ? e.message : e)
+          return await wc.printToPDF({ ...basePdfOptions, ...(scale === 1 ? {} : { scale }) })
+        }
+      }
+      // Última página casi vacía: si una escala suave baja el número de páginas, se usa (ver `printWithoutOrphanPage`).
+      const pdf = await Promise.race([hasHtmlSlides(source) ? print(1) : printWithoutOrphanPage(print, smallestFontPt(source)), timeout])
+      if (slideCount !== undefined && pdfPageCount(pdf) !== slideCount)
+        throw new SlidesHtmlError(
+          `La presentación debe imprimir ${slideCount} láminas, pero produjo ${pdfPageCount(pdf)} páginas. Revise los saltos y el contenido fuera de .slide.`
+        )
+      return pdf
     }
-    // Última página casi vacía: si una escala suave baja el número de páginas, se usa (ver `printWithoutOrphanPage`).
-    return await Promise.race([printWithoutOrphanPage(print, smallestFontPt(source)), timeout])
+    return await Promise.race([run(), timeout])
   } finally {
     if (timer) clearTimeout(timer)
+    try {
+      if (!wc.isDestroyed() && wc.debugger.isAttached()) wc.debugger.detach()
+    } catch {
+      /* La ventana se destruye incluso si CDP ya terminó. */
+    }
     artifacts.delete(id)
     inlined.delete(id)
     if (!win.isDestroyed()) win.destroy()
@@ -297,43 +340,48 @@ export async function downloadHtmlAsPdf(payload: ArtifactPayload, win: BrowserWi
     defaultPath: join(app.getPath('downloads'), `${safe}.pdf`),
     filters: [{ name: 'PDF', extensions: ['pdf'] }]
   }
-  const res = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
+  const res = await showExportSaveDialog(win, options)
   if (res.canceled || !res.filePath) return null
   await writeFile(res.filePath, pdf)
   return res.filePath
 }
 
-/** Ancho/alto (CSS px) de una diapositiva — el mismo contrato que ya se le pide al agente para
- * `​```slides` (ver chat.md/config.ts): `.slide { width: 960px; height: 540px; ... }`. La ventana nace
- * exactamente a este tamaño, SIN zoom — se probó `setZoomFactor(2)` para capturar más nítido y
- * produjo diapositivas deformadas (bug real, encontrado con el dueño probándolo: el zoom se aplicaba
- * DESPUÉS de que la página ya había maquetado con el tamaño sin zoom, así que el contenido medido en
- * JS — p.ej. un gráfico — quedaba calculado para un tamaño y pintado en otro). Más simple y sin ese
- * riesgo: tamaño 1:1 con el contrato, la nitidez la pone sola la densidad de píxeles de la pantalla
- * (automática, no hace falta pedirla) — mismo criterio que ya usa `renderHtmlToPdf`, que tampoco hace
- * ningún truco de zoom. */
-const SLIDE_W = 960
-const SLIDE_H = 540
+/** Electron 44 puede esperar un primer navigation para responder Emulation.*.
+ * Cargar una página vacía primero rompe ese bloqueo sin maquetar aún el documento.
+ * El caller incluye este bootstrap dentro de su plazo global y destruye la ventana al fallar.
+ */
+async function initializeSlideViewport(win: BrowserWindow, density: number): Promise<void> {
+  await win.loadURL('about:blank')
+  const wc = win.webContents
+  wc.debugger.attach('1.3')
+  await wc.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
+    width: SLIDE_CSS_WIDTH,
+    height: SLIDE_CSS_HEIGHT,
+    deviceScaleFactor: density,
+    mobile: false,
+    screenWidth: SLIDE_CSS_WIDTH,
+    screenHeight: SLIDE_CSS_HEIGHT
+  })
+  await wc.debugger.sendCommand('Emulation.setEmulatedMedia', { media: 'screen' })
+}
 
 /**
- * `html` de un deck (`​```slides`) → una imagen PNG por diapositiva, en el orden del documento.
- * Misma ventana oculta/sandboxeada/CSP que `renderHtmlToPdf` (se duplica su bloque de creación a
- * propósito, para no arriesgar ese camino que ya funciona). Aísla una diapositiva por vez ocultando
- * el resto (`display:none`) en vez de scrollear: no depende de que la altura de cada `<section>`
- * calce exacto en píxeles (un `padding` sin `box-sizing:border-box` en el HTML del agente rompería el
- * scroll por offset fijo). Si el HTML no sigue el contrato `.slide` (0 encontradas), captura la
- * página entera como una sola "diapositiva" — nunca falla por eso, degrada con gracia (mismo criterio
- * que el resto de las vistas previas, F8-B132).
+ * Captura secuencial: el consumidor escribe cada lámina antes de pedir la siguiente.
+ * CDP se inicializa en about:blank y fija la densidad ANTES de cargar el documento: 960×540 CSS, DPR 4, independiente del monitor.
+ * Nunca usa setZoomFactor ni agranda una captura pequeña.
  */
-export async function captureSlidesAsPngs(html: string, title = 'Presentación'): Promise<Buffer[]> {
+export async function captureSlidesAsPngs(
+  html: string,
+  title: string,
+  onSlide: (png: Buffer, index: number) => Promise<void>
+): Promise<number> {
   const source = String(html ?? '')
-  if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
+  if (Buffer.byteLength(source, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 24 MiB.')
   const id = randomUUID()
-  artifacts.set(id, { title, html: source })
-
+  artifacts.set(id, { title, html: source, noRemoteImages: true })
   const win = new BrowserWindow({
-    width: SLIDE_W,
-    height: SLIDE_H,
+    width: SLIDE_CSS_WIDTH,
+    height: SLIDE_CSS_HEIGHT,
     show: false,
     frame: false,
     skipTaskbar: true,
@@ -349,7 +397,8 @@ export async function captureSlidesAsPngs(html: string, title = 'Presentación')
       allowRunningInsecureContent: false,
       webviewTag: false,
       spellcheck: false,
-      devTools: false
+      devTools: false,
+      backgroundThrottling: false
     }
   })
   extrasWindows.add(win)
@@ -358,59 +407,84 @@ export async function captureSlidesAsPngs(html: string, title = 'Presentación')
   wc.on('will-navigate', (event) => event.preventDefault())
   wc.on('will-redirect', (event) => event.preventDefault())
   wc.on('will-attach-webview', (event) => event.preventDefault())
-  // `capturePage()` (a diferencia de `printToPDF()`) necesita que la ventana esté REALMENTE
-  // compositada: con `show:false` sin más, Chromium nunca llega a pintar un frame de verdad (lo
-  // salta para ahorrar recursos en ventanas invisibles) y la captura queda esperando para siempre —
-  // bug real, encontrado con el dueño probándolo en la app, no en el XML/estructura. Mismo truco que
-  // ya usa el modo E2E sin pantalla (`e2e-headless.ts`'s `presentWindow`): opacidad 0 + sin eventos de
-  // mouse + `showInactive()` — nunca se ve, pero el compositor SÍ la trata como una ventana real. A
-  // propósito NO nace fuera de pantalla (se probó `x`/`y` muy negativos y las capturas salían borrosas
-  // — otro bug real: lejos de cualquier pantalla de verdad, Electron no sabe qué densidad de píxeles
-  // usar y cae a 1x en vez de la del monitor Retina). `showInactive()` con posición normal + opacidad
-  // 0 ya alcanza para que nunca se vea, sin perder la densidad real de la pantalla.
   win.setOpacity(0)
   win.setIgnoreMouseEvents(true)
   win.showInactive()
-
   let timer: NodeJS.Timeout | undefined
   try {
-    const loaded = new Promise<void>((resolve, reject) => {
-      wc.once('did-finish-load', () => resolve())
-      wc.once('did-fail-load', (_e, code, desc, _url, isMainFrame) => {
-        if (isMainFrame) reject(new Error(t('merr.files.htmlLoadFailed', { detail: String(desc || code) })))
-      })
-      wc.once('render-process-gone', () => reject(new Error(t('merr.files.rendererGone'))))
-    })
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(t('merr.files.pdfTimeout'))), PDF_TIMEOUT_MS)
+      timer = setTimeout(
+        () => reject(new SlidesHtmlError('La exportación PowerPoint 4K superó el tiempo máximo de 30 segundos.')),
+        PDF_TIMEOUT_MS
+      )
     })
-    void win.loadURL(`${SCHEME}://${id}`).catch(() => undefined) // el fallo se informa por did-fail-load
-    await Promise.race([loaded, timeout])
-    // Deja que terminen de decodificarse las imágenes data: y las fuentes antes de capturar.
-    await Promise.race([
-      wc.executeJavaScript('document.fonts ? document.fonts.ready.then(() => true) : true', true).catch(() => true),
-      new Promise((resolve) => setTimeout(resolve, 3000))
-    ])
-    await new Promise((resolve) => setTimeout(resolve, 250))
-
-    const slideCount: number = await wc.executeJavaScript('document.querySelectorAll(".slide").length', true).catch(() => 0)
-    const count = Math.min(Math.max(slideCount, 1), MAX_SLIDES)
-
-    const images: Buffer[] = []
-    for (let i = 0; i < count; i++) {
-      if (slideCount > 0) {
+    const run = async (): Promise<number> => {
+      await initializeSlideViewport(win, 4)
+      await win.loadURL(`${SCHEME}://${id}`)
+      const count = (await artifactScript<number>(wc, VALIDATE_SLIDES_SCRIPT)) as number
+      await artifactScript<boolean>(wc, WAIT_SLIDES_ASSETS_SCRIPT)
+      await wc.executeJavaScript(
+        `document.querySelectorAll('.slide').forEach(el => { el.dataset.lzxExportDisplay = getComputedStyle(el).display; })`,
+        true
+      )
+      let bytes = 0
+      for (let i = 0; i < count; i++) {
+        // Oculta hermanos y controles fuera de las láminas, sin cambiar el layout interno.
         await wc.executeJavaScript(
-          `document.querySelectorAll(".slide").forEach((el, idx) => { el.style.display = idx === ${i} ? "" : "none" })`,
+          `(() => {
+          const slides = [...document.querySelectorAll('.slide')];
+          if (slides.length !== ${count}) throw new Error('Cambió el número de láminas durante la exportación.');
+          document.documentElement.style.cssText += ';margin:0!important;padding:0!important;overflow:hidden!important';
+          document.body.style.cssText += ';margin:0!important;padding:0!important;display:block!important;overflow:hidden!important';
+          for (const el of document.body.querySelectorAll('*')) {
+            if (!el.closest('.slide') && !el.querySelector('.slide')) el.style.setProperty('visibility','hidden','important');
+          }
+          slides.forEach((slide, index) => {
+            if (index !== ${i}) slide.style.setProperty('display', 'none', 'important');
+            else {
+              slide.style.setProperty('display', slide.dataset.lzxExportDisplay || 'block', 'important');
+              slide.style.setProperty('position','fixed','important');
+              slide.style.setProperty('left','0','important'); slide.style.setProperty('top','0','important');
+              slide.style.setProperty('margin','0','important'); slide.style.setProperty('transform','none','important');
+              slide.style.setProperty('zoom',slide.dataset.lzxExportScale || '1','important');
+            }
+          });
+        })()`,
           true
         )
+        await artifactScript<boolean>(wc, WAIT_SLIDES_ASSETS_SCRIPT)
+        await artifactScript<boolean>(
+          wc,
+          `(async () => {
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          const bounds = document.querySelectorAll('.slide')[${i}].getBoundingClientRect();
+          if (Math.abs(bounds.x) > .5 || Math.abs(bounds.y) > .5 || Math.abs(bounds.width - 960) > .5 || Math.abs(bounds.height - 540) > .5) throw new Error('La lámina ${i + 1} no ocupa el lienzo 960×540; revise transformaciones y contenedores.');
+          return true;
+        })()`
+        )
+        const capture = (await wc.debugger.sendCommand('Page.captureScreenshot', {
+          format: 'png',
+          fromSurface: true,
+          captureBeyondViewport: false,
+          clip: { x: 0, y: 0, width: SLIDE_CSS_WIDTH, height: SLIDE_CSS_HEIGHT, scale: 1 }
+        })) as { data: string }
+        const png = Buffer.from(capture.data, 'base64')
+        assertSlidePng(png, i)
+        bytes += png.length
+        if (bytes > MAX_SLIDES_PPTX_BYTES)
+          throw new Error('El PowerPoint 4K supera 256 MiB. Divida la presentación en partes; no se bajó la resolución.')
+        await onSlide(png, i)
       }
-      await new Promise((resolve) => setTimeout(resolve, 150))
-      const image = await Promise.race([wc.capturePage(), timeout])
-      images.push(image.toPNG())
+      return count
     }
-    return images
+    return await Promise.race([run(), timeout])
   } finally {
     if (timer) clearTimeout(timer)
+    try {
+      if (!wc.isDestroyed() && wc.debugger.isAttached()) wc.debugger.detach()
+    } catch {
+      /* La ventana se destruye incluso si CDP ya terminó. */
+    }
     artifacts.delete(id)
     inlined.delete(id)
     if (!win.isDestroyed()) win.destroy()
@@ -428,12 +502,36 @@ export async function captureSlidesAsPngs(html: string, title = 'Presentación')
  * Flecha derecha/espacio/clic avanza, flecha izquierda retrocede — como una presentación de verdad.
  * Escape (o salir de pantalla completa a mano, con los controles del propio sistema) la cierra.
  */
-export function presentSlides(payload: ArtifactPayload): BrowserWindow {
+/**
+ * En macOS, `close()` sobre una ventana a pantalla completa (o en plena animación hacia ella) se ignora
+ * o queda colgado. Se sale primero de pantalla completa y se destruye al terminar, con un respaldo por
+ * tiempo para que Esc cierre siempre.
+ */
+function closePresentation(win: BrowserWindow): void {
+  if (win.isDestroyed()) return
+  let done = false
+  const finish = (): void => {
+    if (done) return
+    done = true
+    if (!win.isDestroyed()) win.destroy()
+  }
+  if (win.isFullScreen()) {
+    win.once('leave-full-screen', finish)
+    win.setFullScreen(false)
+    setTimeout(finish, 1500)
+  } else {
+    finish()
+  }
+}
+
+export async function presentSlides(payload: ArtifactPayload): Promise<BrowserWindow | null> {
   const html = String(payload.html ?? '')
-  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 5 MB.')
+  if (Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES) throw new Error('El HTML supera 24 MiB.')
   const title = (payload.title ?? '').trim() || 'Presentación'
+  const display = await choosePresentationDisplay()
+  if (!display) return null
   const id = randomUUID()
-  artifacts.set(id, { title, html })
+  artifacts.set(id, { title, html, noRemoteImages: hasHtmlSlides(html) })
 
   const win = new BrowserWindow({
     show: false,
@@ -465,55 +563,47 @@ export function presentSlides(payload: ArtifactPayload): BrowserWindow {
     artifacts.delete(id)
     inlined.delete(id)
   })
-  // Si la persona sale de pantalla completa con los controles propios del sistema (no con Escape),
-  // cerrar igual: esta ventana no tiene ningún sentido fuera de pantalla completa (sin marco, sin
-  // controles propios).
-  win.on('leave-full-screen', () => {
-    if (!win.isDestroyed()) win.close()
+  // Esc llega por la página (window.close()) o por el teclado del sistema; en ambos casos se cierra
+  // saliendo antes de pantalla completa, que en macOS ignora o cuelga un cierre directo.
+  win.on('close', (event) => {
+    if (win.isDestroyed() || !win.isFullScreen()) return
+    event.preventDefault()
+    closePresentation(win)
   })
-  wc.on('before-input-event', (_event, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape' && !win.isDestroyed()) win.close()
+  wc.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape' && !win.isDestroyed()) {
+      event.preventDefault()
+      closePresentation(win)
+    }
   })
 
-  // Escala cada diapositiva (`zoom` SOLO en la `.slide`, nunca en `body`) para que llene la pantalla
-  // real manteniendo proporción — con barras negras si la pantalla no es exactamente 16:9. `body`
-  // queda SIN zoom, a tamaño real de viewport (`100vw`/`100vh`), y centra con flexbox a la
-  // diapositiva (zoomeada) adentro — mezclar `zoom` con el `vw`/`vh`/centrado del propio `body` es lo
-  // que lo descuadraba antes (el `body` nunca llegaba a medir el ancho completo de la pantalla, así
-  // que no había nada que centrar). Recalcula si la pantalla cambia (p.ej. al terminar la animación
-  // de pantalla completa, que puede disparar un resize). Muestra UNA diapositiva por vez (oculta el
-  // resto con `display:none`, mismo truco que `captureSlidesAsPngs`), con flecha derecha/espacio/clic
-  // para avanzar e izquierda para retroceder — como una presentación de verdad, no una página larga
-  // para scrollear hacia abajo.
-  const fitScript = `(function() {
-    var slides = document.querySelectorAll('.slide')
-    var i = 0
-    document.documentElement.style.cssText = 'margin:0;height:100%;background:#000'
-    document.body.style.cssText = 'margin:0;min-height:100vh;width:100vw;display:flex;align-items:center;justify-content:center;background:#000;box-sizing:border-box'
-    function show(idx) {
-      if (!slides.length) return
-      i = Math.max(0, Math.min(idx, slides.length - 1))
-      slides.forEach(function (el, n) { el.style.display = n === i ? '' : 'none' })
-    }
-    function fit() {
-      var s = Math.min(window.innerWidth / 960, window.innerHeight / 540)
-      slides.forEach(function (el) { el.style.zoom = String(s) })
-    }
-    fit()
-    show(0)
-    window.addEventListener('resize', fit)
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { show(i + 1); e.preventDefault() }
-      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault() }
+  const fitScript = presentationScript({
+    counter: t('presentation.counter', { current: '{current}', total: '{total}' }),
+    controls: t('presentation.controls')
+  })
+  let timer: NodeJS.Timeout | undefined
+  try {
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new SlidesHtmlError('La presentación superó el tiempo máximo de carga.')), PDF_TIMEOUT_MS)
     })
-    document.addEventListener('click', function () { show(i + 1) })
-  })()`
-  wc.once('did-finish-load', () => {
-    void wc.executeJavaScript(fitScript, true).catch(() => undefined)
-    win.show()
-    win.setFullScreen(true)
-  })
-
-  void win.loadURL(`${SCHEME}://${id}`)
-  return win
+    const load = async (): Promise<void> => {
+      await initializeSlideViewport(win, 1)
+      await win.loadURL(`${SCHEME}://${id}`)
+      await artifactScript<number>(wc, VALIDATE_SLIDES_SCRIPT)
+      await artifactScript<boolean>(wc, WAIT_SLIDES_ASSETS_SCRIPT)
+      await wc.debugger.sendCommand('Emulation.clearDeviceMetricsOverride')
+      await wc.executeJavaScript(fitScript, true)
+      wc.debugger.detach()
+      bindPresentationDisplay(win, display)
+      presentWindow(win)
+      win.setFullScreen(true)
+    }
+    await Promise.race([load(), timeout])
+    return win
+  } catch (error) {
+    if (!win.isDestroyed()) win.destroy()
+    throw error
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
 }

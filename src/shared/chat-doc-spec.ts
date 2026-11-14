@@ -49,7 +49,19 @@ export const MAX_DOCX_COLS = 12
 export const MAX_DOCX_META_CHARS = 200
 export const MAX_XLSX_CHART_TITLE_CHARS = 80
 export const MAX_FREE_TEXT_CHARS = 600
-export const FREE_FONTS = ['Arial', 'Georgia', 'Verdana', 'Trebuchet MS', 'Times New Roman', 'Courier New', 'Tahoma'] as const
+// Familias presentes en macOS y Windows; no confundir las fuentes web del visor con fuentes incrustadas en Office.
+export const FREE_FONTS = [
+  'Arial',
+  'Georgia',
+  'Verdana',
+  'Trebuchet MS',
+  'Times New Roman',
+  'Courier New',
+  'Tahoma',
+  'Arial Black',
+  'Comic Sans MS',
+  'Impact'
+] as const
 export const FREE_SHAPES = [
   'rect',
   'roundRect',
@@ -299,6 +311,23 @@ export type PptxFont = (typeof FREE_FONTS)[number]
 export type PptxFreeShape = (typeof FREE_SHAPES)[number]
 
 /**
+ * Decisión visual compacta compartida por los armadores; no contiene rutas ni comandos.
+ * Word aplica paleta/tipografías/títulos/portada/encabezados sobre papel blanco. Tarjetas, fondo, ritmo y fotos describen las láminas.
+ */
+export interface DocumentIdentity {
+  concept?: string
+  palette?: PptxPalette
+  fonts?: { title?: PptxFont; body?: PptxFont }
+  titles?: 'editorial' | 'plain' | 'bold'
+  cards?: 'square' | 'rounded' | 'outline'
+  background?: 'plain' | 'panel' | 'split'
+  rhythm?: 'calm' | 'balanced' | 'dynamic'
+  photos?: 'contain' | 'wide' | 'portrait'
+  cover?: 'left' | 'center' | 'band'
+  headers?: 'plain' | 'accent'
+}
+
+/**
  * Un elemento de `layout: "free"`: texto o forma puestos donde la IA decida, en puntos sobre un lienzo de 960 × 540 (origen arriba a la
  * izquierda), en el orden en que se escriben (los últimos quedan encima). Colores siempre en hex con `#`.
  */
@@ -360,8 +389,10 @@ export interface PptxSlideSpec {
   note?: string
   /** Notas del orador (lo que se dice al presentar; no se ve en la lámina): hasta 2.000 caracteres. */
   speaker_notes?: string
-  /** Imagen de la carpeta de la tarea — solo para `layout: "image"` (las `bullets`, si hay, van como texto al lado). */
+  /** Imagen de la carpeta de la tarea — para portada (`cover`) o `image`; se conserva completa y el texto va al lado. */
   image?: DocImageRef
+  /** Pie de foto generado por el servicio, hasta dos líneas. */
+  imageCredit?: string
   /** Dos columnas con su propio encabezado — solo para `layout: "two-col"`; si no viene, se usan `bullets` repartidas mitad y mitad. */
   columns?: [PptxColumnSpec, PptxColumnSpec]
   /** De 2 a 4 métricas en fila — solo para `layout: "kpis"`. */
@@ -375,8 +406,9 @@ export interface PptxSlideSpec {
 }
 
 export interface PptxSpec {
+  identity?: DocumentIdentity
   theme?: PptxTheme
-  /** Estilo visual de TODA la presentación (ver `PptxStyle`) — sin esto, "classic". */
+  /** Estilo visual de TODA la presentación (ver `PptxStyle`); si falta, se deriva de la identidad. */
   style?: PptxStyle
   /** Paleta propia (en vez de `theme`). */
   palette?: PptxPalette
@@ -412,6 +444,7 @@ export type DocxBlock =
   | { type: 'image'; path: string; alt?: string; width_cm?: number; caption?: string }
   | { type: 'page_break' }
 export interface DocxSpec {
+  identity?: DocumentIdentity
   title?: string
   subtitle?: string
   author?: string
@@ -634,6 +667,29 @@ function isPalette(v: unknown): v is PptxPalette {
   return isHex(p.bg) && isHex(p.text) && isHex(p.accent) && optHex(p.muted) && optHex(p.accent2) && optHex(p.panel) && optHex(p.edge)
 }
 
+export function isDocumentIdentity(v: unknown): v is DocumentIdentity {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false
+  const d = v as Record<string, unknown>
+  if (!onlyKeys(d, ['concept', 'palette', 'fonts', 'titles', 'cards', 'background', 'rhythm', 'photos', 'cover', 'headers'])) return false
+  if (d.concept !== undefined && (typeof d.concept !== 'string' || !d.concept.trim() || d.concept.length > 500)) return false
+  if (d.palette !== undefined && !isPalette(d.palette)) return false
+  if (d.fonts !== undefined) {
+    if (!d.fonts || typeof d.fonts !== 'object' || Array.isArray(d.fonts) || !onlyKeys(d.fonts, ['title', 'body'])) return false
+    const fonts = d.fonts as Record<string, unknown>
+    if (!optFont(fonts.title) || !optFont(fonts.body)) return false
+  }
+  const choices: Record<string, readonly string[]> = {
+    titles: ['editorial', 'plain', 'bold'],
+    cards: ['square', 'rounded', 'outline'],
+    background: ['plain', 'panel', 'split'],
+    rhythm: ['calm', 'balanced', 'dynamic'],
+    photos: ['contain', 'wide', 'portrait'],
+    cover: ['left', 'center', 'band'],
+    headers: ['plain', 'accent']
+  }
+  return Object.entries(choices).every(([key, values]) => d[key] === undefined || values.includes(d[key] as string))
+}
+
 function isSlide(v: unknown): v is PptxSlideSpec {
   if (!v || typeof v !== 'object') return false
   const s = v as PptxSlideSpec
@@ -644,6 +700,7 @@ function isSlide(v: unknown): v is PptxSlideSpec {
   if (s.eyebrow !== undefined && (typeof s.eyebrow !== 'string' || s.eyebrow.length > MAX_EYEBROW_CHARS)) return false
   if (s.note !== undefined && (typeof s.note !== 'string' || s.note.length > MAX_NOTE_CHARS)) return false
   if (s.image !== undefined && !isImageRef(s.image)) return false
+  if (s.imageCredit !== undefined && (typeof s.imageCredit !== 'string' || s.imageCredit.length > 240 || !s.image)) return false
   if (s.layout === 'image' && s.image === undefined) return false
   if (s.speaker_notes !== undefined && (typeof s.speaker_notes !== 'string' || s.speaker_notes.length > MAX_SPEAKER_NOTES_CHARS))
     return false
@@ -751,7 +808,7 @@ function isDocxBlock(v: unknown): v is DocxBlock {
         onlyKeys(b, ['type', 'path', 'alt', 'width_cm', 'caption']) &&
         isImagePath(b.path) &&
         docxOpt(b.alt) &&
-        docxOpt(b.caption) &&
+        docxOpt(b.caption, MAX_DOCX_TEXT_CHARS) &&
         (b.width_cm === undefined || (typeof b.width_cm === 'number' && b.width_cm >= 2 && b.width_cm <= 16))
       )
     case 'page_break':
@@ -764,7 +821,9 @@ function isDocxBlock(v: unknown): v is DocxBlock {
 export function isDocxSpec(v: unknown): v is DocxSpec {
   if (!v || typeof v !== 'object') return false
   const d = v as Record<string, unknown>
-  if (!onlyKeys(d, ['title', 'subtitle', 'author', 'date', 'header', 'footer', 'page_numbers', 'toc', 'cover', 'blocks'])) return false
+  if (!onlyKeys(d, ['identity', 'title', 'subtitle', 'author', 'date', 'header', 'footer', 'page_numbers', 'toc', 'cover', 'blocks']))
+    return false
+  if (d.identity !== undefined && !isDocumentIdentity(d.identity)) return false
   if (![d.title, d.subtitle, d.author, d.date, d.header, d.footer].every((x) => docxOpt(x))) return false
   if ((d.page_numbers !== undefined && typeof d.page_numbers !== 'boolean') || (d.toc !== undefined && typeof d.toc !== 'boolean'))
     return false
@@ -781,6 +840,7 @@ export function isDocxSpec(v: unknown): v is DocxSpec {
 export function isPptxSpec(v: unknown): v is PptxSpec {
   if (!v || typeof v !== 'object') return false
   const spec = v as PptxSpec
+  if (spec.identity !== undefined && !isDocumentIdentity(spec.identity)) return false
   if (spec.theme !== undefined && !PPTX_THEMES.includes(spec.theme)) return false
   if (spec.style !== undefined && !PPTX_STYLES.includes(spec.style)) return false
   if (spec.footer !== undefined && (typeof spec.footer !== 'string' || spec.footer.length > MAX_FOOTER_CHARS)) return false
