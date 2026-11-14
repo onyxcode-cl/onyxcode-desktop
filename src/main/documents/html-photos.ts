@@ -19,7 +19,9 @@ export interface HtmlPhotoScope {
 
 export async function resolvePreparedHtml(html: string, scope?: HtmlPhotoScope, registry?: FreeImageRegistry): Promise<string> {
   if (Buffer.byteLength(html) > MAX_ARTIFACT_HTML_BYTES) throw new OutputPathError('name', 'El HTML supera el presupuesto de 24 MiB.')
-  if (htmlHasFreeImagePreview(html) || /MUESTRA\s+NO\s+USAR/i.test(html))
+  // Se detectan las vistas previas por la imagen, no por el texto: el HTML autónomo lleva la procedencia
+  // en JSON y el modelo puede mencionar ahí la marca de la vista previa sin que haya ninguna incrustada.
+  if (htmlHasFreeImagePreview(html))
     throw new OutputPathError('name', 'MUESTRA NO USAR: prepara la foto con imagenes_usar antes de incorporarla.')
   const slides = hasHtmlSlides(html)
   const references = new Set<string>()

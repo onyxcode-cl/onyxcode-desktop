@@ -110,6 +110,12 @@ it('rejects marked preview data and enforces context and byte budgets', async ()
   await expect(resolvePreparedHtml('<section class="slide"><img src="https://example.org/photo.jpg">')).rejects.toThrow('URLs')
   await expect(resolvePreparedHtml('x'.repeat(24 * 1024 * 1024 + 1))).rejects.toThrow('24 MiB')
 })
+it('accepts an autonomous deck whose provenance text mentions the preview watermark (Mac, prueba real)', async () => {
+  const html =
+    '<section class="slide"><h1>Café</h1></section>' +
+    '<script type="application/json" id="lzx-procedencia">{"nota":"la marca MUESTRA NO USAR es de la vista previa"}</script>'
+  await expect(resolvePreparedHtml(html)).resolves.toBe(html)
+})
 it('supports prepared CSS background IDs and ignores script strings', async () => {
   const html = await resolvePreparedHtml(
     '<style>.slide{background:url("imagen:p1")}</style><section class="slide"></section><script>var example="url(no-file.jpg)"</script>',
