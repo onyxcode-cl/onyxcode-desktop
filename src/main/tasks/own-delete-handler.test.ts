@@ -389,6 +389,8 @@ describe('gancho generado que ejecutará el motor', () => {
     }
   })
   it.each([
+    ['rm borrador.txt', false],
+    ['rm borrador.txt', true],
     ['rm nuevo; test -e nuevo && echo existe || echo borrado', false],
     ['rm borrador.txt && ls -la; echo listo', false],
     ['test -e borrador.txt && rm borrador.txt; test -e borrador.txt && echo "todavía existe" || echo "borrado"', false],
@@ -397,8 +399,15 @@ describe('gancho generado que ejecutará el motor', () => {
   ] as const)('gancho → main → shell: %s (previo=%s)', async (command, previous) => {
     body.command = command
     const target = command.includes('borrador.txt') ? 'borrador.txt' : 'nuevo'
-    writeFileSync(join(folder, target), previous ? 'previo' : 'propio')
-    if (previous) getBaseline.mockReturnValue({ version: 1, notBefore: 0, paths: [target], unknown: [] })
+    // Inventario de verdad antes del primer mensaje: el borrador propio se crea después,
+    // como en la tarea; el mismo nombre ya presente debe conservar exactamente sus bytes.
+    rmSync(join(folder, target), { force: true })
+    const restore = new RestorePoints({ root: join(dir, 'points'), trash: async () => {}, freeBytes: () => 1e12 })
+    created = Date.now() + 1
+    if (previous) writeFileSync(join(folder, target), 'borrador previo')
+    await restore.create(folder, sid, 'inicio', async () => true)
+    if (!previous) writeFileSync(join(folder, target), 'borrador creado en esta tarea')
+    getBaseline.mockImplementation((f, s, c) => restore.deleteBaseline(f, s, c))
     messages = partMessages()
     const h = makeHandler()
     const path = join(dir, 'integrated.mjs')
@@ -416,12 +425,16 @@ describe('gancho generado que ejecutará el motor', () => {
       const output = { args: { command: body.command } }
       await hooks['tool.execute.before'](input, output)
       expect(existsSync(join(folder, target))).toBe(previous)
-      if (previous) expect(output.args.command).toBe(command)
-      else expect(output.args.command).not.toMatch(/\brm\s/)
+      if (previous) {
+        expect(output.args.command).toBe(command)
+        expect(readFileSync(join(folder, target), 'utf8')).toBe('borrador previo')
+      } else expect(output.args.command).not.toMatch(/\brm\s/)
       // Solo POSIX dispone del shell usado por esta comprobación; main y el gancho se prueban en ambos.
       if (posixOnly && !previous) {
         const stdout = execFileSync('/bin/sh', ['-c', output.args.command as string], { cwd: folder, encoding: 'utf8', timeout: 5000 })
-        expect(stdout.trim().split('\n').at(-1)).toBe(command.includes('echo listo') ? 'listo' : 'borrado')
+        expect(stdout.trim().split('\n').at(-1)).toBe(
+          command === 'rm borrador.txt' ? '' : command.includes('echo listo') ? 'listo' : 'borrado'
+        )
         expect(stdout).not.toContain('todavía existe')
       }
       const result = { metadata: { exit: 1 } }

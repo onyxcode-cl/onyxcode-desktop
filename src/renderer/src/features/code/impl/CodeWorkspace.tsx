@@ -272,39 +272,36 @@ function SidePanels({
         onPointerUp={onPointerUp}
         className="absolute top-0 bottom-0 left-0 z-10 w-2 cursor-col-resize hover:bg-accent/20"
       />
-      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:overflow-x-auto desk:pl-3 desk:pr-[calc(var(--controls-inset,0px)+12px)] desk:gap-0.5 desk:[scrollbar-width:none]">
-        {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p) => (
-          <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={hintText(bindings[`code.panel.${p}`])}>
-            <button
-              type="button"
-              onClick={() => p !== panel && togglePanel(p)}
-              aria-label={p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
-              className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:whitespace-nowrap desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
-            >
-              {/* Escritorio: siempre el icono, con el ancho que tenga el panel (el nombre sigue en el tooltip y en aria-label), para que se vea igual en Mac y en Windows; el celular conserva el texto. */}
-              <span aria-hidden className="hidden desk:inline-flex desk:align-middle">
-                {ALL_PANELS.find((x) => x.id === p)?.icon}
-              </span>
-              <span className="inline-block max-w-32 truncate align-bottom desk:hidden">
-                {p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
-              </span>
-              {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
-                <span
-                  aria-hidden
-                  className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-active px-1.5 align-middle text-[11px] desk:text-meta font-medium tabular-nums"
-                >
-                  {branch!.changes}
+      <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 desk:h-12 desk:pl-3 desk:pr-[calc(var(--controls-inset,0px)+12px)] desk:gap-0.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto desk:gap-0.5 desk:[scrollbar-width:none]">
+          {(Object.keys(PANEL_LABEL) as RightPanel[]).map((p) => (
+            <Tip key={p} label={t(PANEL_LABEL[p])} shortcut={hintText(bindings[`code.panel.${p}`])}>
+              <button
+                type="button"
+                onClick={() => p !== panel && togglePanel(p)}
+                aria-label={p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
+                className={`no-drag rounded-md px-2.5 py-1 text-xs font-medium transition desk:h-7 desk:shrink-0 desk:whitespace-nowrap desk:py-0 desk:px-2.5 desk:rounded-ctl-sm desk:text-ui ${p === panel ? 'bg-active text-fg desk:font-medium' : 'text-muted hover:bg-hover hover:text-fg'}`}
+              >
+                {/* Escritorio: siempre el icono, con el ancho que tenga el panel (el nombre sigue en el tooltip y en aria-label), para que se vea igual en Mac y en Windows; el celular conserva el texto. */}
+                <span aria-hidden className="hidden desk:inline-flex desk:align-middle">
+                  {ALL_PANELS.find((x) => x.id === p)?.icon}
                 </span>
-              )}
-            </button>
-          </Tip>
-        ))}
-        <IconButton
-          size="sm"
-          label={t('code.panel.close')}
-          className="sticky right-0 ml-auto bg-bg desk:shrink-0"
-          onClick={() => panel && togglePanel(panel)}
-        >
+                <span className="inline-block max-w-32 truncate align-bottom desk:hidden">
+                  {p === 'browser' ? browserTitle : t(PANEL_LABEL[p])}
+                </span>
+                {p === 'changes' && !isRemoteSurface() && (branch?.changes ?? 0) > 0 && (
+                  <span
+                    aria-hidden
+                    className="ml-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-active px-1.5 align-middle text-[11px] desk:text-meta font-medium tabular-nums"
+                  >
+                    {branch!.changes}
+                  </span>
+                )}
+              </button>
+            </Tip>
+          ))}
+        </div>
+        <IconButton size="sm" label={t('code.panel.close')} className="ml-auto bg-bg" onClick={() => panel && togglePanel(panel)}>
           <X size={14} />
         </IconButton>
       </div>
@@ -653,7 +650,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
         )}
         <SessionToolsMenu sessionId={activeSessionID} directory={directory} busy={busy} />
         {/* Los paneles, en una sola cápsula; lo demás (ficha, vista del trabajo, memoria, exportar, bifurcar y compactar) va en «…». */}
-        <span className={panel ? 'contents desk:@max-[48rem]:hidden' : 'contents'}>
+        <span className={panel ? 'hidden' : 'contents'}>
           <div
             role="group"
             aria-label={t('code.toolbar.group.tools')}

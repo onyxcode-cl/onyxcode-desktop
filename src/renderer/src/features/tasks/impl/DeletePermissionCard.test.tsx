@@ -117,13 +117,25 @@ describe('tarjeta de borrado antes del comando', () => {
     expect(mounted.host.textContent).toContain('Activar permiso y reintentar')
     expect(mounted.host.textContent).toContain('mv a b')
   })
-  it.each([false, true])('barra fija y celular tampoco ofrecen una vez (celular=%s)', (remote) => {
+  it.each([false, true])('barra fija lleva a una sola tarjeta, aunque esté parcialmente visible (celular=%s)', async (remote) => {
     m.remote = remote
-    mounted = mount(<ApprovalBar requests={[req()]} />)
-    expect(mounted.host.textContent).toContain('Activar permiso y reintentar')
-    expect(mounted.qa('button')).toHaveLength(2)
-    expect(mounted.q('#perm-p')).toBeNull()
-    expect(mounted.q('#delete-bar-p')).not.toBeNull()
+    // Sin notificación de visibilidad (o por debajo del 60 %), la barra también se muestra.
+    mounted = mount(
+      <>
+        <PermissionCard request={req()} />
+        <ApprovalBar requests={[req()]} />
+      </>
+    )
+    expect(mounted.qa('[role="alertdialog"]')).toHaveLength(1)
+    expect(mounted.qa('button').map((b) => b.textContent)).toEqual(['Cancelar', 'Activar permiso y reintentar', 'Revisar'])
+    const card = mounted.q<HTMLElement>('#perm-p')!
+    const scroll = vi.fn()
+    card.scrollIntoView = scroll
+    await act(async () => mounted!.qa<HTMLButtonElement>('button')[2].click())
+    expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+    expect(document.activeElement).toBe(card)
+    expect(m.enable).not.toHaveBeenCalled()
+    expect(m.reply).not.toHaveBeenCalled()
   })
   it('advierte de caracteres ocultos sin quitar el comando literal', () => {
     render('rm a\u200B')

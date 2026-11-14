@@ -104,5 +104,17 @@ export function currentBlockedDeletes(entries: MessageEntry[], scope: DeleteScop
     // está en curso. No rescatar después un fallo viejo del historial.
     if (tools.length) attempts = tools.filter((p) => looksLikeBlockedDelete(p, scope))
   }
+  // Un reintento idéntico en la misma tanda representa la misma oferta. Conserva el
+  // último para reanudarlo y evita mostrar el anterior al cancelar la tarjeta.
+  const seen = new Set<string>()
   return attempts
+    .slice()
+    .reverse()
+    .filter((p) => {
+      const key = JSON.stringify([p.sessionID, p.tool, p.state.input])
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .reverse()
 }

@@ -24,6 +24,7 @@ import { extrasWindows, isLangStale, loadLocalizedPage, preloadPath } from '../e
 import { registerWindowRole } from '../ipc/guard'
 import { motionDurationMs } from './service'
 import { overlayPoint, type ToDip } from './policy/overlay-coords'
+import { recordProblem } from '../diagnostics/problem-log'
 
 const IDLE_MS = 8_000
 /** Con sesión explícita: red de seguridad si el renderer nunca manda `active: false`. */
@@ -70,6 +71,7 @@ export class ComputerOverlay {
   private pill: BrowserWindow | null = null
   private readonly queues = new WeakMap<BrowserWindow, ComputerOverlayMessage[]>()
   private visible = false
+  private controlLogged = false
   private session = false
   private sessionLabel: string | undefined
   private pending = 0
@@ -95,7 +97,7 @@ export class ComputerOverlay {
     else if (ev.phase === 'end') this.pending = Math.max(0, this.pending - 1)
     // Las capturas automáticas no bastan para (re)abrir el overlay si ya se ocultó.
     if (!this.visible && ev.tool === 'screenshot' && ev.auto) return
-    this.show()
+    this.show(undefined, ev.auto ? 'automatic' : 'action')
 
     const d = screen.getPrimaryDisplay().bounds
     const c = screen.getCursorScreenPoint()
@@ -230,7 +232,7 @@ export class ComputerOverlay {
     this.session = active
     if (active) {
       this.sessionLabel = label?.slice(0, 160)
-      this.show(this.sessionLabel)
+      this.show(this.sessionLabel, 'session')
       this.scheduleIdle()
     } else {
       this.sessionLabel = undefined
@@ -275,7 +277,7 @@ export class ComputerOverlay {
 
   // ───────────────────────────── visibilidad ─────────────────────────────
 
-  private show(label?: string): void {
+  private show(label?: string, trigger: 'action' | 'session' | 'permission' | 'automatic' = 'permission'): void {
     if (this.hideTimer) {
       clearTimeout(this.hideTimer)
       this.hideTimer = null
@@ -283,6 +285,7 @@ export class ComputerOverlay {
     const overlay = this.ensureOverlay()
     const pill = this.ensurePill()
     const display = screen.getPrimaryDisplay()
+    const wasVisible = this.visible
     if (!this.visible) {
       overlay.setBounds(display.bounds)
       if (!this.pillMoved) this.placePill(pill)
@@ -295,12 +298,46 @@ export class ComputerOverlay {
       pill.showInactive()
       this.post(overlay, { type: 'show', label: label ?? this.sessionLabel })
       this.post(pill, { type: 'show', label: label ?? this.sessionLabel })
+      this.logVisibility(overlay, `show:${trigger}`)
     } else if (label !== undefined) {
       this.post(pill, { type: 'show', label })
+    }
+    // Un permiso flotante pudo abrirlo antes: registrar también la primera entrada real al control.
+    if (!this.controlLogged && (trigger === 'action' || trigger === 'session')) {
+      this.controlLogged = true
+      if (wasVisible) this.logVisibility(overlay, `control:${trigger}`)
+    }
+  }
+
+  /** Diagnóstico sin capturas ni contenido de la tarea; `isVisible` no garantiza que el compositor pinte el borde. */
+  private logVisibility(win: BrowserWindow, stage: string): void {
+    try {
+      if (win.isDestroyed()) return
+      const display = screen.getPrimaryDisplay()
+      recordProblem({
+        source: 'main',
+        level: 'warn',
+        message: `[computer:overlay] ${stage}`,
+        detail: {
+          platform: process.platform,
+          visible: String(win.isVisible()),
+          opacity: win.getOpacity(),
+          bounds: JSON.stringify(win.getBounds()),
+          contentBounds: JSON.stringify(win.getContentBounds()),
+          displayBounds: JSON.stringify(display.bounds),
+          scaleFactor: display.scaleFactor,
+          alwaysOnTop: String(win.isAlwaysOnTop()),
+          loading: String(win.webContents.isLoading()),
+          hideOnCapture: String(!!this.opts.hideOnCapture)
+        }
+      })
+    } catch {
+      // El diagnóstico nunca debe interrumpir el control si la ventana está cerrándose.
     }
   }
 
   private hide(delayMs: number): void {
+    this.controlLogged = false
     if (this.hideTimer) clearTimeout(this.hideTimer)
     if (this.idleTimer) {
       clearTimeout(this.idleTimer)
@@ -415,6 +452,7 @@ export class ComputerOverlay {
       const q = this.queues.get(win) ?? []
       this.queues.delete(win)
       for (const m of q) if (!win.isDestroyed()) win.webContents.send('computer:overlay', m)
+      if (page === 'index.html' && this.visible) this.logVisibility(win, 'loaded')
     })
     void loadOverlayPage(win, page).catch((err) => console.error(`[computer] overlay ${page}:`, err))
   }

@@ -14,12 +14,10 @@ import { rootTaskId, useTasks } from './store'
 export function DeletePermissionCard({
   request,
   command,
-  bar = false,
   onDismiss
 }: {
   request: PermissionRequest | ToolPart
   command: string
-  bar?: boolean
   onDismiss?: () => void
 }): React.JSX.Element {
   const t = useT()
@@ -30,7 +28,7 @@ export function DeletePermissionCard({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lock = useRef(false)
-  const id = `${bar ? 'delete-bar' : 'perm'}-${request.id}`
+  const id = `perm-${request.id}`
   const respond = async (enable: boolean): Promise<void> => {
     if (lock.current) return
     lock.current = true

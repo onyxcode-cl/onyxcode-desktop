@@ -4496,3 +4496,19 @@ Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word;
 - Se comprueba la persistencia ya existente: una foto preparada en Chat se resuelve desde `documentos-fotos` tras cambiar proceso y token, con el mismo userData y conversación, antes de volver a llamar a `imagenes_usar`. Otra conversación sigue rechazada; no se amplía la autoridad del registro ni se añaden créditos.
 - `imagenes_ver` explica que un resultado de búsqueda caducado requiere volver a buscar. Si falta una foto del HTML, el panel muestra su referencia y cómo prepararla o sustituirla; «Pedir de nuevo» conserva ese motivo para el modelo.
 - Regresiones: `chat-photos.persistent`, `free-images`, `html-photos`, `extras-handlers.chat-docs` y `ChatDocPanel.photos`. La prueba de reinicio usa procesos Node separados y tokens nuevos; el transporte directo sustituye solo el arranque del socket en entornos sin loopback. `LAZUNOX_PHOTO_RESTART_LOOPBACK=1` permite probar HTTP real. Resultados y límites en el informe externo `V26-FOTOS-CHAT-REINICIO-INFORME.md`.
+
+## F8-B299 — Barra de Código sin pestañas duplicadas (V27)
+
+- Los cinco accesos de la conversación se ocultan siempre que está abierto el panel lateral y reaparecen al cerrarlo. Las pestañas del panel tienen su propio contenedor desplazable; el cierre queda fuera y la cabecera reserva el margen de los controles de Windows.
+- Pruebas: `CodeWorkspace.toolbar.render.test.tsx` comprueba apertura/cierre y estructura a 280 px con plataformas Mac/Windows simuladas. La geometría visual en Windows real queda pendiente.
+
+## F8-B300 — Una sola tarjeta de permiso de borrado en Tareas (V27)
+
+- La barra fija lleva con «Revisar» a la tarjeta de la conversación; deja de repetir todos sus botones cuando la tarjeta está fuera de vista o se ve menos del 60 %. No cambia la concesión del permiso ni la excepción de limpieza propia.
+- Los intentos idénticos de una tanda conservan solo la última oferta para que cancelar no muestre otra igual. La clave incluye sesión, herramienta y argumentos completos; distintas carpetas de trabajo o rutas conservan ofertas separadas.
+- Pruebas: `DeletePermissionCard.test.tsx` monta tarjeta y barra juntas, exige una sola oferta de activación y comprueba desplazamiento/foco sin aprobar, tanto en escritorio como en celular; `DeleteGrant.test.tsx` verifica deduplicación y operaciones distintas en Mac/WSL. `own-delete-handler.test.ts` recorre plugin, handler e inventario real: el borrador nuevo se elimina y el previo conserva sus bytes. El fallo concreto del encargo sigue pendiente de reproducir con su orden original; no se activa el runtime experimental.
+
+## F8-B301 — Diagnóstico del borde de Control total (V27)
+
+- Al abrir el borde y al cargar su página se registra en `problemas.log` el origen del aviso, visibilidad, geometría, opacidad, escala, carga y estado siempre encima. También se registra el primer inicio de control si un permiso flotante ya había abierto el borde. Sin contenido de tareas ni capturas, sin registro por cada movimiento y sin cambiar la protección de pantalla.
+- Pruebas: `computer/overlay.test.ts`, diez casos Mac/Windows simulados, incluidos permiso seguido de acción/sesión, privacidad, entrega tras carga y tolerancia a errores de diagnóstico. La causa del borde invisible en Windows no está confirmada: hace falta observar el monitor y cotejar estos registros en el PC.

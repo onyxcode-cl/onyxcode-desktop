@@ -202,6 +202,57 @@ describe.each(['mac', 'wsl'])('vigencia de la oferta posterior al fallo (%s)', (
     expect(m.grant).not.toHaveBeenCalled()
   })
 
+  it('dos intentos idénticos en la tanda muestran una sola oferta y no reaparece al cancelarla', async () => {
+    const first = blocked()
+    const repeated = toolPart('p2', 'm1', 's', 'bash', {
+      status: 'completed',
+      input: { command: 'mv temporal.xlsx ventas-v2.xlsx' },
+      output: 'Permission denied',
+      metadata: { exit: 1 }
+    })
+    first.parts.push(repeated)
+    show([first])
+    expect(mounted!.qa('[role="alertdialog"]')).toHaveLength(1)
+    expect(mounted!.q('#perm-p2')).not.toBeNull()
+    await act(async () => mounted!.qa<HTMLButtonElement>('button')[0].click())
+    expect(mounted!.host.textContent).toBe('')
+    mounted!.unmount()
+    mounted = undefined
+    show([first])
+    expect(mounted!.host.textContent).toBe('')
+    expect(m.enable).not.toHaveBeenCalled()
+    expect(m.grant).not.toHaveBeenCalled()
+  })
+
+  it.each(['workdir', 'herramienta', 'ruta'])('el mismo texto con distinta %s conserva las dos operaciones', async (difference) => {
+    const first = blocked()
+    const command = 'rm borrador.txt'
+    const root = platform === 'wsl' ? '/win/c/work' : '/work'
+    const p1 = toolPart('p1', 'm1', 's', 'bash', {
+      status: 'completed',
+      input: { command, workdir: `${root}/uno`, filePath: `${root}/uno/borrador.txt` },
+      output: 'Permission denied',
+      metadata: { exit: 1 }
+    })
+    const p2 = toolPart('p2', 'm1', 's', difference === 'herramienta' ? 'execute' : 'bash', {
+      status: 'completed',
+      input: {
+        command,
+        workdir: difference === 'workdir' ? `${root}/dos` : `${root}/uno`,
+        filePath: difference === 'ruta' ? `${root}/dos/borrador.txt` : `${root}/uno/borrador.txt`
+      },
+      output: 'Permission denied',
+      metadata: { exit: 1 }
+    })
+    first.parts = [p1, p2]
+    show([first])
+    expect(mounted!.q('#perm-p1')).not.toBeNull()
+    await act(async () => mounted!.qa<HTMLButtonElement>('button')[0].click())
+    expect(mounted!.q('#perm-p2')).not.toBeNull()
+    await act(async () => mounted!.qa<HTMLButtonElement>('button')[0].click())
+    expect(mounted!.host.textContent).toBe('')
+  })
+
   it('un éxito paralelo en la misma tanda no oculta un borrado todavía bloqueado', () => {
     const first = blocked()
     first.parts.push(toolPart('parallel', 'm1', 's', 'read', { status: 'completed', input: {}, output: 'OK', metadata: {} }))
