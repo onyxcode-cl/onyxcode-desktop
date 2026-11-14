@@ -234,7 +234,7 @@ describe('fotos libres por MCP', () => {
     const saved = JSON.parse(text(prepared))
     expect(saved).not.toHaveProperty('caption')
     expect(saved.attribution.author).toBe('Autora Ejemplo')
-    expect(saved.notice).toContain('No agregues créditos ni pies de foto salvo que la persona los pida')
+    expect(saved.notice).toContain('No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida')
     expect(saved.credit).toBe(CREDIT)
     expect(saved).not.toHaveProperty('provenance')
     expect((await readdir(join(root, 'img'))).filter((name) => name.endsWith('.json'))).toEqual([])

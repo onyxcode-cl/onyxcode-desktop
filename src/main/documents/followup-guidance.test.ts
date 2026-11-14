@@ -29,7 +29,7 @@ describe('quinta ronda: instrucciones de seguimiento de documentos', () => {
     'src/main/opencode/code-docs-prompt.ts'
   ])('%s deja los créditos a pedido de la persona', (path) => {
     const guide = readFileSync(path, 'utf8')
-    expect(guide).toContain('No agregues créditos ni pies de foto salvo que la persona los pida')
+    expect(guide).toContain('No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida')
     expect(guide).not.toMatch(/44 px inferiores|crédito visible|crédito legible|créditos legibles|ruta y crédito|fotos, (?:los )?créditos/)
   })
 

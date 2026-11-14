@@ -199,6 +199,7 @@
  "chat.doc.problem.invalid",
  "chat.doc.problem.json",
  "chat.doc.problem.noCraft",
+ "chat.doc.problem.photoMissing",
  "chat.doc.problem.schema",
  "chat.doc.retry",
  "chat.doc.retryPrompt",

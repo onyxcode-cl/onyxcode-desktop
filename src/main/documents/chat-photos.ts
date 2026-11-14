@@ -70,7 +70,7 @@ export class ChatPhotosMcpServer extends LoopbackMcpServer<ChatPhotoBinding> {
               source: `imagen:${photo.id}`,
               credit: photo.credit,
               notice:
-                'Foto preparada solo para esta conversación. Inserta source en src o CSS url() de una .slide. El crédito es un dato interno. No agregues créditos ni pies de foto salvo que la persona los pida.'
+                'Foto preparada solo para esta conversación. Inserta source en src o CSS url() de una .slide. El crédito es un dato interno. No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida.'
             })
           }
         } catch {

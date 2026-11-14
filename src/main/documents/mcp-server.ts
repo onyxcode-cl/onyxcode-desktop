@@ -188,7 +188,7 @@ export const DOCUMENT_TOOLS = [
       'y lo guarda en la carpeta de esta tarea. Para pptx, docx y xlsx pasa `spec` (el mismo JSON que documentan las skills pptx, docx y xlsx); ' +
       'para pdf pasa `html` (documento autocontenido, sin recursos externos). `nombre` va sin extensión. Si repites nombre, tipo y subcarpeta, ' +
       'rehace el archivo que creó esta herramienta en esta tarea solo si nadie lo cambió; si es previo o cambió, añade « (2)». ' +
-      'No agregues créditos ni pies de foto salvo que la persona los pida. ' +
+      'No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida. ' +
       'Devuelve la ruta, la revisión automática (lista ✔/✘) y las imágenes disponibles. Ciclo obligatorio: crea → mira TODAS las imágenes devueltas ' +
       '(usa `renderizar` solo si faltan) → corrige todo junto y vuelve a crear con el MISMO nombre, tipo y subcarpeta → máximo 3 rondas.',
     inputSchema: {
@@ -285,7 +285,7 @@ export const IMAGE_TOOLS = [
   {
     name: 'imagenes_usar',
     description:
-      'Recupera una foto ya preparada con su id persistente (sin evaluation ni red), o prepara un id nuevo visto en imagenes_ver: vuelve a comprobar licencia, normaliza y guarda la foto en img/ y la procedencia en el registro interno. La evaluación visual es TU declaración, no una certificación del servicio. mode=manual solo tras selección de la persona. Usa la ruta relativa devuelta en documentos_crear; Word y PowerPoint admiten también el id preparado en el objeto de imagen. No agregues créditos ni pies de foto salvo que la persona los pida. Autor y licencia son datos internos. Revisa también la página terminada, sujeto y proporciones.',
+      'Recupera una foto ya preparada con su id persistente (sin evaluation ni red), o prepara un id nuevo visto en imagenes_ver: vuelve a comprobar licencia, normaliza y guarda la foto en img/ y la procedencia en el registro interno. La evaluación visual es TU declaración, no una certificación del servicio. mode=manual solo tras selección de la persona. Usa la ruta relativa devuelta en documentos_crear; Word y PowerPoint admiten también el id preparado en el objeto de imagen. No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida. Autor y licencia son datos internos. Revisa también la página terminada, sujeto y proporciones.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -938,7 +938,7 @@ export class DocumentsMcpServer extends LoopbackMcpServer<DocumentsBinding> {
           credit: asset.credit,
           attribution,
           notice:
-            'Foto preparada con licencia comprobada. Evaluación registrada como declaración del selector; no certificada por la app. Inserta path en documentos_crear (o id en el objeto de imagen de Word/PowerPoint). No agregues créditos ni pies de foto salvo que la persona los pida. Autor y licencia son datos internos. Revisa después la página terminada.'
+            'Foto preparada con licencia comprobada. Evaluación registrada como declaración del selector; no certificada por la app. Inserta path en documentos_crear (o id en el objeto de imagen de Word/PowerPoint). No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida. Autor y licencia son datos internos. Revisa después la página terminada.'
         })
       )
     } catch (err) {
