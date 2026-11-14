@@ -4,6 +4,22 @@ import { describe, expect, it } from 'vitest'
 import { presentationScript } from './presentation-script'
 
 describe('presentation controls', () => {
+  it('keeps the photo variables set on <html> by the photo script (Windows, prueba real)', () => {
+    const dom: { window: Window & typeof globalThis } = new JSDOM(
+      '<html style="--lzx-photo-a: url(&quot;data:image/jpeg;base64,AA&quot;)"><body><section class="slide"></section></body></html>',
+      { runScripts: 'outside-only' }
+    )
+    try {
+      const { window } = dom
+      window.eval(presentationScript({ counter: '{current} / {total}', controls: 'Esc' }))
+      const html = window.document.documentElement
+      expect(html.style.getPropertyValue('--lzx-photo-a')).toContain('data:image/jpeg')
+      expect(html.style.overflow).toBe('hidden')
+      expect(window.document.body.style.margin).toBe('0px')
+    } finally {
+      dom.window.close()
+    }
+  })
   it('navigates one slide at a time, stops existing handlers, clamps limits and fits after resize', () => {
     const dom: { window: Window & typeof globalThis } = new JSDOM(
       '<body><section class="slide" data-lzx-export-display="flex" data-lzx-export-scale="0.5"></section><section class="slide"></section><section class="slide"></section></body>',

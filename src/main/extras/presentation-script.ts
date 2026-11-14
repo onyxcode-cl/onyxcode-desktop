@@ -3,8 +3,11 @@ export function presentationScript(labels: { counter: string; controls: string }
   return `(() => {
     const slides = [...document.querySelectorAll('.slide')];
     let current = 0;
-    document.documentElement.style.cssText = 'margin:0;width:100%;height:100%;overflow:hidden;background:#000';
-    document.body.style.cssText = 'margin:0;width:100vw;height:100vh;overflow:hidden;background:#000';
+    // setProperty y no cssText: reemplazar el atributo borraba las variables --lzx-photo-* que fija el
+    // script de fotos, y las láminas con la foto de fondo se presentaban sin ella (prueba real en Windows).
+    const put = (el, values) => { for (const [k, v] of Object.entries(values)) el.style.setProperty(k, v) };
+    put(document.documentElement, { margin: '0', width: '100%', height: '100%', overflow: 'hidden', background: '#000' });
+    put(document.body, { margin: '0', width: '100vw', height: '100vh', overflow: 'hidden', background: '#000' });
     const counter = document.createElement('div');
     counter.setAttribute('data-lzx-slide-counter', '');
     counter.setAttribute('role', 'status');
