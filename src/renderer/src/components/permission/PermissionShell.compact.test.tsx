@@ -100,3 +100,35 @@ describe('previewFits', () => {
     expect(previewFits('ls', true)).toBe(false)
   })
 })
+
+describe('V28: detalles altos y controles visibles', () => {
+  it('al desplegar acerca las acciones; una petición nueva empieza con sus detalles plegados', () => {
+    const scroll = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: scroll })
+    const render = (id: string): void =>
+      act(() =>
+        root.render(
+          createElement(
+            PermCardFrame,
+            {
+              id,
+              danger: false,
+              armed: true,
+              busy: false,
+              icon: Terminal,
+              title: 'Permiso',
+              details: createElement('pre', null, 'detalle largo'),
+              onKeyDown: () => undefined
+            },
+            createElement('div', { 'data-perm-actions': true }, 'acciones')
+          )
+        )
+      )
+    render('one')
+    act(() => toggle().click())
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest' })
+    render('two')
+    expect(toggle().getAttribute('aria-expanded')).toBe('false')
+    delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView
+  })
+})

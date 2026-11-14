@@ -40,12 +40,23 @@ afterEach(async () => {
 })
 
 describe('presentación de PPTX importado', () => {
-  it('rechaza ZIP ajeno, corrupto, vacío y el exceso sobre las 40 láminas', async () => {
-    expect(MAX_PRESENTATION_SLIDES).toBe(40)
+  it('cuenta y prepara las 60 láminas para el mismo presentador, sin recortarlas', async () => {
+    const input = join(root, 'long.pptx')
+    await writeFile(input, await deck(60))
+    const images = Array.from({ length: 60 }, (_, i) => Buffer.from(`lámina ${i + 1}`))
+    mocks.raster.mockResolvedValueOnce({ pages: 60, images })
+    await presentPptxFile(input, (path) => path)
+    expect(mocks.raster).toHaveBeenCalledWith(expect.any(Buffer), 60, 3840)
+    const html = mocks.present.mock.calls[0][0].html as string
+    expect(html.match(/class="slide"/g)).toHaveLength(60)
+    expect(html).toContain(images[59].toString('base64'))
+  })
+  it('rechaza ZIP ajeno, corrupto, vacío y el exceso sobre las 200 láminas', async () => {
+    expect(MAX_PRESENTATION_SLIDES).toBe(200)
     for (const bytes of [Buffer.from('bad'), await new JSZip().generateAsync({ type: 'nodebuffer' }), await deck(0)])
       await expect(pptxSlideCount(bytes)).rejects.toThrow(/válido|láminas/)
-    await expect(pptxSlideCount(await deck(41))).rejects.toThrow('40')
-    expect(await pptxSlideCount(await deck(40))).toBe(40)
+    await expect(pptxSlideCount(await deck(201))).rejects.toThrow('200')
+    expect(await pptxSlideCount(await deck(200))).toBe(200)
   })
   it('el nombre del adjunto no se usa como ruta y deduplica los bytes', async () => {
     const bytes = await deck()

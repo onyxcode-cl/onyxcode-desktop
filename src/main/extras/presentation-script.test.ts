@@ -4,6 +4,31 @@ import { describe, expect, it } from 'vitest'
 import { presentationScript } from './presentation-script'
 
 describe('presentation controls', () => {
+  it('presenta 60 láminas, llega a la última y vuelve al inicio sin pérdida', () => {
+    const dom: { window: Window & typeof globalThis } = new JSDOM(
+      '<body>' + Array.from({ length: 60 }, (_, i) => `<section class="slide">Lámina ${i + 1}</section>`).join('') + '</body>',
+      { runScripts: 'outside-only' }
+    )
+    try {
+      const { window } = dom
+      window.eval(presentationScript({ counter: '{current} / {total}', controls: 'Esc' }))
+      const counter = window.document.querySelector('[data-lzx-slide-counter]')!
+      const key = (key: string): void => {
+        window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }))
+      }
+      expect(counter.textContent).toBe('1 / 60')
+      for (let i = 1; i < 60; i++) key('ArrowRight')
+      expect(counter.textContent).toBe('60 / 60')
+      key('ArrowRight')
+      const slides = [...window.document.querySelectorAll<HTMLElement>('.slide')]
+      expect(slides.filter((slide) => slide.style.display !== 'none').map((slide) => slide.textContent)).toEqual(['Lámina 60'])
+      key('Home')
+      expect(counter.textContent).toBe('1 / 60')
+      expect(slides).toHaveLength(60)
+    } finally {
+      dom.window.close()
+    }
+  })
   it('keeps the photo variables set on <html> by the photo script (Windows, prueba real)', () => {
     const dom: { window: Window & typeof globalThis } = new JSDOM(
       '<html style="--lzx-photo-a: url(&quot;data:image/jpeg;base64,AA&quot;)"><body><section class="slide"></section></body></html>',

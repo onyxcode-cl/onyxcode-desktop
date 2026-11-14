@@ -580,7 +580,14 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       }
       const title = ('title' in state && state.title) || str(input.description) || str(input.filePath) || str(input.path)
       // Herramientas propias del motor: nombre en llano en vez del identificador técnico.
-      const friendly = tool === 'shell_wait' ? t('code.tool.waitShell') : tool === 'execute_wait' ? t('code.tool.waitScript') : tool
+      const friendly =
+        (tool === 'shell_wait' && input.terminate === true) || tool === 'bgshell_stop'
+          ? t(state.status === 'completed' ? 'code.tool.stopShell' : 'code.tool.stoppingShell')
+          : tool === 'shell_wait'
+            ? t('code.tool.waitShell')
+            : tool === 'execute_wait'
+              ? t('code.tool.waitScript')
+              : tool
       return (
         <Row
           icon={<Wrench size={14} />}

@@ -69,7 +69,15 @@ import { ensureFolderReadable } from './folder-access'
 import { ProjectPicker, baseName, pickAndOpenFolder, TrustGate, openProjectTrusted } from './ProjectPicker'
 import { restoreFocusedProject } from './trust'
 import { askCloseProject, SessionList } from './SessionList'
-import { ensureCodeSubscription, isCodeTranscriptLoading, liveHelperCount, rootSessionID, selectCodeRunOf, useCode } from './store'
+import {
+  deferCodeChange,
+  ensureCodeSubscription,
+  isCodeTranscriptLoading,
+  liveHelperCount,
+  rootSessionID,
+  selectCodeRunOf,
+  useCode
+} from './store'
 import { TodoList } from './ToolCard'
 import { PlanCard } from './PlanCard'
 import { PlanReadyCard } from './PlanReadyCard'
@@ -958,8 +966,11 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
           gate={aiGate.gate}
           freeModel={aiGate.free}
           onUseFree={(m) => {
-            setModel(m)
-            adoptFreeModel(m)
+            const apply = (): void => {
+              setModel(m)
+              adoptFreeModel(m)
+            }
+            if (!deferCodeChange(apply)) apply()
           }}
         />
       </div>

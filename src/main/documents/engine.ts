@@ -13,6 +13,7 @@ import { renderChatGrid } from '../office/craft/chat-grid'
 import { isPptxSpec, renderPptx, type PptxSpec } from '../extras/render-pptx'
 import { isXlsxSpec, renderXlsx, type XlsxSpec } from '../extras/render-xlsx'
 import { isDocxSpec, type DocxSpec } from '@shared/chat-doc-spec'
+import { explainPptx } from '../office/craft/doc-explain'
 import { renderChatDocx } from '../office/craft/chat-word'
 import type { ImageMap } from './image-files'
 
@@ -112,7 +113,7 @@ export async function renderBytes(input: ChatDocInput, title: string, opts: Rend
     if (!word) throw new ChatDocError('no-craft', 'El diseñador de documentos (WordCraft) no está instalado.')
     return renderChatDocx(word, input.data, undefined, opts.images)
   }
-  if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', 'Datos de PowerPoint inválidos.')
+  if (!isPptxSpec(input.data)) throw new ChatDocError('invalid', `Datos de PowerPoint inválidos. ${explainPptx(input.data)}`)
   await ensureCraft()
   // Con DeckCraft instalado se aplica la identidad. Un fallo de contenido se corrige; solo un fallo del motor usa el respaldo.
   const craft = craftBinary('deckcraft')

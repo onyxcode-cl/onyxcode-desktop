@@ -67,6 +67,7 @@ Imágenes locales: con `documentos_crear` puedes usar `image:{"path":"img/foto.j
 ### Guía de diseño (la misma que usa el Chat)
 Lo que sigue es la guía del Chat, palabra por palabra (una prueba comprueba que no se desvíe de `resources/opencode/agents/chat.md`). Decide primero `identity.concept` y aplica su paleta, fuentes y composición; los temas nombrados son ejemplos, no un menú.
 
+- Conserva el número de láminas pedido, también en presentaciones largas de 60 láminas. La app admite hasta 200 láminas en PPTX y HTML; si se supera ese tope, explica el error sin recortar la presentación.
 - Antes del contenido, decide la identidad en una línea y guárdala en `identity.concept`: tema,
   público y tono. Aplica esa decisión con `identity`: `palette` (bg/text/accent en hex con #;
   muted/accent2/panel/edge opcionales), `fonts` (title/body de la lista permitida), `titles`

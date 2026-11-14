@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractChatDocBlocks, guessDataTitle, parseDataBlock } from './chatDocBlocks'
+import { extractChatDocBlocks, extractBrokenDocBlocks, guessDataTitle, parseDataBlock, parseDataBlockDetailed } from './chatDocBlocks'
 
 const HTML = '```html\n<!doctype html><html><body><h1>hola</h1></body></html>\n```'
 const SLIDES = '```slides\n<!doctype html><html><body><section class="slide"><h1>Intro</h1></section></body></html>\n```'
@@ -7,6 +7,20 @@ const XLSX = '```xlsx\n{"sheets":[{"name":"Gastos","rows":[["Fecha","Monto"],["2
 const PPTX = '```pptx\n{"slides":[{"title":"Portada","bullets":["uno","dos"]}]}\n```'
 
 describe('extractChatDocBlocks', () => {
+  it('abre las 60 láminas y explica el exceso de 201 sin lanzar ni entregar un deck parcial', () => {
+    const spec = (count: number): string =>
+      JSON.stringify({ slides: Array.from({ length: count }, (_, i) => ({ title: `Lámina ${i + 1}` })) })
+    expect(parseDataBlock('pptx', spec(60))).toMatchObject({ slides: expect.arrayContaining([{ title: 'Lámina 60' }]) })
+    const raw = spec(201)
+    expect(parseDataBlockDetailed('pptx', raw)).toEqual({
+      ok: false,
+      reason: 'invalid',
+      detail: 'La presentación supera el máximo de 200 láminas. No se recortó ninguna lámina.'
+    })
+    const markdown = '```pptx\n' + raw + '\n```'
+    expect(extractChatDocBlocks(markdown)).toEqual([])
+    expect(extractBrokenDocBlocks(markdown)[0]).toMatchObject({ reason: 'invalid', detail: expect.stringContaining('200 láminas') })
+  })
   it('encuentra un bloque html, como antes', () => {
     const blocks = extractChatDocBlocks(`texto\n\n${HTML}`)
     expect(blocks).toHaveLength(1)

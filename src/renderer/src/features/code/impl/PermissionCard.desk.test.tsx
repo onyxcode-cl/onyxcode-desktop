@@ -61,10 +61,10 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     expect(html).toMatch(/disabled=""[^>]*>Permitir una vez</)
   })
 
-  it('alcance «Sin límite de carpeta · {root}» y comando bash con $', () => {
+  it('alcance «Carpeta de trabajo · {root}» y comando bash con $', () => {
     surface('darwin')
     const html = render(perm())
-    expect(html).toContain('Sin límite de carpeta · /proj')
+    expect(html).toContain('Carpeta de trabajo · /proj')
     expect(html).toContain('npm run build')
     expect(html).toContain('aria-hidden')
   })
@@ -88,7 +88,7 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     const html = render(perm())
     expect(html).toContain('aria-expanded="false"')
     expect(html).toMatch(/id="perm-details-p1"[^>]*hidden=""/)
-    expect(html).toContain('title="npm run build"')
+    expect(html.match(/>npm run build</g)).toHaveLength(1)
     expect(html).toContain('>Permitir una vez<')
     expect(html).toContain('Ver detalles')
   })

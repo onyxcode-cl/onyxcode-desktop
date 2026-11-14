@@ -6,6 +6,8 @@ import { NO_AI_ERROR } from '@shared/ai-errors'
 import { t } from '@shared/i18n'
 import { buildChatSystemPrompt } from '@shared/chat-prompt'
 import type { ChatProjectContext } from '@shared/personal-context'
+import type { ModelRef } from '@shared/types'
+import { deferWorkingChange } from '../../lib/working-change'
 import { CHAT_AGENT } from '@shared/types'
 import { isRemoteSurface } from '../../lib/platform'
 import { useSettings } from '../../stores/settings'
@@ -31,7 +33,7 @@ import { interruptSettledSessions, reconcilePending, reconcileRunStatus, runStat
 import { sameDir } from '../../stores/eventRouter'
 import { onStreamReconnect, useServer } from '../../stores/server'
 import { MAIN_SOURCE, useSessions, type MessageEntry } from '../../stores/sessions'
-import { resolveModelForMode } from '../settings/impl/extras'
+import { adoptFreeModel, setModeModel, resolveModelForMode } from '../settings/impl/extras'
 import { isArchivedSession } from '../tasks/impl/util'
 import { useChat, type ChatPendingQuestion } from './store'
 import { clearConversationInstructions, getConversationInstructions } from './conversation-instructions'
@@ -553,4 +555,34 @@ export async function restoreChat(sessionID: string): Promise<void> {
     data = second.data ?? data
   }
   if (data) useSessions.getState().upsertSession(data)
+}
+
+/** Cambio pedido en Chat: mismo estado y misma acción que el botón Detener. */
+export function setChatModel(model: ModelRef, free = false): void {
+  const id = useChat.getState().activeSessionId
+  const connection = useServer.getState().connection
+  if (
+    deferWorkingChange(
+      {
+        busy: () => !!id && (useSessions.getState().status[id] ?? 'idle') !== 'idle',
+        current: () => useChat.getState().activeSessionId === id && useServer.getState().connection === connection,
+        stop: () => (id ? abortChat(id) : Promise.resolve()),
+        subscribe: (listener) => {
+          const offSessions = useSessions.subscribe(listener)
+          const offChat = useChat.subscribe(listener)
+          return () => {
+            offSessions()
+            offChat()
+          }
+        },
+        onError: (error) => {
+          if (id) useSessions.getState().setError(id, error)
+        }
+      },
+      () => setChatModel(model, free)
+    )
+  )
+    return
+  setModeModel('chat', model)
+  if (free) adoptFreeModel(model)
 }

@@ -1,3 +1,4 @@
+import { deferTaskChange } from './working-change'
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import type { PasteRejected } from '@shared/paste-files'
@@ -22,7 +23,7 @@ import { useUi } from '../../../stores/ui'
 import { cw, hasTasksBridge } from './bridge'
 import { forgetChatSession } from './chatIndex'
 import { ensureFolderReadable } from '../../code/impl/folder-access'
-import { enableAutoOnlyFor, isChatFolderPath, useUnified } from './unified'
+import { enableAutoOnlyFor, isChatFolderPath, setConversationAuto, useUnified } from './unified'
 import type { PickedElement } from '@shared/ipc-browser'
 import { addElementAttachment, elementPartsOf, makeElementAttachment, type ElementInclude } from '../../browser/element-context'
 import { stopPicking } from '../../browser/pick-state'
@@ -299,6 +300,7 @@ export async function applyWantedAuto(folder: string): Promise<void> {
  * (diálogo) se pide UNA vez por equipo, salvo que `confirmed` sea true; volver a Sandbox es inmediato.
  */
 export async function setAccessMode(fullAccess: boolean, confirmed = false): Promise<void> {
+  if (deferTaskChange(() => setAccessMode(fullAccess, confirmed))) return
   useUnified.setState({ wantAuto: false })
   if (!fullAccess) return leaveFullAccess()
   const info = (await loadFullAccessInfo()) ?? useTasks.getState().fullAccessInfo
@@ -733,6 +735,7 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
     if (res.error || !res.data) throw new Error(errorMessage(res.error))
     sessions.upsertSession(res.data)
     sessionID = res.data.id
+    if (useUnified.getState().on) await setConversationAuto(sessionID, useUnified.getState().lastAuto)
     const id = sessionID
     useSessions.setState((s) => ({ messages: { ...s.messages, [id]: s.messages[id] ?? [] }, loaded: { ...s.loaded, [id]: true } }))
     useTasks.setState({ activeTaskId: id })
@@ -1014,16 +1017,14 @@ export async function rejectQuestion(requestID: string): Promise<void> {
     return { questions }
   })
   if (request && root)
-    useRejectionNotices
-      .getState()
-      .add({
-        mode: 'tasks',
-        directory: folder,
-        sessionID: root,
-        requestID,
-        kind: 'question',
-        detail: request.questions.map((question) => question.question).join('\n')
-      })
+    useRejectionNotices.getState().add({
+      mode: 'tasks',
+      directory: folder,
+      sessionID: root,
+      requestID,
+      kind: 'question',
+      detail: request.questions.map((question) => question.question).join('\n')
+    })
 }
 
 export async function archiveTask(sessionID: string): Promise<void> {

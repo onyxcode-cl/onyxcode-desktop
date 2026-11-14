@@ -2,6 +2,12 @@ import type { Messages } from '../index'
 import type { common as es } from '../es/common'
 
 export const common = {
+  'common.workingChange.title': 'Still working',
+  'common.workingChange.message': 'To change the AI or mode, first stop the work or wait for it to finish.',
+  'common.workingChange.stop': 'Stop and change',
+  'common.workingChange.wait': 'Wait until it finishes',
+  'common.workingChange.failed': 'Could not confirm that the work stopped. The change was not applied. Try stopping it again.',
+
   'labels.mode.chat': 'Chat',
   'labels.mode.code': 'Code',
   'labels.mode.tasks': 'Overdrive',

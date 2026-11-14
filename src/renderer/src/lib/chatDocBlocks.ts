@@ -7,7 +7,7 @@
  */
 import { parseLenient } from '@shared/json-lenient'
 import { sanitizeDoc, sniffDocKind } from '@shared/chat-doc-sanitize'
-import { isDocxSpec, isPptxSpec, isXlsxSpec, type DocxSpec, type PptxSpec, type XlsxSpec } from '@shared/chat-doc-spec'
+import { isDocxSpec, isPptxSpec, isXlsxSpec, SlideLimitError, type DocxSpec, type PptxSpec, type XlsxSpec } from '@shared/chat-doc-spec'
 import { extractHtmlArtifacts } from '../components/artifacts/ArtifactButton'
 
 export type DataDocKind = 'xlsx' | 'pptx' | 'docx'
@@ -28,9 +28,9 @@ const DATA_FENCE = new RegExp(
 )
 
 /** Por qué un bloque no se pudo usar: `json` (no es JSON ni con reparaciones) o `schema` (es JSON pero no tiene la forma del documento). */
-export type DataBlockFailure = 'json' | 'schema'
+export type DataBlockFailure = 'json' | 'schema' | 'invalid'
 
-export type DataBlockParse = { ok: true; data: XlsxSpec | PptxSpec | DocxSpec } | { ok: false; reason: DataBlockFailure }
+export type DataBlockParse = { ok: true; data: XlsxSpec | PptxSpec | DocxSpec } | { ok: false; reason: DataBlockFailure; detail?: string }
 
 /** Lee un bloque: JSON tolerante + limpieza de forma (claves de más, textos largos, números por texto…) + esquema estricto. Nunca lanza. */
 export function parseDataBlockDetailed(kind: DataDocKind, rawText: string): DataBlockParse {
@@ -40,7 +40,12 @@ export function parseDataBlockDetailed(kind: DataDocKind, rawText: string): Data
   } catch {
     return { ok: false, reason: 'json' }
   }
-  const data = sanitizeDoc(kind, parsed)
+  let data: unknown
+  try {
+    data = sanitizeDoc(kind, parsed)
+  } catch (error) {
+    return error instanceof SlideLimitError ? { ok: false, reason: 'invalid', detail: error.message } : { ok: false, reason: 'schema' }
+  }
   if (kind === 'xlsx') return isXlsxSpec(data) ? { ok: true, data } : { ok: false, reason: 'schema' }
   if (kind === 'docx') return isDocxSpec(data) ? { ok: true, data } : { ok: false, reason: 'schema' }
   return isPptxSpec(data) ? { ok: true, data } : { ok: false, reason: 'schema' }
@@ -80,6 +85,7 @@ export interface BrokenDocBlock {
   index: number
   rawText: string
   reason: DataBlockFailure
+  detail?: string
 }
 
 /** Recorre las vallas cerradas de datos: válidas → `blocks`; con JSON roto o forma incorrecta → `broken`. */
@@ -97,7 +103,7 @@ function scanDataFences(markdown: string): { blocks: Array<ChatDocBlock & { kind
     if (!kind) continue
     const r = parseDataBlockDetailed(kind, rawText)
     if (!r.ok) {
-      broken.push({ kind, index: m.index, rawText, reason: r.reason })
+      broken.push({ kind, index: m.index, rawText, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) })
       continue
     }
     const title = guessDataTitle(kind, rawText, blocks.length + 1)

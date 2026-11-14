@@ -111,3 +111,28 @@ describe('Overdrive Automático: permiso real del motor y respuesta', () => {
     expect(h.replies).toEqual([])
   })
 })
+
+describe('V28: el modo de Overdrive pertenece a la conversación', () => {
+  it.each(['/work/project', 'C:\\work\\project'])('Manual prevalece sobre la carpeta automática y persiste: %s', async (root) => {
+    const h = harness(root, 'python -m unittest')
+    h.approver.set({ task: { sessionId: 'session', on: false } })
+    expect(await h.approver.considerOne(root, false, 'request')).toBe(false)
+    h.approver.set({ task: { sessionId: 'another', on: true } })
+    expect(await h.approver.considerOne(root, false, 'request')).toBe(false)
+    expect(h.approver.state().settings.taskModes).toEqual({ session: false, another: true })
+    // Un nuevo aprobador lee del mismo archivo y vuelve a tomar la decisión, sin tocar el modo de otra sesión.
+    const restarted = new AutoApprover({
+      file: join(dir, 'auto.json'),
+      mcpServers: () => [],
+      policyDisabled: () => false,
+      onApproved: () => {},
+      servers: () => [],
+      grantAutoView: () => {},
+      revokeAutoView: () => {}
+    })
+    expect(restarted.state().settings.taskModes).toEqual({ session: false, another: true })
+    h.approver.set({ task: { sessionId: 'session', on: true } })
+    expect(await h.approver.considerOne(root, false, 'request')).toBe(true)
+    expect(h.replies).toHaveLength(1)
+  })
+})

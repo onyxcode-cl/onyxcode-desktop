@@ -3,7 +3,16 @@
  * las líneas de comandos de las Tareas (`chat-docx-cli.ts`, `chat-xlsx-cli.ts`) y la herramienta `documentos` de la app. NO importar
  * desde esas líneas de comandos dentro de la app: al estar empaquetadas en el mismo archivo ejecutarían el CLI al arrancar.
  */
-import { isDocxSpec, isPptxSpec, isXlsxSpec, PPTX_LAYOUTS, MAX_SLIDES, MAX_BULLETS_PER_SLIDE, MAX_TITLE_CHARS } from '@shared/chat-doc-spec'
+import {
+  isDocxSpec,
+  isPptxSpec,
+  isXlsxSpec,
+  PPTX_LAYOUTS,
+  MAX_SLIDES,
+  SlideLimitError,
+  MAX_BULLETS_PER_SLIDE,
+  MAX_TITLE_CHARS
+} from '@shared/chat-doc-spec'
 
 /** Primer bloque inválido (el esquema es estricto: claves desconocidas, textos largos, filas de otro largo…). */
 export function explainDocx(v: unknown): string {
@@ -28,7 +37,8 @@ export function explainDocx(v: unknown): string {
 
 /** Primera hoja inválida (el Chat valida cada hoja: filas, formatos de columna, gráficos con rango A1). */
 export function explainXlsx(v: unknown): string {
-  if (!v || typeof v !== 'object') return 'Debe ser un objeto con `sheets`. Ejemplo: {"sheets":[{"name":"Hoja","rows":[["Nombre","Total"],["A",10]]}]}.'
+  if (!v || typeof v !== 'object')
+    return 'Debe ser un objeto con `sheets`. Ejemplo: {"sheets":[{"name":"Hoja","rows":[["Nombre","Total"],["A",10]]}]}.'
   const sheets = (v as Record<string, unknown>).sheets
   if (!Array.isArray(sheets) || sheets.length === 0)
     return '`sheets` debe ser una lista con al menos una hoja (hasta 10), no un objeto ni un texto. Ejemplo: {"sheets":[{"name":"Hoja","rows":[["Nombre","Total"],["A",10]]}]}.'
@@ -43,9 +53,12 @@ export function explainPptx(v: unknown): string {
   if (!v || typeof v !== 'object') return 'Debe ser un objeto con `slides`. Ejemplo: {"slides":[{"layout":"cover","title":"Título"}]}.'
   const spec = v as Record<string, unknown>
   const slides = spec.slides
-  if (!Array.isArray(slides) || slides.length === 0) return `\`slides\` debe ser una lista con al menos una lámina (hasta ${MAX_SLIDES}), no un objeto ni un texto. Ejemplo: {"slides":[{"layout":"cover","title":"Título"}]}.`
+  if (Array.isArray(slides) && slides.length > MAX_SLIDES) return new SlideLimitError().message
+  if (!Array.isArray(slides) || slides.length === 0)
+    return `\`slides\` debe ser una lista con al menos una lámina (hasta ${MAX_SLIDES}), no un objeto ni un texto. Ejemplo: {"slides":[{"layout":"cover","title":"Título"}]}.`
   for (const key of ['theme', 'style', 'footer', 'transition', 'palette', 'fonts'])
-    if (spec[key] !== undefined && !isPptxSpec({ slides: [{ title: 'x' }], [key]: spec[key] })) return `El campo \`${key}\` del documento no es válido.`
+    if (spec[key] !== undefined && !isPptxSpec({ slides: [{ title: 'x' }], [key]: spec[key] }))
+      return `El campo \`${key}\` del documento no es válido.`
   const bad = slides.findIndex((sl) => !isPptxSpec({ slides: [sl] }))
   if (bad < 0) return `Revisa que haya como mucho ${MAX_SLIDES} láminas y pocas imágenes.`
   const sl = slides[bad] as Record<string, unknown> | null

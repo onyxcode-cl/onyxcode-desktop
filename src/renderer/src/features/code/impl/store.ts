@@ -6,6 +6,8 @@
  */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import { create } from 'zustand'
+import { deferWorkingChange } from '../../../lib/working-change'
+import { useServer } from '../../../stores/server'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
 import { useProjectProfile } from '../../project-profile/store'
 import {
@@ -27,7 +29,13 @@ function linkedOf(dir: string): Array<{ path: string; mode: 'rw' | 'ro' }> {
   if (!have) void useProjectProfile.getState().ensure(dir)
   return have?.linked ?? []
 }
-import { PERMISSION_REPLACE_BODY, approvalKindOf, isAutoApprovableCommand } from '@shared/permission-rules'
+import {
+  PERMISSION_REPLACE_BODY,
+  approvalKindOf,
+  isAutoApprovableCommand,
+  endsWithModeBlock,
+  rulesetForMode
+} from '@shared/permission-rules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { isAutoApprovableCodeCommand } from './auto-command'
 import { NO_AI_ERROR } from '@shared/ai-errors'
@@ -129,6 +137,7 @@ const LS_AGENT = 'code.agent'
 const LS_PANEL = 'code.panel'
 const LS_SESSION = 'code.session.'
 const LS_PERM_MODE = 'code.permissionMode'
+const LS_SESSION_MODES = 'code.sessionPermissionModes'
 const LS_PINNED = 'code.pinned'
 const LS_TRUSTED = 'code.trustedFolders'
 /** Lo que se vio de cada carpeta de confianza al confiar (`TrustedScan`): huella y conectores/complementos aceptados (W-A2). */
@@ -262,6 +271,8 @@ export interface CodeState {
 
   /** Modo de permisos aplicado a la sesión activa (ver `types.ts`). */
   permissionMode: PermissionMode
+  lastPermissionMode: PermissionMode
+  sessionPermissionModes: Record<string, PermissionMode>
   /** Mensajes en cola por sesión (se envían cuando la sesión queda libre, o con "Enviar ahora"). */
   queue: Record<string, QueuedMessage[]>
   /** Sesiones con actividad sin ver (terminó de trabajar o pide algo mientras no estaba activa/enfocada). */
@@ -458,6 +469,22 @@ function initialPermissionMode(): PermissionMode {
   const v = lsGet(LS_PERM_MODE)
   return v === 'manual' || v === 'acceptEdits' || v === 'plan' || v === 'auto' || v === 'bypass' ? v : 'manual'
 }
+function readSessionModes(): Record<string, PermissionMode> {
+  const raw = lsGetJSON<unknown>(LS_SESSION_MODES, {})
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  return Object.fromEntries(Object.entries(raw).filter(([, v]) => ['manual', 'acceptEdits', 'plan', 'auto', 'bypass'].includes(v)))
+}
+
+function sessionMode(s: CodeState, sid: string): PermissionMode {
+  const saved = s.sessionPermissionModes[sid]
+  if (saved) return saved
+  const rules = s.sessions[sid]?.permission
+  for (const mode of ['manual', 'acceptEdits', 'plan', 'auto', 'bypass'] as const) {
+    if (rules && endsWithModeBlock(rules, rulesetForMode(mode))) return mode
+  }
+  return s.permissionMode
+}
+
 /** ¿La ventana tiene el foco Y la pestaña/sesión referida está actualmente visible al usuario? */
 function windowIsFocused(): boolean {
   try {
@@ -701,6 +728,7 @@ export const useCode = create<CodeState>((set, get) => {
             messages: { ...s.messages, [sessionID]: s.runState[sessionID] === 'idle' ? (interruptRunningParts(merged) ?? merged) : merged }
           }
         })
+        retryPendingPermissions(sessionID)
         scheduleEvict()
         const todo = await client.session.todo({ sessionID, directory: dir }).catch(() => null)
         if (todo?.data && !dropped()) {
@@ -781,6 +809,22 @@ export const useCode = create<CodeState>((set, get) => {
   }
   const purgeSessionSideState = (id: string): void => purgeManySideState(new Set([id]))
 
+  const resolvedPermissions = new Set<string>()
+  const replyingPermissions = new Set<string>()
+  const resolvePermission = (id: string): void => {
+    resolvedPermissions.add(id)
+    set((s) => {
+      const permissions = { ...s.permissions }
+      delete permissions[id]
+      return { permissions }
+    })
+  }
+  const retryPendingPermissions = (sid?: string): void => {
+    for (const p of Object.values(get().permissions)) {
+      if (!sid || p.sessionID === sid) autoApproveCommand(p)
+    }
+  }
+
   /** Permisos y preguntas pendientes + estado de ejecución de `dir` (por defecto, el proyecto con foco). */
   const loadPending = async (dir?: string): Promise<void> => {
     const client = getClient()
@@ -813,7 +857,7 @@ export const useCode = create<CodeState>((set, get) => {
     // desde otro cliente o mientras la app no escuchaba quedaba pegado. Si la petición falló no se toca nada.
     if (perms?.data) {
       const list: PendingPermission[] = perms.data
-        .filter((p) => known(p.sessionID))
+        .filter((p) => known(p.sessionID) && !resolvedPermissions.has(p.id))
         .map((p) => ({ ...p, metadata: p.metadata ?? {}, api: 'v1' as const }))
       set((s) => ({
         permissions: reconcilePending({
@@ -824,6 +868,7 @@ export const useCode = create<CodeState>((set, get) => {
         })
       }))
     }
+    retryPendingPermissions()
     if (questions?.data) {
       const list: PendingQuestion[] = questions.data
         .filter((q) => known(q.sessionID))
@@ -875,6 +920,7 @@ export const useCode = create<CodeState>((set, get) => {
    * «Solo explorar» conserva su lista de lectura. Las rutas protegidas siempre quedan a la persona.
    */
   const autoApproveCommand = (p: PendingPermission): boolean => {
+    if (resolvedPermissions.has(p.id) || replyingPermissions.has(p.id)) return true
     const background = p.permission === 'bgshell_start'
     if ((p.permission !== 'bash' && !background) || isProtectedPermission(p.metadata)) return false
     const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
@@ -955,7 +1001,7 @@ export const useCode = create<CodeState>((set, get) => {
       const rf = refreshGlobalConfigRules()
       if (rf) await rf
     }
-    const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir, agent))
+    const wantRules = rulesetForState(sessionMode(get(), sid), agent, linkedOf(dir), projectAskOf(dir, agent))
     if (!sessionRulesUpToDate(sid, get().sessions[sid]?.permission, wantRules)) {
       try {
         const updated = sdkData(
@@ -1120,6 +1166,8 @@ export const useCode = create<CodeState>((set, get) => {
     loadingMessages: {},
     globalError: null,
     permissionMode: initialPermissionMode(),
+    lastPermissionMode: initialPermissionMode(),
+    sessionPermissionModes: readSessionModes(),
     queue: {},
     unread: {},
     moreSessionsByDir: {},
@@ -1165,11 +1213,14 @@ export const useCode = create<CodeState>((set, get) => {
       void window.api.invoke('settings:addRecentFolder', { path: directory }).catch(() => undefined)
       await get().loadSessions(directory)
       // Chat nuevo pedido por la persona: se queda sin sesión activa (el compositor listo; la sesión se crea al enviar el primer mensaje).
-      if (opts?.fresh) return
+      if (opts?.fresh) {
+        await get().selectSession(null)
+        return
+      }
       const last = lsGet(LS_SESSION + directory)
       const sessions = selectProjectSessions(get(), directory)
       const pick = sessions.find((x) => x.id === last) ?? sessions[0]
-      if (pick) await get().selectSession(pick.id)
+      await get().selectSession(pick?.id ?? null)
     },
 
     closeProject: () => {
@@ -1209,7 +1260,7 @@ export const useCode = create<CodeState>((set, get) => {
         const last = lsGet(LS_SESSION + next)
         const sessions = selectProjectSessions(get(), next)
         const pick = sessions.find((x) => x.id === last) ?? sessions[0]
-        if (pick) void get().selectSession(pick.id)
+        void get().selectSession(pick?.id ?? null)
       }
     },
 
@@ -1232,7 +1283,7 @@ export const useCode = create<CodeState>((set, get) => {
       const last = lsGet(LS_SESSION + directory)
       const sessions = selectProjectSessions(get(), directory)
       const pick = sessions.find((x) => x.id === last) ?? sessions[0]
-      if (pick) await get().selectSession(pick.id)
+      await get().selectSession(pick?.id ?? null)
     },
 
     restoreOpenProjects: async () => {
@@ -1323,6 +1374,8 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     newSessionAt: async (dir, title) => {
+      const mode = get().lastPermissionMode
+      const agent = get().activeSessionID ? (mode === 'plan' ? 'plan' : 'build') : get().agent
       try {
         const client = requireClient()
         {
@@ -1333,17 +1386,24 @@ export const useCode = create<CodeState>((set, get) => {
           await client.session.create({
             directory: dir,
             title,
-            permission: rulesetForState(get().permissionMode, get().agent, linkedOf(dir), projectAskOf(dir, get().agent)),
+            permission: rulesetForState(mode, agent, linkedOf(dir), projectAskOf(dir, agent)),
             ...PERMISSION_REPLACE_BODY
           })
         )
         noteRulesReplaced(sess.id)
+        const sessionPermissionModes = { ...get().sessionPermissionModes, [sess.id]: mode }
+        lsSetJSON(LS_SESSION_MODES, sessionPermissionModes)
         set((s) => ({
+          sessionPermissionModes,
           sessions: { ...s.sessions, [sess.id]: sess },
           sessionProject: { ...s.sessionProject, [sess.id]: dir },
           messages: { ...s.messages, [sess.id]: s.messages[sess.id] ?? [] }
         }))
-        if (dir === get().directory) await get().selectSession(sess.id)
+        if (dir === get().directory) {
+          const loading = get().selectSession(sess.id)
+          if (get().activeSessionID === sess.id) set({ agent })
+          await loading
+        }
         return sess.id
       } catch (err) {
         set({ globalError: errorMessage(err) })
@@ -1352,7 +1412,10 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     selectSession: async (sessionID) => {
-      set({ activeSessionID: sessionID })
+      const mode = sessionID ? sessionMode(get(), sessionID) : get().lastPermissionMode
+      const sessionPermissionModes = sessionID ? { ...get().sessionPermissionModes, [sessionID]: mode } : get().sessionPermissionModes
+      lsSetJSON(LS_SESSION_MODES, sessionPermissionModes)
+      set({ activeSessionID: sessionID, permissionMode: mode, sessionPermissionModes, agent: mode === 'plan' ? 'plan' : 'build' })
       const dir = get().directory
       if (dir) lsSet(LS_SESSION + dir, sessionID)
       if (!sessionID) return
@@ -1401,7 +1464,7 @@ export const useCode = create<CodeState>((set, get) => {
         const rf = refreshGlobalConfigRules()
         if (rf) await rf
       }
-      const wantRules = rulesetForState(get().permissionMode, agent, linkedOf(dir), projectAskOf(dir, agent))
+      const wantRules = rulesetForState(sessionMode(get(), sid), agent, linkedOf(dir), projectAskOf(dir, agent))
       if (!sessionRulesUpToDate(sid, get().sessions[sid]?.permission, wantRules)) {
         try {
           const updated = sdkData(
@@ -1697,6 +1760,8 @@ export const useCode = create<CodeState>((set, get) => {
     markRewindUnavailable: (sessionID) => set((s) => ({ rewindSupport: { ...s.rewindSupport, [sessionID]: false }, rewindDialog: null })),
 
     replyPermission: async (p, requested, quiet = false) => {
+      if (resolvedPermissions.has(p.id) || replyingPermissions.has(p.id)) return
+      replyingPermissions.add(p.id)
       try {
         const client = requireClient()
         const dir = get().sessionProject[p.sessionID] ?? get().directory ?? undefined
@@ -1713,6 +1778,7 @@ export const useCode = create<CodeState>((set, get) => {
         } else {
           sdkData(await client.permission.reply({ requestID: p.id, reply, directory: dir }))
         }
+        resolvedPermissions.add(p.id)
         set((s) => {
           const permissions = { ...s.permissions }
           delete permissions[p.id]
@@ -1729,7 +1795,9 @@ export const useCode = create<CodeState>((set, get) => {
           })
         }
       } catch (err) {
-        set({ globalError: errorMessage(err) })
+        if (!resolvedPermissions.has(p.id)) set((s) => ({ permissions: { ...s.permissions, [p.id]: p }, globalError: errorMessage(err) }))
+      } finally {
+        replyingPermissions.delete(p.id)
       }
     },
 
@@ -1813,6 +1881,7 @@ export const useCode = create<CodeState>((set, get) => {
       }),
 
     setAgent: (agent) => {
+      if (agent !== get().agent && deferCodeChange(() => get().setAgent(agent))) return
       lsSet(LS_AGENT, agent)
       set({ agent })
       // «Hacer» con el modo «Solo explorar» rige como «Preguntar siempre» (`effectiveModeFor`): el chip de permisos pasa a decirlo,
@@ -1821,10 +1890,12 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     setModel: (model, remember = true) => {
+      if (remember && deferCodeChange(() => get().setModel(model))) return
       set({ model, variant: null })
       if (remember) setModeModel('code', model)
     },
     setRoleModel: (role, model) => {
+      if (deferCodeChange(() => get().setRoleModel(role, model))) return
       const key = get().activeSessionID ?? ''
       set((s) => ({ roleModels: { ...s.roleModels, [key]: withRoleModel(s.roleModels[key], role, model) } }))
     },
@@ -1835,7 +1906,10 @@ export const useCode = create<CodeState>((set, get) => {
         delete roleNotices[sessionID]
         return { roleNotices }
       }),
-    setVariant: (variant) => set({ variant }),
+    setVariant: (variant) => {
+      if (variant !== get().variant && deferCodeChange(() => get().setVariant(variant))) return
+      set({ variant })
+    },
 
     // -- Cola de mensajes --
     enqueue: (sessionID, text, files = [], attachments = []) => {
@@ -1881,8 +1955,12 @@ export const useCode = create<CodeState>((set, get) => {
 
     // -- Modo de permisos --
     setPermissionMode: async (mode) => {
+      if (mode !== get().permissionMode && deferCodeChange(() => get().setPermissionMode(mode))) return
       lsSet(LS_PERM_MODE, mode)
-      set({ permissionMode: mode })
+      const selected = get().activeSessionID
+      const sessionPermissionModes = selected ? { ...get().sessionPermissionModes, [selected]: mode } : get().sessionPermissionModes
+      lsSetJSON(LS_SESSION_MODES, sessionPermissionModes)
+      set({ permissionMode: mode, lastPermissionMode: mode, sessionPermissionModes })
       // El agente se iguala AUNQUE todavía no haya conversación (borrador): `effectiveModeFor('plan', 'build')` es «manual», así que sin esto una
       // conversación creada tras elegir «Solo explorar» en el borrador nacía con las reglas de «Preguntar siempre» (H3, 1.8.13).
       if (mode === 'plan') get().setAgent('plan')
@@ -1890,8 +1968,7 @@ export const useCode = create<CodeState>((set, get) => {
       const sid = get().activeSessionID
       if (!sid) return
       // El bloque del modo se manda ya (también «Solo explorar»: tiene que anular lo que dejó el modo anterior en esta sesión).
-      // No se reenvía si la sesión ya termina con él. Si hay una respuesta en curso, el motor la termina con las reglas anteriores:
-      // el cambio vale desde el próximo mensaje (la interfaz lo avisa).
+      // No se reenvía si la sesión ya termina con él. Los cambios pedidos durante una respuesta esperan a Detener.
       const { client, dir } = activeDir()
       {
         const rf = refreshGlobalConfigRules()
@@ -2255,6 +2332,7 @@ export const useCode = create<CodeState>((set, get) => {
           )
           if (slice.messages !== cur.messages) {
             set({ messages: slice.messages })
+            retryPendingPermissions(messageEventSessionID(event) ?? undefined)
             // Clave nueva en `messages` (sesión que empieza a tener contenido): puede pasarse del tope.
             const sid = messageEventSessionID(event)
             if (sid && !(sid in cur.messages)) scheduleEvict()
@@ -2269,7 +2347,7 @@ export const useCode = create<CodeState>((set, get) => {
         }
         case 'permission.asked': {
           const p = event.properties
-          if (!adopt(p.sessionID, eventDir)) return
+          if (!adopt(p.sessionID, eventDir) || resolvedPermissions.has(p.id)) return
           const pending: PendingPermission = {
             id: p.id,
             sessionID: p.sessionID,
@@ -2288,7 +2366,7 @@ export const useCode = create<CodeState>((set, get) => {
         }
         case 'permission.v2.asked': {
           const p = event.properties
-          if (!adopt(p.sessionID, eventDir)) return
+          if (!adopt(p.sessionID, eventDir) || resolvedPermissions.has(p.id)) return
           const pending: PendingPermission = {
             id: p.id,
             sessionID: p.sessionID,
@@ -2307,13 +2385,7 @@ export const useCode = create<CodeState>((set, get) => {
         }
         case 'permission.replied':
         case 'permission.v2.replied': {
-          const { requestID } = event.properties
-          if (!(requestID in get().permissions)) return
-          set((s) => {
-            const permissions = { ...s.permissions }
-            delete permissions[requestID]
-            return { permissions }
-          })
+          resolvePermission(event.properties.requestID)
           break
         }
         case 'question.asked': {
@@ -2540,3 +2612,30 @@ useProviders.subscribe((s) => {
   providerIdsSig = sig
   if (changed && useCode.getState().model) useCode.setState({ model: null, variant: null })
 })
+
+/** Protege también los atajos y los modelos de Planear/Hacer, con el estado visible del compositor. */
+export function deferCodeChange(apply: () => void | Promise<void>): boolean {
+  const { activeSessionID: id, directory } = useCode.getState()
+  const client = useServer.getState().client
+  return deferWorkingChange(
+    {
+      busy: () => {
+        const run = selectCodeRunOf(useCode.getState(), id)
+        return run === 'busy' || run === 'retry'
+      },
+      current: () =>
+        useCode.getState().activeSessionID === id && useCode.getState().directory === directory && useServer.getState().client === client,
+      stop: () => useCode.getState().abort(),
+      subscribe: (listener) => {
+        const offCode = useCode.subscribe(listener)
+        const offServer = useServer.subscribe(listener)
+        return () => {
+          offCode()
+          offServer()
+        }
+      },
+      onError: (globalError) => useCode.setState({ globalError })
+    },
+    apply
+  )
+}

@@ -87,6 +87,35 @@ beforeEach(() => {
 })
 
 describe('captura HTML 4K', () => {
+  it('entrega 60 capturas secuenciales sin adelantar la siguiente a la escritura', async () => {
+    state.count = 60
+    const count = await captureSlidesAsPngs('<section class="slide"></section>'.repeat(60), '60 láminas', async (_png, index) => {
+      expect(state.commands.filter((command) => command.name === 'Page.captureScreenshot')).toHaveLength(index + 1)
+      await Promise.resolve()
+      state.callbacks.push(index)
+    })
+    expect(count).toBe(60)
+    expect(state.callbacks).toEqual(Array.from({ length: 60 }, (_, i) => i))
+    expect(state.destroyed).toBe(true)
+  })
+  it('da 150 segundos a 60 láminas, conserva el plazo y destruye la ventana si se bloquea', async () => {
+    vi.useFakeTimers()
+    try {
+      state.count = 60
+      state.hangCapture = true
+      const pending = expect(captureSlidesAsPngs('<section class="slide"></section>'.repeat(60), 'Deck', vi.fn())).rejects.toThrow(
+        'tiempo máximo'
+      )
+      await vi.advanceTimersByTimeAsync(149_999)
+      expect(state.destroyed).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      await pending
+      expect(state.destroyed).toBe(true)
+      expect(state.attached).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it('fija DPR4 antes de cargar y entrega una captura exacta antes de pedir la siguiente', async () => {
     const count = await captureSlidesAsPngs('<section class="slide"></section>', 'Deck', async (png, i) => {
       expect(state.commands.filter((c) => c.name === 'Page.captureScreenshot')).toHaveLength(i + 1)
@@ -136,10 +165,8 @@ describe('captura HTML 4K', () => {
     vi.useFakeTimers()
     try {
       state.hangCapture = true
-      const pending = expect(captureSlidesAsPngs('<section class="slide"></section>', 'Deck', vi.fn())).rejects.toThrow(
-        'tiempo máximo de 30 segundos'
-      )
-      await vi.advanceTimersByTimeAsync(30_000)
+      const pending = expect(captureSlidesAsPngs('<section class="slide"></section>', 'Deck', vi.fn())).rejects.toThrow('tiempo máximo')
+      await vi.advanceTimersByTimeAsync(34_000)
       await pending
       expect(state.destroyed).toBe(true)
       expect(state.attached).toBe(false)
@@ -163,7 +190,7 @@ describe('captura HTML 4K', () => {
           ? renderHtmlToPdf('<section class="slide"></section>')
           : captureSlidesAsPngs('<section class="slide"></section>', 'Deck', vi.fn())
       const pending = expect(operation).rejects.toBeInstanceOf(SlidesHtmlError)
-      await vi.advanceTimersByTimeAsync(30_000)
+      await vi.advanceTimersByTimeAsync(34_000)
       await pending
       expect(state.destroyed).toBe(true)
       expect(state.attached).toBe(false)

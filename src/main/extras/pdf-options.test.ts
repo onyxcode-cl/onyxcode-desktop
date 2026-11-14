@@ -65,6 +65,12 @@ describe('última página casi vacía', () => {
 })
 
 describe('pdfPageCount con árbol de páginas de Chromium', () => {
+  it.each([false, true])('cuenta 60 páginas con subárboles de 8 y la raíz al inicio=%s', (rootFirst) => {
+    const root = '<< /Count 60 /Kids [1 0 R 2 0 R] /Type /Pages >>'
+    const branches = Array.from({ length: 8 }, (_, i) => `<< /Type /Pages /Count ${i === 7 ? 4 : 8} /Kids [] >>`)
+    const nodes = rootFirst ? [root, ...branches] : [...branches, root]
+    expect(pdfPageCount(Buffer.from(nodes.join('\n'), 'latin1'))).toBe(60)
+  })
   it('toma el total de la raíz aunque los nodos de 8 hojas vengan antes (14 láminas, prueba real)', () => {
     const pdf = Buffer.from(
       '<< /Type /Pages /Count 8 /Kids [] /Parent 3 0 R >>\n<< /Type /Pages /Count 6 /Kids [] /Parent 3 0 R >>\n<< /Type /Pages /Count 14 /Kids [1 0 R 2 0 R] >>\n<< /Count 20 /Type /Font >>',

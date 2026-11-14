@@ -15,6 +15,14 @@ beforeEach(() => {
   document.body.innerHTML = '<section class="slide"></section><section class="slide"></section>'
 })
 describe('contrato común de presentación HTML', () => {
+  it.each([60, 200])('valida %i láminas sin perder contenido ni paginación', (count) => {
+    document.body.innerHTML = Array.from({ length: count }, (_, i) => `<section class="slide">Lámina ${i + 1}</section>`).join('')
+    expect(validate()).toBe(count)
+    const slides = [...document.querySelectorAll('.slide')]
+    expect(slides.map((slide) => slide.textContent)).toEqual(Array.from({ length: count }, (_, i) => `Lámina ${i + 1}`))
+    expect(document.querySelectorAll('[data-lzx-last-slide]')).toHaveLength(1)
+    expect(slides.at(-1)!.hasAttribute('data-lzx-last-slide')).toBe(true)
+  })
   it('reconoce clases múltiples y usa la cantidad exacta de láminas', () => {
     expect(hasHtmlSlides('<section class="cover slide dark">')).toBe(true)
     expect(hasHtmlSlides('<div class="slideshow">')).toBe(false)
@@ -33,8 +41,8 @@ describe('contrato común de presentación HTML', () => {
   it('no convierte un documento ordinario ni trunca láminas adicionales', () => {
     document.body.innerHTML = '<p>Sin láminas</p>'
     expect(validate).toThrow('falta al menos un elemento .slide')
-    document.body.innerHTML = '<section class="slide"></section>'.repeat(41)
-    expect(validate).toThrow('máximo de 40')
+    document.body.innerHTML = '<section class="slide"></section>'.repeat(201)
+    expect(validate).toThrow('máximo de 200')
   })
   it.each([
     'width:1280px;height:720px',

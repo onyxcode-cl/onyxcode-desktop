@@ -109,6 +109,10 @@ export const code = {
   'code.perm.suggestion.negar': 'Sugerencia de la IA: negar. Motivo: {reason}',
   'code.perm.suggestion.preguntar': 'Sugerencia de la IA: preguntarte a ti. Motivo: {reason}',
   'code.perm.suggestion.note': 'Es solo un consejo de la IA, no está verificado y no decide nada: la decisión es tuya.',
+  'code.perm.workingFolder': 'Carpeta de trabajo · {root}',
+  'code.perm.background': 'correr un comando en segundo plano',
+  'code.tool.stopShell': 'Detuvo el comando',
+  'code.tool.stoppingShell': 'Deteniendo el comando',
   'code.perm.noSandbox': 'Sin límite de carpeta · {root}',
   'code.perm.cmdLong': 'El comando sigue: {n} líneas en total',
   'code.perm.kbdOnce': '⌘↵',
@@ -139,7 +143,6 @@ export const code = {
     'Salvo en «Todo sin preguntar», siempre pregunta por carpetas fuera del proyecto y archivos .env; si una acción se repite en bucle, avisa en cualquier modo. Los conectores que trae la carpeta preguntan antes de usarse en todos los modos, salvo los que marcaste «Sin preguntar en Code» en Ajustes.',
   'code.mode.stalePlan':
     'Esta conversación pasó por «Solo explorar»: aunque cambies de modo, los ayudantes (subagentes) no podrán editar archivos aquí y se bloquearán sin tarjeta. Abre una conversación nueva para usarlos.',
-  'code.mode.laterNotice': 'El cambio vale desde el próximo mensaje',
   'code.mode.title': 'Modo de permisos',
   'code.agent.title': 'Modo de trabajo',
   'code.agent.build': 'Hacer',

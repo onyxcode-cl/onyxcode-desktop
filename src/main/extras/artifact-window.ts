@@ -411,17 +411,22 @@ export async function captureSlidesAsPngs(
   win.setIgnoreMouseEvents(true)
   win.showInactive()
   let timer: NodeJS.Timeout | undefined
+  let extendCaptureTimeout: (count: number) => void = () => undefined
   try {
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new SlidesHtmlError('La exportación PowerPoint 4K superó el tiempo máximo de 30 segundos.')),
-        PDF_TIMEOUT_MS
-      )
+      const expire = (): void => reject(new SlidesHtmlError('La exportación PowerPoint 4K superó el tiempo máximo.'))
+      timer = setTimeout(expire, PDF_TIMEOUT_MS)
+      // La carga inicial mantiene su plazo; después se da tiempo proporcional al deck validado.
+      extendCaptureTimeout = (count) => {
+        clearTimeout(timer)
+        timer = setTimeout(expire, PDF_TIMEOUT_MS + count * 2_000)
+      }
     })
     const run = async (): Promise<number> => {
       await initializeSlideViewport(win, 4)
       await win.loadURL(`${SCHEME}://${id}`)
       const count = (await artifactScript<number>(wc, VALIDATE_SLIDES_SCRIPT)) as number
+      extendCaptureTimeout(count)
       await artifactScript<boolean>(wc, WAIT_SLIDES_ASSETS_SCRIPT)
       await wc.executeJavaScript(
         `document.querySelectorAll('.slide').forEach(el => { el.dataset.lzxExportDisplay = getComputedStyle(el).display; })`,
@@ -452,7 +457,6 @@ export async function captureSlidesAsPngs(
         })()`,
           true
         )
-        await artifactScript<boolean>(wc, WAIT_SLIDES_ASSETS_SCRIPT)
         await artifactScript<boolean>(
           wc,
           `(async () => {

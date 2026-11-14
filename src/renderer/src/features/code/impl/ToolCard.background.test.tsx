@@ -67,3 +67,17 @@ describe('P6: avisos del motor en la conversación (motor nuevo)', () => {
     expect(html).toContain('Hecho')
   })
 })
+
+it.each(['shell_wait', 'bgshell_stop'])('V28: %s dice que detuvo el comando', (tool) => {
+  const part = toolPart('stop', 'm1', 's1', tool, {
+    status: 'completed',
+    input: { terminate: true },
+    output: 'stopped',
+    title: '',
+    metadata: {},
+    time: { start: 0, end: 1 }
+  }) as ToolPart
+  const html = renderToStaticMarkup(<ToolRow part={part} root={null} />)
+  expect(html).toContain('Detuvo el comando')
+  expect(html).not.toContain('Esperó el comando')
+})

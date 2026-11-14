@@ -197,6 +197,11 @@ const DOCX: [string, unknown, boolean][] = [
 ]
 
 describe('contrato de documentos de Chat: validación compartida e IPC dicen lo mismo', () => {
+  it.each([60, 200, 201])('pptx de %i láminas: Chat e IPC comparten el tope', (count) => {
+    const data = { slides: Array.from({ length: count }, (_, i) => ({ title: `Lámina ${i + 1}` })) }
+    expect(isPptxSpec(data)).toBe(count <= 200)
+    expect(ipcAccepts('pptx', data)).toBe(count <= 200)
+  })
   // Regla: lo que la validación compartida acepta, el esquema IPC TAMBIÉN (si no, el archivo se genera y el panel no abre). Lo contrario no
   // importa: el esquema IPC puede ser más laxo en algo que la validación compartida ya detiene antes.
   it.each(XLSX)('xlsx — %s', (_n, data, valid) => {

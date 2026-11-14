@@ -31,6 +31,17 @@ describe('identidad conservada al sanear', () => {
 })
 
 describe('sanitizeDoc: pptx de GPT', () => {
+  it.each([60, 200])('conserva las %i láminas en orden y sigue siendo válido', (count) => {
+    const slides = Array.from({ length: count }, (_, i) => ({ title: `Lámina ${i + 1}` }))
+    expect(sanitizeDoc('pptx', { slides })).toEqual({ slides })
+    expect(isPptxSpec(sanitizeDoc('pptx', { slides }))).toBe(true)
+  })
+  it('rechaza 201 antes de sanear, sin perder láminas ni modificar el original', () => {
+    const slides = Array.from({ length: 201 }, (_, i) => ({ title: `Lámina ${i + 1}` }))
+    expect(() => sanitizeDoc('pptx', { slides })).toThrow('máximo de 200 láminas. No se recortó ninguna lámina.')
+    expect(slides).toHaveLength(201)
+    expect(isPptxSpec({ slides })).toBe(false)
+  })
   const raw = GPT_PPTX
   it('sin sanear, el esquema estricto lo rechaza entero', () => {
     expect(isPptxSpec(raw)).toBe(false)

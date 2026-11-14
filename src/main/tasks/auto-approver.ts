@@ -32,6 +32,7 @@ interface Persisted {
   enabled: boolean
   folders: string[]
   tasks: string[]
+  taskModes: Record<string, boolean>
   viewApps: string[]
   log: AutoApprovalRecord[]
 }
@@ -82,7 +83,7 @@ function isValidRecord(r: unknown): r is AutoApprovalRecord {
 }
 
 function defaultPersisted(): Persisted {
-  return { version: 1, enabled: false, folders: [], tasks: [], viewApps: [...defaultAutoViewApps()], log: [] }
+  return { version: 1, enabled: false, folders: [], tasks: [], taskModes: {}, viewApps: [...defaultAutoViewApps()], log: [] }
 }
 
 export class AutoApprover {
@@ -109,6 +110,10 @@ export class AutoApprover {
           version: 1,
           enabled: raw.enabled === true,
           folders: Array.isArray(raw.folders) ? raw.folders.filter((x): x is string => typeof x === 'string') : [],
+          taskModes:
+            raw.taskModes && typeof raw.taskModes === 'object' && !Array.isArray(raw.taskModes)
+              ? Object.fromEntries(Object.entries(raw.taskModes).filter(([, v]) => typeof v === 'boolean'))
+              : {},
           tasks: Array.isArray(raw.tasks) ? raw.tasks.filter((x): x is string => typeof x === 'string') : [],
           viewApps:
             Array.isArray(raw.viewApps) && raw.viewApps.length > 0 && raw.viewApps.every((x) => typeof x === 'string')
@@ -142,6 +147,7 @@ export class AutoApprover {
       enabled: data.enabled,
       folders: [...data.folders],
       tasks: [...data.tasks],
+      taskModes: { ...data.taskModes },
       viewApps: [...data.viewApps]
     }
     return { settings, log: [...data.log], policyDisabled: this.deps.policyDisabled() }
@@ -161,6 +167,7 @@ export class AutoApprover {
     }
     if (req.task && typeof req.task.sessionId === 'string') {
       const { sessionId, on } = req.task
+      data.taskModes[sessionId] = on
       data.tasks = on ? [...new Set([...data.tasks, sessionId])] : data.tasks.filter((t) => t !== sessionId)
     }
     if (Array.isArray(req.viewApps)) {
@@ -199,6 +206,7 @@ export class AutoApprover {
   private optedIn(folder: string, rootSessionId: string | null): boolean {
     const data = this.load()
     if (!data.enabled) return false
+    if (rootSessionId && Object.hasOwn(data.taskModes, rootSessionId)) return data.taskModes[rootSessionId]!
     if (data.folders.includes(folder)) return true
     if (rootSessionId && data.tasks.includes(rootSessionId)) return true
     return false

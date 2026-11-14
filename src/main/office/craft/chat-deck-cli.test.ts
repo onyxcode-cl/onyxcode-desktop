@@ -78,6 +78,18 @@ describe('build_chat_deck (CLI de las Tareas con el motor del Chat)', () => {
     expect(logs.join('\n')).toContain('2 diapositivas')
   })
 
+  it('explica el exceso de 201 láminas sin ejecutar el motor', async () => {
+    let called = false
+    const run = async (): Promise<void> => {
+      called = true
+    }
+    const input = { slides: Array.from({ length: 201 }, () => ({ title: 'Lámina' })) }
+    expect(await runChatDeckCli([spec(input), out], deps(run))).toBe(1)
+    expect(errs.join('\n')).toContain('máximo de 200 láminas. No se recortó ninguna lámina.')
+    expect(called).toBe(false)
+    expect(existsSync(out)).toBe(false)
+  })
+
   it('spec inválido: error sin ejecutar nada ni crear la salida', async () => {
     let called = false
     const run = async (): Promise<void> => {

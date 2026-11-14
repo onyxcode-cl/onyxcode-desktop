@@ -181,7 +181,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
         if (parsed.ok) req = { ...common, kind, data: parsed.data } as ChatDocOpenRequest
         else {
           reportDocProblem(rawText, docProblemMessage(kind, parsed.reason))
-          showProblem(kind, rawText, title, isSlides, { reason: parsed.reason })
+          showProblem(kind, rawText, title, isSlides, { reason: parsed.reason, detail: parsed.detail })
           return
         }
       }

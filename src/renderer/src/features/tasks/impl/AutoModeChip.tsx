@@ -1,3 +1,4 @@
+import { deferTaskChange } from './working-change'
 /**
  * Chip "Modo auto" del compositor: visible SOLO si el interruptor maestro está activo (Ajustes ›
  * Modo auto). Muestra si está encendido para la carpeta/tarea actuales y deja activarlo/desactivarlo
@@ -10,7 +11,7 @@ import { UI_LABELS } from '@shared/labels'
 import { useT } from '../../../lib/i18n'
 import { ChipMenu } from '../../../components/ChipMenu'
 import { setAutoModeSettings, useTasks } from './store'
-import { enableAutoOnlyFor, useUnified, useUnifiedApps } from './unified'
+import { rememberTaskMode, setConversationAuto, useUnified, useUnifiedApps } from './unified'
 
 const NOTICE_MS = 5000
 
@@ -28,18 +29,20 @@ function UnifiedModeChip(): React.JSX.Element {
   const t = useT()
   const autoMode = useTasks((s) => s.autoMode)
   const folder = useTasks((s) => s.folder)
-  const wantAuto = useUnified((s) => s.wantAuto)
+  const lastAuto = useUnified((s) => s.lastAuto)
+  const sessionId = useTasks((s) => s.activeTaskId)
   const settings = autoMode?.settings
-  const auto = folder ? !!settings?.enabled && settings.folders.includes(folder) : wantAuto
+  const auto = sessionId
+    ? !!settings?.enabled &&
+      (settings.taskModes?.[sessionId] ?? (settings.tasks.includes(sessionId) || (!!folder && settings.folders.includes(folder))))
+    : lastAuto
   const blocked = !!autoMode?.policyDisabled
   const pick = (id: string): void => {
     const on = id === 'auto'
     if (on && blocked) return
-    useUnified.setState({ wantAuto: folder ? false : on })
-    if (folder) {
-      const done = on ? enableAutoOnlyFor(folder) : setAutoModeSettings({ folder: { path: folder, on } })
-      void done.catch(() => undefined)
-    }
+    if (on === auto || deferTaskChange(() => pick(id))) return
+    rememberTaskMode(on)
+    if (sessionId) void setConversationAuto(sessionId, on).catch(() => undefined)
   }
   return (
     <ChipMenu
@@ -88,15 +91,15 @@ function ClassicAutoModeChip(): React.JSX.Element | null {
 
   const folderOn = !!folder && settings.folders.includes(folder)
   const taskOn = !!activeTaskId && settings.tasks.includes(activeTaskId)
-  const active = folderOn || taskOn
+  const active = activeTaskId ? (settings.taskModes?.[activeTaskId] ?? (folderOn || taskOn)) : folderOn
 
   const toggleFolder = (): void => {
-    if (!folder) return
+    if (!folder || deferTaskChange(toggleFolder)) return
     setBusy('folder')
     void setAutoModeSettings({ folder: { path: folder, on: !folderOn } }).finally(() => setBusy(null))
   }
   const toggleTask = (): void => {
-    if (!activeTaskId) return
+    if (!activeTaskId || deferTaskChange(toggleTask)) return
     setBusy('task')
     void setAutoModeSettings({ task: { sessionId: activeTaskId, on: !taskOn } }).finally(() => setBusy(null))
   }
