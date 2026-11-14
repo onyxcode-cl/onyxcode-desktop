@@ -1103,6 +1103,8 @@
  "code.tool.searched",
  "code.tool.searchedFiles",
  "code.tool.searchedWeb",
+ "code.tool.stopShell",
+ "code.tool.stoppingShell",
  "code.tool.subagent",
  "code.tool.subagentBlocked.escalation",
  "code.tool.subagentBlocked.rule",
