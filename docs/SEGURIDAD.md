@@ -3186,3 +3186,20 @@ siguen vigentes.
 El orden de tarjetas se escribe al mover mediante `settings:set`, con una lista cerrada de identificadores y modos en su esquema.
 Main mezcla cada modo con el valor actual y escribe el archivo atómicamente antes de responder. El campo `summaryCardOrder` es
 clase remota X; no se crea un canal ni un permiso nuevo para el celular.
+
+### Publicadores MCP y PowerShell local (F8-B306, V27 ronda 3)
+
+OpenCode crea un MCP local por directorio. Cada publicador `bgshell` usa ahora un token aleatorio propio para su snapshot,
+archivo temporal y peticiones de parada. Main descubre estos archivos únicamente junto al archivo de eventos de su servidor,
+con nombres cerrados; lee como máximo 128 snapshots y 50 trabajos por snapshot, y aplica la caducidad de 10 s por publicador.
+El historial de otra carpeta no recorta los trabajos antes de comprobar la conversación raíz. La parada revalida sesión,
+trabajo vivo y publicador, y comprueba la respuesta en ese mismo snapshot. No se reciben tokens, rutas ni PIDs del renderer.
+Al crear cada MCP se retiran snapshots cuya fecha de modificación lleva más de 10 s sin renovarse; un publicador reanudado
+puede recrear el suyo al publicar.
+
+El clasificador de Automático distingue las listas y expresiones PowerShell de las rutas. `Start-Process` puede usar una ruta
+absoluta a un runtime de nombre conocido si declara una carpeta de trabajo estática dentro del proyecto; sus demás argumentos
+siguen sujetos al filtro. Esto es una heurística de aprobación, no certifica la identidad del ejecutable ni constituye un
+sandbox. `RunAs`, scripts/ejecutables arbitrarios exteriores, carpetas exteriores o dinámicas, archivos sensibles y descarga con
+ejecución conservan pregunta. La excepción de datos de regex se limita al argumento literal de `[regex]::Matches`, sin rutas,
+variables ni sustituciones; no se amplía a los argumentos de `Get-Content` o `Test-Path`.
