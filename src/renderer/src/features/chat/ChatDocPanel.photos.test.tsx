@@ -52,3 +52,54 @@ it('muestra la foto que falta sin desplegar detalles y la incluye al pedir la co
   act(() => button.click())
   expect(ask).toHaveBeenCalledWith(t('chat.doc.retryPrompt', { reason: detail }))
 })
+
+it('muestra el motivo de un documento inválido como aviso principal y lo incluye al pedir de nuevo', () => {
+  const ask = vi.fn()
+  setChatDocAskHandler(ask)
+  const detail = 'Debe imprimir 14 láminas, pero produjo 8 páginas.'
+  act(() => {
+    root.render(
+      createElement(ChatDocPanel, {
+        creating: false,
+        title: 'Presentación',
+        doc: { kind: 'html', rawText: '<section class="slide">Una lámina</section>', isSlides: true },
+        problem: { reason: 'invalid', detail },
+        onRetry: vi.fn(),
+        fullscreen: false,
+        onToggleFullscreen: vi.fn(),
+        onClose: vi.fn()
+      })
+    )
+  })
+  expect(host.querySelector('[role="alert"] p')?.textContent).toBe(detail)
+  expect(host.textContent).not.toContain(t('chat.doc.problem.invalid'))
+  expect(host.textContent).not.toContain(t('chat.doc.showDetail'))
+  const button = [...host.querySelectorAll('button')].find((b) => b.textContent === t('chat.doc.askAgain'))!
+  expect(button).toBeDefined()
+  act(() => button.click())
+  expect(ask).toHaveBeenCalledWith(t('chat.doc.retryPrompt', { reason: detail }))
+})
+
+it.each([undefined, '', '   '])('mantiene el aviso y la petición genéricos si el documento inválido no trae detalle (%j)', (detail) => {
+  const ask = vi.fn()
+  setChatDocAskHandler(ask)
+  act(() => {
+    root.render(
+      createElement(ChatDocPanel, {
+        creating: false,
+        title: 'Documento',
+        doc: { kind: 'html', rawText: '<p>Texto</p>', isSlides: false },
+        problem: { reason: 'invalid', detail },
+        onRetry: vi.fn(),
+        fullscreen: false,
+        onToggleFullscreen: vi.fn(),
+        onClose: vi.fn()
+      })
+    )
+  })
+  expect(host.querySelector('[role="alert"] p')?.textContent).toBe(t('chat.doc.problem.invalid'))
+  const button = [...host.querySelectorAll('button')].find((b) => b.textContent === t('chat.doc.askAgain'))!
+  expect(button).toBeDefined()
+  act(() => button.click())
+  expect(ask).toHaveBeenCalledWith(t('chat.doc.retryPrompt', { reason: t('chat.doc.problem.invalid') }))
+})

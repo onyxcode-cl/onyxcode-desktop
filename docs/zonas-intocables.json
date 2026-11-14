@@ -31,7 +31,7 @@
     "src/main/tasks/sandbox-profile.ts": "ed04821ddff1b9c9897bc114e88b005303a5029aace4025b0a954ddd896665c2",
     "src/main/tasks/sandbox.ts": "1a6b2a707221b997336fc210896316130ad72a6c2174c84d06ff1244b673a84e",
     "src/main/tasks/ui-path.ts": "3d27bc53fdd9cf8e8c7d975f7779de8126fa9b420837a6442126248a31900810",
-    "src/main/tasks/win-context.ts": "09b15f6cd08a92fb3e60020596d6d2936c3b68350c30a0b13ff9523d1c8127da",
+    "src/main/tasks/win-context.ts": "bc77e5ad444bc40fc3113798cc71eb65955f239221acd1991f3117cc9653d485",
     "src/preload/assist.ts": "b51cbf39a22698cc16d9a4b2a2dc830b9806a652b71c5b498bc65261fa1147fc",
     "src/preload/browser-host.ts": "e93723b3eae93e3a0f7771a55835f3ab4ec492a34550776a1ad739d7e6aa314a",
     "src/preload/overlay.ts": "c53499ee83abda4d434aa1831124b7a5cf35767ca00868dd84ef4bb5ff0e4d51",
@@ -320,6 +320,15 @@
       "nuevos": [
         "resources/wsl/lzx_rm.py"
       ],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-14",
+      "motivo": "V27: conservar unidades buenas menos de 120 s con fecha original; revisión independiente aprobada sin hallazgos",
+      "cambiados": [
+        "src/main/tasks/win-context.ts"
+      ],
+      "nuevos": [],
       "desaparecidos": []
     }
   ]

@@ -22,6 +22,11 @@ const REASON_KEY = {
 /** Clave i18n del motivo corto de un fallo. */
 export const docProblemKey = (reason: DocProblemReason): (typeof REASON_KEY)[DocProblemReason] => REASON_KEY[reason]
 
+/** Estos fallos ya incluyen una explicación para la persona y para pedir la corrección al modelo. */
+export function docProblemMessage(reason: DocProblemReason, detail: unknown): string | null {
+  return (reason === 'invalid' || reason === 'photo-missing') && typeof detail === 'string' && detail.trim() ? detail : null
+}
+
 interface Props {
   reason: DocProblemReason
   /** Texto de la acción principal (ya traducido); sin él no hay botón. */
@@ -40,13 +45,13 @@ export function DocNotice({ reason, actionLabel, onAction, busy = false, extra, 
   const t = useT()
   const [showDetail, setShowDetail] = useState(false)
   const cut = reason === 'cut'
-  const photoMessage = reason === 'photo-missing' && typeof detail === 'string' ? detail : null
+  const problemMessage = docProblemMessage(reason, detail)
   return (
     <div role="alert" className={`rounded-lg border border-danger/30 bg-elevated px-3 py-2.5 text-[12.5px] ${className}`}>
       <div className="flex items-start gap-2">
         <AlertTriangle size={14} className="mt-0.5 shrink-0 text-danger" />
         <div className="min-w-0 flex-1">
-          <p className="break-words font-medium text-fg">{photoMessage || t(REASON_KEY[reason])}</p>
+          <p className="break-words font-medium text-fg">{problemMessage || t(REASON_KEY[reason])}</p>
           {cut && <p className="mt-0.5 text-muted">{t('chat.doc.problem.cutHint')}</p>}
           {extra && <p className="mt-0.5 text-danger">{extra}</p>}
         </div>
@@ -64,7 +69,7 @@ export function DocNotice({ reason, actionLabel, onAction, busy = false, extra, 
               {actionLabel}
             </button>
           )}
-          {detail && !photoMessage && (
+          {detail && !problemMessage && (
             <button
               type="button"
               onClick={() => setShowDetail((v) => !v)}
@@ -76,7 +81,7 @@ export function DocNotice({ reason, actionLabel, onAction, busy = false, extra, 
           )}
         </div>
       )}
-      {detail && !photoMessage && showDetail && (
+      {detail && !problemMessage && showDetail && (
         <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md bg-bg p-2 text-[11.5px] desk:text-meta text-muted">
           {detail}
         </pre>

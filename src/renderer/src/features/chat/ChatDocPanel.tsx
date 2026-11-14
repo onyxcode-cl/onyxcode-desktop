@@ -11,7 +11,7 @@ import { parseDataBlock } from '../../lib/chatDocBlocks'
 import { useT } from '../../lib/i18n'
 import { DownloadMenuButton, PresentSlidesButton } from '../../components/artifacts/ArtifactButton'
 import { DownloadDataDocButton } from '../../components/artifacts/DataDocButton'
-import { DocNotice, docProblemKey } from '../../components/artifacts/DocNotice'
+import { DocNotice, docProblemKey, docProblemMessage } from '../../components/artifacts/DocNotice'
 import { askAboutChatDoc, canAskAboutChatDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { requestCraftInstall } from '../settings/impl/CraftComponentCard'
 import { useChatDocViewport } from './useChatDocViewport'
@@ -175,7 +175,7 @@ export function ChatDocPanel({
                     ? () =>
                         askAboutChatDoc(
                           t('chat.doc.retryPrompt', {
-                            reason: problem.reason === 'photo-missing' && problem.detail ? problem.detail : t(docProblemKey(problem.reason))
+                            reason: docProblemMessage(problem.reason, problem.detail) ?? t(docProblemKey(problem.reason))
                           })
                         )
                     : onRetry

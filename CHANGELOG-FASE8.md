@@ -4512,3 +4512,13 @@ Pruebas: identidad/contratos/normalización; comandos y archivos reales de Word;
 
 - Al abrir el borde y al cargar su página se registra en `problemas.log` el origen del aviso, visibilidad, geometría, opacidad, escala, carga y estado siempre encima. También se registra el primer inicio de control si un permiso flotante ya había abierto el borde. Sin contenido de tareas ni capturas, sin registro por cada movimiento y sin cambiar la protección de pantalla.
 - Pruebas: `computer/overlay.test.ts`, diez casos Mac/Windows simulados, incluidos permiso seguido de acción/sesión, privacidad, entrega tras carga y tolerancia a errores de diagnóstico. La causa del borde invisible en Windows no está confirmada: hace falta observar el monitor y cotejar estos registros en el PC.
+
+## F8-B302 — Lectura de unidades tolerante a un fallo aislado (V27)
+
+- Windows conserva la última lista buena de unidades durante menos de 120 s, sin volver a fecharla al reutilizarla. Cada consulta fallida se registra en `problemas.log` con un motivo acotado, sin rutas ni salida de PowerShell, y se reintenta una vez con un límite de 10 s.
+- La renovación anticipada mantiene el contexto disponible entre consultas; sin lectura buena reciente, tanto la política como la resolución de rutas siguen cerrando. Pruebas dirigidas: `win-drives.test.ts` y `win-context.test.ts`; ejecución en Windows real pendiente.
+
+## F8-B303 — Motivo visible y reutilizable al corregir un documento (V27)
+
+- El aviso de documento inválido muestra su explicación como texto principal y «Pedir de nuevo» se la pasa al modelo, como ya ocurría con las fotos ausentes. Sin detalle conserva el mensaje genérico.
+- Pruebas: `ChatDocPanel.photos.test.tsx` comprueba aviso, petición de corrección y ausencia de detalle, además de la regresión de foto ausente. El comportamiento es compartido por macOS y Windows.

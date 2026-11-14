@@ -1,10 +1,17 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { ProblemLog } from '../diagnostics/problem-log'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   driveKindFromType,
   parseWinDrives,
   readWinDrives,
+  readWinDrivesSnapshot,
   resetWinDrivesCache,
   WIN_DRIVES_TIMEOUT_MS,
+  WIN_DRIVES_RETRY_TIMEOUT_MS,
+  WIN_DRIVES_MAX_AGE_MS,
   WIN_DRIVES_TTL_MS,
   type ExecFileFn
 } from './win-drives'
@@ -87,20 +94,56 @@ describe('readWinDrives (execFile doble)', () => {
     await readWinDrives(deps)
     expect(fn).toHaveBeenCalledTimes(2)
   })
-  it('falla cerrado: error, tiempo agotado o salida rara → null, y no reutiliza una lectura anterior caducada', async () => {
+  it('un fallo aislado conserva la lista anterior sin extender su edad; a los 120 s cierra', async () => {
     let now = 0
-    let mode: 'ok' | 'throw' | 'bad' = 'ok'
-    const { fn } = mk(async () => {
-      if (mode === 'throw') throw new Error('ETIMEDOUT')
-      return { stdout: mode === 'bad' ? '<html>' : OUT }
-    })
+    const fn = vi.fn(async () => ({ stdout: OUT }))
     const deps = { execFile: fn, systemRoot: 'C:\\Windows', now: () => now }
-    expect(await readWinDrives(deps)).not.toBeNull()
-    now += WIN_DRIVES_TTL_MS + 1
-    mode = 'throw'
+    const good = await readWinDrivesSnapshot(deps)
+    now = WIN_DRIVES_TTL_MS + 1
+    fn.mockRejectedValue(new Error('ETIMEDOUT'))
+    expect(await readWinDrivesSnapshot(deps)).toBe(good)
+    expect(fn).toHaveBeenCalledTimes(3)
+    now = WIN_DRIVES_MAX_AGE_MS
     expect(await readWinDrives(deps)).toBeNull()
-    mode = 'bad'
+    now = -1
     expect(await readWinDrives(deps)).toBeNull()
+  })
+  it('el segundo intento dispone de 10 s y puede recuperar un arranque en frío', async () => {
+    const fn = vi.fn<ExecFileFn>().mockRejectedValueOnce({ killed: true, signal: 'SIGTERM' }).mockResolvedValue({ stdout: OUT })
+    const deps = { execFile: fn, systemRoot: 'C:\\Windows', now: () => 0 }
+    expect(await readWinDrives(deps)).toHaveLength(3)
+    expect(fn.mock.calls.map((call) => call[2].timeout)).toEqual([WIN_DRIVES_TIMEOUT_MS, WIN_DRIVES_RETRY_TIMEOUT_MS])
+  })
+  it.each(['error', 'bad'])('sin una lista buena, %s en ambos intentos sigue cerrando', async (mode) => {
+    const fn = vi.fn<ExecFileFn>(async () => {
+      if (mode === 'error') throw new Error('powershell')
+      return { stdout: '<html>' }
+    })
+    expect(await readWinDrives({ execFile: fn, systemRoot: 'C:\\Windows' })).toBeNull()
+    expect(fn).toHaveBeenCalledTimes(2)
+  })
+  it('registra cada intento fallido y su motivo en problemas.log sin mensajes, salidas ni rutas personales', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'win-drives-log-'))
+    try {
+      const log = new ProblemLog({ dir })
+      const fn = vi
+        .fn<ExecFileFn>()
+        .mockRejectedValueOnce({ killed: true, signal: 'SIGTERM', message: 'C:\\Users\\Privado token-secreto' })
+        .mockResolvedValueOnce({ stdout: 'C:\\Users\\Privado token-secreto' })
+      await readWinDrives({ execFile: fn, systemRoot: 'C:\\Windows', record: (problem) => log.record(problem) })
+      const raw = readFileSync(join(dir, 'problemas.log'), 'utf8')
+      const entries = raw
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line))
+      expect(entries.map((entry) => entry.detail)).toEqual([
+        { motivo: 'tiempo agotado', intento: 1, limiteMs: 3000 },
+        { motivo: 'salida inválida', intento: 2, limiteMs: 10000 }
+      ])
+      expect(raw).not.toMatch(/Privado|token-secreto|Users|C:/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
   it('comparte una sola consulta concurrente y aísla ejecutores y SystemRoot', async () => {
     let finish!: (result: { stdout: string }) => void
@@ -119,24 +162,22 @@ describe('readWinDrives (execFile doble)', () => {
     finish({ stdout: OUT })
     await c
   })
-  it('renueva antes del TTL sin retener un éxito si la renovación falla', async () => {
+  it('renueva antes del TTL y retiene el éxito mientras falla el primer intento y el reintento', async () => {
     let finish!: (result: { stdout: string }) => void
     const fn = vi.fn(async () => ({ stdout: OUT }))
     let now = 0
     const deps = { execFile: fn, systemRoot: 'C:\\Windows', now: () => now }
-    await readWinDrives(deps)
+    const previous = await readWinDrives(deps)
     now = 25_000
     fn.mockImplementation(() => new Promise((resolve) => (finish = resolve)))
     const renewal = readWinDrives(deps, true)
-    // Todavía fresco: abrir no espera el proceso de renovación.
-    expect(await readWinDrives(deps)).toHaveLength(3)
+    expect(await readWinDrives(deps)).toBe(previous)
     expect(fn).toHaveBeenCalledTimes(2)
     finish({ stdout: '<bad>' })
-    expect(await renewal).toBeNull()
-    const next = readWinDrives(deps)
+    await Promise.resolve()
     expect(fn).toHaveBeenCalledTimes(3)
-    finish({ stdout: OUT })
-    await next
+    finish({ stdout: '<bad>' })
+    expect(await renewal).toBe(previous)
   })
   it('no prolonga el TTL por lo que tarde el proceso ni por un reloj que retrocede', async () => {
     let now = 0

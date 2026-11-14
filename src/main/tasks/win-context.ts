@@ -14,10 +14,10 @@ import { join, win32 } from 'node:path'
 import { promisify } from 'node:util'
 import { wslSetupPaths } from './backends/wsl-setup'
 import type { WinDirEntry, WinDrive, WinFolderPolicyContext, WinLinkProbe } from './folder-policy-win'
-import { readWinDrives, WIN_DRIVES_TTL_MS, type ExecFileFn } from './win-drives'
+import { readWinDrivesSnapshot, WIN_DRIVES_MAX_AGE_MS, WIN_DRIVES_TTL_MS, type ExecFileFn, type WinDrivesSnapshot } from './win-drives'
 
 /** Una lectura de unidades más vieja que esto ya no vale (la caché propia de `readWinDrives` es de 30 s). */
-export const WIN_CONTEXT_MAX_AGE_MS = 120_000
+export const WIN_CONTEXT_MAX_AGE_MS = WIN_DRIVES_MAX_AGE_MS
 
 export interface WinHostDeps {
   /** `process.env` (se busca sin distinguir mayúsculas). */
@@ -26,8 +26,8 @@ export interface WinHostDeps {
   userData: string
   /** `process.execPath`: su carpeta es la de instalación de Lazunox (vetada). */
   execPath: string
-  /** `force`: renovación anticipada, sin reutilizar una lectura anterior. */
-  readDrives(force?: boolean): Promise<WinDrive[] | null>
+  /** `force`: renovación anticipada. El lector real devuelve la fecha original, incluso si reutiliza un acierto anterior. */
+  readDrives(force?: boolean): Promise<WinDrive[] | WinDrivesSnapshot | null>
   now?: () => number
   /** Disco: se inyecta en pruebas; por defecto `node:fs`. `lstat` lanza ENOENT si no existe. */
   fs?: {
@@ -43,7 +43,7 @@ export interface WinHost {
   refresh(): Promise<void>
   /** Precarga y renueva las unidades antes de caducar. Optativo para los dobles antiguos. */
   startBackgroundRefresh?(): void
-  /** Cancela las renovaciones futuras; no cancela la consulta en curso (ya tiene timeout de 3 s). */
+  /** Cancela las renovaciones futuras; no cancela la consulta en curso (ya tiene timeout de 3 s y un reintento de 10 s). */
   stopBackgroundRefresh?(): void
   /** Contexto de la política, o `undefined` si falta algo (cierra). `allowedRoots` ya normalizadas por el llamador. */
   context(allowedRoots?: string[]): WinFolderPolicyContext | undefined
@@ -90,10 +90,10 @@ export function createWinHost(deps: WinHostDeps): WinHost {
   const refresh = async (force = false): Promise<void> => {
     const at = now()
     try {
-      const list = await deps.readDrives(force)
-      drives = list ? { at, list } : null
+      const result = await deps.readDrives(force)
+      if (result) drives = Array.isArray(result) ? { at, list: result } : { at: result.at, list: result.drives }
     } catch {
-      drives = null
+      // Un fallo aislado no borra el último acierto. context() y realpath() siguen comprobando su fecha original.
     }
   }
 
@@ -139,7 +139,7 @@ export function createWinHost(deps: WinHostDeps): WinHost {
       const programData = envGet(e, 'ProgramData')
       const localAppData = envGet(e, 'LOCALAPPDATA')
       if (!userProfile || !systemRoot || !programData || !localAppData) return undefined
-      if (!drives || now() < drives.at || now() - drives.at > WIN_CONTEXT_MAX_AGE_MS) return undefined
+      if (!drives || now() < drives.at || now() - drives.at >= WIN_CONTEXT_MAX_AGE_MS) return undefined
       // Distro WSL de Tareas (`%LOCALAPPDATA%\Lazunox\wsl`): `wslSetupPaths` valida la ruta; si es rara, no se aprueba nada.
       let wslRoot: string
       try {
@@ -168,7 +168,7 @@ export function createWinHost(deps: WinHostDeps): WinHost {
       // de red abriría una conexión SMB ANTES de que la política la rechace. Lanza → el llamador usa la ruta léxica.
       const letter = /^([A-Za-z]):/.exec(p)?.[1]?.toUpperCase()
       const drive = letter ? drives?.list.find((d) => d.letter === letter) : undefined
-      if (!drives || now() < drives.at || now() - drives.at > WIN_CONTEXT_MAX_AGE_MS || !drive || drive.kind !== 'fixed')
+      if (!drives || now() < drives.at || now() - drives.at >= WIN_CONTEXT_MAX_AGE_MS || !drive || drive.kind !== 'fixed')
         throw new Error('unidad no fija o sin leer')
       return fs.realpath(p)
     },
@@ -187,6 +187,6 @@ export function createRealWinHost(o: { userData: string; execPath?: string; env?
     env,
     userData: o.userData,
     execPath: o.execPath ?? process.execPath,
-    readDrives: (force) => readWinDrives({ execFile: execFileP as unknown as ExecFileFn, systemRoot, debug: console.debug }, force)
+    readDrives: (force) => readWinDrivesSnapshot({ execFile: execFileP as unknown as ExecFileFn, systemRoot, debug: console.debug }, force)
   })
 }

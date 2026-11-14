@@ -2,8 +2,9 @@
  * Contexto de Windows de la política de carpetas (`win-context.ts`): falla cerrado sin unidades, con unidades caducadas o con
  * variables esenciales ausentes; arma `extraDenied` con la instalación de Lazunox y la distro; el probe de enlaces falla cerrado.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forbiddenWinFolderReason, type WinDrive } from './folder-policy-win'
+import { readWinDrivesSnapshot, type ExecFileFn } from './win-drives'
 import { createWinHost, WIN_CONTEXT_MAX_AGE_MS, type WinHostDeps } from './win-context'
 
 const ENV = {
@@ -44,6 +45,9 @@ function host(over: Partial<WinHostDeps> = {}) {
 }
 
 describe('createWinHost', () => {
+  beforeEach(() => {
+    clock = 1_000_000
+  })
   afterEach(() => vi.useRealTimers())
   it('sin refresh() no hay contexto (cierra): la política rechaza todo', () => {
     expect(host().context()).toBeUndefined()
@@ -69,7 +73,7 @@ describe('createWinHost', () => {
     await h.refresh()
     expect(h.context()).toBeDefined()
   })
-  it('si leer las unidades falla o devuelve null, cierra (y no resucita una lectura vieja)', async () => {
+  it('si leer falla conserva la lista anterior menos de 120 s; sin lista buena cierra', async () => {
     let n = 0
     const h = host({
       readDrives: async () => {
@@ -80,7 +84,10 @@ describe('createWinHost', () => {
     await h.refresh()
     expect(h.context()).toBeDefined()
     await h.refresh()
+    expect(h.context()).toBeDefined()
+    clock += WIN_CONTEXT_MAX_AGE_MS
     expect(h.context()).toBeUndefined()
+    expect(() => h.realpath('C:\\x')).toThrow()
     const h2 = host({ readDrives: async () => null })
     await h2.refresh()
     expect(h2.context()).toBeUndefined()
@@ -165,7 +172,7 @@ describe('createWinHost', () => {
     await vi.advanceTimersByTimeAsync(60_000)
     expect(readDrives).toHaveBeenCalledTimes(2)
   })
-  it('un fallo de renovación cierra el contexto y no reanima un ciclo detenido en vuelo', async () => {
+  it('un fallo de renovación conserva un acierto reciente y no reanima un ciclo detenido en vuelo', async () => {
     vi.useFakeTimers()
     let finish!: (list: WinDrive[] | null) => void
     const readDrives = vi.fn(async (): Promise<WinDrive[] | null> => DRIVES)
@@ -176,8 +183,38 @@ describe('createWinHost', () => {
     h.stopBackgroundRefresh!()
     finish(null)
     await vi.advanceTimersByTimeAsync(60_000)
-    expect(h.context()).toBeUndefined()
+    expect(h.context()).toBeDefined()
     expect(readDrives).toHaveBeenCalledTimes(2)
+    clock += WIN_CONTEXT_MAX_AGE_MS
+    expect(h.context()).toBeUndefined()
+  })
+  it('el fallback del lector real conserva su fecha original en context y realpath', async () => {
+    const fn = vi.fn<ExecFileFn>().mockResolvedValue({ stdout: '[{"DeviceID":"C:","DriveType":3}]' })
+    const h = host({ readDrives: (force) => readWinDrivesSnapshot({ execFile: fn, systemRoot: 'C:\\Windows', now: () => clock }, force) })
+    await h.refresh()
+    fn.mockRejectedValue({ code: 'ETIMEDOUT' })
+    clock += 110_000
+    await h.refresh()
+    expect(h.context()).toBeDefined()
+    clock += 10_000
+    expect(h.context()).toBeUndefined()
+    expect(() => h.realpath('C:\\x')).toThrow()
+    await h.refresh()
+    expect(h.context()).toBeUndefined()
+  })
+  it('la renovación continua mantiene un contexto fresco más allá de 120 s y los fallos sostenidos acaban cerrando', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(clock)
+    const readDrives = vi.fn(async (): Promise<WinDrive[] | null> => DRIVES)
+    const h = host({ readDrives, now: Date.now })
+    h.startBackgroundRefresh!()
+    await vi.advanceTimersByTimeAsync(WIN_CONTEXT_MAX_AGE_MS * 2)
+    expect(h.context()).toBeDefined()
+    readDrives.mockResolvedValue(null)
+    await vi.advanceTimersByTimeAsync(WIN_CONTEXT_MAX_AGE_MS)
+    expect(h.context()).toBeUndefined()
+    expect(() => h.realpath('C:\\x')).toThrow()
+    h.stopBackgroundRefresh!()
   })
   it('realpath tampoco usa unidades caducadas ni una lectura con reloj futuro', async () => {
     const h = host()
