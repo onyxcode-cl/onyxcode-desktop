@@ -9,12 +9,7 @@ import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { getExtras } from '../../lib/extrasApi'
 import { parseDataBlock } from '../../lib/chatDocBlocks'
 import { useT } from '../../lib/i18n'
-import {
-  DownloadHtmlButton,
-  DownloadPdfButton,
-  DownloadSlidesPptxButton,
-  PresentSlidesButton
-} from '../../components/artifacts/ArtifactButton'
+import { DownloadMenuButton, PresentSlidesButton } from '../../components/artifacts/ArtifactButton'
 import { DownloadDataDocButton } from '../../components/artifacts/DataDocButton'
 import { DocNotice, docProblemKey } from '../../components/artifacts/DocNotice'
 import { askAboutChatDoc, canAskAboutChatDoc, type ChatDocBlockKind } from '../../lib/chatDocPreview'
@@ -115,17 +110,11 @@ export function ChatDocPanel({
           {title || t('chat.doc.title')} {doc && <span className="text-subtle">· {t(KIND_LABEL[doc.kind])}</span>}
         </span>
         {file && <ChatFileButtons info={file.info} compact />}
-        {doc && !problem && doc.kind === 'html' && (
-          <DownloadHtmlButton html={doc.rawText} context={doc.context} title={title} compact className="py-1" />
-        )}
-        {doc && !problem && doc.kind === 'html' && (
-          <DownloadPdfButton html={doc.rawText} context={doc.context} title={title} compact className="py-1" />
-        )}
         {doc && !problem && doc.kind === 'html' && doc.isSlides && (
-          <>
-            <PresentSlidesButton html={doc.rawText} context={doc.context} title={title} compact className="py-1" />
-            <DownloadSlidesPptxButton html={doc.rawText} context={doc.context} title={title} compact className="py-1" />
-          </>
+          <PresentSlidesButton html={doc.rawText} context={doc.context} title={title} className="py-1" />
+        )}
+        {doc && !problem && doc.kind === 'html' && (
+          <DownloadMenuButton html={doc.rawText} context={doc.context} title={title} isSlides={doc.isSlides} className="py-1" />
         )}
         {doc && !problem && (doc.kind === 'xlsx' || doc.kind === 'pptx' || doc.kind === 'docx') && (
           <DownloadDataDocButton kind={doc.kind} rawText={doc.rawText} title={title} compact className="py-1" />

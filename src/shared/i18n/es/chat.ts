@@ -1,4 +1,6 @@
 export const chat = {
+  'chat.doc.download': 'Descargar',
+  'chat.doc.download.pptx': 'PowerPoint (imagen 4K)',
   'chat.doc.saveHtml': 'Guardar HTML',
   'chat.file.group': 'Archivos de esta respuesta',
   'chat.file.view': 'Ver aquí',

@@ -27,12 +27,7 @@ import {
 import type { TasksDeliverable, TasksFilePreview } from '@shared/ipc-tasks'
 import { Markdown } from '../../../components/Markdown'
 import { errorMessage } from '../../../lib/opencode'
-import {
-  ArtifactButton,
-  DownloadHtmlButton,
-  DownloadSlidesPptxButton,
-  PresentSlidesButton
-} from '../../../components/artifacts/ArtifactButton'
+import { ArtifactButton, DownloadMenuButton, PresentSlidesButton } from '../../../components/artifacts/ArtifactButton'
 import { useT } from '../../../lib/i18n'
 import { platformCaps } from '../../../lib/platform'
 import { openPath, reveal } from './actions'
@@ -295,13 +290,8 @@ function HtmlArtifactAction({ file }: { file: TasksDeliverable }): React.JSX.Ele
   return (
     <>
       <ArtifactButton {...props} isSlides={slides} />
-      <DownloadHtmlButton {...props} />
-      {slides && (
-        <>
-          <PresentSlidesButton {...props} />
-          <DownloadSlidesPptxButton {...props} />
-        </>
-      )}
+      {slides && <PresentSlidesButton {...props} />}
+      <DownloadMenuButton {...props} isSlides={slides} />
     </>
   )
 }

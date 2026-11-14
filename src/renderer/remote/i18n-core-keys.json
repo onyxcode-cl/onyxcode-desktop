@@ -180,6 +180,8 @@
  "chat.doc.craftInstallFailed",
  "chat.doc.craftInstalling",
  "chat.doc.creating",
+ "chat.doc.download",
+ "chat.doc.download.pptx",
  "chat.doc.exitFullscreen",
  "chat.doc.fullscreen",
  "chat.doc.hideDetail",

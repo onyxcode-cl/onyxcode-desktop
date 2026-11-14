@@ -13,8 +13,7 @@ vi.mock('../../../components/artifacts/ArtifactButton', () => ({
     h.artifact(props)
     return null
   },
-  DownloadHtmlButton: () => null,
-  DownloadSlidesPptxButton: () => null,
+  DownloadMenuButton: () => null,
   PresentSlidesButton: () => null
 }))
 import { DeliverableList } from './Deliverables'

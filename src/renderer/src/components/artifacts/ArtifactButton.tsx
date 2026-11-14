@@ -10,8 +10,8 @@ import { hasHtmlSlides } from '@shared/slides-html'
  *   // b) Dentro del renderer de <pre>/<code> de react-markdown:
  *   //    if (isHtmlCodeBlock(className)) <ArtifactButton html={String(children)} />
  */
-import { useState } from 'react'
-import { AppWindow, Download, Loader2, MonitorPlay, Presentation } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AppWindow, ChevronDown, Download, Loader2, MonitorPlay, Presentation } from 'lucide-react'
 import { getExtras } from '../../lib/extrasApi'
 import { currentArtifactContext, previewInChatDocPanel } from '../../lib/chatDocPreview'
 import { UI_LABELS } from '@shared/labels'
@@ -272,5 +272,96 @@ export function DownloadHtmlButton({ html, title, className = '', compact, conte
       {busy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
       {!compact && t(error ? 'chat.doc.card.downloadFailed' : 'chat.doc.saveHtml')}
     </button>
+  )
+}
+
+/**
+ * Un solo «Descargar» con menú (HTML, PDF y, si es presentación, PowerPoint 4K). Antes había un ícono
+ * por formato, iguales entre sí y sin texto: no se sabía cuál era cuál.
+ */
+export function DownloadMenuButton({ html, title, className = '', context, isSlides }: Props): React.JSX.Element | null {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  const extras = getExtras()
+  useEffect(() => {
+    if (!open) return
+    const close = (event: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false)
+    }
+    const esc = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [open])
+  if (!extras) return null
+  const ctx = context ?? currentArtifactContext()
+  const run = async (action: () => Promise<unknown>): Promise<void> => {
+    setOpen(false)
+    setBusy(true)
+    setError(null)
+    try {
+      await action()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const items: { key: string; label: string; action: () => Promise<unknown> }[] = [
+    { key: 'pdf', label: 'PDF', action: () => extras.downloadHtmlAsPdf({ title: title ?? guessTitle(html), html, context: ctx }) },
+    ...(isSlides
+      ? [
+          {
+            key: 'pptx',
+            label: t('chat.doc.download.pptx'),
+            action: () => extras.downloadSlidesAsPptx({ title: title ?? guessTitle(html, 1, 'Presentación'), html, context: ctx })
+          }
+        ]
+      : []),
+    { key: 'html', label: 'HTML', action: () => extras.downloadHtml({ html, title: title ?? guessTitle(html), context: ctx }) }
+  ]
+  return (
+    <div ref={ref} className="no-drag relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        title={error ?? t('chat.doc.download')}
+        aria-label={t('chat.doc.download')}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${error ? 'border-danger/40 text-danger' : 'border-border bg-elevated text-muted hover:bg-hover hover:text-fg'} ${className}`}
+      >
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+        {error ? t('chat.doc.card.downloadFailed') : t('chat.doc.download')}
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-border bg-elevated p-1 shadow-lg"
+        >
+          {items.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="menuitem"
+              onClick={() => void run(item.action)}
+              className="block w-full rounded-md px-2.5 py-1.5 text-left text-xs text-fg hover:bg-hover"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
