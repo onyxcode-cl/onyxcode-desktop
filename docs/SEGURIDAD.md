@@ -3211,3 +3211,16 @@ Código conserva la elección por sesión; el último modo elegido solo iniciali
 Un permiso de Automático sin entrada completa permanece pendiente. Cuando llega la herramienta asociada o se recargan sus mensajes se vuelve a comprobar comando completo, coincidencia de entrada, carpeta y rutas protegidas. Las respuestas en vuelo se deduplican; las resueltas no se reinsertan desde listados atrasados. Un fallo al responder conserva la tarjeta para reintentar.
 
 El armado de una tarjeta comprueba la visibilidad de sus controles, no el porcentaje de un diff que puede ser mucho más alto que la pantalla. Se mantienen los 600 ms de estabilidad, el bloqueo de Enter sin modificador y las demás condiciones del atajo. Abrir detalles desplaza los controles a la vista, sin enfocarlos ni aprobar.
+
+
+### V28 ronda 2 — Verificaciones del plan y código literal (F8-B310)
+
+Un permiso `bash` enlazado por mensaje y llamada a `todowrite` corresponde al shell que ejecuta su criterio `verificar`. Esa entrada contiene la lista de tareas, no `input.command`; el criterio puede venir heredado de una lista anterior. Código y Overdrive toman el comando completo de los metadatos del permiso emitido por el motor, exigen la parte enlazada con su lista y aplican la misma política de Automático. No se aprueba `todowrite` como sustituto de un permiso de shell, ni se aprueban permisos sin comando. El cwd sigue siendo el del proyecto salvo un `workdir` explícito, que debe pasar la comprobación de ámbito.
+
+Los argumentos de código literal de los intérpretes se inspeccionan como código y sus cadenas como posibles rutas; no se tratan los dos puntos o índices de Python/JS como proveedores o comodines de ruta. `print` y `console.log` con texto literal no convierten la palabra española «del» en una orden de borrado. Se conservan los patrones de borrado, secretos, cambios del sistema y descarga seguida de ejecución, y se prueban también por la vía de verificación del plan. Es una heurística de aprobación, no un aislamiento ni un analizador completo de los lenguajes.
+
+### V28 ronda 3 — Literales PowerShell y permisos separados (F8-B311)
+
+El clasificador de Automático reconoce los argumentos literales de salida de `echo`, `Write-Output` y `printf` con el valor numérico `$LASTEXITCODE`, y los patrones literales sin sustituciones de `-match`/`-notmatch`. Sus dos puntos no se interpretan como proveedores NTFS. Se mantienen las comprobaciones de todo el comando y se excluyen de estas excepciones rutas, secretos e interpolaciones de comandos. Las verificaciones de `todowrite` usan la misma política.
+
+Permitir una carpeta externa una vez no concede el permiso posterior de ejecutar el shell. El comando temporal de la captura contiene `Remove-Item`, por lo que conserva la segunda pregunta. El replay comprueba que esa primera aprobación no se propaga a la ejecución ni al borrado. No cambian los canales, el aislamiento ni las zonas intocables.

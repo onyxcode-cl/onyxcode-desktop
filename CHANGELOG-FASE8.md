@@ -4562,3 +4562,22 @@ Pruebas: `store.permisos.test.ts` (persistencia, carrera, respuesta repetida y f
 El tope común pasa de 40 a 200 láminas en Chat, HTML, PDF, Presentar y PowerPoint 4K. Chat rechaza el exceso con un aviso claro en vez de perder láminas al sanear; las guías del modelo y el verificador 4K reflejan el tope. El constructor alternativo y su script Python pasan de 30 a 200. La captura 4K dispone de un plazo proporcional al deck, espera los recursos una sola vez y escribe cada captura antes de continuar. El ensamblado lee sólo las cabeceras para validar y abre cada PNG cuando el ZIP lo consume.
 
 Pruebas: decks de 60 láminas en sanitizado, contrato IPC, HTML, conteo PDF, captura secuencial, ZIP 4K, parser del visor y navegación; fronteras de 200/201. El E2E `slides-4k` queda preparado con 60 láminas, sin ejecutarlo porque abre pantalla completa. Medición aislada del ZIP de 60 PNG 3840×2160 (aprox. 1 MiB cada uno): 243 ms, PPTX de 62.709.503 bytes y aumento de RSS muestreado de 35,6 MiB; no mide la captura real de Chromium.
+
+
+## F8-B310 — Verificaciones del plan en Automático, HTML largo y pasos de segundo plano (V28 ronda 2)
+
+Automático reconoce el permiso de shell de una verificación ejecutada por `todowrite`, incluida la que hereda el criterio de una lista anterior. Usa el comando completo del permiso del motor y conserva las comprobaciones de carpeta, rutas sensibles y acciones delicadas. El código literal de Python/JS se distingue de las rutas y del shell: los dos puntos, índices, etiquetas HTML y el texto «JS del formulario» no disparan una tarjeta. Los comandos que escriben en `/tmp` siguen preguntando.
+
+El motor conserva la apertura de los bloques de código al revisar textos largos y exige un ciclo completo idéntico sin avance. La interrupción por repetición se explica en español, sin reglas ni JSON. La lista de pasos llama a `bgshell_start` «Correr un comando en segundo plano».
+
+Pruebas: `auto-command.test.ts`, `store.permisos.test.ts` (replay de comandos reales con rutas Mac/Windows, API v1/v2, entrada antes/después del permiso y varias llamadas por mensaje), `auto-approver.commands.test.ts`, `ToolCard.background.test.tsx`, `ai-errors.test.ts`. Motor: `bucles.test.ts` (60 láminas por fragmentos y bucles reales) y `processor-effect.test.ts` (interrupción real del procesador con mensaje llano).
+
+## F8-B311 — Correcciones de la prueba Windows (V28 ronda 3)
+
+La descarga de documentos editables identifica el formato real (PPTX, DOCX o XLSX); ya no se anuncia como PDF. Las presentaciones HTML conservan PDF, PowerPoint imagen y HTML. Chat mide también la generación de la respuesta final y conserva el inicio al agrupar mensajes, en vez de contar solo los segundos de las herramientas. Los pasos de pregunta y apertura de página tienen etiquetas en español.
+
+Automático distingue los mensajes de salida con `$LASTEXITCODE` y los patrones literales de `-match`/`-notmatch` de las rutas NTFS. El replay incorpora las órdenes de las capturas Windows, las verificaciones de `todowrite`, las pruebas repetidas y el acceso temporal seguido de ejecución; borrar, salir del proyecto y acceder a secretos siguen preguntando.
+
+El motor añade al resultado de ediciones y comandos exitosos una línea breve con la tarea en curso (o primera pendiente) y la siguiente. `todowrite` avisa de una tarea anterior en curso con posteriores completas sin cambiarla por su cuenta. PowerShell presenta stderr nativo como texto y conserva el código de salida y los errores reales de cmdlet. Requiere incluir las fuentes corregidas del motor en un armado posterior.
+
+Pruebas: `ChatDocPanel.download.test.tsx`, `ToolCard.background.test.tsx`, `WorkFold.integration.test.tsx`, `auto-command.test.ts`, `store.permisos.test.ts`, `auto-approver.commands.test.ts`; motor: `plan-avance.test.ts`, `plan-ejecutable.test.ts`, `utf8-windows.test.ts`. Sin abrir la app ni publicar; límites y resultados en el informe externo de la ronda 3.

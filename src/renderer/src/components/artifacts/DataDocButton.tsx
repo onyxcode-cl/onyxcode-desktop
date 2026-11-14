@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { AppWindow, Download, Loader2 } from 'lucide-react'
 import { isDocxSpec, isPptxSpec, isXlsxSpec } from '@shared/chat-doc-spec'
 import { UI_LABELS } from '@shared/labels'
+import { useT } from '../../lib/i18n'
 import { getExtras } from '../../lib/extrasApi'
 import { previewInChatDocPanel, type ChatDocBlockKind } from '../../lib/chatDocPreview'
 import { parseDataBlock } from '../../lib/chatDocBlocks'
@@ -53,6 +54,8 @@ export function DownloadDataDocButton({ kind, rawText, title, className = '', co
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const extras = getExtras()
+  const t = useT()
+  const label = t('chat.doc.downloadFormat', { format: kind.toUpperCase() })
   if (!extras) return null
 
   const download = async (): Promise<void> => {
@@ -83,12 +86,12 @@ export function DownloadDataDocButton({ kind, rawText, title, className = '', co
       type="button"
       onClick={() => void download()}
       disabled={busy}
-      title={error ?? UI_LABELS.downloadPdf}
-      aria-label={UI_LABELS.downloadPdf}
+      title={error ?? label}
+      aria-label={label}
       className={`no-drag inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${error ? 'border-danger/40 text-danger' : 'border-border bg-elevated text-muted hover:bg-hover hover:text-fg'} ${className}`}
     >
       {busy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-      {!compact && (error ? 'Error al guardar' : UI_LABELS.downloadPdf)}
+      {!compact && (error ? t('chat.doc.card.downloadFailed') : label)}
     </button>
   )
 }

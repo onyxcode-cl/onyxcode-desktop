@@ -29,6 +29,9 @@ function useNow(active: boolean): number {
 export interface WorkFoldProps {
   /** Todas las partes del tramo (herramientas, razonamiento, texto): sirven para medir el tiempo. */
   parts: readonly TimedFacts[]
+  /** Intervalo de la respuesta completa, incluida la generación del documento después de las herramientas. */
+  timingParts?: readonly TimedFacts[]
+  timingLive?: boolean
   /** Las llamadas a herramienta del tramo, en orden. */
   tools: ToolPart[]
   /** El agente sigue trabajando en este tramo (aún no empezó la respuesta final). */
@@ -43,15 +46,29 @@ export interface WorkFoldProps {
   renderList: () => ReactNode
 }
 
-export function WorkFold({ parts, tools, live, view, root, attention, renderStep, renderList }: WorkFoldProps): React.JSX.Element {
+export function WorkFold({
+  parts,
+  timingParts,
+  timingLive,
+  tools,
+  live,
+  view,
+  root,
+  attention,
+  renderStep,
+  renderList
+}: WorkFoldProps): React.JSX.Element {
   const t = useT()
   const locale = useLocale()
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const open = userOpen ?? (live || view === 'detailed')
   const listId = useId()
-  const now = useNow(live)
+  const now = useNow(timingLive ?? live)
   const steps = countSteps(parts)
-  const ms = useMemo(() => workDurationMs(parts, live, now), [parts, live, now])
+  const ms = useMemo(
+    () => workDurationMs(timingParts ?? parts, timingLive ?? live, now) ?? workDurationMs(parts, live, now),
+    [parts, timingParts, timingLive, live, now]
+  )
   // `locale` fuerza recalcular los textos al cambiar de idioma.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const title = useMemo(() => workTitle(steps, ms, live), [steps, ms, live, locale])

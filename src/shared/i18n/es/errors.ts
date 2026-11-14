@@ -3,6 +3,8 @@ export const errors = {
   'errors.noAi.body':
     'Para enviar mensajes necesitas conectar una IA: usa el modelo gratuito o conecta tu suscripción o la clave de acceso de otro servicio. Solo toma un minuto.',
   'errors.yourAi': 'tu IA',
+  'errors.loop.title': 'La respuesta se estaba repitiendo',
+  'errors.loop.message': 'La respuesta se detuvo porque repetía lo mismo sin avanzar. Pide que continúe desde el último punto útil.',
   'errors.context.title': 'La conversación es demasiado larga',
   'errors.context.message': 'Compáctala o empieza una conversación nueva para seguir.',
   'errors.modelNotFound.title': 'El modelo elegido no está disponible',

@@ -2,6 +2,7 @@ import type { Messages } from '../index'
 import type { chat as es } from '../es/chat'
 
 export const chat = {
+  'chat.doc.downloadFormat': 'Download as {format}',
   'chat.doc.download': 'Download',
   'chat.doc.download.pptx': 'PowerPoint (4K image)',
   'chat.doc.saveHtml': 'Save HTML',

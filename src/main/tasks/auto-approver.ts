@@ -310,12 +310,23 @@ export class AutoApprover {
         parts?: Array<{ type?: string; tool?: string; callID?: string; state?: { input?: Record<string, unknown> } }>
       }>(server, `/session/${encodeURIComponent(p.sessionID)}/message/${encodeURIComponent(p.tool.messageID)}`, HTTP_TIMEOUT_MS)
       const part = Array.isArray(message?.parts)
-        ? message.parts.find((part) => part?.type === 'tool' && part.tool === p.permission && part.callID === p.tool!.callID)
+        ? message.parts.find(
+            (part) =>
+              part?.type === 'tool' &&
+              (part.tool === p.permission || (p.permission === 'bash' && part.tool === 'todowrite')) &&
+              part.callID === p.tool!.callID
+          )
         : undefined
       const input = part?.state?.input
-      if (typeof input?.command !== 'string' || (p.permission === 'bgshell_start' && typeof input.cwd !== 'string')) return false
-      if (p.permission === 'bash' && input.command !== metadata?.command) return false
-      metadata = { ...metadata, command: input.command, workdir: p.permission === 'bgshell_start' ? input.cwd : input.workdir }
+      const verification = part?.tool === 'todowrite' && Array.isArray(input?.todos)
+      const command = verification ? metadata?.command : input?.command
+      if (typeof command !== 'string' || (p.permission === 'bgshell_start' && typeof input?.cwd !== 'string')) return false
+      if (p.permission === 'bash' && command !== metadata?.command) return false
+      metadata = {
+        ...metadata,
+        command,
+        workdir: p.permission === 'bgshell_start' ? input?.cwd : verification ? metadata?.workdir : input?.workdir
+      }
     }
     const verdict = classifyPermission(
       { permission: p.permission, patterns: p.patterns ?? [], metadata },
