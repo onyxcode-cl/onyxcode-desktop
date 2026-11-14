@@ -76,10 +76,12 @@ it('embeds one copy per hash and adds legible credit inside every photo slide', 
     const footer = slide.querySelector('[data-lzx-photo-credit]') as HTMLElement
     expect(footer.textContent).toContain(credit)
     expect(footer.style.color).toBe('rgb(255, 255, 255)')
-    expect(footer.style.background).toBe('rgb(17, 17, 17)')
+    // Etiqueta chica y semitransparente sobre la foto, no una franja negra que cruce la lámina.
+    expect(footer.style.background).toBe('rgba(0, 0, 0, 0.55)')
+    expect(footer.style.left).toBe('auto')
+    expect(footer.querySelector('a')).toBeNull()
   }
   expect(document.querySelectorAll('img[src^="data:image/jpeg;base64,"]')).toHaveLength(3)
-  expect(document.querySelector('[data-lzx-photo-credit] a:last-child')?.getAttribute('href')).toBe(photo('p1').provenance.licenseUrl)
   const provenance = JSON.parse(document.querySelector('[data-lzx-photo-provenance]')!.textContent!)
   expect(provenance[0].provenance).toEqual(photo('p1').provenance)
   document.body.innerHTML = ''
@@ -182,7 +184,7 @@ it('resolves img paths relative to the HTML directory within the registered scop
   ).rejects.toThrow('subir')
 })
 
-it('keeps an existing verified author/license credit instead of drawing a second bar', async () => {
+it('keeps an existing verified author/license credit as the model designed it, without a second bar or added links', async () => {
   const html = await resolvePreparedHtml(
     '<section class="slide"><img src="imagen:p1"><small>Photo: Author · CC BY 4.0</small><button>Next</button></section>',
     { root },
@@ -196,10 +198,11 @@ it('keeps an existing verified author/license credit instead of drawing a second
   expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(1)
   expect(document.querySelector('[data-lzx-photo-credit]')?.tagName).toBe('SMALL')
   expect(document.querySelector('aside')).toBeNull()
-  expect(document.querySelectorAll('small a')).toHaveLength(2)
+  expect(document.querySelectorAll('small a')).toHaveLength(0)
+  expect((document.querySelector('small') as HTMLElement).style.background).toBe('')
 })
 
-it('places generated credits above navigation controls, without stealing clicks', async () => {
+it('lifts the photo credit above a control in the same corner, without stealing clicks', async () => {
   const html = await resolvePreparedHtml(
     '<section class="slide"><img src="imagen:p1"></section><nav><button>Next</button></nav>',
     { root },
@@ -215,8 +218,8 @@ it('places generated credits above navigation controls, without stealing clicks'
     height: 540
   } as DOMRect)
   vi.spyOn(document.querySelector('button')!, 'getBoundingClientRect').mockReturnValue({
-    left: 400,
-    right: 560,
+    left: 800,
+    right: 950,
     top: 490,
     bottom: 535,
     width: 160,
@@ -244,8 +247,7 @@ it('recognizes copied credits on initially hidden slides and preserves their lin
     (el: Element) => window.getComputedStyle(el)
   )
   expect(document.querySelectorAll('[data-lzx-photo-credit]')).toHaveLength(1)
-  expect(document.querySelectorAll('.credito a')).toHaveLength(2)
-  expect((document.querySelector('.credito') as HTMLElement).style.background).toBe('rgb(17, 17, 17)')
-  expect((document.querySelector('.credito') as HTMLElement).style.color).toBe('rgb(255, 255, 255)')
+  expect(document.querySelectorAll('.credito a')).toHaveLength(1)
+  expect((document.querySelector('.credito') as HTMLElement).style.background).toBe('')
   expect(document.querySelector('aside')).toBeNull()
 })

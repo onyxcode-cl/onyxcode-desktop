@@ -122,10 +122,12 @@ export async function resolvePreparedHtml(html: string, scope?: HtmlPhotoScope, 
   const script = `<script data-lzx-prepared-photos>(function(){const photos=${data};
 const root=document.documentElement;
 const used=new Map();
+const anchors=new Map();
 for(const [id,p] of Object.entries(photos)){root.style.setProperty('--lzx-photo-'+id,'url("'+p.data+'")')}
 const mark=(el,id)=>{const slide=el.closest('.slide');
 if(!slide){root.dataset.lzxPhotoError='La foto preparada debe estar dentro de una .slide';return;}
-if(!used.has(slide))used.set(slide,new Set());used.get(slide).add(id)};
+if(!used.has(slide))used.set(slide,new Set());used.get(slide).add(id);
+if(!anchors.has(slide))anchors.set(slide,new Map());if(!anchors.get(slide).has(id))anchors.get(slide).set(id,el)};
 document.querySelectorAll('[data-lzx-photo]').forEach(el=>{const id=el.getAttribute('data-lzx-photo');
 if(photos[id]){el.src=photos[id].data;mark(el,id)}});
 const markStyle=(el,text)=>{for(const id of Object.keys(photos)){if(text.includes('--lzx-photo-'+id))mark(el,id)}};
@@ -137,24 +139,27 @@ for(const pseudo of [null,'::before','::after']){const bg=getComputedStyle(el,ps
 for(const [id,p] of Object.entries(photos)){if(bg.includes(p.data)||bg.includes('--lzx-photo-'+id))mark(el,id)}}});
 const normalize=text=>text.normalize('NFKC').toLowerCase().replace(/[\\s\\p{P}\\p{S}]/gu,'');
 const visible=(el,boundary=root)=>{for(let node=el;node&&node!==boundary;node=node.parentElement){const s=getComputedStyle(node);if(s.display==='none'||s.visibility==='hidden'||s.opacity==='0')return false}return true};
-const link=(line,url,label)=>{if(Array.from(line.querySelectorAll('a')).some(a=>a.href===url))return;
-const a=document.createElement('a');a.href=url;a.textContent=' · '+label;a.style.cssText='color:inherit!important;text-decoration:underline!important';line.appendChild(a)};
-const place=(slide,credit)=>{const bounds=slide.getBoundingClientRect();if(!bounds.height)return;const scale=bounds.height/(slide.offsetHeight||bounds.height);let bottom=10*scale;
-const controls=Array.from(document.querySelectorAll('button,[role="button"],nav,input,select'));
-const left=bounds.left+16,right=bounds.right-16;
-for(const control of controls){if(!visible(control))continue;const r=control.getBoundingClientRect();
-if(r.width&&r.height&&r.left<right&&r.right>left&&r.top<bounds.bottom&&r.bottom>bounds.bottom-bottom-credit.offsetHeight*scale){bottom=Math.max(bottom,bounds.bottom-r.top+8*scale)}}
-credit.style.setProperty('bottom',Math.min(bottom/scale,Math.max(10,bounds.height/scale-credit.offsetHeight-10))+'px','important')};
+// El crédito va en una etiqueta chica sobre la esquina inferior derecha de la propia foto: no cruza la
+// lámina ni tapa texto. Si el modelo ya escribió el crédito, se respeta su diseño tal cual.
+const place=(slide,credit,el)=>{const sb=slide.getBoundingClientRect();if(!sb.height)return;const scale=sb.height/(slide.offsetHeight||sb.height);
+const er=el&&el!==slide?el.getBoundingClientRect():null;const r=er&&er.width&&er.height?er:sb;
+const right=Math.max(6,(sb.right-r.right)/scale+6),bottom=Math.max(6,(sb.bottom-r.bottom)/scale+6);
+let lift=bottom;const span=Math.max(credit.offsetWidth,120)*scale,cr=sb.right-right*scale,cl=cr-span;
+for(const control of document.querySelectorAll('button,[role="button"],nav,input,select')){if(!visible(control))continue;const c=control.getBoundingClientRect();
+if(c.width&&c.height&&c.left<cr&&c.right>cl&&c.top<sb.bottom-lift*scale&&c.bottom>sb.bottom-(lift*scale+(credit.offsetHeight||16)*scale)-1)lift=Math.max(lift,(sb.bottom-c.top)/scale+8)}
+credit.style.setProperty('right',right+'px','important');credit.style.setProperty('bottom',lift+'px','important');
+credit.style.setProperty('max-width',Math.max(120,r.width/scale-12)+'px','important')};
 for(const [slide,ids] of used){if(getComputedStyle(slide).position==='static')slide.style.position='relative';
-let credit=null;
 for(const id of ids){const p=photos[id];
 const existing=Array.from(slide.querySelectorAll('figcaption,small,footer,p,div,aside,span')).reverse().find(el=>{
 if(el.querySelector('img')||!visible(el,slide))return false;const text=normalize(el.textContent||'');
 return text.includes(normalize(p.credit))||(text.includes(normalize(p.author))&&text.includes(normalize(p.license)))});
-if(existing){existing.style.setProperty('background','#111','important');existing.style.setProperty('color','#fff','important');if(parseFloat(getComputedStyle(existing).fontSize)<12)existing.style.setProperty('font-size','12px','important');existing.setAttribute('data-lzx-photo-credit','existing');link(existing,p.source,'Fuente');link(existing,p.licenseUrl,'Licencia');continue}
-if(!credit){credit=document.createElement('aside');credit.setAttribute('data-lzx-photo-credit','');credit.style.cssText='position:absolute!important;left:16px!important;right:16px!important;bottom:10px!important;z-index:1!important;display:block!important;margin:0!important;padding:5px 8px!important;background:#111!important;color:#fff!important;font:12px/1.3 Arial,sans-serif!important;text-align:left!important;border-radius:3px!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;';slide.appendChild(credit)}
-const line=document.createElement('div');line.textContent=p.credit;link(line,p.source,'Fuente');link(line,p.licenseUrl,'Licencia');credit.appendChild(line)}
-if(credit){const refresh=()=>place(slide,credit);refresh();requestAnimationFrame(refresh);window.addEventListener('resize',refresh);document.fonts?.ready.then(refresh);new MutationObserver(refresh).observe(slide,{attributes:true,attributeFilter:['class','style','hidden']})}}})();</script>`
+if(existing){existing.setAttribute('data-lzx-photo-credit','existing');continue}
+const el=anchors.get(slide)?.get(id)||slide;
+const credit=document.createElement('aside');credit.setAttribute('data-lzx-photo-credit','');credit.textContent=p.credit;
+credit.style.cssText='position:absolute!important;left:auto!important;top:auto!important;z-index:2!important;display:block!important;margin:0!important;padding:2px 6px!important;background:rgba(0,0,0,.55)!important;color:#fff!important;font:10px/1.25 Arial,sans-serif!important;text-align:right!important;border-radius:3px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;opacity:1!important;visibility:visible!important;pointer-events:none!important;';
+slide.appendChild(credit);
+const refresh=()=>place(slide,credit,el);refresh();requestAnimationFrame(refresh);window.addEventListener('resize',refresh);document.fonts?.ready.then(refresh);new MutationObserver(refresh).observe(slide,{attributes:true,attributeFilter:['class','style','hidden']})}}})();</script>`
   const metadata = `<script type="application/json" data-lzx-photo-provenance>${JSON.stringify([...assets].map(([sha, p]) => ({ sha, credit: p.credit, provenance: p.provenance }))).replace(/</g, '\\u003c')}</script>`
   const addition = `${metadata}${script}`
   html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, () => addition + '</body>') : html + addition
