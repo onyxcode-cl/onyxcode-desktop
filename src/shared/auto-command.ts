@@ -3,19 +3,25 @@
  * se comprueba la orden COMPLETA antes de responder una vez. No es un sandbox: npm, scripts y
  * hooks del proyecto ejecutan código. Se permite por defecto salvo los patrones delicados.
  */
-type Part = { words: string[]; separator: string }
+type Part = { words: string[]; literals: boolean[]; separator: string }
 
 /** Léxico común de bash/zsh, PowerShell y cmd para buscar patrones delicados, sin ejecutar el shell. */
 function parse(command: string): Part[] | null {
   const parts: Part[] = []
   let words: string[] = []
+  let literals: boolean[] = []
   let word = ''
   let started = false
+  let literal = false
   let quote = ''
   const flush = (): void => {
-    if (started) words.push(word)
+    if (started) {
+      words.push(word)
+      literals.push(literal)
+    }
     word = ''
     started = false
+    literal = false
   }
   for (let i = 0; i < command.length; i++) {
     const c = command[i]
@@ -23,6 +29,11 @@ function parse(command: string): Part[] | null {
     // Llaves, sustituciones y bloques no son un riesgo por sí mismos. Sus órdenes se revisan igual.
     if (!quote && /[{}()]/.test(c)) {
       flush()
+      if (/[{}]/.test(c) && words.length) {
+        parts.push({ words, literals, separator: ';' })
+        words = []
+        literals = []
+      }
       continue
     }
     if (!quote && c === '\\' && /[;{}]/.test(command[i + 1] ?? '')) continue
@@ -40,14 +51,16 @@ function parse(command: string): Part[] | null {
     if (c === '"' || c === "'") {
       quote = c
       started = true
-    } else if (/\s/.test(c) && c !== '\n') flush()
+      literal = true
+    } else if ((/\s/.test(c) && c !== '\n') || c === ',') flush()
     else if (/[|;&\n]/.test(c)) {
       flush()
       let separator = c
       if (command[i + 1] === c && /[|&]/.test(c)) separator += command[++i]
       if (!words.length) continue
-      parts.push({ words, separator })
+      parts.push({ words, literals, separator })
       words = []
+      literals = []
     } else if (/[<>]/.test(c)) {
       // Redirecciones, incluso sin espacios; duplicar fd no añade una ruta.
       flush()
@@ -57,6 +70,7 @@ function parse(command: string): Part[] | null {
         continue
       }
       words.push(c)
+      literals.push(false)
       if (command[i + 1] === c) i++
     } else {
       word += c
@@ -65,7 +79,7 @@ function parse(command: string): Part[] | null {
   }
   if (quote) return null
   flush()
-  if (words.length) parts.push({ words, separator: '' })
+  if (words.length) parts.push({ words, literals, separator: '' })
   else if (![';', '\n', '&'].includes(parts.at(-1)?.separator ?? '')) return null
   return parts.length ? parts : null
 }
@@ -107,6 +121,8 @@ function safeArgument(arg: string, cwd: string, root: string): boolean {
   if (/^https?:\/\//i.test(value)) return true
   if (/^(?:~|[a-z]:[^\\/]|[a-z]+:)/i.test(value) && !absolute(value)) return false
   if (value.startsWith('~') || /\$(?:HOME|env:)|%[a-z_][\w]*%/i.test(value) || sensitive(value)) return false
+  // Miembros e índices numéricos de variables de PowerShell son expresiones, no comodines de una ruta.
+  if (/^\$(?:[a-z_]\w*)(?:\.\w+|\[\d+\])*$/.test(value)) return true
   value = value.replace(/\\/g, '/')
   // Formatos y métodos de PowerShell no son rutas ni proveedores.
   if (/^\{.*\}$/.test(value) || /^\[[\w.]+\]::[\w.]+$/.test(value)) return true
@@ -251,12 +267,41 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
   for (const part of parts) {
     const [first, ...args] = part.words
     const name = first.toLowerCase().replace(/\.exe$/, '')
+    // Start-Process usa el runtime instalado fuera del proyecto, pero su cwd y sus scripts/argumentos
+    // siguen sujetos a la política de carpeta. Un ejecutable arbitrario exterior no recibe esta excepción.
+    const runtimeIndex = name === 'start-process' ? part.words.findIndex((w, i) => i > 0 && /^-filepath$/i.test(part.words[i - 1])) : -1
+    const runtime = part.words[runtimeIndex] ?? ''
+    const runtimeName = runtime
+      .replace(/\\/g, '/')
+      .split('/')
+      .at(-1)!
+      .toLowerCase()
+      .replace(/\.exe$/, '')
+    const workingIndex =
+      name === 'start-process' ? part.words.findIndex((w, i) => i > 0 && /^-workingdirectory$/i.test(part.words[i - 1])) : -1
+    if (name === 'start-process' && args.some((a, i) => /^-work/i.test(a) && (!args[i + 1] || /[$%`*?\[\]]/.test(args[i + 1]))))
+      return false
+    const localRuntime =
+      runtimeIndex > 0 &&
+      absolute(runtime) &&
+      SCRIPTING.test(runtimeName) &&
+      !sensitive(runtime) &&
+      workingIndex > 0 &&
+      !/[$%`*?\[\]]/.test(part.words[workingIndex]) &&
+      directories.every((dir) => safeArgument(windows ? part.words[workingIndex].toLowerCase() : part.words[workingIndex], dir, root))
     // Se inspeccionan todos los argumentos: también el programa de xargs/find -exec.
     if (delicateName(name) || ((absolute(first) || first.startsWith('.')) && !safeArgument(first, cwd, root))) return false
     if (
-      args
-        .filter((a) => !(a === '/' && part.words.some((w) => /^\[math\]::/i.test(w))) && !(name === 'cmd' && /^\/[cdsq]$/i.test(a)))
-        .some((a) => directories.some((dir) => !safeArgument(windows ? a.toLowerCase() : a, dir, root)))
+      args.some((a, i) => {
+        if (a === '/' && part.words.some((w) => /^\[math\]::/i.test(w))) return false
+        if (name === 'cmd' && /^\/[cdsq]$/i.test(a)) return false
+        if (localRuntime && i + 1 === runtimeIndex) return false
+        // El segundo argumento literal de Matches es el patrón regex, no una ruta del proyecto.
+        // No se extiende a cadenas que parecen rutas ni a variables que puedan ocultar una ruta sensible.
+        if (part.literals[i + 1] && /^\[regex\]::matches$/i.test(part.words[i - 1] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
+          return false
+        return directories.some((dir) => !safeArgument(windows ? a.toLowerCase() : a, dir, root))
+      })
     )
       return false
     const lower = args.map((a) => a.toLowerCase())
