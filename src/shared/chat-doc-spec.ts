@@ -15,7 +15,14 @@ export const MAX_ROWS_PER_SHEET = 5_000
 export const MAX_COLS_PER_ROW = 60
 export const MAX_CELL_CHARS = 2_000
 
-export const MAX_SLIDES = 40
+export const MAX_SLIDES = 200
+
+export class SlideLimitError extends Error {
+  constructor() {
+    super(`La presentación supera el máximo de ${MAX_SLIDES} láminas. No se recortó ninguna lámina.`)
+    this.name = 'SlideLimitError'
+  }
+}
 export const MAX_BULLETS_PER_SLIDE = 20
 export const MAX_BULLET_CHARS = 500
 export const MAX_TITLE_CHARS = 200

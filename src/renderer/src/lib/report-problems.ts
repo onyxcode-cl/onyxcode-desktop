@@ -16,8 +16,15 @@ export function reportProblem(error: unknown, extra?: string): void {
 }
 
 /** Texto del aviso para el registro de problemas (el MISMO desde el mensaje y desde el panel, para que se deduplique). */
-export function docProblemMessage(kind: string, reason: 'json' | 'schema' | 'cut'): string {
-  const why = reason === 'json' ? 'JSON inválido' : reason === 'schema' ? 'forma del documento inválida' : 'la valla quedó sin cerrar'
+export function docProblemMessage(kind: string, reason: 'json' | 'schema' | 'invalid' | 'cut'): string {
+  const why =
+    reason === 'json'
+      ? 'JSON inválido'
+      : reason === 'invalid'
+        ? 'datos del documento no válidos'
+        : reason === 'schema'
+          ? 'forma del documento inválida'
+          : 'la valla quedó sin cerrar'
   return `documento de Chat (${kind}) no se pudo usar: ${why}`
 }
 

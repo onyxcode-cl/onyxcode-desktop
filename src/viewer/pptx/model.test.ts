@@ -35,6 +35,11 @@ afterAll(() => restoreGlobals())
 const fixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`../__fixtures__/${name}`, import.meta.url)))
 
 describe('parsePresentation', () => {
+  it('conserva los 60 identificadores de lámina en el orden del archivo', () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `rId${i + 1}`)
+    const xml = `<p:presentation xmlns:p="p" xmlns:r="r"><p:sldIdLst>${ids.map((id, i) => `<p:sldId id="${i + 256}" r:id="${id}"/>`).join('')}</p:sldIdLst></p:presentation>`
+    expect(parsePresentation(xml).slideRIds).toEqual(ids)
+  })
   it('lee el tamaño de diapositiva y los rId de las diapositivas, en orden', () => {
     const xml = `<p:presentation xmlns:p="p" xmlns:r="r"><p:sldIdLst>
       <p:sldId id="256" r:id="rId3"/><p:sldId id="257" r:id="rId4"/>

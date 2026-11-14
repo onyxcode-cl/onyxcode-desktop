@@ -1,10 +1,10 @@
 /** PPTX proyectable: una imagen PNG 4K intacta por lámina, sin convertir el diseño a formas. */
 import PptxGenJS from 'pptxgenjs'
 import JSZip from 'jszip'
-import { createReadStream, createWriteStream, type ReadStream } from 'node:fs'
-import { readFile, stat } from 'node:fs/promises'
+import { createReadStream, createWriteStream } from 'node:fs'
+import { open, stat } from 'node:fs/promises'
 import { pipeline } from 'node:stream/promises'
-import { Transform } from 'node:stream'
+import { Readable, Transform } from 'node:stream'
 import { SLIDE_PNG_HEIGHT, SLIDE_PNG_WIDTH, SlidesHtmlError } from '@shared/slides-html'
 import { MAX_SLIDES } from '@shared/chat-doc-spec'
 
@@ -75,14 +75,26 @@ export async function writeSlidesPptx(images: string[], destination: string): Pr
   const zip = await template(images.length)
   const names = mediaNames(zip)
   let inputBytes = 0
-  const streams: ReadStream[] = []
+  const streams: Readable[] = []
   try {
     for (const [i, path] of images.entries()) {
       inputBytes += (await stat(path)).size
       assertBudget(inputBytes)
-      // Sólo un PNG temporal a la vez, también al comprobar el formato.
-      assertSlidePng(await readFile(path), i)
-      const stream = createReadStream(path)
+      // Validar sólo la cabecera: no cargar de nuevo el bitmap completo.
+      const file = await open(path, 'r')
+      try {
+        const header = Buffer.alloc(24)
+        const { bytesRead } = await file.read(header, 0, header.length, 0)
+        assertSlidePng(header.subarray(0, bytesRead), i)
+      } finally {
+        await file.close()
+      }
+      // Abrir cada PNG cuando el ZIP lo consuma, sin 200 lecturas anticipadas.
+      const stream = Readable.from(
+        (async function* () {
+          yield* createReadStream(path)
+        })()
+      )
       streams.push(stream)
       zip.file(names[i], stream)
     }

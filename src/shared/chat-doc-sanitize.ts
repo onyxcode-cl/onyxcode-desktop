@@ -46,6 +46,7 @@ import {
   MAX_ROWS_PER_SHEET,
   MAX_SHEETS,
   MAX_SLIDES,
+  SlideLimitError,
   MAX_TABLE_CELL_CHARS,
   MAX_TABLE_COLS,
   MAX_TABLE_ROWS,
@@ -349,10 +350,7 @@ function sanitizePptx(doc: Obj): unknown {
   }
   const footer = toText(doc.footer, MAX_FOOTER_CHARS)
   if (footer) out.footer = footer
-  out.slides = slides
-    .slice(0, MAX_SLIDES)
-    .map(pptxSlide)
-    .filter((s) => s !== null)
+  out.slides = slides.map(pptxSlide).filter((s) => s !== null)
   return out
 }
 
@@ -456,6 +454,8 @@ export function sanitizeDoc(kind: 'xlsx' | 'pptx' | 'docx', doc: unknown): unkno
   if (!isObj(doc)) return doc
   if (kind === 'xlsx') return sanitizeXlsx(doc)
   if (kind === 'docx') return sanitizeDocx(doc)
+  // Rechazar antes de normalizar o filtrar: el exceso nunca se convierte en un deck incompleto.
+  if (Array.isArray(doc.slides) && doc.slides.length > MAX_SLIDES) throw new SlideLimitError()
   const fixed = normalizePptx(doc)
   return isObj(fixed) ? sanitizePptx(fixed) : fixed
 }

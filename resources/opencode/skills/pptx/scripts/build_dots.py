@@ -22,7 +22,7 @@ import craft_batch  # noqa: E402
 BG, EDGE, VI, VIL, WH, MU = "07070C", "25253A", "8B5CF6", "C4B5FD", "F5F5FA", "A1A1B5"
 GLOW, BLUEG = "1F1640", "0F1A3A"
 DOTS = ["3B82F6", "22C55E", "F59E0B", "EC4899", "8B5CF6"]
-LIM = {"slides": 30, "text": 400, "short": 80}
+LIM = {"slides": 200, "text": 400, "short": 80}
 KINDS = ["cover", "stat", "timeline", "grid", "steps", "compare", "rows", "quad", "stats", "closing"]
 
 
@@ -74,6 +74,8 @@ def _item_list(v, path, mn, mx, body=True):
 def validate(spec):
     """Devuelve la lista de diapositivas limpia (solo campos conocidos). Lanza SpecError."""
     root = _obj(spec, "spec")
+    if isinstance(root.get("slides"), list) and len(root["slides"]) > LIM["slides"]:
+        _bad("slides", f"La presentación supera el máximo de {LIM['slides']} láminas. No se recortó ninguna lámina.")
     out = []
     for i, s in enumerate(_items(root.get("slides"), "slides", 1, LIM["slides"])):
         p = f"slides[{i}]"

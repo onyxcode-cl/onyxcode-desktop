@@ -12,6 +12,7 @@ import { constants } from 'node:fs'
 import { lstat, open, readFile, stat } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, resolve } from 'node:path'
 import { isPptxSpec } from '@shared/chat-doc-spec'
+import { explainPptx } from './doc-explain'
 import { renderChatDeck } from './chat-deck'
 import { runCraft } from './craft-run'
 
@@ -59,7 +60,8 @@ export async function runChatDeckCli(argv: string[], deps: ChatDeckCliDeps = {})
   if (!isPptxSpec(spec)) {
     err(
       'ERROR en el contenido: el JSON no cumple el esquema de presentación (theme/style/palette/fonts/slides…, ver la guía de la skill). ' +
-        'No se generó nada.'
+        explainPptx(spec) +
+        ' No se generó nada.'
     )
     return 1
   }

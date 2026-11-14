@@ -35,7 +35,15 @@ describe('skill pptx ⇄ Chat: misma guía de diseño', () => {
 
   it('los puntos clave están también en el prompt inline del Chat (config.ts), en su forma condensada', () => {
     const inline = JSON.stringify(buildInlineConfig()).replace(/\\"/g, '"')
-    for (const k of ['layout:"free"', '960 de ancho × 540 de alto', 'como mucho 40', 'Tahoma', 'palette', 'fillTo']) {
+    for (const k of [
+      'layout:"free"',
+      '960 de ancho × 540 de alto',
+      'como mucho 40',
+      'hasta 200 láminas en PPTX y HTML',
+      'Tahoma',
+      'palette',
+      'fillTo'
+    ]) {
       expect(inline).toContain(k)
       expect(skill).toContain(k)
       expect(chatMd).toContain(k)

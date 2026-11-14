@@ -39,6 +39,15 @@ const FULL = {
 }
 
 describe('deck-builder (prueba Craft)', () => {
+  it.each([60, 200])('conserva %i láminas también en el constructor alternativo', (count) => {
+    const input = { slides: Array.from({ length: count }, (_, i) => ({ type: 'closing', title: `Lámina ${i + 1}` })) }
+    const clean = validateDeckSpec(input)
+    expect(clean.slides).toHaveLength(count)
+    expect(buildDeckCommands(clean).filter((command) => command.startsWith('slide.new='))).toHaveLength(count)
+    expect(() => validateDeckSpec({ slides: [...input.slides, ...Array(201 - count).fill(input.slides[0])] })).toThrow(
+      'máximo de 200 láminas'
+    )
+  })
   it('acepta un contenido completo y genera comandos que empiezan y terminan bien', () => {
     const cmds = buildDeckCommands(validateDeckSpec(FULL))
     expect(cmds[0]).toBe('file.new')
@@ -110,25 +119,30 @@ describe('fitSize', () => {
 })
 
 describe('paridad con el script Python de la skill', () => {
-  it('build_dots.py genera EXACTAMENTE los mismos comandos que deck-builder.ts', async () => {
-    const { spawnSync } = await import('node:child_process')
-    const { join: j } = await import('node:path')
-    const dir = j(__dirname, '../../../../resources/opencode/skills/pptx/scripts')
-    const py = spawnSync(
-      'python3',
-      [
-        '-I',
-        '-c',
-        'import sys,json;sys.path.insert(0,sys.argv[1]);import build_dots as b;print(json.dumps(b.build_commands(b.validate(json.load(sys.stdin))),ensure_ascii=False))',
-        dir
-      ],
-      { input: JSON.stringify(FULL), encoding: 'utf8' }
-    )
-    // Sin python3 útil en este equipo (en Windows suele ser el atajo de la Tienda, que sale con 9009): no hay nada que comparar.
-    if (py.error || py.status === 9009) return
-    expect(py.status).toBe(0)
-    expect(JSON.parse(py.stdout)).toEqual(buildDeckCommands(validateDeckSpec(FULL)))
-  }, 60_000)
+  it.each([10, 60, 200])(
+    'build_dots.py genera los mismos comandos que deck-builder.ts con %i láminas',
+    async (count) => {
+      const input = { slides: Array.from({ length: count }, (_, i) => FULL.slides[i % FULL.slides.length]) }
+      const { spawnSync } = await import('node:child_process')
+      const { join: j } = await import('node:path')
+      const dir = j(__dirname, '../../../../resources/opencode/skills/pptx/scripts')
+      const py = spawnSync(
+        'python3',
+        [
+          '-I',
+          '-c',
+          'import sys,json;sys.path.insert(0,sys.argv[1]);import build_dots as b;print(json.dumps(b.build_commands(b.validate(json.load(sys.stdin))),ensure_ascii=False))',
+          dir
+        ],
+        { input: JSON.stringify(input), encoding: 'utf8', timeout: 15_000, maxBuffer: 8 * 1024 * 1024 }
+      )
+      // Sin python3 útil en este equipo (en Windows suele ser el atajo de la Tienda, que sale con 9009): no hay nada que comparar.
+      if (py.error || py.status === 9009) return
+      expect(py.status).toBe(0)
+      expect(JSON.parse(py.stdout)).toEqual(buildDeckCommands(validateDeckSpec(input)))
+    },
+    60_000
+  )
 })
 
 describe('coverSize', () => {

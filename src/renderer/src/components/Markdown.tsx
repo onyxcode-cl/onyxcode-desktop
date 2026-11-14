@@ -202,24 +202,34 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
   const shellRun = useShellRunnable(code, rawLang, !renderable && !fenceOpen && streaming !== true)
   // Valla cerrada de un documento de datos cuyo contenido no se pudo leer: se avisa en vez de dejar un bloque que no hace nada.
   const isDataDoc = docKind === 'xlsx' || docKind === 'pptx' || docKind === 'docx'
-  const brokenReason = useMemo<DocProblemReason | null>(() => {
+  const broken = useMemo(() => {
     if (!isDataDoc || fenceOpen) return null
     const r = parseDataBlockDetailed(docKind, code)
-    return r.ok ? null : r.reason
+    return r.ok ? null : r
   }, [isDataDoc, fenceOpen, docKind, code])
   // Valla abierta cuando la respuesta ya terminó: el modelo se cortó (límite de salida, red…); «Generando…» sería eterno.
   const cut = renderable && fenceOpen && streaming === false
-  const problem: DocProblemReason | null = cut ? 'cut' : brokenReason
+  const problem: DocProblemReason | null = cut ? 'cut' : (broken?.reason ?? null)
   useEffect(() => {
     if (problem)
-      reportDocProblem(code, docProblemMessage(docKind ?? 'html', problem === 'cut' ? 'cut' : problem === 'json' ? 'json' : 'schema'))
+      reportDocProblem(
+        code,
+        docProblemMessage(
+          docKind ?? 'html',
+          problem === 'cut' ? 'cut' : problem === 'json' ? 'json' : problem === 'invalid' ? 'invalid' : 'schema'
+        )
+      )
   }, [problem, code, docKind])
   if (problem) {
     const canAsk = canAskAboutChatDoc()
     const ask = (): void => {
       if (problem === 'cut') askAboutChatDoc(t('chat.doc.continuePrompt'))
       else
-        askAboutChatDoc(t('chat.doc.retryPrompt', { reason: t(problem === 'json' ? 'chat.doc.problem.json' : 'chat.doc.problem.schema') }))
+        askAboutChatDoc(
+          t('chat.doc.retryPrompt', {
+            reason: broken?.detail ?? t(problem === 'json' ? 'chat.doc.problem.json' : 'chat.doc.problem.schema')
+          })
+        )
     }
     return (
       <div className="code-block">
@@ -227,7 +237,7 @@ function CodeBlock({ children, node }: { children?: ReactNode; node?: Element })
           reason={problem}
           actionLabel={canAsk ? t(problem === 'cut' ? 'chat.doc.continue' : 'chat.doc.askAgain') : undefined}
           onAction={canAsk ? ask : undefined}
-          detail={code.slice(0, 4000)}
+          detail={broken?.detail ?? code.slice(0, 4000)}
         />
       </div>
     )

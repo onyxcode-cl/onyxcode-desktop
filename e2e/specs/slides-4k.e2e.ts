@@ -50,7 +50,9 @@ it('presenta con contador, flechas, espacio y clic, y Esc cierra solo la present
       app.page.evaluate(() =>
         window.api.extras.presentSlides({
           title: 'Navegación de prueba',
-          html: '<!doctype html><style>.slide{width:960px;height:540px;background:#17324d;color:white;font:48px sans-serif}</style><section class="slide">Uno</section><section class="slide">Dos</section><section class="slide">Tres</section>'
+          html:
+            '<!doctype html><style>.slide{width:960px;height:540px;background:#17324d;color:white;font:48px sans-serif}</style>' +
+            Array.from({ length: 60 }, (_, i) => `<section class="slide">Lámina ${i + 1}</section>`).join('')
         })
       )
     ])
@@ -58,10 +60,10 @@ it('presenta con contador, flechas, espacio y clic, y Esc cierra solo la present
     const counter = presentation.locator('[data-lzx-slide-counter]')
     const expectSlide = async (number: number): Promise<void> => {
       await presentation!.waitForFunction(
-        (expected) => document.querySelector('[data-lzx-slide-counter]')?.textContent?.trim() === `${expected} / 3`,
+        (expected) => document.querySelector('[data-lzx-slide-counter]')?.textContent?.trim() === `${expected} / 60`,
         number
       )
-      expect(await counter.textContent()).toBe(`${number} / 3`)
+      expect(await counter.textContent()).toBe(`${number} / 60`)
       expect(await presentation!.locator('.slide:visible').count()).toBe(1)
     }
     await expectSlide(1)
@@ -73,6 +75,12 @@ it('presenta con contador, flechas, espacio y clic, y Esc cierra solo la present
     await expectSlide(2)
     await presentation.locator('.slide:visible').click()
     await expectSlide(3)
+    await presentation.keyboard.press('End')
+    await expectSlide(60)
+    await presentation.keyboard.press('ArrowRight')
+    await expectSlide(60)
+    await presentation.keyboard.press('Home')
+    await expectSlide(1)
     const closed = presentation.waitForEvent('close')
     // La ventana se cierra en el keydown: el keyup que sigue ya no tiene destino, y eso es lo esperado.
     await presentation.keyboard.press('Escape').catch(() => undefined)
@@ -109,6 +117,7 @@ it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas'
     : [
         { name: 'fixed', css: '.slide{width:960px;height:540px}', count: 2 },
         { name: 'large', css: '.slide{width:1280px;height:720px}', count: 2 },
+        { name: 'long-60', css: '.slide{width:960px;height:540px}', count: 60 },
         {
           name: 'responsive-hidden',
           css: '.deck{position:relative;width:100vw;height:100vh}.slide{position:absolute;inset:0;display:none}.slide.active{display:flex}',
@@ -117,7 +126,7 @@ it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas'
       ].map(({ name, css, count }) => ({
         name,
         count,
-        html: `<!doctype html><html><head><style>*{box-sizing:border-box}body{margin:0}.slide{padding:30px;background:#17324d;color:white;font:24px sans-serif}${css}</style></head><body><main class="deck"><section class="slide active"><h1>Foto visible</h1>${photoTag}</section><section class="slide"><h1>Segunda lámina</h1>${photoTag}</section></main><nav>Control fuera de lámina</nav></body></html>`
+        html: `<!doctype html><html><head><style>*{box-sizing:border-box}body{margin:0}.slide{padding:30px;background:#17324d;color:white;font:24px sans-serif}${css}</style></head><body><main class="deck">${Array.from({ length: count }, (_, i) => `<section class="slide${i === 0 ? ' active' : ''}"><h1>Lámina ${i + 1}</h1>${photoTag}</section>`).join('')}</main><nav>Control fuera de lámina</nav></body></html>`
       }))
   const baseline = await app.electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
   const reports: unknown[] = []
@@ -128,6 +137,7 @@ it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas'
     const credits = (html.match(/(?:class=["'][^"']*(?:credit|credito)|data-(?:lzx-)?(?:image|photo)-credit)/gi) || []).length
     expect(photos, 'La muestra debe incluir fotos autónomas').toBeGreaterThan(0)
     expect(credits, 'La muestra debe incluir créditos identificables').toBeGreaterThan(0)
+    const started = Date.now()
     const paths = await app.page.evaluate(
       async (payload) => ({
         html: await window.api.extras.downloadHtml(payload),
@@ -136,6 +146,7 @@ it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas'
       }),
       { title: name, html }
     )
+    const exportMs = Date.now() - started
     expect(paths.html).toBeTruthy()
     expect(paths.pdf).toBeTruthy()
     expect(paths.pptx).toBeTruthy()
@@ -157,7 +168,7 @@ it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas'
     }
     expect(await app.electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(baseline)
     await app.assertClean(`exportación ${name}`)
-    reports.push({ name, slides: count, png: { width: 3840, height: 2160 }, photos, credits, hashes, paths })
+    reports.push({ name, slides: count, exportMs, png: { width: 3840, height: 2160 }, photos, credits, hashes, paths })
   }
   await writeFile(
     join(output, 'verification.json'),
@@ -170,7 +181,7 @@ it('exporta HTML, PDF y PowerPoint sin diálogos ni ventanas ocultas huérfanas'
       2
     ) + '\n'
   )
-}, 180_000)
+}, 360_000)
 
 it('el plazo real devuelve un error y destruye la ventana bloqueada en fuentes', async () => {
   const baseline = await app.electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)

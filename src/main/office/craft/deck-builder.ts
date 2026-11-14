@@ -10,6 +10,7 @@
  * ni formatos de archivo en el JSON del modelo y todo texto tiene tope de largo.
  */
 
+import { MAX_SLIDES, SlideLimitError } from '@shared/chat-doc-spec'
 import { BLUEG, DOTS, EDGE, MU, VI, VIL, WH, createKit, fitSize } from './deck-kit'
 export { fitSize }
 
@@ -38,7 +39,7 @@ export interface DeckSpec {
   slides: DeckSlide[]
 }
 
-export const DECK_LIMITS = { slides: 30, text: 400, short: 80, items: 4 } as const
+export const DECK_LIMITS = { slides: MAX_SLIDES, text: 400, short: 80, items: 4 } as const
 const KINDS = ['cover', 'stat', 'timeline', 'grid', 'steps', 'compare', 'rows', 'quad', 'stats', 'closing'] as const
 
 /** Tamaño del título de portada: enorme si es una palabra corta; baja para que quepa en UNA línea (≈ 860 pt de ancho). */
@@ -82,6 +83,7 @@ const itemList = (v: unknown, path: string, min: number, max: number, body = tru
 /** Valida el JSON del modelo y devuelve un `DeckSpec` limpio (solo los campos conocidos). Lanza `Error` con la ruta del problema. */
 export function validateDeckSpec(input: unknown): DeckSpec {
   const root = obj(input, 'spec')
+  if (Array.isArray(root.slides) && root.slides.length > MAX_SLIDES) bad('slides', new SlideLimitError().message)
   const slides = items(root.slides, 'slides', 1, DECK_LIMITS.slides)
   return {
     slides: slides.map((s, i): DeckSlide => {

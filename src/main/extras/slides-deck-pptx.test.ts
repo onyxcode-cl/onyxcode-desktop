@@ -49,6 +49,26 @@ describe('assembleSlidesPptx: un deck `​```slides` capturado como imágenes �
 })
 
 describe('contrato 4K y ensamblado secuencial', () => {
+  it('escribe 60 PNG 4K a disco y conserva cada imagen y lámina', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'slides-60-test-'))
+    try {
+      const source = join(dir, 'slide.png')
+      await writeFile(source, PNG_4K)
+      const output = join(dir, 'out.pptx')
+      await writeSlidesPptx(
+        Array.from({ length: 60 }, () => source),
+        output
+      )
+      const data = await readFile(output)
+      expect(await slideXmls(data)).toHaveLength(60)
+      const zip = await JSZip.loadAsync(data)
+      const names = await mediaFiles(data)
+      expect(names).toHaveLength(60)
+      for (const name of names) expect((await zip.file(name)!.async('nodebuffer')).equals(PNG_4K)).toBe(true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
   it('rechaza capturas pequeñas con medidas y explicación claras', async () => {
     await expect(assembleSlidesPptx([testSlidePng(960, 540)])).rejects.toThrow('960×540; se requieren 3840×2160')
   })
@@ -74,8 +94,8 @@ describe('contrato 4K y ensamblado secuencial', () => {
     }
   })
   it('rechaza cero láminas y el exceso sin truncarlo', async () => {
-    await expect(assembleSlidesPptx([])).rejects.toThrow('entre 1 y 40')
-    await expect(assembleSlidesPptx(Array.from({ length: 41 }, () => PNG_4K))).rejects.toThrow('entre 1 y 40')
+    await expect(assembleSlidesPptx([])).rejects.toThrow('entre 1 y 200')
+    await expect(assembleSlidesPptx(Array.from({ length: 201 }, () => PNG_4K))).rejects.toThrow('entre 1 y 200')
   })
   it('rechaza el exceso de peso antes de leerlo, sin bajar la resolución', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'slides-budget-test-'))
