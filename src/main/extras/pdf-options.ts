@@ -13,10 +13,17 @@ export function pdfPrintOptions(env: Record<string, string | undefined> = proces
   return { ...basePdfOptions, generateTaggedPDF: true, generateDocumentOutline: true }
 }
 
-/** Páginas de un PDF de Chromium (nodo `/Type /Pages` con su `/Count`); 0 si no se puede leer. */
+/**
+ * Páginas de un PDF de Chromium; 0 si no se puede leer. Chromium arma un árbol de nodos `/Type /Pages` de a 8 hojas (`/Count 8`,
+ * `/Count 6`…) y la raíz lleva el total (`/Count 14`), sin orden fijo en el archivo: se toma el MAYOR `/Count`, que es el de la raíz.
+ * Antes se tomaba el primero y toda presentación de más de 8 láminas fallaba con «produjo 8 páginas» (prueba real en Windows y Mac).
+ */
 export function pdfPageCount(pdf: Buffer): number {
-  const m = /\/Type\s*\/Pages\s*\/Count\s+(\d+)/.exec(pdf.toString('latin1'))
-  return m ? Number(m[1]) : 0
+  const text = pdf.toString('latin1')
+  let max = 0
+  for (const m of text.matchAll(/\/Type\s*\/Pages\b[^>]*?\/Count\s+(\d+)|\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages\b/g))
+    max = Math.max(max, Number(m[1] ?? m[2]))
+  return max
 }
 
 /** Escalas que se prueban, de la más suave a la más chica, cuando la última página queda casi vacía. El piso (0,9) mantiene legible la letra. */

@@ -63,3 +63,17 @@ describe('última página casi vacía', () => {
     expect(pdfPageCount(out)).toBe(2)
   })
 })
+
+describe('pdfPageCount con árbol de páginas de Chromium', () => {
+  it('toma el total de la raíz aunque los nodos de 8 hojas vengan antes (14 láminas, prueba real)', () => {
+    const pdf = Buffer.from(
+      '<< /Type /Pages /Count 8 /Kids [] /Parent 3 0 R >>\n<< /Type /Pages /Count 6 /Kids [] /Parent 3 0 R >>\n<< /Type /Pages /Count 14 /Kids [1 0 R 2 0 R] >>\n<< /Count 20 /Type /Font >>',
+      'latin1'
+    )
+    expect(pdfPageCount(pdf)).toBe(14)
+  })
+  it('acepta /Count antes de /Type y sigue en 0 si no hay árbol', () => {
+    expect(pdfPageCount(Buffer.from('<< /Count 3 /Kids [] /Type /Pages >>', 'latin1'))).toBe(3)
+    expect(pdfPageCount(Buffer.from('nada', 'latin1'))).toBe(0)
+  })
+})
