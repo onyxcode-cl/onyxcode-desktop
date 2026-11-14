@@ -4,6 +4,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.27] - 2026-11-14
+
+### Arreglos importantes
+
+- **Las presentaciones de más de 8 láminas ya se ven y se descargan.** Antes fallaban con «Los datos del documento no son válidos».
+- **Los errores de documentos dicen el motivo**, y «Pedir de nuevo» se lo pasa a la IA para que lo corrija.
+- **En Windows, Overdrive ya no bloquea la carpeta** por un atraso momentáneo del sistema al revisarla.
+
+### Código y Overdrive
+
+- **«Automático» trabaja sin pedir permiso:** solo pregunta antes de borrar, salir de la carpeta del proyecto o tocar archivos sensibles.
+- **El plan avanza de verdad:** la IA va marcando cada etapa y, al terminar, deja el plan al día. Ya no queda «trabajando» cuando terminó.
+- **Tarjeta «En segundo plano»** en el panel de la derecha: muestra lo que sigue corriendo (agentes, ayudantes, servidores y comandos) con su estado y el botón «Parar».
+- **Las tarjetas del panel se pueden ordenar** arrastrándolas, y la app recuerda el orden.
+- **Barra de Código más limpia:** sin botones repetidos, y en Windows ya no se amontona bajo los botones de la ventana.
+- **Una sola tarjeta de permiso al borrar**, y la IA puede borrar los borradores que ella misma creó. Tus archivos de antes siguen protegidos.
+
 ## [1.8.26] - 2026-11-14
 
 ### Presentaciones
