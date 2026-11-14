@@ -1,3 +1,4 @@
+import { MobileCodeBackgroundJobs } from './BackgroundJobsConnectors'
 /**
  * Composer del modo Code:
  *  - `/` al inicio → comandos (locales: /plan, /build, /revertir, /nueva + comandos del servidor),
@@ -49,7 +50,6 @@ import { maybeInterceptSubmit, useCompareArmed } from '../../compare'
 import { Kbd, MOD } from './ui'
 import { validatePhoneAttachments } from './mobile-logic'
 import { SheetAction } from './SheetAction'
-import { CodeBackgroundJobs } from './BackgroundJobsConnectors'
 import { CodeHelpersBoard } from './HelpersBoardConnector'
 import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
 
@@ -590,7 +590,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
 
   return (
     <div className={`group/cc ${mobile ? 'pb-2' : 'pb-4'}`}>
-      <CodeBackgroundJobs />
+      {mobile && <MobileCodeBackgroundJobs />}
       <CodeHelpersBoard />
       {activeSessionID && <QueueList sessionID={activeSessionID} />}
       <div

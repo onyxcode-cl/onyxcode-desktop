@@ -33,6 +33,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import type { TasksDeliverable, RoutineRunRecord, ScheduledRoutine } from '@shared/ipc-tasks'
+import { derivePlan } from '../../code/impl/plan-logic'
 import { useT } from '../../../lib/i18n'
 import { cw } from './bridge'
 import { ChangesSection } from './ChangesPanel'
@@ -395,6 +396,8 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
     )
   }
 
+  const plan = derivePlan(todos, busy)
+  const unconfirmed = plan?.steps.some((s) => s.state === 'unconfirmed') ?? false
   const done = todos.filter((t) => t.status === 'completed').length
   const pct = todos.length > 0 ? Math.round((done / todos.length) * 100) : 0
   // «Paso X de Y»: el paso en curso (o el siguiente pendiente) entre los pasos no cancelados.
@@ -444,6 +447,7 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
             </div>
             {stepLabel && <p className="mb-2 text-xs font-medium text-muted desk:hidden">{stepLabel}</p>}
             {counters && <p className="mb-2 hidden text-xs text-muted desk:block">{counters}</p>}
+            {unconfirmed && <p className="mb-2 text-xs text-muted">{tr('code.plan.unconfirmed.help')}</p>}
             <ol className="space-y-1">
               {todos.map((t, i) => {
                 const current = t.status === 'in_progress' && busy
@@ -468,6 +472,9 @@ export function ProgressPanel({ sessionID, busy }: { sessionID: string | null; b
                     >
                       {t.content}
                     </span>
+                    {plan?.steps[i]?.state === 'unconfirmed' && (
+                      <span className="shrink-0 text-xs text-muted">{tr('code.plan.unconfirmed')}</span>
+                    )}
                   </li>
                 )
               })}

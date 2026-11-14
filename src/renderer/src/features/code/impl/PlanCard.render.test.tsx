@@ -20,6 +20,24 @@ describe('PlanCardView', () => {
     expect(html).toContain('data-state="done"')
     expect(html).toContain('data-state="pending"')
   })
+  it('inactiva: explica lo pendiente sin mostrar trabajo ni tiempo', () => {
+    const html = renderToStaticMarkup(
+      <PlanCardView view={derivePlan(todos, false)!} open onToggle={() => undefined} elapsedMs={1_603_000} />
+    )
+    expect(html).toContain('El modelo no marcó estos pasos')
+    expect(html.match(/sin confirmar/g)).toHaveLength(2)
+    expect(html).not.toContain('trabajando')
+    expect(html).not.toContain('26:43')
+    expect(html).not.toContain('data-state="active"')
+    expect(html).toContain('1 de 3 listos')
+  })
+  it('completo: no avisa de pasos sin confirmar', () => {
+    const html = renderToStaticMarkup(
+      <PlanCardView view={derivePlan([{ content: 'Listo', status: 'completed' }], false)!} open onToggle={() => undefined} elapsedMs={0} />
+    )
+    expect(html).not.toContain('sin confirmar')
+    expect(html).not.toContain('El modelo no marcó')
+  })
   it('plegada: solo el título', () => {
     const html = renderToStaticMarkup(<PlanCardView view={derivePlan(todos)!} open={false} onToggle={() => undefined} elapsedMs={0} />)
     expect(html).not.toContain('Armar el Excel')

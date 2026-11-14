@@ -1,5 +1,5 @@
 /**
- * Banda de «Trabajos en segundo plano» sobre el compositor, unificada: una fila por subagente que sigue trabajando mientras la
+ * Lista de «Trabajos en segundo plano», como tarjeta del resumen o banda sobre el compositor: una fila por subagente que sigue trabajando mientras la
  * conversación continúa (botón «Cancelar») y una por cada comando o ejecución de Code Mode del motor propio (botón «Parar»),
  * con su estado y el tiempo que llevan. Sin trabajos no pinta nada.
  *
@@ -28,6 +28,8 @@ export function useNow(active: boolean): number {
 }
 
 interface Props {
+  /** La tarjeta del panel usa todo el ancho disponible y permite repartir las filas en varias líneas. */
+  layout?: 'card' | 'composer'
   view: BackgroundJobsView
   /** Aborta la sesión hija. Si rechaza, se avisa en la propia fila. */
   onCancel: (sessionId: string) => Promise<void> | void
@@ -93,7 +95,14 @@ function StateIcon({ state }: { state: BackgroundJob['state'] }): React.JSX.Elem
   }
 }
 
-export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJob, onResumeEngineJob }: Props): React.JSX.Element | null {
+export function BackgroundJobs({
+  view,
+  onCancel,
+  engineJobs = [],
+  onStopEngineJob,
+  onResumeEngineJob,
+  layout = 'composer'
+}: Props): React.JSX.Element | null {
   const t = useT()
   const [cancelling, setCancelling] = useState<Record<string, boolean>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
@@ -105,6 +114,7 @@ export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJo
   const liveCount = view.liveCount + engineJobs.filter((j) => j.live).length
 
   const touch = isRemoteSurface()
+  const card = layout === 'card'
   const cancel = async (id: string): Promise<void> => {
     setCancelling((c) => ({ ...c, [id]: true }))
     setFailed((f) => ({ ...f, [id]: false }))
@@ -144,10 +154,11 @@ export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJo
   return (
     <section
       aria-label={t('code.bg.title')}
-      className={`mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${touch ? 'px-3' : 'px-6'}`}
+      className={card ? 'mx-3 my-2' : `mx-auto mb-2 w-full max-w-3xl desk:max-w-[var(--measure-prose)] ${touch ? 'px-3' : 'px-6'}`}
+      data-layout={layout}
     >
       <div className="rounded-xl border border-border bg-elevated/60 px-3 py-2 text-[13px]">
-        <div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted">
+        <div className="mb-1 flex flex-wrap items-center gap-2 text-xs font-medium text-muted">
           <Bot size={13} aria-hidden />
           <h3 className="font-medium">{t('code.bg.title')}</h3>
           <span className="text-subtle">{t('code.bg.count', { count: liveCount })}</span>
@@ -161,9 +172,12 @@ export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJo
           {view.jobs.map((job) => {
             const live = job.state === 'running' || job.state === 'waiting'
             return (
-              <li key={job.id} className={`flex items-center gap-2 ${touch ? 'min-h-11 flex-wrap' : ''}`}>
+              <li key={job.id} className={`flex items-center gap-2 ${card ? 'flex-wrap py-1' : touch ? 'min-h-11 flex-wrap' : ''}`}>
                 <StateIcon state={job.state} />
-                <span className={`min-w-0 flex-1 truncate ${live ? 'text-fg' : 'text-muted'}`} title={job.title}>
+                <span
+                  className={`min-w-0 flex-1 ${card ? 'basis-[calc(100%-1.5rem)] break-words' : 'truncate'} ${live ? 'text-fg' : 'text-muted'}`}
+                  title={job.title}
+                >
                   {job.title}
                   {job.agent && <span className="text-subtle"> · {t('code.bg.agent', { agent: job.agent })}</span>}
                 </span>
@@ -190,9 +204,15 @@ export function BackgroundJobs({ view, onCancel, engineJobs = [], onStopEngineJo
             )
           })}
           {engineJobs.map((job) => (
-            <li key={`engine:${job.id}`} className={`flex items-center gap-2 ${touch ? 'min-h-11 flex-wrap' : ''}`}>
+            <li
+              key={`engine:${job.id}`}
+              className={`flex items-center gap-2 ${card ? 'flex-wrap py-1' : touch ? 'min-h-11 flex-wrap' : ''}`}
+            >
               <EngineStateIcon state={job.state} />
-              <span className={`min-w-0 flex-1 truncate ${job.live ? 'text-fg' : 'text-muted'}`} title={job.title}>
+              <span
+                className={`min-w-0 flex-1 ${card ? 'basis-[calc(100%-1.5rem)] break-words' : 'truncate'} ${job.live ? 'text-fg' : 'text-muted'}`}
+                title={job.title}
+              >
                 {job.title}
                 <span className="text-subtle"> · {t(KIND_KEY[job.kind])}</span>
               </span>

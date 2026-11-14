@@ -4,7 +4,7 @@
  */
 import type { Todo } from './types'
 
-export type PlanStepState = 'done' | 'active' | 'pending'
+export type PlanStepState = 'done' | 'active' | 'pending' | 'unconfirmed'
 
 export interface PlanStep {
   content: string
@@ -25,11 +25,11 @@ export interface PlanView {
 const isDone = (s: string): boolean => s === 'completed' || s === 'cancelled'
 
 /** Null si no hay pasos (entonces no se muestra nada). */
-export function derivePlan(todos: readonly Pick<Todo, 'content' | 'status'>[] | undefined): PlanView | null {
+export function derivePlan(todos: readonly Pick<Todo, 'content' | 'status'>[] | undefined, busy = true): PlanView | null {
   if (!todos || todos.length === 0) return null
   const steps: PlanStep[] = todos.map((x) => ({
     content: x.content,
-    state: isDone(x.status) ? 'done' : x.status === 'in_progress' ? 'active' : 'pending'
+    state: isDone(x.status) ? 'done' : !busy ? 'unconfirmed' : x.status === 'in_progress' ? 'active' : 'pending'
   }))
   const done = steps.filter((s) => s.state === 'done').length
   return { steps, done, total: steps.length, activeIndex: steps.findIndex((s) => s.state === 'active'), complete: done === steps.length }

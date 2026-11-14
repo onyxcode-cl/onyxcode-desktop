@@ -40,7 +40,7 @@ describe('barra superior de Code (escritorio, QA)', () => {
   })
   it('H12: los paneles van en una sola cápsula con nombre y cada botón con aria-label', () => {
     expect(ws).toContain("aria-label={t('code.toolbar.group.tools')}")
-    expect(ws).toContain('aria-label={t(p.label)}')
+    expect(ws).toMatch(/aria-label=\{[\s\S]{0,400}?: t\(p\.label\)\s*\}/)
     expect(ws).toContain("aria-label={t('code.toolbar.stop')}")
   })
   it('con un aviso arriba no se reserva el hueco de los semáforos (mismo margen izquierdo que con la lista abierta)', () => {

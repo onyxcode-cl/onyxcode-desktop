@@ -14,11 +14,18 @@ vi.mock('./folder-access', async (orig) => ({
 vi.mock('./panels/TerminalPanel', () => ({ TerminalPanel: () => null }))
 vi.mock('@xterm/xterm', () => ({ Terminal: class {} }))
 vi.mock('./Composer', () => ({ Composer: () => null }))
-vi.mock('./CodeSummary', () => ({ CodeSummary: () => null }))
+vi.mock('../../project-profile/ProjectCard', () => ({ ProjectCard: () => null }))
+vi.mock('../../project-profile/useLinkedFolders', () => ({ useLinkedFolders: () => [] }))
+const engine = vi.hoisted(() => ({ jobs: [] as unknown[] }))
+vi.mock('../../../lib/api', async (orig) => ({
+  ...(await orig<typeof import('../../../lib/api')>()),
+  call: vi.fn(async (ch: string) => (ch === 'jobs:list' ? { available: true, jobs: engine.jobs } : { ok: true }))
+}))
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { call } from '../../../lib/api'
 import { useLang } from '../../../lib/i18n'
 import { CodeWorkspace } from './CodeWorkspace'
 import { useCode } from './store'
@@ -29,6 +36,7 @@ let host: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  engine.jobs = []
   useLang.setState({ lang: 'es' } as never)
   localStorage.clear()
   localStorage.setItem('code.panelWidth', '280')
@@ -42,7 +50,14 @@ beforeEach(() => {
     activeSessionID: null,
     openDirectories: ['/work/toolbar'],
     trustedFolders: ['/work/toolbar'],
-    panel: null
+    panel: null,
+    sessions: {},
+    messages: {},
+    runState: {},
+    errors: {},
+    permissions: {},
+    questions: {},
+    todos: {}
   })
 })
 afterEach(() => {
@@ -89,5 +104,87 @@ describe.each(['darwin', 'win32'])('barra de Código con panel lateral (%s)', (p
     expect(scroll.parentElement).toBe(header)
     expect(close.classList.contains('shrink-0')).toBe(true)
     expect(close.classList.contains('sticky')).toBe(false)
+  })
+})
+
+describe.each(['darwin', 'win32'])('trabajos en Resumen (%s)', (platform) => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'api', { value: { platform }, configurable: true })
+  })
+
+  it('con el panel cerrado cuenta los vivos, abre su tarjeta y le lleva el foco', async () => {
+    const now = Date.now()
+    useCode.setState({
+      activeSessionID: 'root',
+      sessions: { root: { id: 'root', title: 'Prueba', directory: '/work/toolbar', time: { created: now, updated: now } } as never },
+      sessionProject: { root: '/work/toolbar' }
+    })
+    engine.jobs = [
+      { id: 'live', kind: 'shell', title: 'Servidor vivo', state: 'en_curso', code: null, startedAt: now, endedAt: null },
+      { id: 'stopped', kind: 'shell', title: 'Servidor parado', state: 'terminado_por_ti', code: null, startedAt: now, endedAt: now }
+    ]
+    await mount()
+    expect(host.querySelector('[data-testid="code-jobs-indicator"]')?.textContent).toBe('1')
+    expect(host.querySelector('section[aria-label="Trabajos en segundo plano"]')).toBeNull()
+    const button = host.querySelector('button[aria-label^="Resumen ·"]') as HTMLButtonElement
+    expect(button.getAttribute('aria-label')).toContain('Trabajos en segundo plano')
+    const reads = vi.mocked(call).mock.calls.filter(([ch]) => ch === 'jobs:list').length
+    await act(async () => button.click())
+    expect(vi.mocked(call).mock.calls.filter(([ch]) => ch === 'jobs:list')).toHaveLength(reads)
+    const card = host.querySelector('[data-testid="code-summary-jobs"]')!
+    expect(card.textContent).toContain('Servidor vivo')
+    expect(card.textContent).toContain('Servidor parado')
+    expect(card.closest('[data-testid="code-summary"]')).not.toBeNull()
+    expect(document.activeElement).toBe(card)
+    expect(host.querySelectorAll('section[aria-label="Trabajos en segundo plano"]')).toHaveLength(1)
+  })
+
+  it('incluye ayudantes vivos aunque la raíz esté inactiva', async () => {
+    const now = Date.now()
+    useCode.setState({
+      activeSessionID: 'root',
+      sessions: {
+        root: { id: 'root', directory: '/work/toolbar', time: { created: now - 30_000, updated: now } } as never,
+        child: { id: 'child', parentID: 'root', time: { created: now - 30_000, updated: now } } as never
+      },
+      sessionProject: { root: '/work/toolbar' },
+      runState: { root: 'idle', child: 'busy' },
+      messages: {
+        root: [
+          {
+            info: { id: 'm' } as never,
+            parts: [
+              {
+                type: 'tool',
+                tool: 'task',
+                state: { status: 'completed', input: { description: 'Ayudante vivo' }, metadata: { sessionId: 'child', background: true } }
+              } as never
+            ]
+          }
+        ]
+      }
+    })
+    await mount()
+    expect(host.querySelector('[data-testid="code-jobs-indicator"]')?.textContent).toBe('1')
+    await act(async () => (host.querySelector('button[aria-label^="Resumen ·"]') as HTMLButtonElement).click())
+    expect(host.querySelector('[data-testid="code-summary-jobs"]')?.textContent).toContain('Ayudante vivo')
+  })
+
+  it('los trabajos parados o por reanudar no encienden el indicador', async () => {
+    const now = Date.now()
+    useCode.setState({
+      activeSessionID: 'root',
+      sessions: { root: { id: 'root', title: 'Prueba', directory: '/work/toolbar', time: { created: now, updated: now } } as never },
+      sessionProject: { root: '/work/toolbar' }
+    })
+    engine.jobs = [
+      { id: 'stopped', kind: 'shell', title: 'Servidor parado', state: 'terminado_por_ti', code: null, startedAt: now, endedAt: now },
+      { id: 'lost', kind: 'ayudante', title: 'Por reanudar', state: 'perdido', code: null, startedAt: now, endedAt: now }
+    ]
+    await mount()
+    expect(host.querySelector('[data-testid="code-jobs-indicator"]')).toBeNull()
+    const button = host.querySelector('button[aria-label="Resumen"]') as HTMLButtonElement
+    await act(async () => button.click())
+    expect(host.querySelector('[data-testid="code-summary-jobs"]')?.textContent).toContain('Por reanudar')
   })
 })

@@ -421,6 +421,8 @@ export const code = {
   'code.plan.title': 'Plan',
   'code.plan.progress': '{done} de {total} listos',
   'code.plan.working': 'trabajando · {time}',
+  'code.plan.unconfirmed': 'sin confirmar',
+  'code.plan.unconfirmed.help': 'El modelo no marcó estos pasos',
   'code.menu.openAnother': 'Abrir otra carpeta…',
   'code.chip.project.title': 'Proyecto',
   'code.chip.project.add': 'Agregar proyecto…',

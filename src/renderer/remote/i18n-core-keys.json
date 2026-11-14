@@ -811,6 +811,8 @@
  "code.plan.proceed",
  "code.plan.progress",
  "code.plan.title",
+ "code.plan.unconfirmed",
+ "code.plan.unconfirmed.help",
  "code.plan.working",
  "code.planExec.fallback",
  "code.planExec.fallback.dismiss",

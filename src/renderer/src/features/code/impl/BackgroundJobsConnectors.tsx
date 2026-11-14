@@ -3,7 +3,7 @@
  * El aborto de ayudantes es el de siempre (`client.session.abort` sobre la sesión hija); los comandos y celdas del motor propio
  * llegan por `jobs:list` / `jobs:stop` (main habla con el motor, ver `useEngineJobs`).
  */
-import { useMemo } from 'react'
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import type { EngineJobResumeResult } from '@shared/engine-jobs'
 import { useSessions } from '../../../stores/sessions'
 import type { OpencodeClient } from '../../../lib/opencode'
@@ -14,8 +14,10 @@ import { useEngineJobs } from './useEngineJobs'
 import { sdkData, useClient } from './client'
 import { rootSessionID, useCode } from './store'
 
-/** Code: la sesión activa (su raíz) con los datos del almacén de Code. */
-export function CodeBackgroundJobs(): React.JSX.Element | null {
+/** Una sola observación, también con Resumen cerrado: el indicador y la tarjeta comparten datos y sondeo. */
+const CodeJobsContext = createContext<(ReturnType<typeof useCodeJobsData> & { focusRequest: number; openJobs: () => void }) | null>(null)
+
+function useCodeJobsData() {
   const client = useClient()
   const activeSessionID = useCode((s) => s.activeSessionID)
   const sessions = useCode((s) => s.sessions)
@@ -38,9 +40,44 @@ export function CodeBackgroundJobs(): React.JSX.Element | null {
     sdkData(await client.session.abort({ sessionID: id, directory: dir }))
   }
   const engine = useEngineView(rootId, rootId ? (sessionProject[rootId] ?? sessions[rootId]?.directory) : undefined, status, view.liveCount)
+  return { view, abort, engine, liveCount: view.liveCount + engine.rows.filter((job) => job.live).length }
+}
+
+export function CodeBackgroundJobsProvider({ children }: { children: ReactNode }): React.JSX.Element {
+  const data = useCodeJobsData()
+  const [focusRequest, setFocusRequest] = useState(0)
+  const openJobs = (): void => {
+    const state = useCode.getState()
+    if (state.panel !== 'summary') state.togglePanel('summary')
+    setFocusRequest((n) => n + 1)
+  }
+  return <CodeJobsContext.Provider value={{ ...data, focusRequest, openJobs }}>{children}</CodeJobsContext.Provider>
+}
+
+export function useCodeBackgroundJobs() {
+  return useContext(CodeJobsContext)
+}
+
+/** Code: tarjeta del panel Resumen; no monta otro sondeo. */
+export function CodeBackgroundJobs(): React.JSX.Element | null {
+  const data = useCodeBackgroundJobs()
+  if (!data) return null
   return (
-    <BackgroundJobs view={view} onCancel={abort} engineJobs={engine.rows} onStopEngineJob={engine.stop} onResumeEngineJob={engine.resume} />
+    <BackgroundJobs
+      layout="card"
+      view={data.view}
+      onCancel={data.abort}
+      engineJobs={data.engine.rows}
+      onStopEngineJob={data.engine.stop}
+      onResumeEngineJob={data.engine.resume}
+    />
   )
+}
+
+/** El celular no tiene Resumen: conserva sus ayudantes junto al compositor. */
+export function MobileCodeBackgroundJobs(): React.JSX.Element | null {
+  const data = useCodeJobsData()
+  return <BackgroundJobs view={data.view} onCancel={data.abort} />
 }
 
 /** Tareas y Chat: comparten `useSessions`; el que monta dice qué sesión es la raíz, dónde vive y quién tiene algo pendiente. */

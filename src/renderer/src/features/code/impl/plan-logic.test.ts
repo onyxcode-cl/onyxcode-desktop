@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { activeKey, derivePlan, formatElapsed } from './plan-logic'
+import type { Todo } from './types'
 
-const td = (content: string, status: string) => ({ content, status }) as never
+const td = (content: string, status: Todo['status']): Pick<Todo, 'content' | 'status'> => ({ content, status })
 
 describe('derivePlan', () => {
   it('sin pasos no hay plan', () => {
@@ -12,6 +13,15 @@ describe('derivePlan', () => {
     const v = derivePlan([td('a', 'completed'), td('b', 'completed'), td('c', 'in_progress'), td('d', 'pending'), td('e', 'pending')])!
     expect([v.done, v.total, v.activeIndex, v.complete]).toEqual([2, 5, 2, false])
     expect(v.steps.map((s) => s.state)).toEqual(['done', 'done', 'active', 'pending', 'pending'])
+  })
+  it('inactiva: los pasos sin cerrar quedan sin confirmar y no hay clave para el reloj', () => {
+    const todos = [td('a', 'completed'), td('b', 'in_progress'), td('c', 'pending'), td('d', 'cancelled')]
+    const v = derivePlan(todos, false)!
+    expect(v.steps.map((s) => s.state)).toEqual(['done', 'unconfirmed', 'unconfirmed', 'done'])
+    expect([v.done, v.complete, v.activeIndex]).toEqual([2, false, -1])
+    expect(activeKey(v)).toBeNull()
+    expect(activeKey(derivePlan(todos, true))).toBe('1:b')
+    expect(todos[1].status).toBe('in_progress')
   })
   it('cancelado cuenta como hecho y todo hecho marca complete', () => {
     const v = derivePlan([td('a', 'completed'), td('b', 'cancelled')])!

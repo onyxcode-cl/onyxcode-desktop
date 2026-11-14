@@ -7,9 +7,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { useT } from '../../../lib/i18n'
 import { useCode } from './store'
-import { activeKey, derivePlan, formatElapsed, type PlanView } from './plan-logic'
+import { activeKey, derivePlan, formatElapsed, type PlanStepState, type PlanView } from './plan-logic'
 
-function Marker({ state }: { state: 'done' | 'active' | 'pending' }): React.JSX.Element {
+function Marker({ state }: { state: PlanStepState }): React.JSX.Element {
   if (state === 'done')
     return (
       <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-success text-white" data-state="done">
@@ -57,14 +57,19 @@ export function PlanCardView({
           <span className="font-semibold text-fg">{t('code.plan.title')}</span>
           <span className="text-muted">· {t('code.plan.progress', { done: view.done, total: view.total })}</span>
         </button>
+        {view.steps.some((s) => s.state === 'unconfirmed') && <p className="mt-1 text-xs text-muted">{t('code.plan.unconfirmed.help')}</p>}
         {open && (
           <ul className="mt-2 space-y-1.5">
             {view.steps.map((s, i) => (
               <li key={i} className="flex min-w-0 items-center gap-2.5">
                 <Marker state={s.state} />
-                <span className={`min-w-0 flex-1 truncate ${s.state === 'pending' ? 'text-muted' : 'text-fg'}`} title={s.content}>
+                <span
+                  className={`min-w-0 flex-1 truncate ${s.state === 'pending' || s.state === 'unconfirmed' ? 'text-muted' : 'text-fg'}`}
+                  title={s.content}
+                >
                   {s.content}
                 </span>
+                {s.state === 'unconfirmed' && <span className="shrink-0 text-[13px] text-muted">{t('code.plan.unconfirmed')}</span>}
                 {s.state === 'active' && (
                   <span className="shrink-0 text-[13px] tabular-nums text-muted">
                     {t('code.plan.working', { time: formatElapsed(elapsedMs) })}
@@ -79,11 +84,12 @@ export function PlanCardView({
   )
 }
 
-export function PlanCard({ sessionID }: { sessionID: string }): React.JSX.Element | null {
+export function PlanCard({ sessionID, busy }: { sessionID: string; busy: boolean }): React.JSX.Element | null {
   const todos = useCode((s) => s.todos[sessionID])
-  const view = derivePlan(todos)
+  const view = derivePlan(todos, busy)
   const [manual, setManual] = useState<boolean | null>(null)
-  const elapsed = useElapsed(activeKey(view))
+  const stepKey = activeKey(view)
+  const elapsed = useElapsed(stepKey ? `${sessionID}:${stepKey}` : null)
   const wasComplete = useRef(false)
   // Al terminar todo se pliega solo; si luego llegan pasos nuevos vuelve a abrirse.
   const complete = view?.complete ?? false

@@ -53,6 +53,37 @@ const flush = async (): Promise<void> => {
 }
 
 describe('BackgroundJobs con trabajos del motor', () => {
+  it('la tarjeta del resumen conserva filas y acciones y permite títulos largos en paneles estrechos', async () => {
+    const onCancel = vi.fn(async () => undefined)
+    const onStop = vi.fn(async () => undefined)
+    const onResume = vi.fn(async () => ({ ok: true as const }))
+    render(
+      createElement(BackgroundJobs, {
+        layout: 'card',
+        view: view([helper]),
+        onCancel,
+        engineJobs: [row(), row({ id: 'lost', kind: 'ayudante', state: 'perdido', live: false, resumable: true })],
+        onStopEngineJob: onStop,
+        onResumeEngineJob: onResume
+      })
+    )
+    const section = host.querySelector('section')!
+    expect(section.dataset.layout).toBe('card')
+    expect(section.className).not.toContain('max-w-3xl')
+    expect(host.querySelectorAll('li')).toHaveLength(3)
+    for (const title of host.querySelectorAll('[title]')) {
+      expect(title.classList.contains('break-words')).toBe(true)
+      expect(title.classList.contains('truncate')).toBe(false)
+    }
+    const buttons = [...host.querySelectorAll('button')]
+    expect(buttons.map((b) => b.textContent)).toEqual(['Cancelar', 'Parar', 'Reanudar'])
+    for (const button of buttons) act(() => button.click())
+    await flush()
+    expect(onCancel).toHaveBeenCalledWith('kid')
+    expect(onStop).toHaveBeenCalledWith('sh_1')
+    expect(onResume).toHaveBeenCalledWith('lost')
+  })
+
   it('mezcla ayudantes y trabajos del motor en una lista, con el total de vivos', () => {
     render(
       createElement(BackgroundJobs, {

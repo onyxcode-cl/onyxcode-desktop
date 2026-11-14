@@ -2,7 +2,8 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SessionsBackgroundJobs } from './BackgroundJobsConnectors'
+import { MobileCodeBackgroundJobs, SessionsBackgroundJobs } from './BackgroundJobsConnectors'
+import { useCode } from './store'
 import { useSessions } from '../../../stores/sessions'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -199,5 +200,32 @@ describe('SessionsBackgroundJobs con trabajos del motor (jobs:list / jobs:stop)'
     await settle(30_000)
     expect(spy.mock.calls.length).toBe(first)
     expect(host.innerHTML).toBe('')
+  })
+})
+
+describe('Code del celular', () => {
+  it('conserva sus ayudantes sin panel Resumen ni llamadas al motor principal', async () => {
+    const previous = window.api
+    Object.defineProperty(window, 'api', { value: { platform: 'remote' }, configurable: true })
+    const calls = vi.fn()
+    mockCall.impl = calls
+    useCode.setState({
+      activeSessionID: 'root',
+      sessions: { root: sess('root'), kid: sess('kid', 'root') },
+      runState: { kid: 'busy' },
+      messages: { root: [{ info: { id: 'm1' } as never, parts: [task('kid')] }] },
+      errors: {},
+      permissions: {},
+      questions: {},
+      sessionProject: { root: '/proj' }
+    })
+    try {
+      await act(async () => root.render(createElement(MobileCodeBackgroundJobs)))
+      expect(host.textContent).toContain('Hace kid')
+      expect(host.querySelector('button')?.getAttribute('aria-label')).toBe('Cancelar «Hace kid»')
+      expect(calls).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(window, 'api', { value: previous, configurable: true })
+    }
   })
 })

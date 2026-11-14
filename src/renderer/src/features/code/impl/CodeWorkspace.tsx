@@ -82,6 +82,7 @@ import { panelLayout } from './review-logic'
 import { sharedFullDiff } from './full-diff'
 import { Tip } from './ui'
 import { CodeSummary } from './CodeSummary'
+import { CodeBackgroundJobsProvider, useCodeBackgroundJobs } from './BackgroundJobsConnectors'
 import { CodeDocLayout } from './CodeDocLayout'
 import { hintText, useEffectiveBindings } from '../../../keybindings/bindings'
 
@@ -594,6 +595,7 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
   const activeSessionID = useCode((s) => s.activeSessionID)
   // Cuenta también a los ayudantes en segundo plano: la raíz puede figurar `idle` mientras ellos trabajan.
   const run = useCode((s) => selectCodeRunOf(s, s.activeSessionID))
+  const jobs = useCodeBackgroundJobs()
   const helpers = useCode((s) => (s.activeSessionID ? liveHelperCount(s, s.activeSessionID) : 0))
   const shells = useCode((s) => (s.activeSessionID ? liveShellCount(s.messages[s.activeSessionID]) : 0))
   const panel = useCode((s) => s.panel)
@@ -665,12 +667,25 @@ function Toolbar({ directory }: { directory: string }): React.JSX.Element {
               >
                 <button
                   type="button"
-                  aria-label={t(p.label)}
+                  aria-label={
+                    p.id === 'summary' && jobs && jobs.liveCount > 0
+                      ? `${t(p.label)} · ${t('code.bg.title')} · ${t('code.bg.count', { count: jobs.liveCount })}`
+                      : t(p.label)
+                  }
                   aria-pressed={panel === p.id}
-                  onClick={() => togglePanel(p.id)}
+                  onClick={() => (p.id === 'summary' && jobs && jobs.liveCount > 0 ? jobs.openJobs() : togglePanel(p.id))}
                   className={`no-drag relative inline-flex h-7 min-w-8 items-center justify-center rounded-lg px-1.5 transition-colors ${panel === p.id ? 'bg-accent-soft text-accent' : 'text-muted hover:bg-hover hover:text-fg'}`}
                 >
                   {p.icon}
+                  {p.id === 'summary' && jobs && jobs.liveCount > 0 && (
+                    <span
+                      aria-hidden
+                      data-testid="code-jobs-indicator"
+                      className="absolute -top-1 -right-1 rounded-full bg-accent px-1 text-[9px] leading-3 text-accent-fg tabular-nums"
+                    >
+                      {jobs.liveCount}
+                    </span>
+                  )}
                   {p.id === 'changes' && (branch?.changes ?? 0) > 0 && (
                     <span aria-hidden className="absolute top-1 right-1 size-1.5 rounded-full bg-warning" />
                   )}
@@ -836,6 +851,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
   const sid = useCode((s) => s.activeSessionID)
   const entries = useCode((s) => (sid ? s.messages[sid] : undefined))
   const run = useCode((s) => (sid ? s.runState[sid] : undefined))
+  const planRun = useCode((s) => selectCodeRunOf(s, sid))
   const retryLabel = useRetryLabel(sid)
   const error = useCode((s) => (sid ? (s.errors[sid] ?? null) : null))
   const loading = useCode((s) => (sid ? !!s.loadingMessages[sid] : false))
@@ -926,7 +942,7 @@ function ChatColumn({ directory }: { directory: string }): React.JSX.Element {
         </div>
       )}
       {/* Escritorio: tarjeta «Plan»; la barra de tareas compacta queda para el celular (sin cambios allí). */}
-      {sid && !isRemoteSurface() && <PlanCard sessionID={sid} />}
+      {sid && !isRemoteSurface() && <PlanCard sessionID={sid} busy={planRun === 'busy' || planRun === 'retry'} />}
       {sid && isRemoteSurface() && <TodoBar sessionID={sid} />}
       {sid && !isRemoteSurface() && <PlanReadyCard sessionID={sid} />}
       {sid && <PlanApprovalCard sessionID={sid} />}
@@ -1092,24 +1108,26 @@ export function CodeWorkspace({ showSessionList = true }: CodeWorkspaceProps): R
     )
 
   return (
-    <div ref={rootRef} className="relative flex h-full min-h-0 w-full bg-bg text-fg">
-      <TrustGate />
-      {showSessionList && (
-        <div className="flex w-60 shrink-0 flex-col border-r border-border bg-sidebar pt-2">
-          <SessionList />
-        </div>
-      )}
-      <CodeDocLayout key={directory} sessionId={activeSessionID} containerWidth={containerWidth - (showSessionList ? 240 : 0)}>
-        {(documentOpen) => (
-          <>
-            <ShellRunProvider directory={directory}>
-              <ChatColumn directory={directory} />
-            </ShellRunProvider>
-            <SidePanels directory={directory} containerWidth={containerWidth - (showSessionList ? 240 : 0)} obscured={documentOpen} />
-          </>
+    <CodeBackgroundJobsProvider>
+      <div ref={rootRef} className="relative flex h-full min-h-0 w-full bg-bg text-fg">
+        <TrustGate />
+        {showSessionList && (
+          <div className="flex w-60 shrink-0 flex-col border-r border-border bg-sidebar pt-2">
+            <SessionList />
+          </div>
         )}
-      </CodeDocLayout>
-    </div>
+        <CodeDocLayout key={directory} sessionId={activeSessionID} containerWidth={containerWidth - (showSessionList ? 240 : 0)}>
+          {(documentOpen) => (
+            <>
+              <ShellRunProvider directory={directory}>
+                <ChatColumn directory={directory} />
+              </ShellRunProvider>
+              <SidePanels directory={directory} containerWidth={containerWidth - (showSessionList ? 240 : 0)} obscured={documentOpen} />
+            </>
+          )}
+        </CodeDocLayout>
+      </div>
+    </CodeBackgroundJobsProvider>
   )
 }
 

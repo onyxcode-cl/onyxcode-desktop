@@ -1,4 +1,5 @@
 /** Panel «Resumen» de Code: las mismas tarjetas que el de Overdrive (Ficha del proyecto, Plan, Contexto y Cambios) para el proyecto abierto. */
+import { useEffect, useRef } from 'react'
 import { ChevronRight, Gauge, GitCompare, ListChecks } from 'lucide-react'
 import { ContextDetail } from '../../../components/ContextDetail'
 import { UsageMeter } from '../../../components/UsageMeter'
@@ -8,7 +9,8 @@ import { ProjectCard } from '../../project-profile/ProjectCard'
 import { useLinkedFolders } from '../../project-profile/useLinkedFolders'
 import { PlanCard } from './PlanCard'
 import { useCodeAiGate } from './ComposerControls'
-import { useCode } from './store'
+import { selectCodeRunOf, useCode } from './store'
+import { CodeBackgroundJobs, useCodeBackgroundJobs } from './BackgroundJobsConnectors'
 
 const card = 'mx-3 my-2 rounded-xl border border-border bg-elevated/60 p-3.5 text-sm text-fg'
 
@@ -24,6 +26,15 @@ export function CodeSummary({
   const t = useT()
   const folders = useLinkedFolders(directory)
   const sessionID = useCode((s) => s.activeSessionID)
+  const run = useCode((s) => selectCodeRunOf(s, sessionID))
+  const jobs = useCodeBackgroundJobs()
+  const jobsRef = useRef<HTMLDivElement>(null)
+  const focusRequest = jobs?.focusRequest ?? 0
+  useEffect(() => {
+    if (!focusRequest) return
+    jobsRef.current?.scrollIntoView?.({ block: 'nearest' })
+    jobsRef.current?.focus({ preventScroll: true })
+  }, [focusRequest])
   const messages = useCode((s) => (sessionID ? s.messages[sessionID] : undefined))
   const model = useCode((s) => s.model)
   const modeModel = useModeModel('code')
@@ -40,7 +51,11 @@ export function CodeSummary({
           <ListChecks size={15} className="text-muted" aria-hidden />
           {t('tasks.prog.plan')}
         </h3>
-        {sessionID && hasPlan ? <PlanCard sessionID={sessionID} /> : <p className="text-xs text-subtle">{t('tasks.prog.planNone')}</p>}
+        {sessionID && hasPlan ? (
+          <PlanCard sessionID={sessionID} busy={run === 'busy' || run === 'retry'} />
+        ) : (
+          <p className="text-xs text-subtle">{t('tasks.prog.planNone')}</p>
+        )}
       </section>
       <section className={card}>
         <h3 className="flex items-center gap-2 text-[13px] font-semibold">
@@ -53,6 +68,9 @@ export function CodeSummary({
         <p className="mt-1 text-xs text-subtle">{t('tasks.prog.ctxWindow.help')}</p>
         <ContextDetail messages={messages ?? []} model={effective} directory={directory} />
       </section>
+      <div ref={jobsRef} tabIndex={-1} data-testid="code-summary-jobs" className="outline-none">
+        <CodeBackgroundJobs />
+      </div>
       <button
         type="button"
         onClick={() => togglePanel('changes')}
