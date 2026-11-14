@@ -26,12 +26,12 @@ it.each([
   {
     path: 'resources/opencode/agents/chat.md',
     end: '- Si eligen la opción HTML/CSS',
-    sha256: '8d9578caa4c795503c0d4528f9e9ffd13ab4c9a7e66e42fddbb5c64bf6369deb'
+    sha256: 'a85144fff49f385729afc6abb60ec5243af93964386c33857a9c354b3760b16a'
   },
   {
     path: 'src/main/opencode/config.ts',
     end: "          'Si eligen la opción HTML/CSS",
-    sha256: 'e675e7eca5ee6a40e5c26aef46b4e0b6931e872650f18fe9d60ba0903601e515'
+    sha256: '6be87ce84bbe6153b80079f76840f65a219c614a27160dfe2bcd598ea9d911ba'
   }
 ])('$path: conserva el prefijo de guía aprobado en V26 y la regla de formato', ({ path, end, sha256 }) => {
   const source = readFileSync(resolve(root, path), 'utf8')

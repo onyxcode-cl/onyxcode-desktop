@@ -809,6 +809,9 @@ export const useCode = create<CodeState>((set, get) => {
   }
   const purgeSessionSideState = (id: string): void => purgeManySideState(new Set([id]))
 
+  const externalApprovals = new Map<string, { command: string; workdir: unknown; directories: string[]; project: string | undefined }>()
+  const callKey = (p: PendingPermission): string | undefined =>
+    p.tool ? JSON.stringify([p.sessionID, p.tool.messageID, p.tool.callID]) : undefined
   const resolvedPermissions = new Set<string>()
   const replyingPermissions = new Set<string>()
   const resolvePermission = (id: string): void => {
@@ -941,9 +944,15 @@ export const useCode = create<CodeState>((set, get) => {
     const verification = tool?.type === 'tool' && tool.tool === 'todowrite' && Array.isArray(input?.todos)
     if (kind === 'auto' && input && !verification && input.command !== command) return false
     if (background && (!input || typeof input.cwd !== 'string' || tool?.type !== 'tool' || tool.tool !== 'bgshell_start')) return false
+    const workdir = (background ? input?.cwd : input?.workdir) ?? md?.workdir
+    const exterior = externalApprovals.get(callKey(p) ?? '')
+    const approvedDirectories =
+      exterior && exterior.command === command && exterior.workdir === workdir && exterior.project === get().sessionProject[p.sessionID]
+        ? exterior.directories
+        : []
     const allowed =
       kind === 'auto'
-        ? isAutoApprovableCodeCommand(command, get().sessionProject[p.sessionID], (background ? input?.cwd : input?.workdir) ?? md?.workdir)
+        ? isAutoApprovableCodeCommand(command, get().sessionProject[p.sessionID], workdir, approvedDirectories)
         : isAutoApprovableCommand(kind, command)
     if (!allowed) return false
     void get().replyPermission(p, 'once')
@@ -1781,7 +1790,34 @@ export const useCode = create<CodeState>((set, get) => {
         } else {
           sdkData(await client.permission.reply({ requestID: p.id, reply, directory: dir }))
         }
+        if (reply !== 'reject' && p.permission === 'external_directory' && !isProtectedPermission(p.metadata)) {
+          const key = callKey(p)
+          const part = p.tool
+            ? get()
+                .messages[p.sessionID]?.find((m) => m.info.id === p.tool!.messageID)
+                ?.parts.find((part) => part.type === 'tool' && part.callID === p.tool!.callID)
+            : undefined
+          const command = p.metadata?.command
+          const directories = p.metadata?.directories
+          if (
+            key &&
+            typeof command === 'string' &&
+            part?.type === 'tool' &&
+            part.state.input.command === command &&
+            Array.isArray(directories) &&
+            directories.every((dir) => typeof dir === 'string')
+          ) {
+            if (externalApprovals.size >= 100) externalApprovals.delete(externalApprovals.keys().next().value!)
+            externalApprovals.set(key, {
+              command,
+              workdir: (part.tool === 'bgshell_start' ? part.state.input.cwd : part.state.input.workdir) ?? p.metadata?.workdir,
+              directories,
+              project: get().sessionProject[p.sessionID]
+            })
+          }
+        }
         resolvedPermissions.add(p.id)
+        if (p.permission === 'external_directory') retryPendingPermissions(p.sessionID)
         set((s) => {
           const permissions = { ...s.permissions }
           delete permissions[p.id]

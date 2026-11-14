@@ -22,7 +22,7 @@ export function round2Commands(root: string): Array<{ command: string; tool: str
           root
         ),
       tool: 'bash',
-      allowed: true
+      allowed: false // Contiene pkill: requiere aprobación de ejecución aunque se autorice una ruta exterior.
     },
     {
       command:

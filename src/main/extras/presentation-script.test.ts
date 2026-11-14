@@ -6,7 +6,9 @@ import { presentationScript } from './presentation-script'
 describe('presentation controls', () => {
   it('presenta 60 láminas, llega a la última y vuelve al inicio sin pérdida', () => {
     const dom: { window: Window & typeof globalThis } = new JSDOM(
-      '<body>' + Array.from({ length: 60 }, (_, i) => `<section class="slide">Lámina ${i + 1}</section>`).join('') + '</body>',
+      '<body><style>body{counter-reset:slide}.slide{counter-increment:slide}.slide::after{content:counter(slide)}</style>' +
+        Array.from({ length: 60 }, (_, i) => `<section class="slide">Lámina ${i + 1}</section>`).join('') +
+        '</body>',
       { runScripts: 'outside-only' }
     )
     try {
@@ -21,7 +23,9 @@ describe('presentation controls', () => {
       expect(counter.textContent).toBe('60 / 60')
       key('ArrowRight')
       const slides = [...window.document.querySelectorAll<HTMLElement>('.slide')]
-      expect(slides.filter((slide) => slide.style.display !== 'none').map((slide) => slide.textContent)).toEqual(['Lámina 60'])
+      expect(slides.filter((slide) => slide.style.visibility === 'visible').map((slide) => slide.textContent)).toEqual(['Lámina 60'])
+      expect(slides.every((slide) => window.getComputedStyle(slide).display !== 'none')).toBe(true)
+      expect(slides.every((slide) => window.getComputedStyle(slide).counterIncrement === 'slide')).toBe(true)
       key('Home')
       expect(counter.textContent).toBe('1 / 60')
       expect(slides).toHaveLength(60)
@@ -75,7 +79,9 @@ describe('presentation controls', () => {
       expect(counter.getAttribute('aria-label')).toBe('Lámina 2 de 3')
       expect(deckClicks).toBe(0)
       const slides = [...window.document.querySelectorAll<HTMLElement>('.slide')]
-      expect(slides.map((slide) => slide.style.display)).toEqual(['none', 'block', 'none'])
+      expect(slides.map((slide) => slide.style.visibility)).toEqual(['hidden', 'visible', 'hidden'])
+      expect(slides.map((slide) => slide.style.display)).toEqual(['flex', 'block', 'block'])
+      expect(slides.map((slide) => slide.getAttribute('aria-hidden'))).toEqual(['true', 'false', 'true'])
       Object.defineProperty(window, 'innerWidth', { value: 1920 })
       Object.defineProperty(window, 'innerHeight', { value: 1112 })
       window.dispatchEvent(new window.Event('resize'))

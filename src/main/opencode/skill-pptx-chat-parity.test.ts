@@ -35,14 +35,7 @@ describe('skill pptx ⇄ Chat: misma guía de diseño', () => {
 
   it('los puntos clave están también en el prompt inline del Chat (config.ts), en su forma condensada', () => {
     const inline = JSON.stringify(buildInlineConfig()).replace(/\\"/g, '"')
-    for (const k of [
-      'layout:"free"',
-      '960 de ancho × 540 de alto',
-      'como mucho 40',
-      'Tahoma',
-      'palette',
-      'fillTo'
-    ]) {
+    for (const k of ['layout:"free"', '960 de ancho × 540 de alto', 'como mucho 40', 'Tahoma', 'palette', 'fillTo']) {
       expect(inline).toContain(k)
       expect(skill).toContain(k)
       expect(chatMd).toContain(k)
@@ -187,4 +180,10 @@ describe('Chat, Code, Tareas y Overdrive: una sola fuente de diseño de presenta
       /export function chatDeckCommands[\s\S]*export async function renderChatDeck[\s\S]*chatDeckCommands\(spec(, images)?\)/
     )
   })
+})
+
+it('V28 ronda 4: la regla de cantidad es una única frase idéntica en las tres guías', () => {
+  const rule = 'Si piden un número de láminas, entrega exactamente ese número (portada y cierre incluidos).'
+  const inline = (buildInlineConfig() as { agent: { chat: { prompt: string } } }).agent.chat.prompt
+  for (const source of [chatMd, skill, inline]) expect(source.split(rule)).toHaveLength(2)
 })

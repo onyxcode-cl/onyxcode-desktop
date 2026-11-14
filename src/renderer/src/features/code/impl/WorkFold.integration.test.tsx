@@ -218,3 +218,16 @@ it('V28 ronda 3: mensajes consecutivos conservan el inicio del primero y el fin 
   ] as never[]
   expect(renderToStaticMarkup(<ChatMessageList entries={entries} busy={false} />)).toContain('Trabajó durante 1 min 20 s · 1 paso')
 })
+
+it.each(['darwin', 'win32'])('V28 ronda 4: Code mide toda la respuesta y conserva el intervalo al recargar (%s)', (platform) => {
+  surface(platform)
+  const base = { busy: false, error: null, root: '/proj', permissions: [], questions: [], onUnrevert: () => undefined, loading: false }
+  const first = { ...assistantFull.info, id: 'first', time: { created: T0, completed: T0 + 2000 } }
+  const last = { ...assistantFull.info, id: 'last', time: { created: T0 + 3000, completed: T0 + 80_000 } }
+  const entries = [
+    userWithFile,
+    { info: first, parts: [done('brief', 'read', { filePath: 'datos.txt' }, 0)] },
+    { info: last, parts: [text('deck', 'Documento terminado')] }
+  ] as never[]
+  expect(renderToStaticMarkup(<MessageStream {...base} entries={entries} />)).toContain('Trabajó durante 1 min 20 s · 1 paso')
+})

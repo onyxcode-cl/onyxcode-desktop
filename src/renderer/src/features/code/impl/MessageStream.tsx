@@ -526,6 +526,7 @@ const TurnView = memo(
     const readingStored = useWorkView('code')
     const reading = mobile ? 'normal' : readingStored
     const segments: Segment<Block>[] = mobile ? [{ kind: 'plain', items: blocks }] : segmentWork(blocks, blockRole)
+    const singleWork = segments.filter((segment) => segment.kind === 'work').length === 1
     const [sheet, setSheet] = useState(false)
     const longPress = useLongPress(() => setSheet(true))
     const inlinePerms = new Map<string, PendingPermission[]>()
@@ -608,6 +609,17 @@ const TurnView = memo(
         <WorkFold
           key={seg.items[0] ? blockKey(seg.items[0]) : `w${si}`}
           parts={timed}
+          timingParts={
+            singleWork
+              ? assistant.flatMap<TimedFacts>((entry) => [
+                  ...entry.parts.filter((part) => part.type === 'tool' || part.type === 'text' || part.type === 'reasoning'),
+                  ...(entry.info.role === 'assistant'
+                    ? [{ type: 'message', time: { start: entry.info.time.created, end: entry.info.time.completed } }]
+                    : [])
+                ])
+              : undefined
+          }
+          timingLive={singleWork ? turnLive : undefined}
           tools={tools}
           live={turnLive && isOngoing(segments, si, blockRole)}
           view={reading}

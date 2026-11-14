@@ -4581,3 +4581,14 @@ Automático distingue los mensajes de salida con `$LASTEXITCODE` y los patrones 
 El motor añade al resultado de ediciones y comandos exitosos una línea breve con la tarea en curso (o primera pendiente) y la siguiente. `todowrite` avisa de una tarea anterior en curso con posteriores completas sin cambiarla por su cuenta. PowerShell presenta stderr nativo como texto y conserva el código de salida y los errores reales de cmdlet. Requiere incluir las fuentes corregidas del motor en un armado posterior.
 
 Pruebas: `ChatDocPanel.download.test.tsx`, `ToolCard.background.test.tsx`, `WorkFold.integration.test.tsx`, `auto-command.test.ts`, `store.permisos.test.ts`, `auto-approver.commands.test.ts`; motor: `plan-avance.test.ts`, `plan-ejecutable.test.ts`, `utf8-windows.test.ts`. Sin abrir la app ni publicar; límites y resultados en el informe externo de la ronda 3.
+
+
+## F8-B312 — Ajustes finales del plan, permisos y presentaciones (V28 ronda 4)
+
+El motor completa la tarea actual (o primera pendiente) tras escribir con éxito el archivo que nombra, solo si la referencia es inequívoca entre las tareas sin completar. Una etapa con varios archivos espera a todos; una verificación propia, un bloqueo o una dependencia pendiente impiden completarla automáticamente. Guarda y publica `todo.updated`, y avisa al modelo en una línea. Las sesiones hijas y el modo plan conservan su exclusión. Requiere incluir las fuentes del motor en el próximo armado.
+
+Automático reconoce las dos lecturas PowerShell de las capturas final2. Aprobar la carpeta exterior de un comando permite evitar su segunda tarjeta solo para esa misma llamada y comando; borrar, matar procesos, secretos y sistema siguen preguntando. La guía de Chat y la skill PPTX exigen el número exacto pedido, con portada y cierre incluidos.
+
+Código mide toda la respuesta, como Chat, y oculta el chip vacío mientras aún no llega el nombre del archivo. Presentar conserva los incrementos de los contadores CSS al ocultar las demás láminas y mantiene el contador N / total. El generador de títulos del motor pide y extrae solo el título final en el idioma de la conversación, con respaldo en el propio pedido si solo recibe razonamiento.
+
+Pruebas: `auto-command.test.ts`, `store.permisos.test.ts`, `auto-approver.commands.test.ts`, `WorkFold.integration.test.tsx`, `ToolCard.background.test.tsx`, `presentation-script.test.ts`, `chat-office-prompt.test.ts`, `skill-pptx-chat-parity.test.ts`; motor: `plan-avance.test.ts` (escrituras, eventos, ambigüedad, verificación, fallo y título real) y `todo-files.test.ts`. Resultados y límites en el informe externo de ronda 4.
