@@ -92,6 +92,7 @@ export const code = {
   'code.perm.read': 'read files',
   'code.perm.external_directory': 'access files outside the project',
   'code.perm.task': 'launch a subagent',
+  'code.tool.backgroundStart': 'Run a command in the background',
   'code.perm.doom_loop': 'repeat the same action',
   'code.perm.todowrite': 'update the to-do list',
   'code.perm.documentos_crear': 'create a document (Word, Excel, PowerPoint or PDF) in the project folder',

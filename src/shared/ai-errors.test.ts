@@ -176,3 +176,14 @@ describe('friendlyError', () => {
     expect(f.title).toBe('Aún no conectaste ninguna IA')
   })
 })
+
+it.each([
+  'The user has specified a rule which prevents you from using this specific tool call. [{"permission":"doom_loop","pattern":"texto-repetido","action":"deny"}]',
+  'La respuesta se detuvo porque estaba repitiendo lo mismo sin avanzar. Pide que continúe desde el último punto útil.'
+])('V28: el corte de repetición se explica sin reglas internas: %s', (message) => {
+  const error = friendlyError({ name: 'UnknownError', data: { message } })
+  expect(error.kind).toBe('unknown')
+  expect(error.message).toContain('sin avanzar')
+  expect(error.detail).toBeNull()
+  expect(JSON.stringify(error)).not.toMatch(/doom_loop|texto-repetido|specified a rule/)
+})

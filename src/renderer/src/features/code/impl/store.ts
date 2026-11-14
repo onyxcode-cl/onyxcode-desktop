@@ -936,7 +936,10 @@ export const useCode = create<CodeState>((set, get) => {
     const input = tool?.type === 'tool' ? tool.state.input : undefined
     const command = background ? (typeof input?.command === 'string' ? input.command : undefined) : commandMetadata
     if (kind === 'auto' && p.tool && !input) return false
-    if (kind === 'auto' && input && input.command !== command) return false
+    // `todowrite` ejecuta su verificación con el mismo callID; el comando real
+    // viene del permiso de shell, no de input.command (la entrada contiene todos).
+    const verification = tool?.type === 'tool' && tool.tool === 'todowrite' && Array.isArray(input?.todos)
+    if (kind === 'auto' && input && !verification && input.command !== command) return false
     if (background && (!input || typeof input.cwd !== 'string' || tool?.type !== 'tool' || tool.tool !== 'bgshell_start')) return false
     const allowed =
       kind === 'auto'

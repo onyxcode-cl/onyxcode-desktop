@@ -81,3 +81,18 @@ it.each(['shell_wait', 'bgshell_stop'])('V28: %s dice que detuvo el comando', (t
   expect(html).toContain('Detuvo el comando')
   expect(html).not.toContain('Esperó el comando')
 })
+
+it.each(['pending', 'running'] as const)('V28: inicio en segundo plano %s usa la etiqueta de la tarjeta', (status) => {
+  const part = toolPart(
+    'bg',
+    'm1',
+    's1',
+    'bgshell_start',
+    status === 'pending'
+      ? { status, input: {}, raw: '' }
+      : { status, input: { command: 'python3 -m http.server 8191' }, time: { start: 0 } }
+  ) as ToolPart
+  const html = renderToStaticMarkup(<ToolRow part={part} root={null} />)
+  expect(html).toContain('Correr un comando en segundo plano')
+  expect(html).not.toContain('bgshell_start')
+})

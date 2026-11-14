@@ -6,6 +6,9 @@ export const errors = {
   'errors.noAi.body':
     'To send messages you need to connect an AI: use the free model, or connect your subscription or another service’s access key. It only takes a minute.',
   'errors.yourAi': 'your AI',
+  'errors.loop.title': 'The response was repeating itself',
+  'errors.loop.message':
+    'The response stopped because it kept repeating without making progress. Ask it to continue from the last useful point.',
   'errors.context.title': 'This conversation is too long',
   'errors.context.message': 'Compact it or start a new conversation to keep going.',
   'errors.modelNotFound.title': 'The selected model isn’t available',

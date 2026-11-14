@@ -585,9 +585,11 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
           ? t(state.status === 'completed' ? 'code.tool.stopShell' : 'code.tool.stoppingShell')
           : tool === 'shell_wait'
             ? t('code.tool.waitShell')
-            : tool === 'execute_wait'
-              ? t('code.tool.waitScript')
-              : tool
+            : tool === 'bgshell_start'
+              ? t('code.tool.backgroundStart')
+              : tool === 'execute_wait'
+                ? t('code.tool.waitScript')
+                : tool
       return (
         <Row
           icon={<Wrench size={14} />}

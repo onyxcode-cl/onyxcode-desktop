@@ -197,6 +197,28 @@ const delicateName = (name: string): boolean =>
   DELICATE.has(name) ||
   (!['new-item', 'set-item'].includes(name) && name.includes('-') && [...DELICATE].some((full) => full.startsWith(name)))
 
+/** El código de Python/JS no es una ruta ni sintaxis de shell. Sí se revisan sus literales de ruta. */
+function safeInlineScript(script: string, cwd: string, root: string): boolean {
+  if (
+    /https?:\/\/|\b(?:urlopen|fetch)\s*\(|\b(?:requests|https?)\./i.test(script) &&
+    /\b(?:exec|eval|compile|system|spawn|execSync|spawnSync|subprocess|child_process|Function)\b/.test(script)
+  )
+    return false
+  const literals = script.matchAll(/(["'`])(.*?)\1/gs)
+  for (const match of literals) {
+    const value = match[2]
+    // Etiquetas HTML usadas por split/parse no son rutas absolutas.
+    if (/^<\/?[a-z][^>]*>$/i.test(value)) continue
+    for (const word of value.split(/\s+/)) {
+      if (sensitive(word)) return false
+      if (/[\/\\]/.test(word) || /^(?:~|\.\.|\$HOME|\$env:|%\w+%)/i.test(word)) {
+        if (!safeArgument(word, cwd, root)) return false
+      }
+    }
+  }
+  return true
+}
+
 /** Sin raíz conocida, cwd exterior o sintaxis que no podamos resolver: preguntar. */
 export function isAutoApprovableCodeCommand(command: string | undefined, projectRoot: string | undefined, workdir?: unknown): boolean {
   if (!command?.trim() || command.length > 16000 || !projectRoot || !absolute(projectRoot)) return false
@@ -217,15 +239,22 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
   )
     return false
   if (/r\^m\b/i.test(command)) return false
-  const literalOutput = command.replace(/\b(?:echo|printf)\s+(['"])([^$`]*?)\1/g, 'echo')
+  const literalOutput = command
+    .replace(/\b(?:echo|printf)\s+(['"])([^$`]*?)\1/g, 'echo')
+    .replace(/\b(?:print|console\.log)\(\s*(['"])([^$`]*?)\1/g, 'print(')
   const atoms = literalOutput
     .replace(/[`^]/g, '')
     .split(/[\s;|&{}()"'`]+/)
     .filter(Boolean)
   if (atoms.some((a) => sensitive(a))) return false
   if (atoms.some((a) => delicateName(a.toLowerCase().replace(/\.exe$/, '')))) return false
-  const parts = parse(command)
-  if (!parts) return false
+  const parsed = parse(command)
+  if (!parsed) return false
+  const parts = parsed.map((part) =>
+    /^(?:do|then|else)$/.test(part.words[0]) && part.words.length > 1
+      ? { ...part, words: part.words.slice(1), literals: part.literals.slice(1) }
+      : part
+  )
   const downloads = atoms.some((a) => /^(?:curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)(?:\.exe)?$/i.test(a))
   if (
     downloads &&
@@ -267,6 +296,7 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
   for (const part of parts) {
     const [first, ...args] = part.words
     const name = first.toLowerCase().replace(/\.exe$/, '')
+    const inlineIndex = SCRIPTING.test(name) ? args.findIndex((_, i) => i > 0 && /^(?:-[ec])$/.test(args[i - 1])) : -1
     // Start-Process usa el runtime instalado fuera del proyecto, pero su cwd y sus scripts/argumentos
     // siguen sujetos a la política de carpeta. Un ejecutable arbitrario exterior no recibe esta excepción.
     const runtimeIndex = name === 'start-process' ? part.words.findIndex((_w, i) => i > 0 && /^-filepath$/i.test(part.words[i - 1])) : -1
@@ -293,6 +323,7 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
     if (delicateName(name) || ((absolute(first) || first.startsWith('.')) && !safeArgument(first, cwd, root))) return false
     if (
       args.some((a, i) => {
+        if (i === inlineIndex) return directories.some((dir) => !safeInlineScript(a, dir, root))
         if (a === '/' && part.words.some((w) => /^\[math\]::/i.test(w))) return false
         if (name === 'cmd' && /^\/[cdsq]$/i.test(a)) return false
         if (localRuntime && i + 1 === runtimeIndex) return false
@@ -312,7 +343,7 @@ export function isAutoApprovableCodeCommand(command: string | undefined, project
     )
       return false
     if (name === 'find' && lower.some((a) => a === '-delete')) return false
-    if (INTERPRETERS.test(name) || SCRIPTING.test(name) || ['eval', 'invoke-command', 'iex', 'invoke-expression'].includes(name)) {
+    if (INTERPRETERS.test(name) || ['eval', 'invoke-command', 'iex', 'invoke-expression'].includes(name)) {
       const script = ['eval', 'iex', 'invoke-expression'].includes(name)
         ? args.join(' ')
         : args.find((_, i) => i > 0 && /^(?:-[ec]|-command|\/c)$/i.test(args[i - 1]))

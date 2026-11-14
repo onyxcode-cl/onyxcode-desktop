@@ -145,6 +145,9 @@ export function friendlyError(err: unknown, opts: FriendlyErrorOptions = {}): Fr
     return (key && opts.providerNames?.[key]) || key || tr('errors.yourAi')
   }
 
+  if (/texto-repetido|La respuesta se detuvo porque estaba repitiendo lo mismo sin avanzar/.test(text)) {
+    return { kind: 'unknown', title: tr('errors.loop.title'), message: tr('errors.loop.message'), detail: null, action: null }
+  }
   if (n.name === 'NoAiError') {
     return { kind: 'no-ai', title: noAiTitle(), message: noAiBody(), detail: null, action: 'connect' }
   }
