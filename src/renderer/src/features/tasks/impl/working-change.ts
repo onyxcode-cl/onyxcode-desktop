@@ -4,7 +4,7 @@ import { useTasks } from './store'
 import { useUnified } from './unified'
 
 /** Mismo estado y misma acción que Detener en el compositor de Overdrive. */
-export function deferTaskChange(apply: () => void | Promise<void>): boolean {
+export function deferTaskChange(apply: () => void | Promise<void>, unchanged = false): boolean {
   const { activeTaskId: id, conn, folder } = useTasks.getState()
   const current = (): boolean => {
     const s = useTasks.getState()
@@ -30,6 +30,7 @@ export function deferTaskChange(apply: () => void | Promise<void>): boolean {
       },
       onError: (error) => useTasks.setState({ error })
     },
-    apply
+    apply,
+    unchanged
   )
 }

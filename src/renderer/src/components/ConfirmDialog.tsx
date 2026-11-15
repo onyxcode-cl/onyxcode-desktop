@@ -6,7 +6,7 @@
  * (devuelve `string | null`).
  */
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, HelpCircle, Pencil } from 'lucide-react'
+import { AlertTriangle, HelpCircle, Pencil, X } from 'lucide-react'
 import { useT } from '../lib/i18n'
 import { isRemoteSurface } from '../lib/platform'
 import { MobileToastHost } from './mobile/Toast'
@@ -22,6 +22,10 @@ export interface ConfirmDialogOptions {
   danger?: boolean
   /** Foco inicial en «Cancelar» (y Enter respeta el botón enfocado) sin el estilo de peligro. */
   focusCancel?: boolean
+  /** Foco inicial en la tercera opción; Esc y clic fuera siguen cancelando. */
+  focusAlt?: boolean
+  /** Permite cerrar la elección con X sin pulsar ninguna de sus acciones. */
+  showClose?: boolean
   /** Tercera opción (entre «Cancelar» y la confirmación); solo la devuelve `choiceDialog`. */
   altLabel?: string
 }
@@ -126,6 +130,8 @@ function ConfirmDialogView(): React.JSX.Element | null {
   const dialogRef = useRef<HTMLDivElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const altRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState('')
 
@@ -153,7 +159,7 @@ function ConfirmDialogView(): React.JSX.Element | null {
       return () => clearTimeout(timer)
     }
     // Foco inicial: en acciones destructivas, cancelar es lo seguro por defecto.
-    const target = req.danger || req.focusCancel ? cancelRef.current : confirmRef.current
+    const target = req.danger || req.focusCancel ? cancelRef.current : req.focusAlt ? altRef.current : confirmRef.current
     target?.focus()
     return undefined
   }, [req])
@@ -177,8 +183,10 @@ function ConfirmDialogView(): React.JSX.Element | null {
         }
         // Evita confirmar sin querer si el foco está en un elemento que ya maneja Enter (p.ej. un link).
         e.preventDefault()
-        // Con `focusCancel`, Enter actúa sobre el botón enfocado: por defecto, Cancelar.
-        finishConfirm(req.focusCancel && document.activeElement === cancelRef.current ? false : true)
+        // Las opciones con foco inicial explícito respetan también la elección enfocada al pulsar Enter.
+        const focused = document.activeElement
+        const cancelled = focused === closeRef.current || ((req.focusCancel || req.focusAlt) && focused === cancelRef.current)
+        finishConfirm(cancelled ? false : focused === altRef.current ? 'alt' : true)
         return
       }
       if (e.key === 'Tab') {
@@ -287,8 +295,19 @@ function ConfirmDialogView(): React.JSX.Element | null {
         aria-describedby={req.message ? 'confirm-dialog-message' : undefined}
         onMouseDown={(e) => e.stopPropagation()}
         {...mobileAttrs('card')}
-        className="w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[420px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
+        className="relative w-full max-w-sm rounded-2xl border border-border bg-elevated p-5 shadow-2xl desk:max-w-[420px] desk:p-6 desk:rounded-modal desk:border-transparent desk:shadow-modal desk:animate-rise-in"
       >
+        {req.showClose && (
+          <button
+            ref={closeRef}
+            type="button"
+            aria-label={t('common.close')}
+            onClick={() => finishConfirm(false)}
+            className="absolute right-3 top-3 rounded-lg p-1.5 text-muted hover:bg-hover hover:text-fg"
+          >
+            <X size={16} aria-hidden />
+          </button>
+        )}
         <div
           className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl desk:mb-4 desk:rounded-card ${
             danger ? 'bg-danger/10 text-danger desk:bg-danger/15' : 'bg-accent-soft text-accent'
@@ -317,6 +336,7 @@ function ConfirmDialogView(): React.JSX.Element | null {
           )}
           {req.altLabel && (
             <button
+              ref={altRef}
               type="button"
               data-testid="confirm-alt"
               onClick={() => finishConfirm('alt')}

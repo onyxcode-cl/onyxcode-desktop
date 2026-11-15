@@ -40,7 +40,7 @@ function UnifiedModeChip(): React.JSX.Element {
   const pick = (id: string): void => {
     const on = id === 'auto'
     if (on && blocked) return
-    if (on === auto || deferTaskChange(() => pick(id))) return
+    if (deferTaskChange(() => pick(id), on === auto) || on === auto) return
     rememberTaskMode(on)
     if (sessionId) void setConversationAuto(sessionId, on).catch(() => undefined)
   }
@@ -51,6 +51,7 @@ function UnifiedModeChip(): React.JSX.Element {
       icon={<Zap size={14} aria-hidden />}
       value={auto ? 'auto' : 'manual'}
       testId="auto-mode-chip"
+      allowReselect
       options={[
         { id: 'manual', label: t('tasksComputer.scope.manual'), hint: t('tasksComputer.scope.manual.desc') },
         { id: 'auto', label: t('tasksComputer.scope.auto'), hint: t('tasksComputer.scope.auto.desc'), disabled: blocked }

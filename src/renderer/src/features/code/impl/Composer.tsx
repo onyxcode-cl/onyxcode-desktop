@@ -28,6 +28,7 @@ import {
 import { t as tg } from '@shared/i18n'
 import { liveShellCount } from '@shared/engine-notes'
 import { toChatAttachment } from '../../../lib/attachments'
+import { toCodeAttachment } from './attachments'
 import { splitPath } from '../../../lib/paths'
 import { isRemoteSurface, isWindowsPlatform } from '../../../lib/platform'
 import { Sheet } from '../../../components/mobile/Sheet'
@@ -52,28 +53,6 @@ import { validatePhoneAttachments } from './mobile-logic'
 import { SheetAction } from './SheetAction'
 import { CodeHelpersBoard } from './HelpersBoardConnector'
 import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
-
-/** Lee un `File`/`Blob` como `data:` URL (imágenes pegadas/arrastradas o adjuntos por botón). */
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error ?? new Error(tg('code.composer.readFailed')))
-    reader.readAsDataURL(file)
-  })
-}
-
-let attachSeq = 0
-async function toAttachment(file: File): Promise<Attachment> {
-  const url = await readAsDataURL(file)
-  attachSeq += 1
-  return {
-    id: `att${Date.now()}${attachSeq}`,
-    name: file.name || tg('code.composer.fileDefault'),
-    mime: file.type || 'application/octet-stream',
-    url
-  }
-}
 
 /** Cola de mensajes de la sesión activa: reordenable, quitar, "Enviar ahora". */
 function QueueList({ sessionID }: { sessionID: string }): React.JSX.Element | null {
@@ -329,7 +308,9 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
         .catch((err: unknown) => setAttachError(err instanceof Error ? err.message : String(err)))
       return
     }
-    void Promise.all(list.map(toAttachment)).then((added) => setAttachments((a) => [...a, ...added]))
+    void Promise.all(list.map(toCodeAttachment))
+      .then((added) => setAttachments((a) => [...a, ...added]))
+      .catch((err: unknown) => setAttachError(err instanceof Error ? err.message : String(err)))
   }
 
   const trigger = useMemo(() => {
@@ -693,7 +674,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     key={a.id}
                     className={`group/att relative flex shrink-0 items-center justify-center rounded-lg border border-border bg-bg ${!mobile && /\.pptx$/i.test(a.name) ? 'min-h-14 max-w-full gap-2 px-3 py-2 pr-6' : mobile ? 'h-16 w-16' : 'h-14 w-14 overflow-hidden'}`}
                   >
-                    {a.mime.startsWith('image/') ? (
+                    {!a.reference && a.mime.startsWith('image/') ? (
                       <img src={a.url} alt={a.name} className={`h-full w-full object-cover ${mobile ? 'rounded-lg' : ''}`} />
                     ) : (
                       <FileImage size={18} className="text-subtle" />

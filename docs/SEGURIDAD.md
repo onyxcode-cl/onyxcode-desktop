@@ -3233,3 +3233,11 @@ En Código Automático, aprobar `external_directory` permite omitir la segunda t
 El comando completo sigue pasando por el clasificador: borrar, matar procesos (`kill`, `pkill`, `killall`, `Stop-Process`, `taskkill`), secretos, cambios del sistema o descarga seguida de ejecución mantienen la tarjeta. Se distingue arrancar `python -m http.server` junto a una comprobación HTTP de ejecutar lo descargado. `/dev/null` es el destino nulo; el registro en `/tmp` sigue requiriendo aprobación exterior. PowerShell anidado revisa recursivamente el comando y los patrones literales de `[regex]::Matches` admiten escapes de regex sin habilitar rutas ni sustituciones. La política continúa siendo una heurística, no un sandbox.
 
 Pruebas: `auto-command.test.ts`, `store.permisos.test.ts` (API v1/v2, otra llamada y comando cambiado, además del temporal de ronda 3 que borra y mata procesos), `auto-approver.commands.test.ts` (replay de lecturas Windows). No se modifican zonas intocables ni canales.
+
+### V28 ronda 5 — Patrones y opciones de lectura de Windows (F8-B313)
+
+La excepción de opciones de cmd se limita a proyectos Windows, a `dir`, `findstr`, `where` y `tree` y a opciones cortas sin rutas adjuntas. Los demás argumentos pasan por la comprobación de ámbito habitual: `dir /b C:\Windows` conserva la tarjeta.
+
+Los operandos literales de `-match`, `-like`, `-replace` y `-split` (incluidas sus variantes de mayúsculas/minúsculas) y `Select-String -Pattern` se interpretan como patrones; sus corchetes y barras invertidas no son rutas. Se siguen rechazando expansiones con `$` o backtick, barras normales y valores sensibles. Los argumentos de archivo (`-Path`, `-LiteralPath` y destinos de escritura) conservan su validación. La revisión del comando completo sigue detectando borrado, parada de procesos, cambios del sistema y descarga seguida de ejecución. Las búsquedas web mantienen su tarjeta.
+
+Pruebas: `auto-command-round5.ts` contiene las lecturas reales y contraejemplos de rutas externas, `.env`, `.git\config`, credenciales, acciones delicadas y patrones dinámicos; pasa por el clasificador y por la respuesta real de permisos de Código y Overdrive. La espera de cambios de IA/modo solo aplica tras el fin del trabajo de la conversación vigente; cambiar de conversación o conexión descarta la elección pendiente.

@@ -66,6 +66,8 @@ export interface FileAttachment {
   mime: string
   /** `data:` URL (imágenes pegadas/arrastradas) o `file://` (archivos adjuntados por ruta). */
   url: string
+  /** Archivo de escritorio compartido solo por nombre/ruta; `url` queda vacío, sin contenido binario. */
+  reference?: { path?: string }
 }
 
 /** Adjunto del compositor: un archivo/imagen o un elemento elegido en el navegador integrado (se convierte en partes al enviar). */

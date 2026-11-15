@@ -389,6 +389,8 @@ export const code = {
   'code.picker.openBadge': 'Abierto',
   'code.composer.readFailed': 'No se pudo leer el archivo',
   'code.composer.fileDefault': 'archivo',
+  'code.composer.fileReference': 'Archivo adjunto: {name}\nRuta: {path}\nPuedes abrirlo con las herramientas del proyecto.',
+  'code.composer.fileReferenceNoPath': 'Archivo adjunto: {name}. No hay una ruta local disponible; no se incluye su contenido.',
   'code.queue.queued': 'en cola',
   'code.queue.attachments': '+{count} adjunto(s)',
   'code.queue.up': 'Subir',

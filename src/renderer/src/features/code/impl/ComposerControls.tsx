@@ -83,6 +83,7 @@ export function PermissionChip(): React.JSX.Element {
       collapseClass="inline desk:@max-[40rem]:sr-only"
       shortClass="hidden desk:@max-[40rem]:inline desk:@max-[28rem]:sr-only"
       testId="permission-chip"
+      allowReselect
       note={t('code.mode.note')}
       options={PERMISSION_MODES.map((m) => ({
         id: m.id,

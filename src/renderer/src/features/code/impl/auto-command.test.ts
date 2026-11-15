@@ -1,5 +1,6 @@
 import { round2Commands } from '@shared/fixtures/auto-command-round2'
 import { round3Commands } from '@shared/fixtures/auto-command-round3'
+import { round5Commands } from '@shared/fixtures/auto-command-round5'
 import { round4Commands, round4MacCommand } from '@shared/fixtures/auto-command-round4'
 import { describe, expect, it } from 'vitest'
 import { isAutoApprovableCodeCommand } from './auto-command'
@@ -291,7 +292,7 @@ describe('V27 ronda 3: comandos de las capturas Windows (rutas anonimizadas)', (
 })
 
 it.each([macRoot, winRoot])('V28: clasificación de los comandos exactos en %s', (root) => {
-  for (const { command, allowed } of [...round2Commands(root), ...round3Commands(root), ...round4Commands(root)])
+  for (const { command, allowed } of [...round2Commands(root), ...round3Commands(root), ...round4Commands(root), ...round5Commands(root)])
     expect(isAutoApprovableCodeCommand(command, root), command).toBe(allowed)
 })
 
