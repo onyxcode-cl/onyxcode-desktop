@@ -8,6 +8,7 @@ import {
   requestReview,
   reviewUrl,
   subcommandRules,
+  subcommandRuleSummary,
   type ReviewDecision
 } from './auto-review'
 
@@ -143,5 +144,18 @@ describe('V29: metadatos de la petición única (contrato §1)', () => {
     expect(outsideDirectories({ externalDirectories: ['/tmp', '/tmp', 3, ''] })).toEqual(['/tmp'])
     expect(outsideDirectories({ directories: ['/x'] })).toEqual(['/x'])
     expect(outsideDirectories(null)).toEqual([])
+  })
+})
+
+it('informa las exclusiones y el tope sin guardar borrados aunque traigan una regla', () => {
+  const subcommands = [
+    { command: 'Remove-Item x', rule: 'Remove-Item *' },
+    { command: 'rm x', rule: null },
+    ...Array.from({ length: 6 }, (_, i) => ({ command: `read${i}`, rule: `read${i} *` }))
+  ]
+  expect(subcommandRuleSummary({ subcommands })).toEqual({
+    rules: ['read0 *', 'read1 *', 'read2 *', 'read3 *', 'read4 *'],
+    excluded: ['Remove-Item x', 'rm x'],
+    truncated: true
   })
 })

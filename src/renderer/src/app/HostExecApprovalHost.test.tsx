@@ -181,3 +181,16 @@ describe('HostExecApprovalHost', () => {
     }
   })
 })
+
+it.each(['Cafetería', 'Cafeteri\u0301a', 'áéíóú ñ ü', 'Crème brûlée Łódź'])('las letras latinas no disparan el aviso: %s', (command) => {
+  expect(commandStats(command).nonAscii).toBe(false)
+  expect(commandPieces(command).every((p) => p.kind === 'text')).toBe(true)
+  expect(
+    commandPieces(command)
+      .map((p) => p.text)
+      .join('')
+  ).toBe(command)
+})
+it.each(['Cafeterіa', 'һola', 'pаypal', 'a\u200b', 'a\u202e', 'a\u034f'])('los caracteres engañosos siguen marcados: %s', (command) => {
+  expect(commandStats(command).nonAscii).toBe(true)
+})

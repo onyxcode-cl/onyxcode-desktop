@@ -19,6 +19,7 @@ import {
   usePermGuard,
   type PermAction
 } from '../../../components/permission/PermissionShell'
+import { RememberRules } from '../../../components/permission/RememberRules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { readPermissionSuggestion } from '@shared/permission-suggestion'
 import { outsideDirectories, subcommandRules } from '@shared/auto-review'
@@ -132,7 +133,7 @@ export function PermissionCardDesk({
 
   const actions: PermAction[] = [
     // «No volver a preguntar» no se ofrece a un ayudante (ampliaría lo que la persona permitió) ni sin reglas que guardar.
-    ...(sub.child || protectedPath || (rules !== null && !rules.length)
+    ...(sub.child || protectedPath || !(rules ?? request.always).length
       ? []
       : [
           {
@@ -208,9 +209,6 @@ export function PermissionCardDesk({
           <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80" />
         </div>
       )}
-      {rules && rules.length > 0 && (
-        <p className="break-all font-mono text-meta text-muted">{t('perm.allowProjectRules', { rules: rules.join(', ') })}</p>
-      )}
       {description && (
         <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
           <p className="text-caption font-medium text-subtle">{t('code.perm.aiDesc')}</p>
@@ -243,9 +241,10 @@ export function PermissionCardDesk({
           : t('code.perm.agentWants', { label })
       }
       preview={
-        previewNode || suggestionNode || reviewNode || outside.length ? (
+        previewNode || suggestionNode || reviewNode || outside.length || rules ? (
           <>
             {previewNode}
+            <RememberRules metadata={md} rules={rules ?? request.always} available={!sub.child && !protectedPath} />
             <PermOutside dirs={outside} />
             {reviewNode}
             {suggestionNode}

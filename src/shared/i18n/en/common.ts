@@ -30,6 +30,9 @@ export const common = {
   'common.rejection.permission': 'I did not perform this action because you rejected it. Still pending:',
   'common.rejection.question': 'I did not continue with this request because you rejected the question. Still awaiting an answer:',
   'common.rejection.next': 'You can give me another instruction.',
+  'perm.rulesExcluded':
+    'Permission will not be saved for these parts (they delete or cannot be remembered): {commands}. They will be allowed only this time.',
+  'perm.rulesLimit': 'The limit is 5 rules per approval. Other parts will ask again.',
   'common.cancel': 'Cancel',
   'common.accept': 'OK',
   'common.close': 'Close',

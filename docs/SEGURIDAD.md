@@ -3251,3 +3251,9 @@ El clasificador reconoce únicamente el heredoc de `python[versión] -` con deli
 Se reconocen los patrones literales de `grep -oh`/`-ho`, incluido el escape de punto, sin extender la excepción a sus archivos de entrada ni a `grep -f`. La etiqueta exacta de salida `echo "$variable:"` no se trata como ruta. El resto del comando sigue pasando por las mismas comprobaciones. La política sigue siendo una heurística, no un aislamiento.
 
 El caso real caf2 conserva dos permisos: el comando de shell acaba en `pkill`, y otra llamada de `todowrite` ejecuta una verificación heredada con `kill %1`. No se reutiliza la aprobación entre ellos. Pruebas: `auto-command-round7.ts`, `auto-command.test.ts` y `store.permisos.test.ts`, con las API v1/v2 y llegada de argumentos, mensaje y permisos en distintos órdenes. No cambian los modos Preguntar siempre y Aceptar ediciones, las zonas intocables ni las reglas del motor.
+
+### V29 ronda 6 — Lecturas y alcance visible de «siempre» (F8-B316)
+
+Las opciones nuevas admitidas por el clasificador se limitan a `git branch -vv/-r` y `git status -b/-sb`; permanecen las comprobaciones de borrado, credenciales, configuración y ejecución. Las tuberías de lectura de PowerShell y las consultas locales ya admitidas se fijan con regresiones, incluidas combinaciones con acciones peligrosas. El clasificador sigue siendo una heurística, sin ejecutar comandos para decidir.
+
+La tarjeta muestra fuera del desplegable las reglas por parte del comando, las partes sin regla o de borrado y el límite existente de cinco. No se amplía el tope ni se recuerda un borrado aunque venga con una regla sugerida. La presentación de caracteres acepta letras latinas y diacríticos combinados tras una letra latina, conserva el texto original y sigue marcando controles invisibles y letras de alfabetos que imitan el latino.

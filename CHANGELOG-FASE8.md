@@ -4616,3 +4616,9 @@ Código Automático reconoce los bloques Python enviados por stdin con delimitad
 La autorización sigue ligada a conversación, mensaje, llamada, comando completo, proyecto y carpeta de trabajo. Se captura antes de enviar la respuesta y solo se registra si el motor confirma; admite argumentos que llegan después por eventos. Preguntar siempre y Aceptar ediciones conservan sus tarjetas. Los dos permisos de caf2 se mantienen: son llamadas distintas (`bash` con `pkill` y verificación de `todowrite` con `kill %1`), no la misma orden duplicada.
 
 Pruebas: fixture `auto-command-round7.ts` con comandos completos de la copia de datos reales, `auto-command.test.ts` y `store.permisos.test.ts` (API v1/v2, órdenes de eventos, respuesta en vuelo, rechazo/fallo, otra conversación/llamada/comando/cwd, borrado, procesos, secretos, sistema y descarga con ejecución). Se conservan los replays de las rondas 2–5 y Overdrive. No se modifica el motor.
+
+## F8-B316 — V29, ronda 6: lecturas corrientes y permisos claros
+
+El clasificador admite las opciones de lectura de `git branch` y `git status` que faltaban; se fijan regresiones de las tuberías de lectura de PowerShell y GET locales. La tarjeta de Código y Overdrive muestra las reglas que guardará, las partes excluidas y el tope de cinco, sin ofrecer «siempre» cuando no queda ninguna. El rechazo con comentario no solicita otra instrucción y el aviso se retira al terminar la continuación. Los acentos latinos, también combinados, dejan de activar el aviso de caracteres engañosos; controles y letras de otros alfabetos siguen resaltados sin alterar el comando.
+
+Pruebas: `auto-command.r6.test.ts`, `auto-review.test.ts`, `PermissionCard.v29.test.tsx`, `RejectionNotices.test.tsx` y `HostExecApprovalHost.test.tsx`, además de las regresiones de Código y Overdrive.

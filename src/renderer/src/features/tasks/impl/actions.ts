@@ -997,7 +997,9 @@ export async function replyPermission(
     return { permissions }
   })
   if (reply === 'reject' && !quiet && request && root) {
-    useRejectionNotices.getState().add({ mode: 'tasks', directory: folder, sessionID: root, requestID, kind: 'permission', detail })
+    useRejectionNotices
+      .getState()
+      .add({ mode: 'tasks', directory: folder, sessionID: root, requestID, kind: 'permission', detail, hasComment: !!message?.trim() })
   }
 }
 

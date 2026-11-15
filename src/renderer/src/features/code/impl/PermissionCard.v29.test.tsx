@@ -128,3 +128,25 @@ describe('V29: tarjeta de permiso de Código', () => {
     expect(host.textContent!.split(command)).toHaveLength(2)
   })
 })
+
+it('explica lo excluido fuera del desplegable y anuncia el límite de cinco', () => {
+  mount(
+    request({
+      subcommands: [
+        { command: 'rm notas.txt', rule: null },
+        ...Array.from({ length: 6 }, (_, i) => ({ command: `git status ${i}`, rule: `git status ${i} *` }))
+      ]
+    })
+  )
+  const visible = [...host.querySelectorAll('p')].find((p) => p.textContent?.includes('No se guardará permiso'))
+  expect(host.textContent).toContain('No se guardará permiso para estas partes')
+  expect(host.textContent).toContain('El límite es de 5 reglas')
+  expect(host.textContent).toContain('git status 4 *')
+  expect(host.textContent).not.toContain('git status 5 *')
+  expect(visible?.closest('[hidden]')).toBeFalsy()
+})
+
+it('sin subcommands ni reglas guardables tampoco ofrece siempre', () => {
+  mount({ ...request({ subcommands: undefined }), always: [] })
+  expect(button('Permitir y no volver a preguntar en este proyecto')).toBeUndefined()
+})

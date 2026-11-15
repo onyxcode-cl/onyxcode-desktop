@@ -14,7 +14,7 @@ import { useRejectionNotices } from '../../stores/rejection-notices'
 import { useServer } from '../../stores/server'
 import { useSessions } from '../../stores/sessions'
 import { useCode } from '../../features/code/impl/store'
-import { useTasks } from '../../features/tasks/impl/store'
+import { useTasks, handleEvent as taskEvent } from '../../features/tasks/impl/store'
 import { replyPermission, rejectQuestion, sendToTask, retryAfterNetworkAllow } from '../../features/tasks/impl/actions'
 import { DeletePermissionCard } from '../../features/tasks/impl/DeletePermissionCard'
 import { makeSession, userMessage, textPart, toolPart } from '../../../../test/fixtures/events'
@@ -340,4 +340,23 @@ it('el aviso aparece en el componente ya montado y su botón lo cierra sin llama
   } finally {
     act(() => root.unmount())
   }
+})
+
+it.each(['code', 'tasks'] as const)('comentario enviado y fin de turno en %s', async (mode) => {
+  if (mode === 'code') await useCode.getState().replyPermission(permission, 'reject', false, { message: 'renómbralo' })
+  else await replyPermission(permission.id, 'reject', 'renómbralo')
+  expect(html(mode)).not.toContain('Puedes darme otra instrucción')
+  const conversation = { mode, directory, sessionID: 'root' }
+  useRejectionNotices.getState().turnStatus(conversation, false)
+  expect(html(mode)).not.toBe('')
+  if (mode === 'tasks') useTasks.setState({ conn: { baseUrl: 'http://fixture' } as TasksConnection })
+  const status = (type: 'busy' | 'idle'): void => {
+    const event = { type: 'session.status', properties: { sessionID: 'root', status: { type } } } as const
+    if (mode === 'code') useCode.getState().applyEvent(event as never, directory)
+    else taskEvent(event as never, directory)
+  }
+  status('busy')
+  expect(html(mode)).not.toBe('')
+  status('idle')
+  expect(html(mode)).toBe('')
 })

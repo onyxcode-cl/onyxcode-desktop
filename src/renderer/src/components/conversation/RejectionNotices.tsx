@@ -26,7 +26,7 @@ export function RejectionNotices({
             <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-words text-xs text-muted">{notice.detail}</pre>
           )}
           <div className="mt-2 flex items-center gap-3">
-            <p className="flex-1 text-muted">{t('common.rejection.next')}</p>
+            {!notice.hasComment && <p className="flex-1 text-muted">{t('common.rejection.next')}</p>}
             <button type="button" className="no-drag shrink-0 text-muted hover:underline" onClick={() => dismiss(notice)}>
               {t('common.close')}
             </button>

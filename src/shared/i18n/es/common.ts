@@ -27,6 +27,8 @@ export const common = {
   'common.rejection.permission': 'No hice esta acción porque la rechazaste. Quedó pendiente:',
   'common.rejection.question': 'No continué con esta solicitud porque rechazaste la pregunta. Quedó pendiente responder:',
   'common.rejection.next': 'Puedes darme otra instrucción.',
+  'perm.rulesExcluded': 'No se guardará permiso para estas partes (borran o no admiten reglas): {commands}. Se aprobarán solo esta vez.',
+  'perm.rulesLimit': 'El límite es de 5 reglas por aprobación. Las demás partes volverán a preguntar.',
   'common.cancel': 'Cancelar',
   'common.accept': 'Aceptar',
   'common.close': 'Cerrar',

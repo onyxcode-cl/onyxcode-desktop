@@ -1,3 +1,4 @@
+import { useRejectionNotices } from '../../../stores/rejection-notices'
 import { deferTaskChange } from './working-change'
 /**
  * Estado del modo Tareas. Los mensajes/partes de las sesiones viven en el store genérico
@@ -783,7 +784,20 @@ export function handleEvent(event: OcEvent, directory: string): void {
         return { questions }
       })
       break
+    case 'session.status':
+      if (st.folder)
+        useRejectionNotices
+          .getState()
+          .turnStatus(
+            { mode: 'tasks', directory: st.folder, sessionID: rootTaskId(event.properties.sessionID) },
+            event.properties.status.type !== 'idle'
+          )
+      break
     case 'session.idle':
+      if (st.folder)
+        useRejectionNotices
+          .getState()
+          .turnStatus({ mode: 'tasks', directory: st.folder, sessionID: rootTaskId(event.properties.sessionID) }, false)
       if (event.properties.sessionID === st.activeTaskId) {
         scheduleDeliverablesRefresh(300)
         void autoOpenMainDeliverable(event.properties.sessionID)
@@ -791,6 +805,8 @@ export function handleEvent(event: OcEvent, directory: string): void {
       break
     case 'message.part.updated': {
       const part = event.properties.part
+      if (st.folder && ['text', 'tool'].includes(part.type))
+        useRejectionNotices.getState().turnStatus({ mode: 'tasks', directory: st.folder, sessionID: rootTaskId(part.sessionID) }, true)
       if (
         part.type === 'tool' &&
         part.sessionID === st.activeTaskId &&

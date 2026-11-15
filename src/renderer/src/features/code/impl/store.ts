@@ -1939,7 +1939,8 @@ export const useCode = create<CodeState>((set, get) => {
             sessionID: root,
             requestID: p.id,
             kind: 'permission',
-            detail: rejectedPermissionDetail(p)
+            detail: rejectedPermissionDetail(p),
+            hasComment: !!message
           })
         }
       } catch (err) {
@@ -2419,6 +2420,11 @@ export const useCode = create<CodeState>((set, get) => {
           if (!known(sessionID)) return
           noteRetryStatus(event as never)
           const next = toRunState(status)
+          const dir = get().sessionProject[sessionID] ?? get().directory
+          if (dir)
+            useRejectionNotices
+              .getState()
+              .turnStatus({ mode: 'code', directory: dir, sessionID: rootSessionID(get().sessions, sessionID) }, next !== 'idle')
           if (next === 'idle' && isDupIdle(sessionID, 'status')) return // duplicado de `session.idle` ya tratado (F7-B18)
           if (next !== 'idle') idleSeen.delete(sessionID) // `busy` confirmado por el servidor: nueva ejecución
           const prev = get().runState[sessionID]
@@ -2435,6 +2441,11 @@ export const useCode = create<CodeState>((set, get) => {
         case 'session.idle': {
           const { sessionID } = event.properties
           if (!known(sessionID)) return
+          const dir = get().sessionProject[sessionID] ?? get().directory
+          if (dir)
+            useRejectionNotices
+              .getState()
+              .turnStatus({ mode: 'code', directory: dir, sessionID: rootSessionID(get().sessions, sessionID) }, false)
           const prev = get().runState[sessionID]
           // F7-B18: ya está idle, o es el duplicado de un `session.status→idle` ya tratado (tras el cual `maybeAutoSend`
           // dejó la sesión `busy` en local): no hacer nada (ni pisar ese `busy`, ni notificar ni lanzar otro ítem).
@@ -2472,6 +2483,12 @@ export const useCode = create<CodeState>((set, get) => {
         case 'message.part.removed': {
           // Reductor común (lib/session-reducer). El dedupe ya se hizo arriba para TODOS los eventos.
           const cur = get()
+          if (event.type === 'message.part.updated' && ['text', 'tool'].includes(event.properties.part.type)) {
+            const sid = event.properties.part.sessionID
+            const dir = cur.sessionProject[sid] ?? cur.directory
+            if (dir)
+              useRejectionNotices.getState().turnStatus({ mode: 'code', directory: dir, sessionID: rootSessionID(cur.sessions, sid) }, true)
+          }
           const { slice } = reduceEvent(
             { messages: cur.messages, status: cur.runState, errors: cur.errors, sessions: cur.sessions },
             event,

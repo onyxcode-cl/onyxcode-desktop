@@ -1842,8 +1842,14 @@ function analyzeGit(args: Word[], cwds: Cwds, ctx: Ctx): void {
   )
   if (unsafe) doubt(ctx, 'git ejecuta código o usa configuración o transporte alternativo')
   if (args.some((a) => a.dynamic && /https?:|ssh:|\u0001/.test(a.text))) doubt(ctx, 'git puede enviar datos a un remoto dinámico')
+  // Opciones de lectura acotadas al subcomando; no abre opciones de mutación.
+  const readArgs = args.map((a, i) =>
+    i > 0 && ((args[0]?.text === 'branch' && /^(?:-vv|-r)$/.test(a.text)) || (args[0]?.text === 'status' && /^(?:-b|-sb)$/.test(a.text)))
+      ? { ...a, text: '-v' }
+      : a
+  )
   strictOptions(
-    args,
+    readArgs,
     '--version --help -h --no-pager --paginate -p --bare --no-optional-locks --oneline --stat --shortstat --numstat --name-only --name-status --cached --staged -S --worktree -W --check --quiet -q --verbose -v --all -a -A --porcelain --short -s --branch -b --show-toplevel --abbrev-ref --verify --is-inside-work-tree --show-current --decorate --graph --no-color --color --no-ext-diff --no-textconv --exit-code -z --null -n --count --reverse --date-order --topo-order --first-parent --follow --no-merges --no-commit --no-edit --continue --abort --skip --ff-only --no-ff --ff --squash --rebase --prune --tags --dry-run --get --get-all --get-regexp --list -l --global --local --system --show-origin --show-scope --force -f -d -D -M --delete --hard --soft --mixed --amend --allow-empty --check --recurse-submodules',
     '-C -c -m -am --message -b -B --format --pretty --max-count --since --until --author --grep --date --output -o --depth --branch --origin --filter --pathspec-from-file --file --default --type --set-upstream-to',
     ctx
