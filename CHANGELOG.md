@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.28] - 2026-11-15
+
+### Arreglos importantes
+
+- **Adjuntar archivos de cualquier tipo en Código ya no traba la conversación.** Archivos como .glb, .zip o de diseño ya no daban «Algo salió mal» en cada mensaje: ahora la IA recibe su nombre y su ruta, y los textos llegan como texto. Las conversaciones que quedaron pegadas se recuperan solas.
+
+### Código y Overdrive
+
+- **«Automático» en Windows ya no pregunta por comandos que solo leen**, como buscar texto en archivos o `dir /b`.
+- **«Esperar a que termine» ahora sí cambia la IA o el modo** cuando termina el trabajo, en vez de olvidar el cambio.
+
 ## [1.8.27] - 2026-11-14
 
 ### Arreglos importantes
