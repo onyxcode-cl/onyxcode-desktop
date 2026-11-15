@@ -810,7 +810,10 @@ export const useCode = create<CodeState>((set, get) => {
   }
   const purgeSessionSideState = (id: string): void => purgeManySideState(new Set([id]))
 
-  const externalApprovals = new Map<string, { command: string; workdir: unknown; directories: string[]; project: string | undefined }>()
+  const externalApprovals = new Map<
+    string,
+    { command: string; workdir: unknown; awaitingInput: boolean; directories: string[]; project: string | undefined }
+  >()
   const callKey = (p: PendingPermission): string | undefined =>
     p.tool ? JSON.stringify([p.sessionID, p.tool.messageID, p.tool.callID]) : undefined
   const resolvedPermissions = new Set<string>()
@@ -947,6 +950,12 @@ export const useCode = create<CodeState>((set, get) => {
     if (background && (!input || typeof input.cwd !== 'string' || tool?.type !== 'tool' || tool.tool !== 'bgshell_start')) return false
     const workdir = (background ? input?.cwd : input?.workdir) ?? md?.workdir
     const exterior = externalApprovals.get(callKey(p) ?? '')
+    // La respuesta exterior puede terminar antes de que llegue la entrada por SSE.
+    // Se liga al primer input coincidente, nunca a otro comando, proyecto o callID.
+    if (exterior?.awaitingInput && input && exterior.command === command && exterior.project === get().sessionProject[p.sessionID]) {
+      exterior.workdir = workdir
+      exterior.awaitingInput = false
+    }
     const approvedDirectories =
       exterior && exterior.command === command && exterior.workdir === workdir && exterior.project === get().sessionProject[p.sessionID]
         ? exterior.directories
@@ -1781,36 +1790,42 @@ export const useCode = create<CodeState>((set, get) => {
             ? 'once'
             : requested
         const root = get().sessions[p.sessionID] ? rootSessionID(get().sessions, p.sessionID) : (get().activeSessionID ?? p.sessionID)
+        const key = callKey(p)
+        const part = p.tool
+          ? get()
+              .messages[p.sessionID]?.find((m) => m.info.id === p.tool!.messageID)
+              ?.parts.find((part) => part.type === 'tool' && part.callID === p.tool!.callID)
+          : undefined
+        const input = part?.type === 'tool' ? part.state.input : undefined
+        const command = p.metadata?.command
+        const directories = p.metadata?.directories
+        const workdir = (part?.type === 'tool' && part.tool === 'bgshell_start' ? input?.cwd : input?.workdir) ?? p.metadata?.workdir
+        // Capturar el ámbito ANTES del await: una actualización en vuelo no lo amplía.
+        const exterior =
+          reply !== 'reject' &&
+          p.permission === 'external_directory' &&
+          !isProtectedPermission(p.metadata) &&
+          key &&
+          typeof command === 'string' &&
+          (input?.command === undefined || input.command === command) &&
+          Array.isArray(directories) &&
+          directories.every((dir) => typeof dir === 'string')
+            ? {
+                command,
+                workdir,
+                awaitingInput: input?.command === undefined && workdir === undefined,
+                directories: [...directories],
+                project: get().sessionProject[p.sessionID]
+              }
+            : undefined
         if (p.api === 'v2') {
           sdkData(await client.v2.session.permission.reply({ sessionID: p.sessionID, requestID: p.id, reply }))
         } else {
           sdkData(await client.permission.reply({ requestID: p.id, reply, directory: dir }))
         }
-        if (reply !== 'reject' && p.permission === 'external_directory' && !isProtectedPermission(p.metadata)) {
-          const key = callKey(p)
-          const part = p.tool
-            ? get()
-                .messages[p.sessionID]?.find((m) => m.info.id === p.tool!.messageID)
-                ?.parts.find((part) => part.type === 'tool' && part.callID === p.tool!.callID)
-            : undefined
-          const command = p.metadata?.command
-          const directories = p.metadata?.directories
-          if (
-            key &&
-            typeof command === 'string' &&
-            part?.type === 'tool' &&
-            part.state.input.command === command &&
-            Array.isArray(directories) &&
-            directories.every((dir) => typeof dir === 'string')
-          ) {
-            if (externalApprovals.size >= 100) externalApprovals.delete(externalApprovals.keys().next().value!)
-            externalApprovals.set(key, {
-              command,
-              workdir: (part.tool === 'bgshell_start' ? part.state.input.cwd : part.state.input.workdir) ?? p.metadata?.workdir,
-              directories,
-              project: get().sessionProject[p.sessionID]
-            })
-          }
+        if (key && exterior) {
+          if (externalApprovals.size >= 100) externalApprovals.delete(externalApprovals.keys().next().value!)
+          externalApprovals.set(key, exterior)
         }
         resolvedPermissions.add(p.id)
         if (p.permission === 'external_directory') retryPendingPermissions(p.sessionID)
