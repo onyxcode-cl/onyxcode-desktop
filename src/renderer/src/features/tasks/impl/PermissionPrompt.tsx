@@ -314,7 +314,7 @@ export function RejectWithNote({
         disabled={busy}
         data-perm-note
         aria-label={t('tasksComputer.perm.noteAria')}
-        placeholder={t('tasksComputer.perm.notePlaceholder')}
+        placeholder={t('perm.notePlaceholder')}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onCancel()
@@ -324,7 +324,7 @@ export function RejectWithNote({
       />
       <div className="mt-2 flex items-center gap-2">
         <Button variant="primary" disabled={busy || !text.trim()} onClick={() => onSend(text)}>
-          {t('tasksComputer.perm.rejectSend')}
+          {t('perm.no')}
         </Button>
         <Button variant="ghost" disabled={busy} onClick={onCancel}>
           {t('tasksComputer.cancel')}
@@ -339,7 +339,8 @@ export function useCanAlways(request: PermissionRequest, danger: boolean): boole
   const disable = useTasks((s) => s.policy?.disableAlwaysAllow === true)
   // Un ayudante (subagente) nunca ofrece «Siempre»: la regla se guardaría para la carpeta y ampliaría lo que la persona permitió.
   const { child } = useTaskSubagentOfRequest(request.sessionID)
-  if (child) return false
+  // I5: el celular nunca ofrece «no volver a preguntar» (la política remota lo rechaza; lo decide la persona en el Mac).
+  if (isRemoteSurface() || child) return false
   return showAlways({ danger, disableAlwaysAllow: disable, rememberableCount: rememberablePatterns(request).length })
 }
 
@@ -631,7 +632,7 @@ function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more
           ) : (
             <>
               <Button variant="ghost" className="!px-2 !py-1 text-xs" disabled={busy} onClick={() => answer('reject')}>
-                {t('tasksComputer.perm.reject')}
+                {t('perm.no')}
               </Button>
               {canAlways && (
                 <Button className="!px-2 !py-1 text-xs" disabled={busy} onClick={() => answer('always')} title={alwaysHint(request)}>
@@ -644,7 +645,7 @@ function RemoteApprovalBar({ request, more }: { request: PermissionRequest; more
                 disabled={busy}
                 onClick={() => answer('once')}
               >
-                {t('tasksComputer.perm.once')}
+                {t('perm.allow')}
               </Button>
             </>
           )}

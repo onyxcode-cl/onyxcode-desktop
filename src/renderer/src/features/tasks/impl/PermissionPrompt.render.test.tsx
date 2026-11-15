@@ -28,11 +28,11 @@ describe('tarjeta de permiso de edición', () => {
     expect(d.detail).toBe('/w/a.txt')
     expect(d.diff).toBe(DIFF)
   })
-  it('muestra el diff con DiffView (filas con +/-) y el botón «Rechazar con indicaciones»', () => {
+  it('muestra el diff con DiffView (filas con +/-) y el campo «¿Qué hacer distinto?» de «No»', () => {
     const html = renderToStaticMarkup(<PermissionCard request={edit(DIFF)} />)
     expect(html).toContain('<table')
     expect(html).toContain('DOS')
-    expect(html).toContain('Rechazar con indicaciones')
+    expect(html).toContain('¿Qué hacer distinto? (opcional)')
     expect(html).not.toContain('Index: /w/a.txt')
   })
   it('un diff sin líneas cambiadas se muestra como texto', () => {

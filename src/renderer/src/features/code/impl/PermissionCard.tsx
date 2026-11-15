@@ -3,6 +3,7 @@ import { FilePen, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
 import { readPermissionSuggestion } from '@shared/permission-suggestion'
+import { outsideDirectories, subcommandRules } from '@shared/auto-review'
 import { QuestionCard as SharedQuestionCard } from '../../../components/QuestionCard'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -61,18 +62,23 @@ function MobilePermissionCard({
   const reply = useCode((s) => s.replyPermission)
   const sub = useSubagentOfRequest(request.sessionID)
   const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState('')
   const busyRef = useRef(false)
+  const reviewNote = useCode((s) => s.reviewNotes[request.id])
   const run = useCallback(
     (r: 'once' | 'always' | 'reject'): void => {
       if (busyRef.current) return
       busyRef.current = true
       setBusy(true)
-      void reply(request, r).finally(() => {
+      const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
+      const rules = shell ? subcommandRules(request.metadata) : null
+      const extra = r === 'reject' && note.trim() ? { message: note.trim() } : r === 'always' && rules?.length ? { rules } : undefined
+      void reply(request, r, false, extra).finally(() => {
         busyRef.current = false
         setBusy(false)
       })
     },
-    [reply, request]
+    [reply, request, note]
   )
 
   const md = request.metadata
@@ -89,21 +95,32 @@ function MobilePermissionCard({
   const Icon =
     request.permission === 'bash' ? SquareTerminal : request.permission === 'edit' || request.permission === 'write' ? FilePen : ShieldAlert
 
+  const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
+  const rules = shell ? subcommandRules(md) : null
+  const outside = shell
+    ? outsideDirectories(md)
+    : request.permission === 'external_directory' && command
+      ? [...new Set(patterns.map((p) => p.replace(/[\\/]\*$/, '')))]
+      : []
   const actions: { key: string; label: string; reply: 'once' | 'always' | 'reject'; cls: string; title?: string }[] = [
-    { key: '1', label: t('code.perm.once'), reply: 'once', cls: 'bg-accent text-accent-fg hover:opacity-90' },
+    { key: '1', label: t('perm.allow'), reply: 'once', cls: 'bg-accent text-accent-fg hover:opacity-90' },
     {
       key: '2',
-      label: t('code.perm.always'),
+      label: t('perm.allowProject'),
       reply: 'always',
       cls: 'border border-border bg-elevated text-fg hover:bg-hover',
-      title: request.always.length ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') }) : undefined
+      title: rules?.length
+        ? t('perm.allowProjectRules', { rules: rules.join(', ') })
+        : request.always.length
+          ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') })
+          : undefined
     },
-    { key: '3', label: t('code.perm.reject'), reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
+    { key: '3', label: t('perm.no'), reply: 'reject', cls: 'text-danger hover:bg-danger/10' }
   ]
 
-  // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
+  // «No volver a preguntar» no se ofrece a un ayudante (ampliaría lo permitido) ni sin reglas que guardar; el celular nunca lo ofrece.
   const allowedActions = (allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions).filter(
-    (a) => !((sub.child || protectedPath) && a.reply === 'always')
+    (a) => !((sub.child || protectedPath || (rules !== null && !rules.length)) && a.reply === 'always')
   )
   // Celular: la acción principal va a la derecha (Rechazar a la izquierda, Permitir una vez a la derecha).
   const shown = mobile
@@ -156,7 +173,16 @@ function MobilePermissionCard({
           {patterns.map((p) => relPath(p, root)).join('\n')}
         </pre>
       )}
+      {outside.length > 0 && (
+        <p className="mx-3.5 mb-2.5 break-all font-mono text-xs text-muted">{t('perm.outside', { dirs: outside.join(', ') })}</p>
+      )}
       {diff && <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80 border-t border-border" />}
+      {reviewNote && (
+        <div role="note" className="flex items-start gap-2 border-t border-border bg-warning/10 px-3.5 py-2.5 text-[13px]">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
+          <span className="min-w-0 text-fg">{t('perm.reviewNote', { reason: reviewNote })}</span>
+        </div>
+      )}
       {suggestion && (
         <div className="border-t border-border px-3.5 py-2 text-[13px] text-muted">
           <p>{t(`code.perm.suggestion.${suggestion.value}` as MsgKey, { reason: suggestion.reason })}</p>
@@ -179,6 +205,24 @@ function MobilePermissionCard({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-bg/40 px-3 py-2">
+        {shown.some((a) => a.reply === 'reject') && (
+          <input
+            type="text"
+            value={note}
+            disabled={busy}
+            maxLength={2000}
+            aria-label={t('perm.noteLabel')}
+            placeholder={t('perm.notePlaceholder')}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && note.trim()) {
+                e.preventDefault()
+                run('reject')
+              }
+            }}
+            className={`basis-full rounded-lg border border-border bg-bg px-2.5 text-fg placeholder:text-subtle focus:outline-none ${mobile ? 'min-h-11 text-[15px]' : 'h-8 text-[13px]'}`}
+          />
+        )}
         {shown.map((a) => (
           <button
             key={a.key}

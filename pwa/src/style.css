@@ -892,6 +892,19 @@ button.compact {
   background: var(--bg-code);
   border: 1px solid var(--border);
 }
+.perm .permnote {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  margin: 0 0 10px;
+  padding: 0 12px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
 .perm .actions {
   justify-content: stretch;
   flex-wrap: nowrap;

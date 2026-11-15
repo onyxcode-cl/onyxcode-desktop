@@ -1046,10 +1046,11 @@ export class RemoteClient {
     }
   }
 
-  /** Solo `once` o `reject`: `always` no existe en el protocolo. */
-  async replyPermission(requestId: string, reply: Reply): Promise<void> {
+  /** Solo `once` o `reject`: `always` no existe en el protocolo. `message`: «¿Qué hacer distinto?» de «No». */
+  async replyPermission(requestId: string, reply: Reply, message?: string): Promise<void> {
     try {
-      await this.request('permission.reply', { requestId, reply })
+      const note = reply === 'reject' && message?.trim() ? { message: message.trim().slice(0, 2000) } : {}
+      await this.request('permission.reply', { requestId, reply, ...note })
       this.set({ permissions: this.snap.permissions.filter((p) => p.requestId !== requestId) })
     } catch (e) {
       this.explain(e)

@@ -77,8 +77,8 @@ describe('AutoApprover: peticiones de hijas', () => {
 
   it('también por la vía rápida considerOne', async () => {
     const m = make({ sessions, pending: [ls('k2', 'kid'), ls('r2', 'root')] })
-    expect(await m.a.considerOne(server.folder, false, 'k2')).toBe(false)
-    expect(await m.a.considerOne(server.folder, false, 'r2')).toBe(true)
+    expect(await m.a.considerOne(server.folder, false, 'k2')).toEqual({ auto: false })
+    expect(await m.a.considerOne(server.folder, false, 'r2')).toEqual({ auto: true })
     expect(m.replies).toEqual(['r2'])
   })
 

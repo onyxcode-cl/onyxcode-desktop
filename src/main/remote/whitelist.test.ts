@@ -164,6 +164,12 @@ describe('SidecarBackend: ámbito', () => {
     expect(c.calls.filter((x) => x.fn === 'reply')).toEqual([
       { fn: 'reply', args: { requestID: 'per_edit', directory: PROJ, reply: 'once' } }
     ])
+    // V29: «No» con comentario llega al motor como `message`.
+    await b.replyPermission('per_edit', 'reject', 'usa la carpeta del proyecto')
+    expect(c.calls.filter((x) => x.fn === 'reply').at(-1)).toEqual({
+      fn: 'reply',
+      args: { requestID: 'per_edit', directory: PROJ, reply: 'reject', message: 'usa la carpeta del proyecto' }
+    })
   })
 
   it('mensajes: pagina con before y limit, y cabe en una trama', async () => {

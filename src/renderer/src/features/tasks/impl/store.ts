@@ -171,6 +171,8 @@ interface TasksState {
    * aprueba, vuelve a aparecer.
    */
   autoPending: Record<string, true>
+  /** V29: motivo del revisor por IA cuando ya se llegó al tope de bloqueos y la tarjeta queda para la persona, por petición. */
+  autoNotes: Record<string, string>
   /** Último aviso "Aprobado por el modo auto: …" (evento `tasks:auto:approved`), para un toast. */
   autoApprovedNotice: AutoApprovalRecord | null
 
@@ -306,6 +308,7 @@ export const useTasks = create<TasksState>((set) => ({
   viewerRequest: null,
   autoMode: null,
   autoPending: {},
+  autoNotes: {},
   autoApprovedNotice: null,
   restoreSaving: false,
   sending: false,
@@ -754,7 +757,9 @@ export function handleEvent(event: OcEvent, directory: string): void {
         delete permissions[event.properties.requestID]
         const autoPending = { ...s.autoPending }
         delete autoPending[event.properties.requestID]
-        return { permissions, autoPending }
+        const autoNotes = { ...s.autoNotes }
+        delete autoNotes[event.properties.requestID]
+        return { permissions, autoPending, autoNotes }
       })
       break
     case 'question.asked':
@@ -1337,7 +1342,9 @@ function maybeAutoConsider(perm: PermissionRequest): void {
     })
   cw('tasks:auto:consider', { folder, fullAccess: conn.fullAccess, requestId: perm.id })
     .then((r) => {
-      if (!r.auto) clear()
+      if (r.auto) return
+      if (r.note) useTasks.setState((s) => ({ autoNotes: { ...s.autoNotes, [perm.id]: r.note! } }))
+      clear()
     })
     .catch(() => clear())
 }

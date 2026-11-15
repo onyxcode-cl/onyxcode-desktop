@@ -81,7 +81,7 @@ describe('tarjeta de permiso de escritorio (Tareas)', () => {
     expect(i('perm-title-p1')).toBeLessThan(i('perm-effect-p1'))
     expect(i('perm-effect-p1')).toBeLessThan(i('<pre'))
     expect(i('<pre')).toBeLessThan(i('Limitado a tu carpeta'))
-    expect(i('Limitado a tu carpeta')).toBeLessThan(i('Permitir una vez'))
+    expect(i('Limitado a tu carpeta')).toBeLessThan(i('>Permitir<'))
   })
 
   it('comando bash con $ aria-hidden, sin max-h para 5000 caracteres', () => {
@@ -104,20 +104,21 @@ describe('tarjeta de permiso de escritorio (Tareas)', () => {
     expect(html).toContain('Contiene caracteres de control')
   })
 
-  it('neutral: orden de botones Rechazar con indicaciones → Permitir siempre → Rechazar → Permitir una vez', () => {
+  it('neutral: orden de botones Permitir y no volver a preguntar → No → Permitir, y el campo «¿Qué hacer distinto?»', () => {
     const html = render(req(), base)
     const i = (s: string): number => html.indexOf(s)
-    expect(i('Rechazar con indicaciones')).toBeLessThan(i('Permitir siempre'))
-    expect(i('Permitir siempre')).toBeLessThan(i('>Rechazar<'))
-    expect(i('>Rechazar<')).toBeLessThan(i('Permitir una vez'))
+    expect(i('no volver a preguntar')).toBeLessThan(i('>No<'))
+    expect(i('>Permitir<')).toBeLessThan(i('¿Qué hacer distinto? (opcional)'))
+    expect(html).not.toContain('Rechazar con indicaciones')
+    expect(i('>No<')).toBeLessThan(i('>Permitir<'))
   })
 
   it('destructivo: sin «Permitir siempre», mismo par Rechazar → Permitir una vez', () => {
     const r = req({ permission: 'bash', patterns: ['rm -rf x'], metadata: { command: 'rm -rf x' }, always: [] })
     const html = render(r, base)
-    expect(html).not.toContain('Permitir siempre')
+    expect(html).not.toContain('no volver a preguntar')
     const i = (s: string): number => html.indexOf(s)
-    expect(i('>Rechazar<')).toBeLessThan(i('Permitir una vez'))
+    expect(i('>No<')).toBeLessThan(i('>Permitir<'))
   })
 
   it('«Permitir» deshabilitado en el primer render y con atajo aria (⌘↵ y Esc) como kbd aria-hidden', () => {
@@ -127,14 +128,14 @@ describe('tarjeta de permiso de escritorio (Tareas)', () => {
     expect(html).toContain('⌘↵')
     expect(html).toContain('Esc')
     // El texto accesible del botón es exactamente la etiqueta (el kbd no cuenta).
-    expect(html).toContain('>Permitir una vez<')
+    expect(html).toContain('>Permitir<')
     // El botón «Permitir una vez» está disabled (armed=false en el primer render).
-    expect(html).toMatch(/disabled=""[^>]*>Permitir una vez</)
+    expect(html).toMatch(/disabled=""[^>]*>Permitir</)
   })
 
   it('disableAlwaysAllow oculta «Permitir siempre»', () => {
     const html = render(req(), { ...base, policy: { disableAlwaysAllow: true } })
-    expect(html).not.toContain('Permitir siempre')
+    expect(html).not.toContain('no volver a preguntar')
   })
 
   it('límite de carpeta frente a control total (texto, no solo color)', () => {
@@ -159,9 +160,9 @@ const bar = (r: PermissionRequest): string => {
 describe('barra compacta de escritorio (decisión ND #1)', () => {
   it('comando corto y no destructivo: Rechazar, Permitir siempre y Permitir una vez (este último desarmado)', () => {
     const html = bar(req())
-    expect(html).toContain('>Rechazar<')
-    expect(html).toContain('>Permitir una vez<')
-    expect(html).toMatch(/disabled=""[^>]*>Permitir una vez</)
+    expect(html).toContain('>No<')
+    expect(html).toContain('>Permitir<')
+    expect(html).toMatch(/disabled=""[^>]*>Permitir</)
   })
 
   it.each([
@@ -172,7 +173,7 @@ describe('barra compacta de escritorio (decisión ND #1)', () => {
   ])('%s: solo «Revisar» y «Rechazar», sin ningún botón Permitir', (_n, r) => {
     const html = bar(r)
     expect(html).toContain('>Revisar<')
-    expect(html).toContain('>Rechazar<')
+    expect(html).toContain('>No<')
     expect(html).not.toContain('Permitir')
   })
 })
@@ -204,8 +205,8 @@ describe('ruta protegida del motor en Tareas (escritorio)', () => {
   it('avisa con la línea clara y NO ofrece «Permitir siempre» (aunque `patterns` tenga algo que recordar)', () => {
     const html = render(protectedReq(), base)
     expect(html).toContain('Ruta protegida: cambia cómo se ejecuta código o la configuración de la IA')
-    expect(html).not.toContain('Permitir siempre')
-    expect(html).toContain('Permitir una vez')
+    expect(html).not.toContain('no volver a preguntar')
+    expect(html).toContain('>Permitir<')
   })
 
   it('una petición normal del mismo permiso conserva «Permitir siempre» y no lleva el aviso', () => {
@@ -214,6 +215,36 @@ describe('ruta protegida del motor en Tareas (escritorio)', () => {
       base
     )
     expect(html).not.toContain('Ruta protegida')
-    expect(html).toContain('Permitir siempre')
+    expect(html).toContain('no volver a preguntar')
+  })
+})
+
+describe('V29: tarjeta de Overdrive (escritorio) con la petición única del motor', () => {
+  const v29 = (subcommands: Array<{ command: string; rule: string | null }>): PermissionRequest =>
+    req({
+      patterns: ['cat /tmp/a.log && npm test'],
+      metadata: { command: 'cat /tmp/a.log && npm test', shell: 'bash', externalDirectories: ['/tmp'], subcommands },
+      always: ['cat *']
+    })
+
+  it('muestra el comando, las carpetas de fuera y el campo «¿Qué hacer distinto?» de «No»', () => {
+    const html = render(v29([{ command: 'npm test', rule: 'npm test *' }]), base)
+    expect(html).toContain('Fuera del proyecto: /tmp')
+    expect(html).toContain('data-perm-note')
+    expect(html).toContain('placeholder="¿Qué hacer distinto? (opcional)"')
+    expect(html).toContain('>No<')
+    expect(html).toContain('>Permitir<')
+    expect(html).toContain('Permitir y no volver a preguntar en este proyecto')
+    expect(html).toContain('npm test *')
+  })
+
+  it('sin reglas sugeridas no ofrece «no volver a preguntar»', () => {
+    const html = render(v29([{ command: 'cat /tmp/a.log', rule: null }]), base)
+    expect(html).not.toContain('no volver a preguntar')
+  })
+
+  it('con el tope de bloqueos del revisor, su motivo queda a la vista', () => {
+    const html = render(v29([]), { ...base, autoNotes: { p1: 'no lo pidió la persona' } })
+    expect(html).toContain('Revisión automática: no lo pidió la persona')
   })
 })

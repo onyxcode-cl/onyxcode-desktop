@@ -270,6 +270,50 @@ export function PermActions({ actions, armed, busy }: { actions: PermAction[]; a
   )
 }
 
+/**
+ * V29: campo opcional «¿Qué hacer distinto?» que acompaña a «No» (viaja como `message`; la IA lo recibe y sigue).
+ * `data-perm-note`: la guardia no convierte Enter ni Esc de este campo en una respuesta; Enter con texto envía «No».
+ */
+export function PermNoteField({
+  value,
+  onChange,
+  onSubmit,
+  busy
+}: {
+  value: string
+  onChange: (text: string) => void
+  onSubmit: () => void
+  busy: boolean
+}): React.JSX.Element {
+  const t = useT()
+  return (
+    <input
+      type="text"
+      data-perm-note
+      value={value}
+      disabled={busy}
+      maxLength={2000}
+      aria-label={t('perm.noteLabel')}
+      placeholder={t('perm.notePlaceholder')}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing && !e.metaKey && !e.ctrlKey && value.trim()) {
+          e.preventDefault()
+          onSubmit()
+        }
+      }}
+      className="no-drag h-8 w-full rounded-ctl bg-bg px-2.5 text-ui text-fg ring-1 ring-inset ring-border outline-none placeholder:text-subtle focus-visible:shadow-focus disabled:opacity-50"
+    />
+  )
+}
+
+/** V29: carpetas de fuera del proyecto que toca el comando (una sola vez, junto al comando). */
+export function PermOutside({ dirs }: { dirs: string[] }): React.JSX.Element | null {
+  const t = useT()
+  if (!dirs.length) return null
+  return <p className="break-all font-mono text-meta text-muted">{t('perm.outside', { dirs: dirs.join(', ') })}</p>
+}
+
 // ───────────────────────────── Guardia (teclado + armado) ─────────────────────────────
 
 function scrollParent(el: HTMLElement): HTMLElement | null {

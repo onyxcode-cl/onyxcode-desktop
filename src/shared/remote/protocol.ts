@@ -70,6 +70,8 @@ export const LIMITS = {
   /** Violaciones (trama inválida, fuera de lista, límite excedido) tras las que se corta la conexión. */
   maxViolations: 3,
   maxPromptChars: 8000,
+  /** Comentario de «No» en una tarjeta de permiso. */
+  maxReplyMessageChars: 2000,
   maxMessagesPerRequest: 50,
   defaultMessagesPerRequest: 30,
   maxSessionsListed: 50,
@@ -223,7 +225,8 @@ export type RequestParams = {
   'session.messages': { sessionId: string; limit: number; before?: string }
   'session.prompt': { sessionId: string; text: string }
   'session.abort': { sessionId: string }
-  'permission.reply': { requestId: string; reply: Reply }
+  /** V29: `message` solo con `reject` («¿Qué hacer distinto?»): la IA lo recibe y sigue. */
+  'permission.reply': { requestId: string; reply: Reply; message?: string }
 }
 export type RequestMethod = keyof RequestParams
 export const REQUEST_METHODS: readonly RequestMethod[] = [
@@ -642,10 +645,19 @@ function parseRequest(o: Obj): Parsed<RequestFrame> {
       return { ok: true, value: { t: 'req', id, m: 'session.abort', p: { sessionId: p.sessionId } } }
     }
     case 'permission.reply': {
-      if (!onlyKeys(p, ['requestId', 'reply'])) return fail('extra-keys')
+      if (!onlyKeys(p, ['requestId', 'reply', 'message'])) return fail('extra-keys')
       if (!isId(p.requestId)) return fail('bad-request-id')
       if (p.reply !== 'once' && p.reply !== 'reject') return fail('bad-reply')
-      return { ok: true, value: { t: 'req', id, m: 'permission.reply', p: { requestId: p.requestId, reply: p.reply } } }
+      if (
+        p.message !== undefined &&
+        (typeof p.message !== 'string' || p.message.length > LIMITS.maxReplyMessageChars || p.reply !== 'reject')
+      )
+        return fail('bad-text')
+      const message = typeof p.message === 'string' && p.message.trim() ? p.message.trim() : undefined
+      return {
+        ok: true,
+        value: { t: 'req', id, m: 'permission.reply', p: { requestId: p.requestId, reply: p.reply, ...(message ? { message } : {}) } }
+      }
     }
     default:
       return fail('method-not-allowed')

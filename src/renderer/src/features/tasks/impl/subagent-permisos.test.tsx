@@ -91,8 +91,8 @@ describe('permiso de un ayudante en Tareas', () => {
   it('la tarjeta lo rotula con el nombre del ayudante y no ofrece «Siempre»', () => {
     act(() => root.render(createElement(PP.PermissionCard, { request: perm('kid') })))
     expect(host.textContent).toContain('Ayudante «Revisar logs»')
-    expect(host.textContent).not.toMatch(/Siempre/i)
-    expect(host.textContent).toContain('Permitir una vez')
+    expect(host.textContent).not.toMatch(/no volver a preguntar/i)
+    expect(host.textContent).toContain('Permitir')
   })
 
   it('la de la propia tarea queda como siempre (sin rótulo de ayudante)', () => {

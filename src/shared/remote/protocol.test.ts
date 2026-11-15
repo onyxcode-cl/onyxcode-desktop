@@ -17,6 +17,16 @@ describe('protocolo remoto: tramas del celular', () => {
     expect(parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'reject' })).ok).toBe(true)
   })
 
+  it('V29: «No» puede llevar «¿Qué hacer distinto?» (solo con reject, recortado y con tope)', () => {
+    const ok = parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'reject', message: '  usa otra carpeta ' }))
+    expect(ok.ok && ok.value.t === 'req' && ok.value.p).toEqual({ requestId: 'per_1', reply: 'reject', message: 'usa otra carpeta' })
+    const blank = parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'reject', message: '   ' }))
+    expect(blank.ok && blank.value.t === 'req' && blank.value.p).toEqual({ requestId: 'per_1', reply: 'reject' })
+    expect(parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'once', message: 'x' })).ok).toBe(false)
+    expect(parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'reject', message: 3 })).ok).toBe(false)
+    expect(parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'reject', message: 'x'.repeat(2001) })).ok).toBe(false)
+  })
+
   it('rechaza «always», métodos fuera de lista y claves extra', () => {
     expect(parseClientFrame(req('permission.reply', { requestId: 'per_1', reply: 'always' })).ok).toBe(false)
     expect(parseClientFrame(req('session.delete', { sessionId: 'ses_1' })).ok).toBe(false)

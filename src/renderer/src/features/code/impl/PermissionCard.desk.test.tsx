@@ -46,8 +46,8 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     surface('darwin')
     const html = render(perm())
     const i = (s: string): number => html.indexOf(s)
-    expect(i('Permitir siempre')).toBeLessThan(i('Rechazar'))
-    expect(i('Rechazar')).toBeLessThan(i('Permitir una vez'))
+    expect(i('no volver a preguntar')).toBeLessThan(i('>No<'))
+    expect(i('>No<')).toBeLessThan(i('>Permitir<'))
   })
 
   it('«Permitir una vez» con ⌘↵ (aria-hidden) y Meta+Enter; deshabilitado en el primer render', () => {
@@ -57,8 +57,8 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     expect(html).toContain('aria-hidden')
     expect(html).toContain('⌘↵')
     expect(html).toContain('Esc')
-    expect(html).toContain('>Permitir una vez<')
-    expect(html).toMatch(/disabled=""[^>]*>Permitir una vez</)
+    expect(html).toContain('>Permitir<')
+    expect(html).toMatch(/disabled=""[^>]*>Permitir</)
   })
 
   it('alcance «Carpeta de trabajo · {root}» y comando bash con $', () => {
@@ -89,7 +89,7 @@ describe('tarjeta de permiso de escritorio (Code)', () => {
     expect(html).toContain('aria-expanded="false"')
     expect(html).toMatch(/id="perm-details-p1"[^>]*hidden=""/)
     expect(html.match(/>npm run build</g)).toHaveLength(1)
-    expect(html).toContain('>Permitir una vez<')
+    expect(html).toContain('>Permitir<')
     expect(html).toContain('Ver detalles')
   })
 

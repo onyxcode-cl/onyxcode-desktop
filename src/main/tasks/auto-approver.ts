@@ -8,6 +8,10 @@
  *
  * Persistencia: `userData/tasks-auto.json`. Nunca escribe si `policyDisabled()` es true (solo lee
  * para poder mostrar el banner), y nunca aprueba tampoco.
+ *
+ * V29: un comando dudoso (`review`) se manda a la revisión por IA del motor (`POST /permission/{id}/review`):
+ * `allow` → «una vez»; `block` → rechazo con el motivo para que la IA cambie de camino (tras 3 seguidos o 20 en la
+ * tarea, tarjeta con el motivo a la vista); `unavailable` → tarjeta.
  */
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
@@ -15,6 +19,7 @@ import { dirname } from 'node:path'
 import type { AutoApprovalRecord, AutoModeSettings, AutoModeState, AutoRuleId } from '@shared/ipc-tasks'
 import type { AutoAccessQuery, AutoAccessVerdict } from '../computer/service'
 import { classifyAccess, classifyPermission, defaultAutoViewApps } from './auto-mode'
+import { ReviewTracker, blockMessage, requestReview, type ReviewDecision } from '@shared/auto-review'
 import type { RawPerm } from './monitor'
 
 /** Servidor vivo de Tareas tal como lo entrega `TasksManager.liveServers()` (mismos campos). */
@@ -51,6 +56,14 @@ export interface AutoApproverDeps {
   grantAutoView: (sessionId: string, bundleIds: string[]) => void
   revokeAutoView: (sessionId: string, bundleId?: string) => void
   log?: (...args: unknown[]) => void
+  /** Revisión por IA (inyectable en las pruebas); por defecto, la ruta del motor. */
+  review?: (server: AutoServer, requestId: string) => Promise<ReviewDecision>
+}
+
+/** Resultado de considerar una petición: `auto` si ya no hace falta tarjeta; `note`, motivo del revisor para la tarjeta. */
+export interface AutoConsideration {
+  auto: boolean
+  note?: string
 }
 
 const MAX_LOG = 500
@@ -91,6 +104,10 @@ export class AutoApprover {
   /** Deduplica por id de petición ya respondida en esta sesión de la app (evita doble respuesta entre el sondeo y la vía rápida). */
   private readonly seen = new Set<string>()
   private readonly rootCache = new Map<string, { root: string; at: number }>()
+  /** V29: bloqueos del revisor por tarea raíz, decisiones ya tomadas (no se revisa dos veces) y revisiones en curso. */
+  private readonly tracker = new ReviewTracker()
+  private readonly decided = new Map<string, AutoConsideration>()
+  private readonly inflight = new Map<string, Promise<AutoConsideration>>()
 
   constructor(private readonly deps: AutoApproverDeps) {}
 
@@ -248,15 +265,19 @@ export class AutoApprover {
     }
   }
 
-  /** `POST <baseUrl>/permission/<id>/reply` con `{reply:'once'}` (igual que el scheduler del Lote B). */
-  private async replyOnce(server: AutoServer, requestId: string): Promise<boolean> {
+  /** `POST <baseUrl>/permission/<id>/reply` con `{reply:'once'}` (igual que el scheduler del Lote B) o un rechazo con motivo. */
+  private async replyOnce(
+    server: AutoServer,
+    requestId: string,
+    body: { reply: 'once' } | { reply: 'reject'; message: string } = { reply: 'once' }
+  ): Promise<boolean> {
     const f = this.deps.fetch ?? fetch
     try {
       const url = `${server.baseUrl.replace(/\/+$/, '')}/permission/${encodeURIComponent(requestId)}/reply?directory=${encodeURIComponent(server.directory ?? server.folder)}`
       const res = await f(url, {
         method: 'POST',
         headers: { Authorization: server.authorization, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reply: 'once' }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
       })
       return res.ok
@@ -292,20 +313,55 @@ export class AutoApprover {
 
   // ───────────────────────────── permisos ─────────────────────────────
 
-  private async tryApprovePermission(server: AutoServer, p: RawPerm): Promise<boolean> {
-    if (this.deps.policyDisabled()) return false
-    if (!this.load().enabled) return false
+  /** La persona aprobó una petición de esta tarea: se corta la racha de bloqueos seguidos del revisor. */
+  personApproved(sessionId: string): void {
+    this.tracker.personApproved(sessionId)
+  }
+
+  private remember(key: string, result: AutoConsideration): AutoConsideration {
+    if (this.decided.size >= MAX_DEDUPE) this.decided.delete(this.decided.keys().next().value!)
+    this.decided.set(key, result)
+    return result
+  }
+
+  private review(server: AutoServer, requestId: string): Promise<ReviewDecision> {
+    if (this.deps.review) return this.deps.review(server, requestId)
+    return requestReview(
+      { baseUrl: server.baseUrl, authorization: server.authorization },
+      { id: requestId, sessionID: '', api: 'v1', directory: server.directory ?? server.folder },
+      this.deps.fetch ?? fetch
+    )
+  }
+
+  private async tryApprovePermission(server: AutoServer, p: RawPerm): Promise<AutoConsideration> {
+    if (this.deps.policyDisabled()) return { auto: false }
+    if (!this.load().enabled) return { auto: false }
     const key = `${server.baseUrl}\u0000${server.folder}\u0000${server.fullAccess}\u0000${p.id}`
-    if (this.seen.has(key)) return false
+    if (this.seen.has(key)) return { auto: false }
+    const done = this.decided.get(key)
+    if (done) return done
+    // El sondeo y la vía rápida pueden llegar a la vez: una sola revisión por petición.
+    const running = this.inflight.get(key)
+    if (running) return running
+    const work = this.considerPermission(server, p, key)
+    this.inflight.set(key, work)
+    try {
+      return await work
+    } finally {
+      this.inflight.delete(key)
+    }
+  }
+
+  private async considerPermission(server: AutoServer, p: RawPerm, key: string): Promise<AutoConsideration> {
     const rootId = await this.resolveRoot(server, p.sessionID)
-    if (!this.optedIn(server.folder, rootId)) return false
+    if (!this.optedIn(server.folder, rootId)) return { auto: false }
     // Una petición de una HIJA (subagente) nunca se aprueba sola: el opt-in es de la tarea raíz y lo que
     // pide un subagente lo decide la persona. Si la raíz no se pudo resolver, tampoco (podría ser una hija).
-    if (rootId !== p.sessionID) return false
+    if (rootId !== p.sessionID) return { auto: false }
     let metadata = p.metadata
     // MCP pregunta con metadata:{} y patrón '*': la entrada vive en la parte enlazada por tool.
     if (p.permission === 'bgshell_start' || (p.permission === 'bash' && p.tool)) {
-      if (!p.tool || typeof p.tool.messageID !== 'string' || typeof p.tool.callID !== 'string') return false
+      if (!p.tool || typeof p.tool.messageID !== 'string' || typeof p.tool.callID !== 'string') return { auto: false }
       const message = await this.fetchJson<{
         parts?: Array<{ type?: string; tool?: string; callID?: string; state?: { input?: Record<string, unknown> } }>
       }>(server, `/session/${encodeURIComponent(p.sessionID)}/message/${encodeURIComponent(p.tool.messageID)}`, HTTP_TIMEOUT_MS)
@@ -320,8 +376,8 @@ export class AutoApprover {
       const input = part?.state?.input
       const verification = part?.tool === 'todowrite' && Array.isArray(input?.todos)
       const command = verification ? metadata?.command : input?.command
-      if (typeof command !== 'string' || (p.permission === 'bgshell_start' && typeof input?.cwd !== 'string')) return false
-      if (p.permission === 'bash' && command !== metadata?.command) return false
+      if (typeof command !== 'string' || (p.permission === 'bgshell_start' && typeof input?.cwd !== 'string')) return { auto: false }
+      if (p.permission === 'bash' && command !== metadata?.command) return { auto: false }
       metadata = {
         ...metadata,
         command,
@@ -332,12 +388,43 @@ export class AutoApprover {
       { permission: p.permission, patterns: p.patterns ?? [], metadata },
       { mcpServers: this.deps.mcpServers(), projectRoot: server.directory ?? server.folder }
     )
-    if (verdict.decision !== 'allow') return false
+    if (verdict.decision === 'ask') return this.remember(key, { auto: false })
+    let rule: AutoRuleId
+    let summary: string
+    let reviewed = false
+    if (verdict.decision === 'review') {
+      let result: ReviewDecision
+      try {
+        result = await this.review(server, p.id)
+      } catch {
+        result = { decision: 'unavailable', reason: '' }
+      }
+      // I4: la revisión tarda hasta 20 s; si en ese rato se apagó el Modo auto o la carpeta, la decide la persona.
+      if (this.deps.policyDisabled() || !this.load().enabled || !this.optedIn(server.folder, rootId))
+        return this.remember(key, { auto: false })
+      if (result.decision === 'unavailable') return this.remember(key, { auto: false })
+      if (result.decision === 'block') {
+        if (this.tracker.onBlock(rootId) === 'card') return this.remember(key, { auto: false, note: result.reason || undefined })
+        this.markSeen(key)
+        if (await this.replyOnce(server, p.id, { reply: 'reject', message: blockMessage(result.reason) })) return { auto: true }
+        this.seen.delete(key)
+        return this.remember(key, { auto: false, note: result.reason || undefined })
+      }
+      this.tracker.reviewerAllowed(rootId)
+      reviewed = true
+      rule = 'bash-readonly'
+      const command = typeof metadata?.command === 'string' ? metadata.command : ''
+      summary = `comando revisado por la IA: ${command.length > 140 ? `${command.slice(0, 140)}…` : command}`
+    } else {
+      rule = verdict.rule
+      summary = verdict.summary
+    }
     this.markSeen(key)
     const ok = await this.replyOnce(server, p.id)
     if (!ok) {
       this.seen.delete(key)
-      return false
+      // M2: tras un `allow` del revisor, no repetir la llamada al modelo en cada sondeo si falló la respuesta.
+      return reviewed ? this.remember(key, { auto: false }) : { auto: false }
     }
     this.record({
       folder: server.folder,
@@ -345,38 +432,39 @@ export class AutoApprover {
       kind: 'permission',
       permission: p.permission,
       patterns: p.patterns ?? [],
-      rule: verdict.rule,
-      summary: verdict.summary,
+      rule,
+      summary,
       revocable: false
     })
-    return true
+    return { auto: true }
   }
 
   /** Lo llama el monitor en cada sondeo (`MonitorDeps.onPermissions`) con la lista cruda de `GET /permission`. */
   async considerPermissions(server: AutoServer, perms: RawPerm[]): Promise<void> {
     if (this.deps.policyDisabled() || !this.load().enabled) return
-    for (const p of perms) {
-      try {
-        await this.tryApprovePermission(server, p)
-      } catch (err) {
-        this.deps.log?.('[tasks] modo auto (sondeo):', err)
-      }
-    }
+    // En paralelo: una revisión por IA (hasta 20 s) no debe frenar a las demás peticiones.
+    await Promise.all(
+      perms.map((p) =>
+        this.tryApprovePermission(server, p).catch((err) => {
+          this.deps.log?.('[tasks] modo auto (sondeo):', err)
+        })
+      )
+    )
   }
 
   /**
    * Vía rápida desde el renderer (`tasks:auto:consider`): busca esa petición concreta en el
    * servidor de `folder`/`fullAccess` y la considera igual que el sondeo. Devuelve si se aprobó.
    */
-  async considerOne(folder: string, fullAccess: boolean, requestId: string): Promise<boolean> {
-    if (this.deps.policyDisabled() || !this.load().enabled) return false
+  async considerOne(folder: string, fullAccess: boolean, requestId: string): Promise<AutoConsideration> {
+    if (this.deps.policyDisabled() || !this.load().enabled) return { auto: false }
     const server = this.deps.servers().find((s) => s.folder === folder && s.fullAccess === fullAccess)
-    if (!server) return false
+    if (!server) return { auto: false }
     const list = await this.fetchJson<
       Array<{ id?: string; sessionID?: string; permission?: string; patterns?: unknown; metadata?: unknown; tool?: RawPerm['tool'] }>
     >(server, '/permission', HTTP_TIMEOUT_MS)
     const found = Array.isArray(list) ? list.find((p) => p?.id === requestId) : null
-    if (!found || typeof found.sessionID !== 'string' || typeof found.permission !== 'string') return false
+    if (!found || typeof found.sessionID !== 'string' || typeof found.permission !== 'string') return { auto: false }
     const perm: RawPerm = {
       id: requestId,
       sessionID: found.sessionID,
