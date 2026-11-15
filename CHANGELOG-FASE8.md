@@ -4608,3 +4608,11 @@ Código de escritorio clasifica los adjuntos con las reglas de Chat y normaliza 
 El motor convierte las partes de archivo sin modalidad admitida en texto UTF-8 legible o una nota breve de binario. Limita el texto a 1 MiB y avisa si lo recorta. El filtro se aplica también al historial antiguo en cada petición, sin migrar datos; el título comparte ese camino y la compactación actual ya arma un resumen textual. Requiere incluir las fuentes corregidas del motor en el próximo armado.
 
 Pruebas: `attachments.test.ts` y `store.attachments.test.ts` de Código (normalización, referencias Mac/Windows, archivo pegado, imagen, PDF, cola y celular), regresiones de adjuntos de Chat y móvil, y textos de la PWA regenerados. Motor: `transform-attachments.test.ts`, `transform.test.ts` y `message-v2.test.ts` (texto, binario, markdown, recorte UTF-8, historial antiguo y conversores reales de los SDK con fetch falso, sin red).
+
+## F8-B315 — Una tarjeta por acceso exterior del mismo comando en Mac (V28 ronda 7)
+
+Código Automático reconoce los bloques Python enviados por stdin con delimitador citado y revisa su contenido como código, conservando las comprobaciones de rutas y acciones delicadas. Distingue los patrones literales de `grep -oh`/`-ho` y las etiquetas `echo "$f:"` de las rutas. Esto elimina la segunda tarjeta de los tres comandos del adjunto `.glb` y del comando de cafetería con registro en `/tmp`, una vez aprobado su acceso exterior.
+
+La autorización sigue ligada a conversación, mensaje, llamada, comando completo, proyecto y carpeta de trabajo. Se captura antes de enviar la respuesta y solo se registra si el motor confirma; admite argumentos que llegan después por eventos. Preguntar siempre y Aceptar ediciones conservan sus tarjetas. Los dos permisos de caf2 se mantienen: son llamadas distintas (`bash` con `pkill` y verificación de `todowrite` con `kill %1`), no la misma orden duplicada.
+
+Pruebas: fixture `auto-command-round7.ts` con comandos completos de la copia de datos reales, `auto-command.test.ts` y `store.permisos.test.ts` (API v1/v2, órdenes de eventos, respuesta en vuelo, rechazo/fallo, otra conversación/llamada/comando/cwd, borrado, procesos, secretos, sistema y descarga con ejecución). Se conservan los replays de las rondas 2–5 y Overdrive. No se modifica el motor.

@@ -3,7 +3,7 @@
  * se comprueba la orden COMPLETA antes de responder una vez. No es un sandbox: npm, scripts y
  * hooks del proyecto ejecutan código. Se permite por defecto salvo los patrones delicados.
  */
-type Part = { words: string[]; literals: boolean[]; separator: string }
+type Part = { words: string[]; literals: boolean[]; separator: string; script?: string }
 
 /** Léxico común de bash/zsh, PowerShell y cmd para buscar patrones delicados, sin ejecutar el shell. */
 function parse(command: string): Part[] | null {
@@ -64,6 +64,20 @@ function parse(command: string): Part[] | null {
     } else if (/[<>]/.test(c)) {
       // Redirecciones, incluso sin espacios; duplicar fd no añade una ruta.
       flush()
+      if (c === '<' && command[i + 1] === '<') {
+        // Python por stdin con delimitador citado: el cuerpo es código, no argumentos
+        // de shell (índices, formatos de struct, etc.). Otros heredocs siguen preguntando.
+        const header = /^<<(['"])([a-zA-Z_]\w*)\1[ \t]*\r?\n/.exec(command.slice(i))
+        if (!header || words.length !== 2 || !/^python[\d.]*$/.test(words[0]) || words[1] !== '-') return null
+        const start = i + header[0].length
+        const end = new RegExp(`^${header[2]}(?:\\r?\\n|$)`, 'm').exec(command.slice(start))
+        if (!end) return null
+        parts.push({ words, literals, separator: '\n', script: command.slice(start, start + end.index) })
+        words = []
+        literals = []
+        i = start + end.index + end[0].length - 1
+        continue
+      }
       if (command[i + 1] === '&') {
         i++
         if (/\d/.test(command[i + 1] ?? '')) i++
@@ -248,7 +262,11 @@ export function isAutoApprovableCodeCommand(
       return false
     cwd = pathFor(windows ? workdir.toLowerCase() : workdir, cwd)
   }
-  if (/\b(?:os\.(?:remove|unlink|rmdir)|shutil\.rmtree|fs(?:\.promises)?\.(?:rm|rmdir|unlink)(?:Sync)?)\s*\(|\.unlink\s*\(/i.test(command))
+  if (
+    /\b(?:os\.(?:remove|unlink|rmdir|kill|killpg)|shutil\.rmtree|fs(?:\.promises)?\.(?:rm|rmdir|unlink)(?:Sync)?)\s*\(|\.unlink\s*\(/i.test(
+      command
+    )
+  )
     return false
   if (
     /\bdefaults\s+(?:write|delete|import)\b|\blaunchctl\s+(?:setenv|unsetenv|load|unload|bootstrap|bootout|enable|disable|kickstart)\b|\b(?:systemctl|netsh|networksetup|scutil|set-service|start-service|stop-service)\b/i.test(
@@ -315,6 +333,8 @@ export function isAutoApprovableCodeCommand(
   for (const part of parts) {
     const [first, ...args] = part.words
     const name = first.toLowerCase().replace(/\.exe$/, '')
+    if (part.script !== undefined && directories.some((dir) => !safeInlineScript(part.script!, dir, root, approvedDirectories)))
+      return false
     const inlineIndex = SCRIPTING.test(name) ? args.findIndex((_, i) => i > 0 && /^(?:-[ec])$/.test(args[i - 1])) : -1
     // Start-Process usa el runtime instalado fuera del proyecto, pero su cwd y sus scripts/argumentos
     // siguen sujetos a la política de carpeta. Un ejecutable arbitrario exterior no recibe esta excepción.
@@ -354,8 +374,16 @@ export function isAutoApprovableCodeCommand(
         // Opciones de lectura de cmd: /b, /s, /i… no designan rutas absolutas.
         if (windows && /^(?:dir|findstr|where|tree)$/.test(name) && /^\/[a-z?]{1,2}$/i.test(a)) return false
         if (localRuntime && i + 1 === runtimeIndex) return false
-        if (part.literals[i + 1] && name === 'grep' && /^-(?:o|e)$/.test(part.words[i] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
+        if (
+          part.literals[i + 1] &&
+          name === 'grep' &&
+          /^-(?:o|oh|ho|e)$/.test(part.words[i] ?? '') &&
+          !/[\\/$`]/.test(a.replace(/\\\./g, '')) &&
+          !sensitive(a)
+        )
           return false
+        // La etiqueta de un bucle (`echo "$f:"`) no es una ruta ni un proveedor.
+        if (part.literals[i + 1] && name === 'echo' && /^\$[a-z_]\w*:$/i.test(a)) return false
         if (
           part.literals[i + 1] &&
           name === 'curl' &&
