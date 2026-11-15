@@ -59,6 +59,28 @@ interface Part {
 /** Marca de una sustitución de comando ya extraída. */
 const SUBST = '\u0001'
 
+/** `$(cat <<'EOF' … EOF)` solo produce texto literal, incluso si el cuerpo contiene paréntesis o comillas. */
+function literalHeredocAt(command: string, start: number): { text: string; close: number } | null {
+  const header = /^\$\([ \t]*cat[ \t]+<<(-?)[ \t]*(['"])([A-Za-z_]\w*)\2[ \t]*\r?\n/.exec(command.slice(start))
+  if (!header) return null
+  const lines: string[] = []
+  let pos = start + header[0].length
+  while (pos < command.length) {
+    const eol = command.indexOf('\n', pos)
+    if (eol < 0) return null
+    const raw = command.slice(pos, eol).replace(/\r$/, '')
+    const line = header[1] ? raw.replace(/^\t+/, '') : raw
+    if (line === header[3]) {
+      const end = /^[ \t\r\n]*\)/.exec(command.slice(eol + 1))
+      // Otra orden, argumento o redirección obliga a analizar la sustitución completa.
+      return end ? { text: lines.join('\n').replace(/\n+$/, ''), close: eol + end[0].length } : null
+    }
+    lines.push(line)
+    pos = eol + 1
+  }
+  return null
+}
+
 function matchClose(s: string, start: number, open: string, close: string): number {
   let depth = 0
   let quote = ''
@@ -113,9 +135,16 @@ function parse(command: string, escapes = true): Part[] | null {
     parts.push({ ...emptyPart(), group })
   }
   /** `$…` en `i` (fuera de comillas simples). Devuelve el último índice consumido, o -2 si no se puede leer. */
-  const dollar = (i: number): number => {
+  const dollar = (i: number, inDouble = false): number => {
     const next = command[i + 1] ?? ''
     if (next === '(') {
+      // Entre comillas no hay separación de palabras ni expansión de comodines sobre la salida de cat.
+      const literal = escapes && inDouble ? literalHeredocAt(command, i) : null
+      if (literal) {
+        word += literal.text
+        started = true
+        return literal.close
+      }
       const close = matchClose(command, i + 1, '(', ')')
       if (close < 0) return -2
       const inner = command.slice(i + 2, close)
@@ -211,7 +240,7 @@ function parse(command: string, escapes = true): Part[] | null {
         const d = command[j]
         if (d === '\\' && escapes && /["\\$`]/.test(command[j + 1] ?? '')) word += command[++j]
         else if (d === '$') {
-          j = dollar(j)
+          j = dollar(j, true)
           if (j === -2) return null
         } else if (d === '`') j = backtick(j, true)
         else word += d
@@ -252,7 +281,7 @@ function parse(command: string, escapes = true): Part[] | null {
       i = eol - 1
       continue
     }
-    if (c === ' ' || c === '\t' || c === '\r' || c === ',') {
+    if (c === ' ' || c === '\t' || c === '\r' || (c === ',' && !escapes)) {
       flush()
       continue
     }
@@ -792,9 +821,25 @@ const SECRET_ENV_RE =
 function checkReadSecrets(part: Part, cwds: Cwds, ctx: Ctx): void {
   const { name, index } = programOf(part)
   const after = part.words.slice(index + 1)
+  if (!ctx.escapes) {
+    for (const w of part.words) {
+      // Sin metadata.shell Windows también debe reconocer las expansiones de cmd.
+      const names = [
+        ...(ctx.cmdShell || ctx.windows ? [...w.text.matchAll(/%([A-Za-z_]\w*)%|!([A-Za-z_]\w*)!/g)].map((m) => m[1] ?? m[2]) : []),
+        ...(!ctx.cmdShell && w.dynamic ? [...w.text.matchAll(/\$(?:\{env:(\w+)\}|env:(\w+))/gi)].map((m) => m[1] ?? m[2]) : [])
+      ]
+      if (names.some((n) => SECRET_ENV_RE.test(n))) doubt(ctx, 'muestra una variable con credenciales')
+    }
+    if (
+      /^(?:get-item|gi|get-content|gc|cat|type|get-childitem|gci|dir|ls|get-itemproperty|gp)$/.test(name) &&
+      after.some((w) => /^env:/i.test(w.text) && SECRET_ENV_RE.test(w.text.slice(4)))
+    )
+      doubt(ctx, 'muestra una variable con credenciales')
+  }
   if (/^(?:echo|printf|write-output|write-host|print|puts)$/.test(name)) {
     // echo/printf de una variable con nombre de secreto saca su valor.
-    if (after.some((w) => /^\$\{?\w+/.test(w.text) && SECRET_ENV_RE.test(w.text))) doubt(ctx, 'muestra una variable con credenciales')
+    if (after.some((w) => w.dynamic && /^\$\{?\w+/.test(w.text) && SECRET_ENV_RE.test(w.text)))
+      doubt(ctx, 'muestra una variable con credenciales')
     return
   }
   if (name === 'printenv') {
@@ -1304,6 +1349,9 @@ function positional(args: Word[], valued: RegExp | null, cmdFlags = false): Word
   return out
 }
 
+/** BSD sed: el argumento vacío tras `-i` es el sufijo de copia, no el guion ni un archivo. */
+const sedArgs = (args: Word[]): Word[] => args.filter((a, i) => a.text !== '' || args[i - 1]?.text !== '-i')
+
 function optionValues(args: Word[], names: RegExp): Word[] {
   const out: Word[] = []
   for (let i = 0; i < args.length; i++) {
@@ -1497,6 +1545,7 @@ function checkProjectInput(raw: string, cwds: Cwds, ctx: Ctx): void {
 
 const DEV_TOOLS =
   /^(?:eslint|prettier|tsc|jest|vitest|mocha|ava|jasmine|pytest|ruff|black|flake8|mypy|isort|tox|nox|biome|oxlint|stylelint|webpack|vite|rollup|esbuild|parcel|babel|swc|rspack|turbo|nx|gulp|grunt|rake|rspec|phpunit|ctest|tsx|cypress|playwright|storybook|tidy|shellcheck|hadolint|yamllint|markdownlint|htmlhint|jsonlint|tflint|golangci-lint)$/
+const DEPLOY_TASK = /(?:^|[\\/:._ -])(?:deploy|publish|release|migrate|reset|prod|destroy|db:drop|flush)(?:[\\/:._ -]|$)/i
 const CONFIG_OPTION =
   /^(?:--(?:config(?:-file)?|configuration|rcfile|rulesdir|plugin|plugins|loader|experimental-loader|experimental-policy|import|require|bootstrap|globalSetup|globalTeardown|setupFiles|setupFilesAfterEnv|filter|lua-filter|pdf-engine|defaults|template|reference-doc|resource-path|include-before-body|include-after-body|include-in-header|manifest-path|project|tsconfig|gulpfile|makefile|file|cwd|dir|directory|project-directory|package-path|init-script|init-file|rootDir|root-dir|prefix)|-(?:c|C|r|R|I|L|F|S|f|t|p))$/i
 const OUTPUT_OPTION =
@@ -1524,6 +1573,8 @@ function checkArguments(name: string, args: Word[], cwds: Cwds, ctx: Ctx): void 
     if (
       val !== undefined &&
       CONFIG_OPTION.test(key) &&
+      (name !== 'sed' || /^(?:-f|--file)$/.test(key)) &&
+      (!/^(?:awk|gawk|nawk|mawk)$/.test(name) || /^(?:-[filE]|--(?:file|include|load))$/.test(key)) &&
       (key.startsWith('--') || codeTool || /^(?:pandoc|awk|gawk|nawk|mawk|sed|less)$/.test(name))
     ) {
       // Cargo --config acepta también código en línea; nunca se interpreta como nombre de archivo.
@@ -1562,8 +1613,7 @@ function checkArguments(name: string, args: Word[], cwds: Cwds, ctx: Ctx): void 
       '--config -c --rulesdir --plugin --plugins --loader --require -r --import --bootstrap --globalSetup --globalTeardown --setupFiles --setupFilesAfterEnv --project -p --tsconfig --gulpfile --file -f --output -o --outDir --outFile --out-dir --out-file --outputFile --output-file --outfile --outdir --junitxml --declarationDir --tsBuildInfoFile --cache-location --rootDir --module --moduleResolution --target --lib --jsx --types --port --host --mode --base --format --reporter --reporter-output --testNamePattern -t --testPathPattern --testPathPatterns --testTimeout --maxWorkers --workers --timeout --browser --grep -g --filter --match --include --exclude --ignore --ignore-path --line-length --print-width --tab-width --log-level --log-file --logfile --cov --cov-report --junit-xml --max-warnings --output-path --destination --dest --prefix --compiler-options -F -S -k -n -j -J',
       ctx
     )
-    if (args.some((a) => /(?:^|[:/ -])(?:deploy|publish|release|migrate|destroy|db:drop)(?:[:/ -]|$)/i.test(a.text)))
-      doubt(ctx, 'tarea de despliegue o que pierde trabajo')
+    if (args.some((a) => DEPLOY_TASK.test(a.text))) doubt(ctx, 'tarea de despliegue o que pierde trabajo')
     if (name === 'nx' && args.some((a) => a.text === 'exec')) doubt(ctx, 'nx ejecuta otro programa')
     if (/^(?:pytest)$/.test(name) && args.some((a) => /^-p/.test(a.text))) doubt(ctx, 'carga un complemento de pytest')
     if (args.some((a) => /^(?:--plugin|--require|-r)(?:=|$)/.test(a.text))) doubt(ctx, 'carga un complemento ejecutable')
@@ -1794,8 +1844,8 @@ function analyzeGit(args: Word[], cwds: Cwds, ctx: Ctx): void {
   if (args.some((a) => a.dynamic && /https?:|ssh:|\u0001/.test(a.text))) doubt(ctx, 'git puede enviar datos a un remoto dinámico')
   strictOptions(
     args,
-    '--version --help -h --no-pager --paginate -p --bare --no-optional-locks --oneline --stat --shortstat --numstat --name-only --name-status --cached --staged -S --worktree -W --check --quiet -q --verbose -v --all -a --porcelain --short -s --branch -b --show-toplevel --abbrev-ref --verify --is-inside-work-tree --show-current --decorate --graph --no-color --color --no-ext-diff --no-textconv --exit-code -z --null -n --count --reverse --date-order --topo-order --first-parent --follow --no-merges --no-commit --no-edit --continue --abort --skip --ff-only --no-ff --ff --squash --rebase --prune --tags --dry-run --get --get-all --get-regexp --list -l --global --local --system --show-origin --show-scope --force -f -d -D -M --delete --hard --soft --mixed --amend --allow-empty --check --recurse-submodules',
-    '-C -c -m --message -b -B --format --pretty --max-count --since --until --author --grep --date --output -o --depth --branch --origin --filter --pathspec-from-file --file --default --type --set-upstream-to',
+    '--version --help -h --no-pager --paginate -p --bare --no-optional-locks --oneline --stat --shortstat --numstat --name-only --name-status --cached --staged -S --worktree -W --check --quiet -q --verbose -v --all -a -A --porcelain --short -s --branch -b --show-toplevel --abbrev-ref --verify --is-inside-work-tree --show-current --decorate --graph --no-color --color --no-ext-diff --no-textconv --exit-code -z --null -n --count --reverse --date-order --topo-order --first-parent --follow --no-merges --no-commit --no-edit --continue --abort --skip --ff-only --no-ff --ff --squash --rebase --prune --tags --dry-run --get --get-all --get-regexp --list -l --global --local --system --show-origin --show-scope --force -f -d -D -M --delete --hard --soft --mixed --amend --allow-empty --check --recurse-submodules',
+    '-C -c -m -am --message -b -B --format --pretty --max-count --since --until --author --grep --date --output -o --depth --branch --origin --filter --pathspec-from-file --file --default --type --set-upstream-to',
     ctx
   )
   const list = [...args]
@@ -1988,17 +2038,12 @@ function analyzePackageManager(name: string, args: Word[], cwds: Cwds, ctx: Ctx)
     return doubt(ctx, 'publica o cambia el registro de paquetes')
   if (sub === 'token') return hard(ctx, 'credenciales del registro de paquetes')
   // `npm run deploy|publish|release|migrate`: guion del proyecto que despliega o pierde trabajo. I2.
-  if (
-    /^(?:run|run-script)$/.test(sub) &&
-    /(?:^|[:-])(?:deploy|publish|release|migrate|reset|prod|destroy)(?:[:-]|$)/i.test(pos[1]?.text ?? '')
-  )
-    doubt(ctx, 'guion de despliegue o publicación')
+  if (/^(?:run|run-script)$/.test(sub) && DEPLOY_TASK.test(pos[1]?.text ?? '')) doubt(ctx, 'guion de despliegue o publicación')
   if (sub === 'pkg' && /^(?:set|delete)$/.test(pos[1]?.text ?? '')) doubt(ctx, 'cambia package.json (puede añadir un guion)')
   if (/^(?:config|c)$/.test(sub) && /^(?:set|delete|rm|edit)$/.test(pos[1]?.text ?? '')) return doubt(ctx, 'cambia la configuración de npm')
   if (sub === 'link' && !pos[1]) doubt(ctx, 'npm link instala fuera del proyecto')
   // `yarn deploy`, `pnpm deploy`, `bun run deploy`: atajo de guion que despliega o pierde trabajo. I2/R6.
-  if (/^(?:yarn|pnpm|bun)$/.test(name) && /(?:^|[:-])(?:deploy|publish|release|migrate|reset|prod|destroy)(?:[:-]|$)/i.test(sub))
-    doubt(ctx, 'guion de despliegue o publicación')
+  if (/^(?:yarn|pnpm|bun)$/.test(name) && DEPLOY_TASK.test(sub)) doubt(ctx, 'guion de despliegue o publicación')
   if ((name === 'npm' && /^(?:exec|x)$/.test(sub)) || (/^(?:pnpm|yarn|bun)$/.test(name) && /^(?:dlx|x|exec)$/.test(sub))) {
     const after = args.slice(args.indexOf(pos[0]) + 1)
     // `npm exec -c '…'` también ejecuta texto. R2.
@@ -2207,7 +2252,7 @@ function analyzeWrites(name: string, args: Word[], cwds: Cwds, ctx: Ctx): void {
       return w(positional(args, null))
     case 'sed':
       if (hasFlag(args, /^(?:-i\S*|--in-place\S*|-[a-zA-Z]*i)$/)) {
-        const pos = positional(args, /^(?:-e|--expression|-f|--file|-l)$/)
+        const pos = positional(sedArgs(args), /^(?:-e|--expression|-f|--file|-l)$/)
         w(hasFlag(args, /^(?:-e|--expression|-f|--file)/) ? pos : pos.slice(1))
       }
       return
@@ -2982,6 +3027,7 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
 
   // Intérpretes y envoltorios de shell.
   if (SHELLS.test(name)) {
+    if (args.some((a) => DEPLOY_TASK.test(a.text))) doubt(ctx, 'guion de despliegue o publicación')
     const c = args.findIndex((a) => /^-[A-Za-z]*c/.test(a.text) || /^--command(?:=|$)/.test(a.text))
     strictOptions(args, '-s -i -l --login --noprofile --norc -x -u -e -n --version --help', '-o +o', ctx)
     if (c >= 0) {
@@ -3066,12 +3112,17 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
   if (name === 'bun' && !args.some((a) => /^-[A-Za-z]*[ecp]|^--(?:eval|print)(?:=|$)/.test(a.text)))
     return analyzePackageManager(name, args, cwds, ctx)
   if (SCRIPTING.test(name)) {
+    if (args.some((a) => DEPLOY_TASK.test(a.text))) doubt(ctx, 'guion de despliegue o publicación')
     if (name === 'php' && args.some((a) => /^-d|^-c/.test(a.text))) doubt(ctx, 'php con configuración ejecutable')
-    const codeOption = args.findIndex((a) => /^-[A-Za-z]*[ecpE]|^--(?:eval|print|command)(?:=|$)/.test(a.text))
+    const codeOption = args.findIndex(
+      (a) => /^-[A-Za-z]*[ecpE]|^--(?:eval|print|command)(?:=|$)/.test(a.text) || (name === 'php' && /^-[rBR]/.test(a.text))
+    )
     // -m es módulo de Python; no es código en línea. Node --check y --inspect tampoco.
     if (codeOption >= 0) {
       doubt(ctx, 'intérprete con código en línea')
-      const attached = /^(?:-[A-Za-z]*?[ecpE]|--(?:eval|print|command)=)(.+)$/s.exec(args[codeOption].text)?.[1]
+      const attached =
+        (name === 'php' ? /^-[rBR](.+)$/s.exec(args[codeOption].text)?.[1] : undefined) ??
+        /^(?:-[A-Za-z]*?[ecpE]|--(?:eval|print|command)=)(.+)$/s.exec(args[codeOption].text)?.[1]
       analyzeInline(attached ?? args[codeOption + 1]?.text ?? '', cwds, ctx)
     }
     strictOptions(
@@ -3086,7 +3137,7 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
     for (const r of optionValues(args, /^(?:-r|--require|--import|--loader|-I)$/i))
       if (/[\\/]/.test(r.text) || r.text.startsWith('~')) checkExecutable(r.text, cwds, ctx)
     // `php -r 'código'` y `ruby -e`, `node -e`, `python -c`: código en línea (en php, `-r` es ejecutar, no requerir).
-    const inlineRe = name === 'php' ? /^(?:-r|-R|-c|-e|-p|--eval|--print)$/ : /^(?:-c|-e|-p|--eval|--print|-E|-pe|-ne|-le|-lne|-pi)$/
+    const inlineRe = name === 'php' ? /^(?:-r|-B|-R|-c|-e|-p|--eval|--print)$/ : /^(?:-c|-e|-p|--eval|--print|-E|-pe|-ne|-le|-lne|-pi)$/
     const inline = args.findIndex((a, i) => i < args.length - 1 && !a.quoted && inlineRe.test(a.text))
     if (inline >= 0) {
       const code = args[inline + 1].text
@@ -3186,7 +3237,7 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
   if (name === 'sed') {
     const scripts = [
       ...optionValues(args, /^(?:-e|--expression)$/),
-      ...(hasFlag(args, /^(?:-e|--expression|-f|--file)/) ? [] : positional(args, /^(?:-f|--file|-l|--line-length)$/).slice(0, 1))
+      ...(hasFlag(args, /^(?:-e|--expression|-f|--file)/) ? [] : positional(sedArgs(args), /^(?:-f|--file|-l|--line-length)$/).slice(0, 1))
     ]
     if (scripts.some((s) => /(?:^|[;\n{}]\s*)\d*,?\d*\s*e(?:\s|$)|\/[gimpI\d]*e[gimpI\d]*\s*(?:;|$)|(?:^|[;\n]\s*)w\s+\S/.test(s.text)))
       doubt(ctx, 'sed ejecuta comandos o escribe archivos')
