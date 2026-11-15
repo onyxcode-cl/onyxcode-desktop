@@ -106,6 +106,7 @@ import {
 import { nextSessionsLimit, SESSIONS_PAGE, sessionsMayHaveMore } from '../../../lib/session-paging'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { phoneSafeAttachments } from './mobile-logic'
+import { codeAttachmentPart } from './attachments'
 import { mentionMime } from './mention-mime'
 import { backgroundBusyRoots, effectiveRun, isChildRequest, liveBackgroundChildIds, type RunStatus } from './child-sessions'
 import { acceptFilesIn, acceptSessionIn, parseReviewed, trimReviewed, withBaseline, type ReviewRecord } from './review-logic'
@@ -1046,12 +1047,7 @@ export const useCode = create<CodeState>((set, get) => {
     })
     // Desde el celular solo salen adjuntos `data:` (nunca `file://`: el motor los leería del disco del Mac sin pasar por permisos).
     const fileAttachments = attachments.filter((a): a is FileAttachment => a.kind !== 'element')
-    const attachParts = (isRemoteSurface() ? phoneSafeAttachments(fileAttachments) : fileAttachments).map((a) => ({
-      type: 'file' as const,
-      mime: a.mime,
-      filename: a.name,
-      url: a.url
-    }))
+    const attachParts = (isRemoteSurface() ? phoneSafeAttachments(fileAttachments) : fileAttachments).map(codeAttachmentPart)
     // Elementos del navegador: un texto sintético (con metadata) y, si la casilla está marcada, la captura `data:`. El
     // celular no puede elegir elementos, pero sí reintentar uno: su política solo admite `{type,text}`, así que allí el
     // bloque sale sin `synthetic`/`metadata` (la burbuja lo reconoce igualmente por su marcador).
@@ -1920,7 +1916,7 @@ export const useCode = create<CodeState>((set, get) => {
       }),
 
     setAgent: (agent) => {
-      if (agent !== get().agent && deferCodeChange(() => get().setAgent(agent))) return
+      if (deferCodeChange(() => get().setAgent(agent), agent === get().agent)) return
       lsSet(LS_AGENT, agent)
       set({ agent })
       // «Hacer» con el modo «Solo explorar» rige como «Preguntar siempre» (`effectiveModeFor`): el chip de permisos pasa a decirlo,
@@ -1946,7 +1942,7 @@ export const useCode = create<CodeState>((set, get) => {
         return { roleNotices }
       }),
     setVariant: (variant) => {
-      if (variant !== get().variant && deferCodeChange(() => get().setVariant(variant))) return
+      if (deferCodeChange(() => get().setVariant(variant), variant === get().variant)) return
       set({ variant })
     },
 
@@ -1994,7 +1990,7 @@ export const useCode = create<CodeState>((set, get) => {
 
     // -- Modo de permisos --
     setPermissionMode: async (mode) => {
-      if (mode !== get().permissionMode && deferCodeChange(() => get().setPermissionMode(mode))) return
+      if (deferCodeChange(() => get().setPermissionMode(mode), mode === get().permissionMode)) return
       lsSet(LS_PERM_MODE, mode)
       const selected = get().activeSessionID
       const sessionPermissionModes = selected ? { ...get().sessionPermissionModes, [selected]: mode } : get().sessionPermissionModes
@@ -2007,7 +2003,7 @@ export const useCode = create<CodeState>((set, get) => {
       const sid = get().activeSessionID
       if (!sid) return
       // El bloque del modo se manda ya (también «Solo explorar»: tiene que anular lo que dejó el modo anterior en esta sesión).
-      // No se reenvía si la sesión ya termina con él. Los cambios pedidos durante una respuesta esperan a Detener.
+      // No se reenvía si la sesión ya termina con él. Durante una respuesta se espera al fin del trabajo o a Detener.
       const { client, dir } = activeDir()
       {
         const rf = refreshGlobalConfigRules()
@@ -2653,7 +2649,7 @@ useProviders.subscribe((s) => {
 })
 
 /** Protege también los atajos y los modelos de Planear/Hacer, con el estado visible del compositor. */
-export function deferCodeChange(apply: () => void | Promise<void>): boolean {
+export function deferCodeChange(apply: () => void | Promise<void>, unchanged = false): boolean {
   const { activeSessionID: id, directory } = useCode.getState()
   const client = useServer.getState().client
   return deferWorkingChange(
@@ -2675,6 +2671,7 @@ export function deferCodeChange(apply: () => void | Promise<void>): boolean {
       },
       onError: (globalError) => useCode.setState({ globalError })
     },
-    apply
+    apply,
+    unchanged
   )
 }

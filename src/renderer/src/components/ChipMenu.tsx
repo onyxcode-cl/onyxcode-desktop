@@ -53,6 +53,8 @@ interface Props {
   options: ChipMenuOption[]
   value: string
   onSelect: (id: string) => void
+  /** Permite volver al valor actual para sustituir una elección aplazada mientras se trabaja. */
+  allowReselect?: boolean
   /** Clases de contenedor que ocultan la etiqueta visible (queda `sr-only`), p. ej. la variante de contenedor angosto con sr-only. */
   collapseClass?: string
   /**
@@ -91,6 +93,7 @@ export function ChipMenu({
   options,
   value,
   onSelect,
+  allowReselect = false,
   collapseClass = '',
   shortClass = '',
   chevronClass = '',
@@ -120,7 +123,7 @@ export function ChipMenu({
   const pick = (id: string): void => {
     setOpen(false)
     triggerRef.current?.focus()
-    if (id !== value || options.find((o) => o.id === id)?.action) onSelect(id)
+    if (allowReselect || id !== value || options.find((o) => o.id === id)?.action) onSelect(id)
   }
 
   const onKeyDown = (e: React.KeyboardEvent): void => {

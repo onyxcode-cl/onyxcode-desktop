@@ -4592,3 +4592,19 @@ Automático reconoce las dos lecturas PowerShell de las capturas final2. Aprobar
 Código mide toda la respuesta, como Chat, y oculta el chip vacío mientras aún no llega el nombre del archivo. Presentar conserva los incrementos de los contadores CSS al ocultar las demás láminas y mantiene el contador N / total. El generador de títulos del motor pide y extrae solo el título final en el idioma de la conversación, con respaldo en el propio pedido si solo recibe razonamiento.
 
 Pruebas: `auto-command.test.ts`, `store.permisos.test.ts`, `auto-approver.commands.test.ts`, `WorkFold.integration.test.tsx`, `ToolCard.background.test.tsx`, `presentation-script.test.ts`, `chat-office-prompt.test.ts`, `skill-pptx-chat-parity.test.ts`; motor: `plan-avance.test.ts` (escrituras, eventos, ambigüedad, verificación, fallo y título real) y `todo-files.test.ts`. Resultados y límites en el informe externo de ronda 4.
+
+## F8-B313 — Lecturas de Windows en Automático y cambios pendientes al esperar (V28 ronda 5)
+
+Automático distingue las opciones cortas de `dir`, `findstr`, `where` y `tree` de las rutas absolutas de Windows. Los patrones literales de `Select-String -Pattern` y de los operadores `-match`, `-like`, `-replace` y `-split` admiten corchetes y escapes de regex. Se conservan las tarjetas de rutas exteriores, secretos, borrado, procesos, sistema, descarga con ejecución y patrones con expansión. La web mantiene su permiso actual.
+
+«Esperar a que termine» guarda el cambio de IA o modo y lo aplica al terminar el trabajo de la conversación; mientras espera, el selector muestra el valor vigente. Una nueva elección sustituye la pendiente, incluso si vuelve al modo actual. Esc o cerrar el diálogo descartan la elección; «Detener y cambiar» mantiene su parada y comprobación de fin. Chat, Código y Overdrive usan la misma espera, sin modificar el motor.
+
+Pruebas: fixture `auto-command-round5.ts`, replay por Código (API v1/v2, entrada antes/después del permiso) y Overdrive junto con las rondas 2–4; `working-change.test.tsx` comprueba espera, parada, cancelación, última elección, selectores reales y cambio inmediato sin trabajo, incluidos los modos de Overdrive con Mac/Windows simulados.
+
+## F8-B314 — Adjuntos desconocidos sin bloquear Código (V28 ronda 6)
+
+Código de escritorio clasifica los adjuntos con las reglas de Chat y normaliza los textos a `text/plain`. Los binarios y tipos desconocidos se envían como una nota con nombre y ruta real para leerlos con herramientas; sin ruta, solo se comparte el nombre. No se cargan sus bytes como `data:`. Imágenes y PDF conservan su envío, y el celular mantiene su validación actual.
+
+El motor convierte las partes de archivo sin modalidad admitida en texto UTF-8 legible o una nota breve de binario. Limita el texto a 1 MiB y avisa si lo recorta. El filtro se aplica también al historial antiguo en cada petición, sin migrar datos; el título comparte ese camino y la compactación actual ya arma un resumen textual. Requiere incluir las fuentes corregidas del motor en el próximo armado.
+
+Pruebas: `attachments.test.ts` y `store.attachments.test.ts` de Código (normalización, referencias Mac/Windows, archivo pegado, imagen, PDF, cola y celular), regresiones de adjuntos de Chat y móvil, y textos de la PWA regenerados. Motor: `transform-attachments.test.ts`, `transform.test.ts` y `message-v2.test.ts` (texto, binario, markdown, recorte UTF-8, historial antiguo y conversores reales de los SDK con fetch falso, sin red).

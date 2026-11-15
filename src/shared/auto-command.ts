@@ -351,6 +351,8 @@ export function isAutoApprovableCodeCommand(
         if (i === inlineIndex) return directories.some((dir) => !safeInlineScript(a, dir, root, approvedDirectories))
         if (a === '/' && part.words.some((w) => /^\[math\]::/i.test(w))) return false
         if (name === 'cmd' && /^\/[cdsq]$/i.test(a)) return false
+        // Opciones de lectura de cmd: /b, /s, /i… no designan rutas absolutas.
+        if (windows && /^(?:dir|findstr|where|tree)$/.test(name) && /^\/[a-z?]{1,2}$/i.test(a)) return false
         if (localRuntime && i + 1 === runtimeIndex) return false
         if (part.literals[i + 1] && name === 'grep' && /^-(?:o|e)$/.test(part.words[i] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
           return false
@@ -371,9 +373,13 @@ export function isAutoApprovableCodeCommand(
           !sensitive(a)
         )
           return false
-        // El operando literal de -match/-notmatch es una expresión regular, no un proveedor de PowerShell.
-        if (part.literals[i + 1] && /^-(?:c|i)?(?:not)?match$/i.test(part.words[i] ?? '') && !/[\\/$`]/.test(a) && !sensitive(a))
-          return false
+        // Un patrón literal no abre un archivo: sus corchetes y escapes (\d, \w, \s) no son rutas.
+        // Los operandos dinámicos y las expansiones siguen preguntando; -Path conserva safeArgument.
+        if (
+          /^-(?:c|i)?(?:not)?(?:match|like|replace|split)$/i.test(part.words[i] ?? '') ||
+          (/^(?:select-string|sls)$/.test(name) && /^-pattern$/i.test(part.words[i] ?? ''))
+        )
+          return !part.literals[i + 1] || /[/$`]/.test(a) || sensitive(a)
         // El segundo argumento literal de Matches es el patrón regex, no una ruta del proyecto.
         // No se extiende a cadenas que parecen rutas ni a variables que puedan ocultar una ruta sensible.
         if (

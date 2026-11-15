@@ -570,9 +570,11 @@ export function setChatModel(model: ModelRef, free = false): void {
         subscribe: (listener) => {
           const offSessions = useSessions.subscribe(listener)
           const offChat = useChat.subscribe(listener)
+          const offServer = useServer.subscribe(listener)
           return () => {
             offSessions()
             offChat()
+            offServer()
           }
         },
         onError: (error) => {

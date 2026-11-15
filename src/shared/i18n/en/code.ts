@@ -391,6 +391,8 @@ export const code = {
   'code.picker.openBadge': 'Open',
   'code.composer.readFailed': 'Couldn’t read the file',
   'code.composer.fileDefault': 'file',
+  'code.composer.fileReference': 'Attached file: {name}\nPath: {path}\nYou can open it with the project tools.',
+  'code.composer.fileReferenceNoPath': 'Attached file: {name}. No local path is available; its contents are not included.',
   'code.queue.queued': 'queued',
   'code.queue.attachments': '+{count} attachment(s)',
   'code.queue.up': 'Move up',
