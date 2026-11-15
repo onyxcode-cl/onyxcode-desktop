@@ -36,7 +36,7 @@ export interface RemoteBackend {
   messages(sessionId: string, limit: number, before?: string): Promise<RequestResults['session.messages']>
   prompt(sessionId: string, text: string): Promise<void>
   abort(sessionId: string): Promise<void>
-  replyPermission(requestId: string, reply: Reply): Promise<void>
+  replyPermission(requestId: string, reply: Reply, message?: string): Promise<void>
 }
 
 /** Ejecuta una petición YA VALIDADA (`parseClientFrame`) y devuelve la trama de respuesta. Nunca lanza. */
@@ -62,7 +62,7 @@ export async function dispatch(frame: RequestFrame, backend: RemoteBackend): Pro
         await backend.abort(frame.p.sessionId)
         return { t: 'res', id, ok: true, m: 'session.abort', result: { aborted: true } }
       case 'permission.reply':
-        await backend.replyPermission(frame.p.requestId, frame.p.reply)
+        await backend.replyPermission(frame.p.requestId, frame.p.reply, frame.p.message)
         return { t: 'res', id, ok: true, m: 'permission.reply', result: { replied: true } }
       default:
         return fail('bad-request')
@@ -247,7 +247,7 @@ export class SidecarBackend implements RemoteBackend, EventSource {
     if ((res as { error?: unknown }).error) throw new RemoteError('failed')
   }
 
-  async replyPermission(requestId: string, reply: Reply): Promise<void> {
+  async replyPermission(requestId: string, reply: Reply, message?: string): Promise<void> {
     if (reply !== 'once' && reply !== 'reject') throw new RemoteError('bad-request')
     const client = await this.d.getClient()
     await this.refresh()
@@ -257,7 +257,8 @@ export class SidecarBackend implements RemoteBackend, EventSource {
       if (!found) continue
       if (!this.scope.has(found.sessionID)) throw new RemoteError('not-found')
       if (!toRemotePermission(found).actionable) throw new RemoteError('forbidden')
-      const out = await client.permission.reply({ requestID: requestId, directory, reply })
+      const note = reply === 'reject' && message?.trim() ? { message: message.trim() } : {}
+      const out = await client.permission.reply({ requestID: requestId, directory, reply, ...note })
       if ((out as { error?: unknown }).error) throw new RemoteError('failed')
       return
     }

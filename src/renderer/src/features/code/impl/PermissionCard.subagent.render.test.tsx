@@ -70,16 +70,16 @@ describe('permiso de un ayudante (escritorio)', () => {
   it('lo rotula con el nombre del ayudante y no ofrece «Permitir siempre»', () => {
     paint(createElement(PermissionCard, { request: perm('kid'), root: '/proj' }))
     expect(host.textContent).toContain('El ayudante «Revisar logs» pide permiso para ejecutar un comando')
-    expect(host.textContent).not.toContain('Permitir siempre')
-    expect(host.textContent).toContain('Rechazar')
-    expect(host.textContent).toContain('Permitir una vez')
+    expect(host.textContent).not.toContain('no volver a preguntar')
+    expect(host.textContent).toContain('No')
+    expect(host.textContent).toContain('Permitir')
   })
 
   it('el de la propia raíz queda como siempre: «El agente quiere…» y con «Permitir siempre»', () => {
     paint(createElement(PermissionCard, { request: perm('root'), root: '/proj' }))
     expect(host.textContent).toContain('El agente quiere ejecutar un comando')
     expect(host.textContent).not.toContain('El ayudante')
-    expect(host.textContent).toContain('Permitir siempre')
+    expect(host.textContent).toContain('no volver a preguntar')
   })
 
   it('sin nombre conocido dice «Un ayudante…»', () => {
@@ -94,7 +94,7 @@ describe('permiso de un ayudante (celular)', () => {
     setPlatform('remote')
     paint(createElement(PermissionCard, { request: perm('kid', { permission: 'webfetch', metadata: {} }), root: '/proj' }))
     expect(host.textContent).toContain('El ayudante «Revisar logs» pide permiso para acceder a una URL')
-    expect(host.textContent).not.toContain('Permitir siempre')
+    expect(host.textContent).not.toContain('no volver a preguntar')
   })
 })
 

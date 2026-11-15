@@ -1231,7 +1231,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
     folder: absPath,
     fullAccess: bool,
     requestId: str({ max: 200, min: 1, pattern: /^[A-Za-z0-9_-]+$/ })
-  })
+  }),
+  'tasks:auto:personApproved': obj({ sessionId })
 }
 
 const exportPart = tagged('kind', {

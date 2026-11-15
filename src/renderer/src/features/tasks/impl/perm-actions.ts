@@ -21,7 +21,7 @@ export interface PermAction {
   /** Respuesta que viaja al motor (`note` es un rechazo con un mensaje del usuario). */
   reply: 'once' | 'always' | 'reject'
   variant: PermVariant
-  labelKey: 'tasksComputer.perm.once' | 'tasksComputer.perm.always' | 'tasksComputer.perm.reject' | 'tasksComputer.perm.rejectNote'
+  labelKey: 'perm.allow' | 'perm.allowProject' | 'perm.no' | 'perm.noteLabel'
   /** Ocupa toda la fila. */
   fullWidth: boolean
   /** `always` lleva como `title` el texto de `alwaysHint(request)`. */
@@ -35,11 +35,12 @@ export interface PermActionsInput {
   noting: boolean
 }
 
+/** V29: «Permitir», «Permitir y no volver a preguntar en este proyecto», «No» y su campo «¿Qué hacer distinto?». */
 const LABEL = {
-  once: 'tasksComputer.perm.once',
-  always: 'tasksComputer.perm.always',
-  reject: 'tasksComputer.perm.reject',
-  note: 'tasksComputer.perm.rejectNote'
+  once: 'perm.allow',
+  always: 'perm.allowProject',
+  reject: 'perm.no',
+  note: 'perm.noteLabel'
 } as const
 
 export function permActions({ danger, canAlways, kind, noting }: PermActionsInput): PermAction[] {

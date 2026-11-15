@@ -11,6 +11,8 @@ import {
   PermCardFrame,
   hasHiddenChars,
   PermCommand,
+  PermNoteField,
+  PermOutside,
   PermPreview,
   PermScope,
   previewFits,
@@ -19,13 +21,14 @@ import {
 } from '../../../components/permission/PermissionShell'
 import { isProtectedPermission } from '@shared/protected-path'
 import { readPermissionSuggestion } from '@shared/permission-suggestion'
+import { outsideDirectories, subcommandRules } from '@shared/auto-review'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
 import { DiffStats, relPath } from './ToolCard'
 import { useCode } from './store'
 import { useSubagentOfRequest } from './subagent-of-request'
-import type { PendingPermission } from './types'
+import type { PendingPermission, PermissionReplyExtra } from './types'
 
 const PERMISSION_LABEL: Record<string, MsgKey> = {
   edit: 'code.perm.edit',
@@ -58,19 +61,23 @@ export function PermissionCardDesk({
   const busyRef = useRef(false)
   const mac = isMacPlatform()
   const sub = useSubagentOfRequest(request.sessionID)
+  const [note, setNote] = useState('')
   const run = useCallback(
-    (r: 'once' | 'always' | 'reject'): void => {
+    (r: 'once' | 'always' | 'reject', extra?: PermissionReplyExtra): void => {
       if (busyRef.current) return
       busyRef.current = true
       setBusy(true)
-      void reply(request, r).finally(() => {
+      void reply(request, r, false, extra).finally(() => {
         busyRef.current = false
         setBusy(false)
       })
     },
     [reply, request]
   )
-  const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => run(kind), busy })
+  // «No» lleva el texto de «¿Qué hacer distinto?» (si lo hay): la IA lo recibe y sigue.
+  const reject = (): void => run('reject', note.trim() ? { message: note.trim() } : undefined)
+  const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => (kind === 'reject' ? reject() : run(kind)), busy })
+  const reviewNote = useCode((s) => s.reviewNotes[request.id])
 
   const tool = useCode((s) =>
     request.tool
@@ -108,6 +115,14 @@ export function PermissionCardDesk({
   const label = labelKey ? t(labelKey) : request.permission
   const stats = diff ? diffStats(diff) : null
   const patterns = request.patterns.filter((p) => p && p !== command)
+  const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
+  // Contrato V29 §1: reglas por parte del comando; sin `subcommands` (motor viejo) se conserva el «siempre» de antes.
+  const rules = shell ? subcommandRules(md) : null
+  const outside = shell
+    ? outsideDirectories(md)
+    : request.permission === 'external_directory' && command
+      ? [...new Set(patterns.map((p) => p.replace(/[\\/]\*$/, '')))]
+      : []
   const Icon =
     request.permission === 'bash' || request.permission === 'bgshell_start'
       ? SquareTerminal
@@ -116,23 +131,27 @@ export function PermissionCardDesk({
         : ShieldAlert
 
   const actions: PermAction[] = [
-    // «Siempre» no se ofrece a un ayudante: ampliaría lo que la persona permitió a la conversación.
-    ...(sub.child || protectedPath
+    // «No volver a preguntar» no se ofrece a un ayudante (ampliaría lo que la persona permitió) ni sin reglas que guardar.
+    ...(sub.child || protectedPath || (rules !== null && !rules.length)
       ? []
       : [
           {
-            label: t('code.perm.always'),
+            label: t('perm.allowProject'),
             variant: 'secondary' as const,
             side: 'left' as const,
             permit: true,
             act: 'always' as const,
-            title: request.always.length ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') }) : undefined,
-            onClick: () => run('always')
+            title: rules?.length
+              ? t('perm.allowProjectRules', { rules: rules.join(', ') })
+              : request.always.length
+                ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') })
+                : undefined,
+            onClick: () => run('always', rules?.length ? { rules } : undefined)
           }
         ]),
-    { label: t('code.perm.reject'), variant: 'secondary', side: 'right', kbd: t('code.perm.kbdReject'), onClick: () => run('reject') },
+    { label: t('perm.no'), variant: 'secondary', side: 'right', kbd: t('code.perm.kbdReject'), onClick: reject },
     {
-      label: t('code.perm.once'),
+      label: t('perm.allow'),
       variant: 'primary',
       side: 'right',
       permit: true,
@@ -161,6 +180,13 @@ export function PermissionCardDesk({
       <span className="sr-only"> {t('code.perm.suggestion.note')}</span>
     </p>
   ) : undefined
+  // Tope de bloqueos del revisor automático: la persona ve por qué lo habría frenado.
+  const reviewNode = reviewNote ? (
+    <p role="note" className="flex items-start gap-1.5 text-meta text-warning">
+      <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+      {t('perm.reviewNote', { reason: reviewNote })}
+    </p>
+  ) : undefined
 
   const details = (
     <>
@@ -181,6 +207,9 @@ export function PermissionCardDesk({
         <div className="overflow-hidden rounded-ctl bg-code ring-1 ring-inset ring-border">
           <DiffView patch={diff} path={file} hideFileHeaders className="max-h-80" />
         </div>
+      )}
+      {rules && rules.length > 0 && (
+        <p className="break-all font-mono text-meta text-muted">{t('perm.allowProjectRules', { rules: rules.join(', ') })}</p>
       )}
       {description && (
         <div className="rounded-ctl bg-hover/40 px-3 py-2 ring-1 ring-inset ring-border/70">
@@ -214,9 +243,11 @@ export function PermissionCardDesk({
           : t('code.perm.agentWants', { label })
       }
       preview={
-        previewNode || suggestionNode ? (
+        previewNode || suggestionNode || reviewNode || outside.length ? (
           <>
             {previewNode}
+            <PermOutside dirs={outside} />
+            {reviewNode}
             {suggestionNode}
           </>
         ) : undefined
@@ -226,6 +257,7 @@ export function PermissionCardDesk({
       onKeyDown={onKeyDown}
     >
       <PermActions actions={actions} armed={armed} busy={busy} />
+      <PermNoteField value={note} onChange={setNote} onSubmit={reject} busy={busy} />
     </PermCardFrame>
   )
 }

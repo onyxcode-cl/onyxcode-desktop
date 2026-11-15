@@ -552,6 +552,7 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'tasks:auto:revoke': 'M',
   'tasks:auto:clearLog': 'D', // borra el registro de auditoría
   'tasks:auto:consider': 'D',
+  'tasks:auto:personApproved': 'X', // solo la ventana principal: corta la racha de bloqueos del revisor
 
   // ── extras ──
   'extras:getPrefs': 'R',

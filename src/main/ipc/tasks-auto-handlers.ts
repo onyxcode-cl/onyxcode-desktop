@@ -35,9 +35,8 @@ export function registerTasksAutoHandlers(ctx: TasksIpcContext): TasksSubmodule 
   handle('tasks:auto:set', (req) => approver.set(req))
   handle('tasks:auto:revoke', ({ id }) => approver.revoke(id))
   handle('tasks:auto:clearLog', () => approver.clearLog())
-  handle('tasks:auto:consider', async ({ folder, fullAccess, requestId }) => ({
-    auto: await approver.considerOne(folder, fullAccess, requestId)
-  }))
+  handle('tasks:auto:consider', async ({ folder, fullAccess, requestId }) => approver.considerOne(folder, fullAccess, requestId))
+  handle('tasks:auto:personApproved', ({ sessionId }) => approver.personApproved(sessionId))
 
   return {}
 }

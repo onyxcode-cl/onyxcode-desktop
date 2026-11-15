@@ -1535,7 +1535,10 @@ export interface TasksInvokeContract {
   'tasks:auto:revoke': { req: { id: string }; res: AutoModeState }
   'tasks:auto:clearLog': { req: void; res: AutoModeState }
   /** El renderer pide considerar una petición de acceso a apps a mitad de tarea (vía rápida). */
-  'tasks:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean } }
+  /** `note`: motivo del revisor por IA cuando ya se llegó al tope de bloqueos y la tarjeta queda para la persona (V29). */
+  'tasks:auto:consider': { req: { folder: string; fullAccess: boolean; requestId: string }; res: { auto: boolean; note?: string } }
+  /** V29: la persona aprobó una petición de esta tarea; se corta la racha de bloqueos seguidos del revisor. */
+  'tasks:auto:personApproved': { req: { sessionId: string }; res: void }
 }
 
 export interface TasksEventContract {
@@ -1754,7 +1757,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'tasks:auto:set',
   'tasks:auto:revoke',
   'tasks:auto:clearLog',
-  'tasks:auto:consider'
+  'tasks:auto:consider',
+  'tasks:auto:personApproved'
 ] as const satisfies readonly TasksInvokeChannel[]
 
 export const TASKS_EVENT_CHANNELS = [

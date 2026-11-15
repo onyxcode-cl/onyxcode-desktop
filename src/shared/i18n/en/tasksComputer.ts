@@ -285,7 +285,7 @@ export const tasksComputer = {
   'tasksComputer.perm.details': 'View details',
   'tasksComputer.perm.more': '+{more} more',
   'tasksComputer.perm.review': 'Review',
-  'tasksComputer.perm.alwaysShort': 'Always',
+  'tasksComputer.perm.alwaysShort': "Don't ask again",
   'tasksComputer.perm.scopeFolder': 'Folder: {folder}',
   'tasksComputer.perm.sandboxOn': 'Limited to your folder',
   'tasksComputer.perm.sandboxOff': 'Full control: no folder limit',

@@ -35,14 +35,9 @@ describe('permActions: orden y variantes', () => {
   it('otra carpeta: la tarjeta es FolderRequestCard, sin acciones aquí', () => {
     expect(permActions({ danger: false, canAlways: true, kind: 'folder', noting: false })).toEqual([])
   })
-  it('textos: reutiliza las claves de siempre, sin textos nuevos', () => {
+  it('textos V29: las opciones comunes de la tarjeta (Permitir, No y su campo, no volver a preguntar)', () => {
     const a = permActions({ danger: false, canAlways: true, noting: false })
-    expect(a.map((x) => x.labelKey)).toEqual([
-      'tasksComputer.perm.once',
-      'tasksComputer.perm.reject',
-      'tasksComputer.perm.rejectNote',
-      'tasksComputer.perm.always'
-    ])
+    expect(a.map((x) => x.labelKey)).toEqual(['perm.allow', 'perm.no', 'perm.noteLabel', 'perm.allowProject'])
   })
 })
 

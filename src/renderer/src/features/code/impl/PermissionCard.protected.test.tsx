@@ -33,9 +33,9 @@ describe('tarjeta de permiso de Code con ruta protegida', () => {
     g.window = { api: { platform: 'darwin' } }
     const html = renderToStaticMarkup(<PermissionCardDesk request={perm()} root="/proj" hotkeys />)
     expect(html).toContain(AVISO)
-    expect(html).not.toContain('Permitir siempre')
-    expect(html).toContain('Permitir una vez')
-    expect(html).toContain('Rechazar')
+    expect(html).not.toContain('no volver a preguntar')
+    expect(html).toContain('>Permitir<')
+    expect(html).toContain('>No<')
   })
 
   it('escritorio: una petición normal conserva «Permitir siempre» y no lleva el aviso', () => {
@@ -44,7 +44,7 @@ describe('tarjeta de permiso de Code con ruta protegida', () => {
       <PermissionCardDesk request={perm({ metadata: { filepath: '/proj/a.ts' }, always: ['a.ts'] })} root="/proj" hotkeys />
     )
     expect(html).not.toContain(AVISO)
-    expect(html).toContain('Permitir siempre')
+    expect(html).toContain('no volver a preguntar')
   })
 
   it('una marca que no es el booleano true no cuenta', () => {
@@ -53,18 +53,18 @@ describe('tarjeta de permiso de Code con ruta protegida', () => {
       <PermissionCardDesk request={perm({ metadata: { lazunoxProtegido: 'true' }, always: ['x'] })} root="/proj" hotkeys />
     )
     expect(html).not.toContain(AVISO)
-    expect(html).toContain('Permitir siempre')
+    expect(html).toContain('no volver a preguntar')
   })
 
   it('con `always: []` y sin marca tampoco se rompe', () => {
     g.window = { api: { platform: 'darwin' } }
     const html = renderToStaticMarkup(<PermissionCardDesk request={perm({ metadata: {}, always: [] })} root="/proj" />)
-    expect(html).toContain('Permitir una vez')
+    expect(html).toContain('>Permitir<')
   })
 
   it('celular: también avisa y no ofrece «siempre»', () => {
     g.window = { api: { platform: 'ios' } }
     const html = renderToStaticMarkup(<PermissionCard request={perm()} root="/proj" />)
-    expect(html).not.toContain('Permitir siempre')
+    expect(html).not.toContain('no volver a preguntar')
   })
 })

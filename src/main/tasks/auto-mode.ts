@@ -7,15 +7,21 @@
  * cerrada y Control del PC, navegador y comandos del equipo conservan su aprobación propia.
  *
  * Decisión del usuario (2026-09-28): Modo auto es SOLO motor de reglas, sin clasificador por modelo.
+ * V29: el comando de terminal con carpeta conocida sale en tres caminos (`classifyAutoCommand`): `allow`, `ask` (lista
+ * dura, siempre tarjeta) o `review` (lo dudoso: lo revisa la IA del motor, ver `@shared/auto-review`).
  */
 import type { AppTier, AutoRuleId } from '@shared/ipc-tasks'
 import { looksLikeInjection } from '@shared/injection-patterns'
 import { NEVER_ALONE_PERMISSIONS as NEVER_ALONE_LIST } from '@shared/permission-persist'
-import { isAutoApprovableCodeCommand } from '@shared/auto-command'
+import { classifyAutoCommand } from '@shared/auto-command'
 import { isProtectedPermission } from '@shared/protected-path'
 export { looksLikeInjection } from '@shared/injection-patterns'
 
-export type AutoVerdict = { decision: 'allow'; rule: AutoRuleId; summary: string } | { decision: 'ask'; reason: string }
+export type AutoVerdict =
+  | { decision: 'allow'; rule: AutoRuleId; summary: string }
+  | { decision: 'ask'; reason: string }
+  /** V29: comando dudoso que revisa la IA (`POST /permission/{id}/review`). */
+  | { decision: 'review'; reason: string }
 
 function allow(rule: AutoRuleId, summary: string): AutoVerdict {
   return { decision: 'allow', rule, summary }
@@ -313,8 +319,14 @@ export function classifyPermission(
   if (permission === 'bash' || permission === 'bgshell_start') {
     const command = typeof metadata?.command === 'string' ? metadata.command : undefined
     if (ctx.projectRoot) {
-      if (!isAutoApprovableCodeCommand(command, ctx.projectRoot, metadata?.workdir ?? metadata?.cwd))
-        return ask('comando delicado o fuera de la carpeta')
+      const verdict = classifyAutoCommand(command, ctx.projectRoot, {
+        workdir: metadata?.workdir ?? metadata?.cwd,
+        externalDirectories: Array.isArray(metadata?.externalDirectories) ? metadata.externalDirectories : undefined,
+        shell: typeof metadata?.shell === 'string' ? metadata.shell : undefined,
+        unparsed: metadata?.unparsed === true
+      })
+      if (verdict.verdict === 'hard') return ask(`siempre pregunta: ${verdict.reason}`)
+      if (verdict.verdict === 'doubt') return { decision: 'review', reason: verdict.reason }
       // El identificador se conserva para leer los registros de versiones anteriores.
       return allow('bash-readonly', `comando en automático: ${truncate(command!, 140)}`)
     }

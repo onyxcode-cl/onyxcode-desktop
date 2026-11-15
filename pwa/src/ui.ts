@@ -622,17 +622,34 @@ function permCard(c: RemoteClient, p: RemotePermission, sessionTitle?: string): 
   if (p.actionable) {
     const allow = h('button', { class: 'primary', type: 'button' }, t('btn.allow'))
     const reject = h('button', { class: 'danger', type: 'button' }, t('btn.reject'))
+    // V29: «No» lleva el campo opcional «¿Qué hacer distinto?»; la IA lo recibe y sigue.
+    const note = h('input', {
+      class: 'permnote',
+      type: 'text',
+      maxlength: '2000',
+      autocomplete: 'off',
+      placeholder: t('perm.notePlaceholder'),
+      'aria-label': t('perm.noteLabel')
+    })
     const go = (reply: 'once' | 'reject'): void => {
       allow.disabled = true
       reject.disabled = true
-      void c.replyPermission(p.requestId, reply).finally(() => {
+      note.disabled = true
+      void c.replyPermission(p.requestId, reply, reply === 'reject' ? note.value : undefined).finally(() => {
         allow.disabled = false
         reject.disabled = false
+        note.disabled = false
       })
     }
     allow.addEventListener('click', () => go('once'))
     reject.addEventListener('click', () => go('reject'))
-    card.append(h('div', { class: 'actions' }, allow, reject))
+    note.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing && note.value.trim()) {
+        e.preventDefault()
+        go('reject')
+      }
+    })
+    card.append(note, h('div', { class: 'actions' }, allow, reject))
   } else {
     card.append(h('p', { class: 'note' }, t('perm.macOnly')), h('p', { class: 'muted fine' }, t('perm.macOnlyHint')))
   }

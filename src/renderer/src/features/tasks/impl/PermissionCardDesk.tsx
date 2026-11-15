@@ -5,12 +5,15 @@
  */
 import { useEffect, useState } from 'react'
 import { Folder, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { outsideDirectories } from '@shared/auto-review'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import {
   PermActions,
   PermCardFrame,
   PermCommand,
+  PermNoteField,
+  PermOutside,
   PermPreview,
   PermScope,
   previewFits,
@@ -25,7 +28,6 @@ import {
   alwaysHint,
   describePermission,
   hasHiddenChars,
-  RejectWithNote,
   useCanAlways,
   useMcpServers,
   useReply,
@@ -34,6 +36,12 @@ import {
 } from './PermissionPrompt'
 import { useShowPath } from './conn-paths'
 import { useTasks } from './store'
+
+/**
+ * M5: borrador de «¿Qué hacer distinto?» por petición, compartido entre la tarjeta detallada y la barra compacta, para que
+ * un «No» desde la barra lleve el texto que la persona escribió en la tarjeta.
+ */
+const noteDrafts = new Map<string, string>()
 
 /** Ruta para mostrar: la carpeta personal como «~». */
 function displayFolder(path: string, home?: string): string {
@@ -51,24 +59,25 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
   const d = describePermission(request, servers, showPath, toolInput)
   const title = useRequestTitle(request, d.title)
   const { busy, error, answer, reject } = useReply(request)
-  const [noting, setNoting] = useState(false)
+  // V29: «No» lleva el campo opcional «¿Qué hacer distinto?» (la IA lo recibe y sigue).
+  const [note, setNote] = useState('')
+  const autoNote = useTasks((s) => s.autoNotes?.[request.id])
   const canAlways = useCanAlways(request, d.danger)
   const folder = useTasks((s) => s.folder)
   const fullAccess = useTasks((s) => s.conn?.fullAccess === true)
   const home = useTasks((s) => s.fullAccessInfo?.home)
   const mac = isMacPlatform()
-  const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => answer(kind), busy })
+  const { armed, onKeyDown } = usePermGuard({ id: request.id, reply: (kind) => (kind === 'reject' ? reject(note) : answer(kind)), busy })
 
   const showDiff = !!d.diff && hasDiffChanges(d.diff)
   const isBash = request.permission === 'bash'
+  const outside = isBash || request.permission === 'bgshell_start' ? outsideDirectories(request.metadata) : []
 
-  const rejectNote = t('tasksComputer.perm.rejectNote')
   const actions: PermAction[] = [
-    { label: rejectNote, variant: 'ghost', side: 'left', onClick: () => setNoting(true) },
     ...(canAlways
       ? [
           {
-            label: t('tasksComputer.perm.always'),
+            label: t('perm.allowProject'),
             variant: 'secondary' as const,
             side: 'left' as const,
             permit: true,
@@ -79,14 +88,14 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
         ]
       : []),
     {
-      label: t('tasksComputer.perm.reject'),
+      label: t('perm.no'),
       variant: 'secondary',
       side: 'right',
       kbd: t('tasksComputer.perm.kbdReject'),
-      onClick: () => answer('reject')
+      onClick: () => reject(note)
     },
     {
-      label: t('tasksComputer.perm.once'),
+      label: t('perm.allow'),
       variant: d.danger ? 'danger' : 'primary',
       side: 'right',
       permit: true,
@@ -96,7 +105,6 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
       onClick: () => answer('once')
     }
   ]
-  const shownActions = noting ? actions.filter((a) => a.label !== rejectNote) : actions
 
   // El detalle nace abierto si el resumen de una línea no muestra todo lo que se aprueba: comando largo, de varias líneas o con
   // caracteres ocultos, parámetros sin comando que resumir o un diff con caracteres ocultos.
@@ -190,7 +198,20 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
         icon={d.icon}
         title={title}
         effect={d.effect}
-        preview={d.detail ? <PermPreview text={d.detail} prompt={isBash} danger={d.danger} /> : undefined}
+        preview={
+          d.detail || outside.length || autoNote ? (
+            <>
+              {d.detail && <PermPreview text={d.detail} prompt={isBash} danger={d.danger} />}
+              <PermOutside dirs={outside} />
+              {autoNote && (
+                <p role="note" className="flex items-start gap-1.5 text-meta text-warning">
+                  <ShieldAlert size={13} className="mt-0.5 shrink-0" />
+                  {t('perm.reviewNote', { reason: autoNote })}
+                </p>
+              )}
+            </>
+          ) : undefined
+        }
         details={details}
         detailsOpen={openDetails}
         onKeyDown={onKeyDown}
@@ -200,8 +221,19 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
             {error}
           </p>
         )}
-        <PermActions actions={shownActions} armed={armed} busy={busy} />
-        {noting && <RejectWithNote busy={busy} onSend={reject} onCancel={() => setNoting(false)} />}
+        <PermActions actions={actions} armed={armed} busy={busy} />
+        {d.kind !== 'folder' && (
+          <PermNoteField
+            value={note}
+            onChange={(v) => {
+              setNote(v)
+              if (v.trim()) noteDrafts.set(request.id, v)
+              else noteDrafts.delete(request.id)
+            }}
+            onSubmit={() => reject(note)}
+            busy={busy}
+          />
+        )}
       </PermCardFrame>
     </>
   )
@@ -215,10 +247,12 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
   const toolInput = useToolInput(request)
   const d = describePermission(request, servers, showPath, toolInput)
   const title = useRequestTitle(request, d.title)
-  const { busy, answer } = useReply(request)
+  const { busy, answer, reject } = useReply(request)
   const canAlways = useCanAlways(request, d.danger)
   const Icon = d.icon
   const id = `perm-${request.id}`
+  // M5: un «No» desde la barra lleva lo que la persona escribió en «¿Qué hacer distinto?» de la tarjeta.
+  const rejectWithDraft = (): void => reject(noteDrafts.get(request.id) ?? '')
 
   // La barra siempre está a la vista: arma por tiempo (sin IntersectionObserver). `key={first.id}` la reinicia.
   const [armed, setArmed] = useState(false)
@@ -247,7 +281,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
       if ((e.target as HTMLElement | null)?.closest?.('[role="dialog"]')) return
       if (e.key === 'Escape' && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
         e.preventDefault()
-        void answer('reject')
+        void reject(noteDrafts.get(request.id) ?? '')
       } else if (e.key === 'Enter' && (mac ? e.metaKey : e.ctrlKey) && armed) {
         e.preventDefault()
         void answer('once')
@@ -255,7 +289,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [quick, busy, armed, mac, answer])
+  }, [quick, busy, armed, mac, answer, reject, request.id])
 
   if (quick) {
     // Tarjeta fija sobre la caja de entrada: la pregunta arriba y dos botones a lo ancho con su atajo.
@@ -273,8 +307,8 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
             </button>
           </div>
           <div className="mt-3 grid gap-2">
-            <Button variant="secondary" disabled={busy} onClick={() => answer('reject')} className="w-full justify-center">
-              {t('tasksComputer.perm.reject')}
+            <Button variant="secondary" disabled={busy} onClick={() => rejectWithDraft()} className="w-full justify-center">
+              {t('perm.no')}
               <kbd
                 aria-hidden
                 className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] desk:text-meta leading-4 opacity-70"
@@ -289,7 +323,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
               aria-keyshortcuts={mac ? 'Meta+Enter' : 'Control+Enter'}
               className="w-full justify-center"
             >
-              {t('tasksComputer.perm.once')}
+              {t('perm.allow')}
               <kbd
                 aria-hidden
                 className="ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] desk:text-meta leading-4 opacity-70"
@@ -333,14 +367,14 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
               <Button variant="secondary" size="sm" onClick={review}>
                 {t('tasksComputer.perm.review')}
               </Button>
-              <Button variant="ghost" size="sm" disabled={busy} onClick={() => answer('reject')}>
-                {t('tasksComputer.perm.reject')}
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => rejectWithDraft()}>
+                {t('perm.no')}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" disabled={busy} onClick={() => answer('reject')}>
-                {t('tasksComputer.perm.reject')}
+              <Button variant="ghost" size="sm" disabled={busy} onClick={() => rejectWithDraft()}>
+                {t('perm.no')}
               </Button>
               {canAlways && (
                 <Button size="sm" disabled={busy || !armed} title={alwaysHint(request)} onClick={() => answer('always')}>
@@ -348,7 +382,7 @@ export function ApprovalBarDesk({ request, more }: { request: PermissionRequest;
                 </Button>
               )}
               <Button variant={d.danger ? 'danger' : 'primary'} size="sm" disabled={busy || !armed} onClick={() => answer('once')}>
-                {t('tasksComputer.perm.once')}
+                {t('perm.allow')}
               </Button>
             </>
           )}

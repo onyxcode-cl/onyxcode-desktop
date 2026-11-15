@@ -30,6 +30,16 @@ export interface PendingPermission {
   api: 'v1' | 'v2'
 }
 
+/** V29: datos extra de una respuesta de permiso (contrato §2). */
+export interface PermissionReplyExtra {
+  /** «No» con «¿Qué hacer distinto?»: la IA lo recibe y sigue. */
+  message?: string
+  /** «Permitir y no volver a preguntar en este proyecto»: reglas de `subcommands` que se guardan. */
+  rules?: string[]
+  /** La respuesta la dio «Automático» (clasificador o revisor), no la persona. */
+  auto?: boolean
+}
+
 export interface PendingQuestion {
   id: string
   sessionID: string

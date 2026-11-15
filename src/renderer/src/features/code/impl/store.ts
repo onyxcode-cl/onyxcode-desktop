@@ -37,7 +37,8 @@ import {
   rulesetForMode
 } from '@shared/permission-rules'
 import { isProtectedPermission } from '@shared/protected-path'
-import { isAutoApprovableCodeCommand } from './auto-command'
+import { classifyAutoCommand } from './auto-command'
+import { ReviewTracker, decideAuto, requestReview } from '@shared/auto-review'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
 import { t } from '@shared/i18n'
@@ -124,6 +125,7 @@ import type {
   PendingPermission,
   PendingQuestion,
   PermissionMode,
+  PermissionReplyExtra,
   QueuedMessage,
   RightPanel,
   RunState,
@@ -237,6 +239,8 @@ export interface CodeState {
   permissions: Record<string, PendingPermission>
   /** Momento (ms) del último permiso que la persona rechazó a mano; 0 si ninguno. Lo usa Revisar cambios para explicar por qué se cortó. */
   permissionRejectedAt: number
+  /** V29: motivo del revisor automático cuando ya se llegó al tope de bloqueos (3 seguidos o 20) y la decisión pasó a la persona. */
+  reviewNotes: Record<string, string>
   questions: Record<string, PendingQuestion>
   /** Formularios de conectores pendientes (`mcp.elicitation.asked`), por id. Solo texto plano; ver `ElicitationCard`. */
   elicitations: Record<string, PendingElicitation>
@@ -349,7 +353,12 @@ export interface CodeState {
   clearRewoundFiles: (sessionID: string) => void
   /** El motor contestó 404 a una ruta de rebobinar: se recuerda y se vuelve al flujo antiguo. */
   markRewindUnavailable: (sessionID: string) => void
-  replyPermission: (p: PendingPermission, reply: 'once' | 'always' | 'reject', quiet?: boolean) => Promise<void>
+  replyPermission: (
+    p: PendingPermission,
+    reply: 'once' | 'always' | 'reject',
+    quiet?: boolean,
+    extra?: PermissionReplyExtra
+  ) => Promise<void>
   replyQuestion: (q: PendingQuestion, answers: string[][]) => Promise<void>
   rejectQuestion: (q: PendingQuestion) => Promise<void>
   /** Contesta la pregunta del plan con la respuesta exacta del botón. `false` si la pregunta aún no llegó o no cuadra (no se responde a ciegas). */
@@ -818,13 +827,34 @@ export const useCode = create<CodeState>((set, get) => {
     p.tool ? JSON.stringify([p.sessionID, p.tool.messageID, p.tool.callID]) : undefined
   const resolvedPermissions = new Set<string>()
   const replyingPermissions = new Set<string>()
+  /** V29: peticiones en revisión por IA (sin tarjeta mientras tanto) y las que ya quedaron para la persona (no se revisan otra vez). */
+  const reviewing = new Set<string>()
+  const toPerson = new Set<string>()
+  const reviewTracker = new ReviewTracker()
+  const remember = (list: Set<string>, id: string): void => {
+    if (list.size >= 1000) list.delete(list.values().next().value!)
+    list.add(id)
+  }
   const resolvePermission = (id: string): void => {
     resolvedPermissions.add(id)
+    reviewing.delete(id)
     set((s) => {
       const permissions = { ...s.permissions }
       delete permissions[id]
-      return { permissions }
+      if (!(id in s.reviewNotes)) return { permissions }
+      const reviewNotes = { ...s.reviewNotes }
+      delete reviewNotes[id]
+      return { permissions, reviewNotes }
     })
+  }
+  /** La decisión pasa a la persona: tarjeta (con el motivo del revisor si ya se llegó al tope de bloqueos). */
+  const showPermissionCard = (p: PendingPermission, note?: string): void => {
+    reviewing.delete(p.id)
+    remember(toPerson, p.id)
+    if (resolvedPermissions.has(p.id) || replyingPermissions.has(p.id)) return
+    markUnread(rootSessionID(get().sessions, p.sessionID))
+    notifyCode(p.sessionID, t('code.store.notifyApproval'), t('code.store.notifyApprovalSub'))
+    set((s) => ({ permissions: { ...s.permissions, [p.id]: p }, ...(note ? { reviewNotes: { ...s.reviewNotes, [p.id]: note } } : {}) }))
   }
   const retryPendingPermissions = (sid?: string): void => {
     for (const p of Object.values(get().permissions)) {
@@ -864,7 +894,7 @@ export const useCode = create<CodeState>((set, get) => {
     // desde otro cliente o mientras la app no escuchaba quedaba pegado. Si la petición falló no se toca nada.
     if (perms?.data) {
       const list: PendingPermission[] = perms.data
-        .filter((p) => known(p.sessionID) && !resolvedPermissions.has(p.id))
+        .filter((p) => known(p.sessionID) && !resolvedPermissions.has(p.id) && !reviewing.has(p.id))
         .map((p) => ({ ...p, metadata: p.metadata ?? {}, api: 'v1' as const }))
       set((s) => ({
         permissions: reconcilePending({
@@ -922,18 +952,24 @@ export const useCode = create<CodeState>((set, get) => {
   }
 
   /**
-   * El motor conserva `bash * ask`: comprobamos el comando COMPLETO y respondemos «una vez».
-   * V27: Código «Automático» permite trabajo dentro del proyecto salvo órdenes delicadas o ambiguas;
-   * «Solo explorar» conserva su lista de lectura. Las rutas protegidas siempre quedan a la persona.
+   * El motor conserva `bash * ask`: la app comprueba el comando COMPLETO. V29, «Automático» en tres salidas
+   * (`classifyAutoCommand`): `allow` → «una vez»; `hard` → tarjeta; `doubt` → revisión por IA (`decideAuto`): aprueba,
+   * rechaza con el motivo para que la IA cambie de camino, o tarjeta si no está disponible o ya hubo demasiados bloqueos.
+   * «Solo explorar» conserva su lista de lectura. Las rutas protegidas siempre quedan a la persona. Devuelve `true` si la
+   * petición no debe mostrarse ahora (respondida, en respuesta o en revisión).
    */
   const autoApproveCommand = (p: PendingPermission): boolean => {
-    if (resolvedPermissions.has(p.id) || replyingPermissions.has(p.id)) return true
+    if (resolvedPermissions.has(p.id) || replyingPermissions.has(p.id) || reviewing.has(p.id)) return true
+    if (toPerson.has(p.id)) return false
     const background = p.permission === 'bgshell_start'
-    if ((p.permission !== 'bash' && !background) || isProtectedPermission(p.metadata)) return false
+    // Motor viejo: la salida del proyecto del MISMO comando llega como `external_directory` con el comando en metadata.
+    const exteriorAsk = p.permission === 'external_directory'
+    if ((p.permission !== 'bash' && !background && !exteriorAsk) || isProtectedPermission(p.metadata)) return false
     const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
-    if (!kind || (background && kind !== 'auto')) return false
+    if (!kind || ((background || exteriorAsk) && kind !== 'auto')) return false
     const md = p.metadata as Record<string, unknown> | undefined
     const commandMetadata = typeof md?.command === 'string' ? md.command : undefined
+    if (exteriorAsk && !commandMetadata) return false
     // El motor manda `command` en metadata pero el cwd vive en la entrada de la herramienta.
     const tool = p.tool
       ? get()
@@ -943,29 +979,75 @@ export const useCode = create<CodeState>((set, get) => {
     const input = tool?.type === 'tool' ? tool.state.input : undefined
     const command = background ? (typeof input?.command === 'string' ? input.command : undefined) : commandMetadata
     if (kind === 'auto' && p.tool && !input) return false
+    // Motor viejo: la salida exterior solo se resuelve sola si está ligada a la llamada de terminal y a su comando.
+    if (exteriorAsk && (!input || input.command !== command)) return false
     // `todowrite` ejecuta su verificación con el mismo callID; el comando real
     // viene del permiso de shell, no de input.command (la entrada contiene todos).
     const verification = tool?.type === 'tool' && tool.tool === 'todowrite' && Array.isArray(input?.todos)
     if (kind === 'auto' && input && !verification && input.command !== command) return false
     if (background && (!input || typeof input.cwd !== 'string' || tool?.type !== 'tool' || tool.tool !== 'bgshell_start')) return false
+    if (kind !== 'auto') {
+      if (!isAutoApprovableCommand(kind, command)) return false
+      void get().replyPermission(p, 'once', false, { auto: true })
+      return true
+    }
     const workdir = (background ? input?.cwd : input?.workdir) ?? md?.workdir
+    const project = get().sessionProject[p.sessionID]
     const exterior = externalApprovals.get(callKey(p) ?? '')
-    // La respuesta exterior puede terminar antes de que llegue la entrada por SSE.
+    // Motor viejo: la respuesta exterior puede terminar antes de que llegue la entrada por SSE.
     // Se liga al primer input coincidente, nunca a otro comando, proyecto o callID.
-    if (exterior?.awaitingInput && input && exterior.command === command && exterior.project === get().sessionProject[p.sessionID]) {
+    if (exterior?.awaitingInput && input && exterior.command === command && exterior.project === project) {
       exterior.workdir = workdir
       exterior.awaitingInput = false
     }
     const approvedDirectories =
-      exterior && exterior.command === command && exterior.workdir === workdir && exterior.project === get().sessionProject[p.sessionID]
+      !exteriorAsk && exterior && exterior.command === command && exterior.workdir === workdir && exterior.project === project
         ? exterior.directories
         : []
-    const allowed =
-      kind === 'auto'
-        ? isAutoApprovableCodeCommand(command, get().sessionProject[p.sessionID], workdir, approvedDirectories)
-        : isAutoApprovableCommand(kind, command)
-    if (!allowed) return false
-    void get().replyPermission(p, 'once')
+    const verdict = classifyAutoCommand(command, project, {
+      workdir,
+      externalDirectories: Array.isArray(md?.externalDirectories) ? md.externalDirectories : exteriorAsk ? p.patterns : undefined,
+      approvedDirectories,
+      shell: typeof md?.shell === 'string' ? md.shell : undefined,
+      unparsed: md?.unparsed === true
+    })
+    if (verdict.verdict === 'allow') {
+      void get().replyPermission(p, 'once', false, { auto: true })
+      return true
+    }
+    // La salida exterior del motor viejo no se revisa: si el comando no pasa solo, la persona ve la tarjeta.
+    // En el celular tampoco: la revisión la hace la app del equipo y su respuesta quita la tarjeta.
+    // El motor solo revisa `bash`; para `bgshell_start` responde «unavailable», así que se va directo a tarjeta (M4).
+    const conn = verdict.verdict === 'doubt' && !exteriorAsk && !background && !isRemoteSurface() ? elicitationConn() : null
+    if (!conn) {
+      remember(toPerson, p.id)
+      return false
+    }
+    remember(reviewing, p.id)
+    set((s) => {
+      if (!(p.id in s.permissions)) return {}
+      const permissions = { ...s.permissions }
+      delete permissions[p.id]
+      return { permissions }
+    })
+    const key = get().sessions[p.sessionID] ? rootSessionID(get().sessions, p.sessionID) : p.sessionID
+    const target = { id: p.id, sessionID: p.sessionID, api: p.api, directory: project ?? get().directory ?? undefined }
+    void decideAuto(verdict, () => requestReview(conn, target), reviewTracker, key).then((decision) => {
+      if (resolvedPermissions.has(p.id) || !reviewing.has(p.id)) return
+      // I4: la revisión tarda hasta 25 s; si la conversación dejó de estar en «Automático», la decide la persona.
+      if (decision.action !== 'card' && approvalKindOf(get().sessions[p.sessionID]?.permission) !== 'auto') return showPermissionCard(p)
+      if (decision.action === 'card') return showPermissionCard(p, decision.note)
+      reviewing.delete(p.id)
+      // M2: tras aprobar o rechazar, si la respuesta al motor falla (`replyPermission` repone la tarjeta sin resolver la
+      // petición), se marca para la persona para no revisarla otra vez ni volver a contar el bloqueo.
+      const reply =
+        decision.action === 'once'
+          ? get().replyPermission(p, 'once', false, { auto: true })
+          : get().replyPermission(p, 'reject', true, { auto: true, message: decision.message })
+      void reply.finally(() => {
+        if (!resolvedPermissions.has(p.id)) remember(toPerson, p.id)
+      })
+    })
     return true
   }
 
@@ -1162,6 +1244,7 @@ export const useCode = create<CodeState>((set, get) => {
     errors: {},
     permissions: {},
     permissionRejectedAt: 0,
+    reviewNotes: {},
     questions: {},
     plans: {},
     elicitations: {},
@@ -1776,7 +1859,7 @@ export const useCode = create<CodeState>((set, get) => {
 
     markRewindUnavailable: (sessionID) => set((s) => ({ rewindSupport: { ...s.rewindSupport, [sessionID]: false }, rewindDialog: null })),
 
-    replyPermission: async (p, requested, quiet = false) => {
+    replyPermission: async (p, requested, quiet = false, extra = {}) => {
       if (resolvedPermissions.has(p.id) || replyingPermissions.has(p.id)) return
       replyingPermissions.add(p.id)
       try {
@@ -1818,21 +1901,36 @@ export const useCode = create<CodeState>((set, get) => {
                 project: get().sessionProject[p.sessionID]
               }
             : undefined
+        // Contrato V29 §2: `reject` + `message` (la IA lo recibe y sigue) y `always` + `rules` (reglas por proyecto).
+        // `rules` no está en el SDK fijado: viaja en el cuerpo con el prefijo `$body_` del cliente generado.
+        const message = reply === 'reject' && extra.message?.trim() ? extra.message.trim() : undefined
+        const rules = reply === 'always' && extra.rules?.length ? extra.rules : undefined
+        const body = { ...(message ? { message } : {}), ...(rules ? { $body_rules: rules } : {}) }
         if (p.api === 'v2') {
-          sdkData(await client.v2.session.permission.reply({ sessionID: p.sessionID, requestID: p.id, reply }))
+          sdkData(await client.v2.session.permission.reply({ sessionID: p.sessionID, requestID: p.id, reply, ...body } as never))
         } else {
-          sdkData(await client.permission.reply({ requestID: p.id, reply, directory: dir }))
+          sdkData(await client.permission.reply({ requestID: p.id, reply, directory: dir, ...body } as never))
         }
+        // Una aprobación de la persona corta la racha de bloqueos seguidos del revisor automático.
+        if (!extra.auto && reply !== 'reject') reviewTracker.personApproved(root)
         if (key && exterior) {
           if (externalApprovals.size >= 100) externalApprovals.delete(externalApprovals.keys().next().value!)
           externalApprovals.set(key, exterior)
         }
         resolvedPermissions.add(p.id)
-        if (p.permission === 'external_directory') retryPendingPermissions(p.sessionID)
+        if (p.permission === 'external_directory') {
+          // Motor viejo: con la salida aprobada, el comando de la misma llamada se vuelve a clasificar.
+          for (const q of Object.values(get().permissions)) if (q.sessionID === p.sessionID) toPerson.delete(q.id)
+          retryPendingPermissions(p.sessionID)
+        }
         set((s) => {
           const permissions = { ...s.permissions }
           delete permissions[p.id]
-          return reply === 'reject' ? { permissions, permissionRejectedAt: Date.now() } : { permissions }
+          const reviewNotes = p.id in s.reviewNotes ? { ...s.reviewNotes } : s.reviewNotes
+          if (reviewNotes !== s.reviewNotes) delete reviewNotes[p.id]
+          return reply === 'reject' && !extra.auto
+            ? { permissions, reviewNotes, permissionRejectedAt: Date.now() }
+            : { permissions, reviewNotes }
         })
         if (reply === 'reject' && !quiet && dir) {
           useRejectionNotices.getState().add({

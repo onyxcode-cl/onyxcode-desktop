@@ -48,15 +48,11 @@ describe('celular/PWA: tarjeta de permiso (propiedades de seguridad)', () => {
       for (const c of buttons) expect(c).toContain('min-h-11')
     }
   })
-  it('destructivo: «Rechazar» primero y sin «Permitir siempre»; no destructivo: «Permitir una vez» primero', () => {
+  it('destructivo «Rechazar» primero / no destructivo «Permitir» primero; el celular nunca ofrece «no volver a preguntar» (I5)', () => {
     surface('remote')
-    expect(labels(html(<PermissionCard request={destructive} />))).toEqual(['Rechazar', 'Permitir una vez', 'Rechazar con indicaciones'])
-    expect(labels(html(<PermissionCard request={plain} />))).toEqual([
-      'Permitir una vez',
-      'Rechazar',
-      'Rechazar con indicaciones',
-      'Permitir siempre'
-    ])
+    expect(labels(html(<PermissionCard request={destructive} />))).toEqual(['No', 'Permitir', '¿Qué hacer distinto?'])
+    // Overdrive en el celular ya no muestra «no volver a preguntar» (la política remota lo rechaza).
+    expect(labels(html(<PermissionCard request={plain} />))).toEqual(['Permitir', 'No', '¿Qué hacer distinto?'])
   })
   it('caracteres ocultos: sigue el aviso de seguridad', () => {
     surface('remote')

@@ -7,6 +7,7 @@ import { parseTodos } from '../../../lib/conversation/parts'
 import { shortenPath } from '../../../lib/paths'
 import { t, type MsgKey } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
+import { subcommandRules } from '@shared/auto-review'
 import { isBackgroundShell } from '@shared/engine-notes'
 import { dateLocale } from '../../../lib/i18n'
 import { isInternalAccessNoise } from '../../../lib/plan-gate'
@@ -492,7 +493,9 @@ export function isRememberablePermission(permission: string, pattern: string): b
 export function rememberablePatterns(p: PermissionRequest): string[] {
   // Ruta protegida del motor: nada se recuerda (el motor manda `always: []`, pero aquí el respaldo sería `patterns`).
   if (isProtectedPermission(p.metadata)) return []
-  const list = p.always.length > 0 ? p.always : p.patterns
+  // V29: con `subcommands` (contrato §1), una regla por parte del comando; sin ninguna, no se ofrece «no volver a preguntar».
+  const rules = p.permission === 'bash' || p.permission === 'bgshell_start' ? subcommandRules(p.metadata) : null
+  const list = rules ?? (p.always.length > 0 ? p.always : p.patterns)
   return list.filter((pat) => isRememberablePermission(p.permission, pat))
 }
 

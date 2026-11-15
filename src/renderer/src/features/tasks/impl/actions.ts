@@ -2,6 +2,7 @@ import { deferTaskChange } from './working-change'
 /** Acciones del modo Tareas (carpetas, tareas, permisos). */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import type { PasteRejected } from '@shared/paste-files'
+import { subcommandRules } from '@shared/auto-review'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { getLang, t } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
@@ -967,7 +968,9 @@ export async function replyPermission(
   requestID: string,
   reply: 'once' | 'always' | 'reject',
   message?: string,
-  quiet = false
+  quiet = false,
+  /** V29: reglas de `subcommands` que se guardan con «no volver a preguntar en este proyecto». */
+  rules?: string[]
 ): Promise<void> {
   const { client, folder } = ctx()
   const request = useTasks.getState().permissions[requestID]
@@ -977,8 +980,17 @@ export async function replyPermission(
       : (useTasks.getState().activeTaskId ?? request.sessionID)
     : undefined
   const detail = request ? showPath(rejectedPermissionDetail(request)) : ''
-  const res = await client.permission.reply({ requestID, directory: sdkDir(folder), reply, ...(message ? { message } : {}) })
+  // `rules` no está en el SDK fijado: viaja en el cuerpo con el prefijo `$body_` del cliente generado.
+  const res = await client.permission.reply({
+    requestID,
+    directory: sdkDir(folder),
+    reply,
+    ...(message ? { message } : {}),
+    ...(reply === 'always' && rules?.length ? { $body_rules: rules } : {})
+  } as never)
   if (res.error) throw new Error(errorMessage(res.error))
+  // Una aprobación de la persona corta la racha de bloqueos seguidos del revisor automático (vive en main).
+  if (reply !== 'reject' && root) cw('tasks:auto:personApproved', { sessionId: root }).catch(() => undefined)
   useTasks.setState((s) => {
     const permissions = { ...s.permissions }
     delete permissions[requestID]
@@ -1288,8 +1300,9 @@ export async function replyPermissionAlways(req: PermissionRequest): Promise<voi
     await replyPermission(req.id, 'once')
     return
   }
-  await replyPermission(req.id, 'always')
   const patterns = rememberablePatterns(req)
+  const rules = req.permission === 'bash' || req.permission === 'bgshell_start' ? subcommandRules(req.metadata) : null
+  await replyPermission(req.id, 'always', undefined, false, rules?.length ? patterns : undefined)
   if (folder && patterns.length > 0) {
     cw('tasks:rules:add', { folder, permission: req.permission, patterns }).catch(() => undefined)
   }
