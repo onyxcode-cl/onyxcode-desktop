@@ -228,6 +228,7 @@
     "GET /global/health": "9b33d31cb2ae31ce",
     "GET /mcp": "46d8055d42561228",
     "GET /permission": "ad6024f906017d4e",
+    "GET /project": "d3cca88817e25278",
     "GET /provider": "efdde69beb0427c0",
     "GET /provider/auth": "5d5b24b3de513dfe",
     "GET /question": "bb8c94b1b23e84f6",

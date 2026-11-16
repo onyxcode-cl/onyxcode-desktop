@@ -19,10 +19,11 @@ import {
   usePermGuard,
   type PermAction
 } from '../../../components/permission/PermissionShell'
-import { RememberRules } from '../../../components/permission/RememberRules'
+import { RememberRules, useNewPermissionRules } from '../../../components/permission/RememberRules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { readPermissionSuggestion } from '@shared/permission-suggestion'
-import { outsideDirectories, subcommandRules } from '@shared/auto-review'
+import { outsideDirectories, subcommandRules, hardCommandNotice } from '@shared/auto-review'
+import { classifyAutoCommand } from '@shared/auto-command'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
@@ -119,6 +120,16 @@ export function PermissionCardDesk({
   const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
   // Contrato V29 §1: reglas por parte del comando; sin `subcommands` (motor viejo) se conserva el «siempre» de antes.
   const rules = shell ? subcommandRules(md) : null
+  const commandNotice =
+    shell && command
+      ? hardCommandNotice(
+          classifyAutoCommand(command, root ?? undefined, {
+            workdir: cwd ?? undefined,
+            shell: typeof md.shell === 'string' ? md.shell : undefined
+          })
+        )
+      : null
+  const newRules = useNewPermissionRules(rules ?? request.always, request.permission, root, request.id)
   const outside = shell
     ? outsideDirectories(md)
     : request.permission === 'external_directory' && command
@@ -142,11 +153,7 @@ export function PermissionCardDesk({
             side: 'left' as const,
             permit: true,
             act: 'always' as const,
-            title: rules?.length
-              ? t('perm.allowProjectRules', { rules: rules.join(', ') })
-              : request.always.length
-                ? t('code.perm.alwaysTitle', { patterns: request.always.join(', ') })
-                : undefined,
+            title: newRules.length ? t('perm.allowProjectRules', { rules: newRules.join(', ') }) : undefined,
             onClick: () => run('always', rules?.length ? { rules } : undefined)
           }
         ]),
@@ -244,8 +251,13 @@ export function PermissionCardDesk({
         previewNode || suggestionNode || reviewNode || outside.length || rules ? (
           <>
             {previewNode}
-            <RememberRules metadata={md} rules={rules ?? request.always} available={!sub.child && !protectedPath} />
+            <RememberRules metadata={md} rules={newRules} available={!sub.child && !protectedPath && !!(rules ?? request.always).length} />
             <PermOutside dirs={outside} />
+            {commandNotice && (
+              <p role="note" className="text-meta text-warning">
+                {t(`perm.commandNotice.${commandNotice}`)}
+              </p>
+            )}
             {reviewNode}
             {suggestionNode}
           </>

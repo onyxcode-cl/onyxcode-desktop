@@ -1,11 +1,10 @@
 /**
  * V29: clasificador de terminal de «Automático» (Código y Overdrive), en tres salidas:
  *  - `allow`: lecturas (también fuera del proyecto, salvo credenciales) y trabajo inofensivo; se responde «una vez».
- *  - `hard`: siempre tarjeta, sin IA: borrar la raíz, la carpeta personal o el proyecto, o un destino con variable que
- *    puede quedar vacía; escribir en `.git`; leer o escribir credenciales; la configuración y los datos de Lazunox;
+ *  - `hard`: siempre tarjeta, sin IA: borrar archivos o carpetas; escribir fuera del proyecto o en un destino
+ *    desconocido (salvo carpetas ya aprobadas); escribir en `.git`; leer o escribir credenciales; la configuración y los datos de Lazunox;
  *    cambios del sistema; descargar y ejecutar.
- *  - `doubt`: lo delicado que puede ser legítimo (borrar o matar procesos, `git push`/`reset`, escribir o borrar fuera
- *    del proyecto) y lo que no se entiende: lo revisa la IA (`POST /permission/{id}/review`).
+ *  - `doubt`: lo delicado que puede ser legítimo (matar procesos, `git push`/`reset`) y lo que no se entiende: lo revisa la IA (`POST /permission/{id}/review`).
  *
  * No es un sandbox: npm, scripts y hooks del proyecto ejecutan código. Ya no se revisa cada argumento como si fuera una
  * ruta (`safeArgument`, origen de las rondas 2 a 7): se distinguen lecturas, destinos de escritura y entradas de código
@@ -30,7 +29,7 @@ export interface AutoCommandOptions {
   home?: string
   /** Shell que usará el motor (`metadata.shell`): decide si `\` escapa. Sin él, escapa salvo en un proyecto de Windows. */
   shell?: string
-  /** El motor marcó el comando como ilegible para su analizador real: nunca se aprueba sin más (`doubt` como mínimo). */
+  /** El motor no pudo leerlo: exige gramática conocida; las lecturas acotadas de PowerShell sí pueden comprobarse. */
   unparsed?: boolean
 }
 
@@ -54,6 +53,8 @@ interface Part {
   group?: 'open' | 'close'
   /** PowerShell: la orden empieza con el operador de llamada `&` (`& $exe args`). */
   call?: boolean
+  /** Lista completa del directorio raíz que llega a Remove-Item. */
+  projectListing?: boolean
 }
 
 /** Marca de una sustitución de comando ya extraída. */
@@ -379,6 +380,19 @@ function parse(command: string, escapes = true): Part[] | null {
     }
     if (c === '@' && !started && /[({]/.test(command[i + 1] ?? '')) continue
     if (c === '(') {
+      flush()
+      if (
+        !escapes &&
+        (/^-(?:destination|path|literalpath|filepath|newname)$/i.test(part.words.at(-1)?.text ?? '') ||
+          (COPY_CMDS.test(basename(part.words[0]?.text ?? '')) && part.words.length >= 2))
+      ) {
+        const close = matchClose(command, i, '(', ')')
+        if (close < 0) return null
+        part.substs.push(command.slice(i + 1, close))
+        part.words.push({ text: SUBST, dynamic: true, quoted: false })
+        i = close
+        continue
+      }
       marker('open')
       continue
     }
@@ -609,6 +623,7 @@ function resolveTarget(raw: string, cwd: string | null, ctx: Ctx): Target {
   if (/^(?:\/dev\/(?:null|stdout|stderr|tty|fd\/\d+)|nul|\$null|con)$/i.test(value)) return { kind: 'device' }
   if (/^[a-z][\w+.-]*:\/\//i.test(value)) return { kind: 'device' }
   const expanded = expandKnown(value, ctx, cwd)
+  if (expanded.includes(SUBST)) return { kind: 'unknown' }
   if (hasDynamic(expanded)) {
     if (/\$\{\w+:\?/.test(expanded)) return { kind: 'dynamic', empty: null }
     const emptied = expanded.replace(/\$\{\w+:[-=]([^}]*)\}/g, '$1').replace(DYNAMIC_RE, '')
@@ -767,16 +782,17 @@ const envOnly = (s: string | null): boolean => s === 'credenciales (.env)'
 
 function checkWrite(raw: string, cwds: Cwds, ctx: Ctx, what = 'escribe'): void {
   const secret = secretIn(raw)
-  if (secret) return void (envOnly(secret) ? doubt(ctx, `${what} un archivo .env`) : hard(ctx, `${what} ${secret}`))
+  if (secret && !envOnly(secret)) return hard(ctx, `${what} ${secret}`)
+  if (envOnly(secret)) doubt(ctx, `${what} un archivo .env`)
   for (const cwd of cwds) {
     const t = resolveTarget(raw, cwd, ctx)
     if (t.kind === 'device') continue
     if (t.kind === 'unknown') {
-      doubt(ctx, `${what} en una carpeta que no se conoce`)
+      hard(ctx, `${what} en una carpeta que no se conoce`)
       continue
     }
     if (t.kind === 'dynamic') {
-      doubt(ctx, `${what} en una ruta que depende de una variable`)
+      hard(ctx, `${what} en una ruta que depende de una variable`)
       continue
     }
     const segs = segmentsOf(t.path)
@@ -788,7 +804,7 @@ function checkWrite(raw: string, cwds: Cwds, ctx: Ctx, what = 'escribe'): void {
     else if (systemPath(t.path, ctx)) hard(ctx, `${what} en una carpeta del sistema`)
     else if (insideProject(t.path, ctx) && (segs.includes('.opencode') || /^opencode\.jsonc?$/.test(segs.at(-1) ?? '')))
       hard(ctx, `${what} la configuración de Lazunox del proyecto`)
-    else if (!insideProject(t.path, ctx) && !ctx.approved.some((d) => within(t.path, d))) doubt(ctx, `${what} fuera del proyecto`)
+    if (!insideProject(t.path, ctx) && !ctx.approved.some((d) => within(t.path, d))) hard(ctx, `${what} fuera del proyecto`)
   }
 }
 
@@ -882,20 +898,20 @@ function checkDelete(raw: string, cwds: Cwds, ctx: Ctx, recursive: boolean): voi
     if (t.kind === 'device') continue
     if (t.kind === 'dynamic') {
       if (t.empty && critical(globParent(t.empty) ?? t.empty, ctx)) hard(ctx, 'borra un destino con una variable que puede quedar vacía')
-      else doubt(ctx, 'borra una ruta que depende de una variable')
+      else hard(ctx, 'borra una ruta que depende de una variable')
       continue
     }
     if (t.kind === 'unknown') {
       // Carpeta desconocida (cd con variable): un comodín o «.» podría ser la carpeta personal.
       if (/^(?:\.|\.\/|\*|\.\/\*|\.\*|\*\/)$/.test(raw.replace(/\\/g, '/'))) hard(ctx, 'borra todo en una carpeta que no se conoce')
-      else doubt(ctx, 'borra en una carpeta que no se conoce')
+      else hard(ctx, 'borra en una carpeta que no se conoce')
       continue
     }
     const base = globParent(t.path) ?? t.path
     if (critical(base, ctx) && (recursive || base !== t.path)) hard(ctx, 'borra la raíz, la carpeta personal o el proyecto entero')
   }
   checkWrite(raw, cwds, ctx, 'borra')
-  doubt(ctx, 'borra archivos')
+  hard(ctx, 'borra archivos')
 }
 
 // ───────────────────────────── Programas ─────────────────────────────
@@ -1441,8 +1457,8 @@ function analyzeInline(code: string, cwds: Cwds, ctx: Ctx): void {
           return t.kind === 'path' && critical(globParent(t.path) ?? t.path, ctx)
         })
     )
-    if (wipes) hard(ctx, 'el script borra la raíz, la carpeta personal o el proyecto')
-    else doubt(ctx, 'el script borra archivos')
+    if (wipes) hard(ctx, 'borra la raíz, la carpeta personal o el proyecto entero')
+    else hard(ctx, 'el script borra archivos')
   }
   // Abrir una URL y además leer archivos o el entorno puede sacar datos (exfiltración por GET). I1.
   if (
@@ -1471,16 +1487,19 @@ function analyzeInline(code: string, cwds: Cwds, ctx: Ctx): void {
   if (!INLINE_WRITE.test(code)) return
   // Escribe en una ruta que depende de la carpeta personal o del entorno, sin un literal que se pueda situar. G7.
   if (/\b(?:expanduser|Path\.home|os\.environ|getenv|homedir|process\.env|ENV\[|Dir\.home)\b/.test(code))
-    doubt(ctx, 'el script escribe en la carpeta personal')
+    hard(ctx, 'el script escribe en la carpeta personal')
   for (const l of pathLiterals) {
     if (!/[\\/]/.test(l) && !l.startsWith('~')) continue
     for (const cwd of cwds) {
       const t = resolveTarget(l, cwd, ctx)
-      if (t.kind !== 'path') continue
+      if (t.kind !== 'path') {
+        hard(ctx, 'el script escribe en una ruta que no se conoce')
+        continue
+      }
       if (segmentsOf(t.path).includes('.git')) hard(ctx, 'el script escribe dentro de .git')
       else if (systemPath(t.path, ctx)) hard(ctx, 'el script escribe en una carpeta del sistema')
       else if (!insideProject(t.path, ctx) && !ctx.approved.some((d) => within(t.path, d)))
-        doubt(ctx, 'el script escribe fuera del proyecto')
+        hard(ctx, 'el script escribe fuera del proyecto')
     }
   }
 }
@@ -1653,8 +1672,7 @@ function checkArguments(name: string, args: Word[], cwds: Cwds, ctx: Ctx): void 
   }
   if (name === 'mktemp') write(pos)
   if (name === 'mktemp') {
-    if (!pos.length || args.some((a) => /^(?:-t|-p|--tmpdir)(?:=|$)/.test(a.text)))
-      doubt(ctx, 'crea un archivo temporal fuera del proyecto')
+    if (!pos.length || args.some((a) => /^(?:-t|-p|--tmpdir)(?:=|$)/.test(a.text))) hard(ctx, 'crea un archivo temporal fuera del proyecto')
   }
   if (name === 'link') write(pos.slice(1))
   if (/^(?:jq|yq)$/.test(name)) {
@@ -1681,20 +1699,22 @@ function checkArguments(name: string, args: Word[], cwds: Cwds, ctx: Ctx): void 
     args.some((a) => /\||\b(?:system|getline)\b|@(?:load|include)|^-[fliE]|^--(?:file|source|load|include)(?:=|$)/.test(a.text))
   )
     doubt(ctx, 'awk carga o ejecuta código')
-  if (/^(?:awk|gawk|nawk|mawk)$/.test(name) && args.some((a) => />/.test(a.text))) doubt(ctx, 'awk escribe un destino calculado')
+  if (/^(?:awk|gawk|nawk|mawk)$/.test(name) && args.some((a) => />/.test(a.text))) hard(ctx, 'awk escribe un destino calculado')
   if (name === 'sed' && args.some((a) => /^-f|^--file/.test(a.text))) doubt(ctx, 'sed carga un guion')
   if (name === 'sed' && args.some((a) => /(?:^|[;/}\n])\s*(?:\d+)?[ew](?:\s|$)|\/[a-z\d]*[ew](?:\s|$)/i.test(a.text)))
     doubt(ctx, 'sed ejecuta o escribe desde su guion')
   if (name === 'pandoc' && args.some((a) => /^(?:-F|--(?:filter|lua-filter|pdf-engine))(?:=|.|$)/.test(a.text)))
     doubt(ctx, 'pandoc ejecuta filtros')
   if (/^(?:tar|bsdtar)$/.test(name) && args.some((a) => /^--(?:absolute-names|remove-files|rsh-command)|^-?[a-zA-Z]*P/.test(a.text)))
-    doubt(ctx, 'tar usa rutas absolutas, borra o ejecuta')
+    void (args.some((a) => /^--remove-files(?:=|$)/.test(a.text))
+      ? hard(ctx, 'tar borra los originales')
+      : doubt(ctx, 'tar usa rutas absolutas o ejecuta'))
   if (/^(?:tar|bsdtar)$/.test(name) && args.some((a) => /^--(?:transform|xform|strip-components)|^-s.+/.test(a.text)))
     doubt(ctx, 'transforma los destinos de extracción')
   if (/^7z/.test(name) && args.some((a) => /^-spf/.test(a.text))) doubt(ctx, 'extrae con rutas absolutas')
   if (name === 'unzip' && args.some((a) => a.text === '-:')) doubt(ctx, 'permite salir de la carpeta al extraer')
-  if (name === 'zip' && args.some((a) => /^-[a-zA-Z]*m|^--move/.test(a.text))) doubt(ctx, 'zip borra los originales')
-  if (/^7z/.test(name) && args.some((a) => /^-sdel/.test(a.text))) doubt(ctx, 'borra los originales del archivo')
+  if (name === 'zip' && args.some((a) => /^-[a-zA-Z]*m|^--move/.test(a.text))) hard(ctx, 'zip borra los originales')
+  if (/^7z/.test(name) && args.some((a) => /^-sdel/.test(a.text))) hard(ctx, 'borra los originales del archivo')
   if (name === 'fc' && ctx.escapes) doubt(ctx, 'repite órdenes del historial')
   if (name === 'hostname' && args.length) doubt(ctx, 'cambia el nombre del equipo')
   if (name === 'date' && args.some((a) => !/^\+|^-u$|^-I/.test(a.text))) doubt(ctx, 'puede cambiar la fecha del equipo')
@@ -1944,7 +1964,7 @@ function analyzeGit(args: Word[], cwds: Cwds, ctx: Ctx): void {
     case 'reset':
       return doubt(ctx, 'git reset')
     case 'clean':
-      return doubt(ctx, 'git clean borra archivos')
+      return hard(ctx, 'git clean borra archivos')
     case 'restore':
       if (flag(/^(?:--staged|-S)$/) && !flag(/^(?:--worktree|-W)$/)) return
       return doubt(ctx, 'git restore descarta cambios')
@@ -1956,11 +1976,12 @@ function analyzeGit(args: Word[], cwds: Cwds, ctx: Ctx): void {
       if (flag(/^(?:-f|--force|--discard-changes)$/)) doubt(ctx, 'git switch descarta cambios')
       return
     case 'stash':
-      if (/^(?:drop|clear)$/.test(first)) doubt(ctx, 'git stash borra cambios guardados')
+      if (/^(?:drop|clear)$/.test(first)) hard(ctx, 'git stash borra cambios guardados')
       return
     case 'branch':
     case 'tag':
-      if (flag(/^(?:-d|-D|--delete|-f|--force|-m|-M|--move)$/)) doubt(ctx, `git ${sub} borra o reemplaza`)
+      if (flag(/^(?:-d|-D|--delete)$/)) hard(ctx, `git ${sub} borra`)
+      else if (flag(/^(?:-f|--force|-m|-M|--move)$/)) doubt(ctx, `git ${sub} reemplaza o mueve`)
       return
     case 'rebase':
       if (flag(/^(?:-x|--exec.*)$/)) doubt(ctx, 'git rebase --exec')
@@ -1971,16 +1992,18 @@ function analyzeGit(args: Word[], cwds: Cwds, ctx: Ctx): void {
     case 'prune':
     case 'filter-branch':
     case 'filter-repo':
-    case 'rm':
       return doubt(ctx, `git ${sub}`)
+    case 'rm':
+      if (flag(/^--cached$/) && !flag(/^--no-cached$/)) return doubt(ctx, 'git rm --cached')
+      return hard(ctx, 'git rm borra archivos')
     case 'reflog':
-      if (/^(?:expire|delete)$/.test(first)) doubt(ctx, 'git reflog borra historial')
+      if (/^(?:expire|delete)$/.test(first)) hard(ctx, 'git reflog borra historial')
       return
     case 'update-ref':
       if (flag(/^-d$/)) doubt(ctx, 'git update-ref -d')
       return
     case 'worktree':
-      if (/^(?:remove|prune)$/.test(first)) doubt(ctx, 'git worktree borra')
+      if (/^(?:remove|prune)$/.test(first)) hard(ctx, 'git worktree borra')
       return
     case 'submodule':
       if (first === 'deinit') doubt(ctx, 'git submodule deinit')
@@ -2039,7 +2062,7 @@ function analyzePackageManager(name: string, args: Word[], cwds: Cwds, ctx: Ctx)
   if (ctx.written.has('package.json')) doubt(ctx, 'ejecuta un guion de un package.json recién escrito')
   const pos = positional(args, /^(?:--prefix|-c|--cwd|--dir|-C|--filter|-w|--workspace)$/)
   const sub = pos[0]?.text.toLowerCase() ?? ''
-  if (hasFlag(args, /^(?:-g|--global|--location=global|--location=user)$/)) doubt(ctx, 'instala o cambia algo fuera del proyecto')
+  if (hasFlag(args, /^(?:-g|--global|--location=global|--location=user)$/)) hard(ctx, 'instala o cambia algo fuera del proyecto')
   if (/^(?:publish|unpublish|deprecate|dist-tag|owner|access|adduser|login|logout|team|org|star|unstar|hook)$/.test(sub))
     return doubt(ctx, 'publica o cambia el registro de paquetes')
   if (sub === 'token') return hard(ctx, 'credenciales del registro de paquetes')
@@ -2047,7 +2070,7 @@ function analyzePackageManager(name: string, args: Word[], cwds: Cwds, ctx: Ctx)
   if (/^(?:run|run-script)$/.test(sub) && DEPLOY_TASK.test(pos[1]?.text ?? '')) doubt(ctx, 'guion de despliegue o publicación')
   if (sub === 'pkg' && /^(?:set|delete)$/.test(pos[1]?.text ?? '')) doubt(ctx, 'cambia package.json (puede añadir un guion)')
   if (/^(?:config|c)$/.test(sub) && /^(?:set|delete|rm|edit)$/.test(pos[1]?.text ?? '')) return doubt(ctx, 'cambia la configuración de npm')
-  if (sub === 'link' && !pos[1]) doubt(ctx, 'npm link instala fuera del proyecto')
+  if (sub === 'link' && !pos[1]) hard(ctx, 'npm link instala fuera del proyecto')
   // `yarn deploy`, `pnpm deploy`, `bun run deploy`: atajo de guion que despliega o pierde trabajo. I2/R6.
   if (/^(?:yarn|pnpm|bun)$/.test(name) && DEPLOY_TASK.test(sub)) doubt(ctx, 'guion de despliegue o publicación')
   if ((name === 'npm' && /^(?:exec|x)$/.test(sub)) || (/^(?:pnpm|yarn|bun)$/.test(name) && /^(?:dlx|x|exec)$/.test(sub))) {
@@ -2061,7 +2084,7 @@ function analyzePackageManager(name: string, args: Word[], cwds: Cwds, ctx: Ctx)
 
 function analyzePip(args: Word[], cwds: Cwds, ctx: Ctx): void {
   const sub = firstPositional(args)
-  if (hasFlag(args, /^(?:--user|--system|--break-system-packages)$/)) return doubt(ctx, 'instala fuera del proyecto')
+  if (hasFlag(args, /^(?:--user|--system|--break-system-packages)$/)) return hard(ctx, 'instala fuera del proyecto')
   for (const dir of optionValues(args, /^(?:-t|--target|--prefix|--root|--src)$/)) checkWrite(dir.text, cwds, ctx)
   for (const glued of args.filter((a) => /^-t.+/.test(a.text))) checkWrite(glued.text.slice(2), cwds, ctx)
   if (sub === 'uninstall') return doubt(ctx, 'desinstala paquetes')
@@ -2073,17 +2096,19 @@ function analyzeFind(args: Word[], cwds: Cwds, ctx: Ctx): void {
   let i = 0
   while (i < args.length && !/^[-(!]/.test(args[i].text)) starts.push(args[i++].text)
   const expr = args.slice(i)
-  const filtered = expr.some((a) =>
-    /^-(?:name|iname|path|ipath|regex|iregex|type|mtime|mmin|newer|size|user|perm|empty|wholename)$/.test(a.text)
+  const filtered = expr.some(
+    (a, index) =>
+      /^-(?:name|iname|path|ipath|regex|iregex|mtime|mmin|newer|size|user|perm|empty|wholename)$/.test(a.text) &&
+      !/^(?:!|-not)$/.test(expr[index - 1]?.text ?? '')
   )
   if (expr.some((a) => a.text === '-delete')) {
     for (const r of starts.length ? starts : ['.'])
       for (const cwd of cwds) {
         const t = resolveTarget(r, cwd, ctx)
         if (t.kind === 'path' && critical(t.path, ctx) && (!filtered || segmentsOf(t.path).length <= 1 || within(ctx.home, t.path)))
-          hard(ctx, 'find -delete sobre la raíz, la carpeta personal o el proyecto')
+          hard(ctx, 'borra la raíz, la carpeta personal o el proyecto entero')
       }
-    doubt(ctx, 'find borra archivos')
+    hard(ctx, 'find borra archivos')
   }
   for (let j = 0; j < expr.length; j++) {
     const a = expr[j].text
@@ -2092,8 +2117,19 @@ function analyzeFind(args: Word[], cwds: Cwds, ctx: Ctx): void {
       for (j++; j < expr.length && expr[j].text !== ';' && expr[j].text !== '+'; j++) inner.push(expr[j])
       if (!inner.length) continue
       const prog = canonical(basename(inner[0].text))
-      if (DELETE.has(prog)) doubt(ctx, 'find borra lo que encuentra')
-      else if (KILL.has(prog)) doubt(ctx, 'find mata procesos')
+      if (DELETE.has(prog)) {
+        const recursive = inner.some((w) => /^(?:-[a-z]*r[a-z]*|--recursive|-recurse|\/s)$/i.test(w.text))
+        const entire =
+          recursive &&
+          !filtered &&
+          (starts.length ? starts : ['.']).some((r) =>
+            cwds.some((cwd) => {
+              const t = resolveTarget(r, cwd, ctx)
+              return t.kind === 'path' && critical(t.path, ctx)
+            })
+          )
+        hard(ctx, entire ? 'borra la raíz, la carpeta personal o el proyecto entero' : 'find borra lo que encuentra')
+      } else if (KILL.has(prog)) doubt(ctx, 'find mata procesos')
       else
         analyzeWords(
           inner.map((w) => (w.text.includes('{}') ? { ...w, text: w.text.replace(/\{\}/g, '$f'), dynamic: true } : w)),
@@ -2637,7 +2673,7 @@ function analyzeRemote(name: string, args: Word[], cwds: Cwds, ctx: Ctx): boolea
   if (name === 'rsync') {
     if (args.some((a) => /^[\w.-]+(?:@[\w.-]+)?:/.test(a.text) && !/^[a-z]:[\\/]/i.test(a.text)))
       return (doubt(ctx, 'copia a otro equipo'), true)
-    if (hasFlag(args, /^--(?:delete|remove-source-files)/)) doubt(ctx, 'rsync borra archivos')
+    if (hasFlag(args, /^--(?:delete|remove-source-files)/)) hard(ctx, 'rsync borra archivos')
     const pos = positional(
       args,
       /^(?:-e|--rsh|--exclude|--include|--filter|-f|--files-from|--log-file|--backup-dir|--rsync-path|-t|--temp-dir|--chmod|--chown)$/
@@ -2696,21 +2732,21 @@ function analyzeInstallers(name: string, args: Word[], cwds: Cwds, ctx: Ctx): bo
   if (/^(?:pip[\d.]*)$/.test(name)) return (analyzePip(args, cwds, ctx), true)
   if (name === 'uv') {
     if (sub === 'pip') analyzePip(args.slice(1), cwds, ctx)
-    else if (sub === 'tool' && /^(?:install|uninstall|upgrade)$/.test(firstPositional(args, 1))) doubt(ctx, 'instala fuera del proyecto')
+    else if (sub === 'tool' && /^(?:install|uninstall|upgrade)$/.test(firstPositional(args, 1))) hard(ctx, 'instala fuera del proyecto')
     return true
   }
   if (/^(?:pipx|conda|mamba)$/.test(name)) {
-    if (/^(?:install|uninstall|remove|upgrade|inject|create|update)$/.test(sub)) doubt(ctx, 'instala fuera del proyecto')
+    if (/^(?:install|uninstall|remove|upgrade|inject|create|update)$/.test(sub)) hard(ctx, 'instala fuera del proyecto')
     return true
   }
   if (/^(?:install-module|install-package|uninstall-module|uninstall-package|install-script|update-module|msiexec)$/.test(name))
     return (doubt(ctx, 'instala o quita programas'), true)
   if (name === 'cargo') {
-    if (/^(?:install|uninstall)$/.test(sub)) doubt(ctx, 'instala fuera del proyecto')
+    if (/^(?:install|uninstall)$/.test(sub)) hard(ctx, 'instala fuera del proyecto')
     return true
   }
   if (name === 'go') {
-    if (sub === 'install' || (sub === 'clean' && hasFlag(args, /^-(?:cache|modcache)$/))) doubt(ctx, 'instala o borra fuera del proyecto')
+    if (sub === 'install' || (sub === 'clean' && hasFlag(args, /^-(?:cache|modcache)$/))) hard(ctx, 'instala o borra fuera del proyecto')
     return true
   }
   if (/^(?:brew|port|apt|apt-get|yum|dnf|pacman|zypper|snap|flatpak|winget|choco|scoop|gem)$/.test(name)) {
@@ -2831,8 +2867,10 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
   if (first.text.startsWith('[') && first.text !== '[' && first.text !== '[[') {
     if (ctx.escapes || ctx.cmdShell) return doubt(ctx, 'expresión que no pertenece al shell')
     const call = list.map((w) => w.text).join(' ')
-    if (/::(?:Delete|Move)\b/i.test(call)) doubt(ctx, 'borra o mueve archivos (.NET)')
-    if (/::(?:WriteAll\w*|AppendAll\w*|Copy|Create\w*|Replace)\b/i.test(call)) doubt(ctx, 'escribe archivos (.NET)')
+    if (/::Delete\b/i.test(call)) hard(ctx, 'borra archivos (.NET)')
+    if (/::Move\b/i.test(call)) hard(ctx, 'mueve archivos a una carpeta que no se conoce (.NET)')
+    if (/::(?:WriteAll\w*|AppendAll\w*|Copy|Create\w*|Replace)\b/i.test(call))
+      hard(ctx, 'escribe archivos en una carpeta que no se conoce (.NET)')
     if (/::SetEnvironmentVariable\b/i.test(call) && /\b(?:Machine|User)\b/.test(call)) hard(ctx, 'cambia variables del sistema')
     if (!/^\[(?:math|datetime|(?:system\.)?io\.(?:path|file))\]::/i.test(first.text)) doubt(ctx, 'expresión de tipo no reconocida')
     return
@@ -2976,7 +3014,7 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
     }
     if (name === 'wevtutil' && lower.some((a) => /^(?:cl|clear-log|sl)$/.test(a))) return hard(ctx, 'borra los registros de eventos')
     if (name === 'cipher' && hasFlag(args, /^\/w/i)) return hard(ctx, 'borra el espacio libre del disco')
-    if (name === 'clear-recyclebin') return doubt(ctx, 'vacía la papelera')
+    if (name === 'clear-recyclebin') return hard(ctx, 'vacía la papelera')
     if (name === 'bcdedit' || name === 'reagentc') return hard(ctx, 'cambia el arranque del sistema')
   }
 
@@ -3007,7 +3045,7 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
     if (!rest.length) return
     const inner = canonical(basename(rest[0].text))
     if (STDIN_RUNNERS(inner) || DOWNLOADERS.test(inner)) doubt(ctx, 'xargs ejecuta o envía datos de la tubería')
-    if (DELETE.has(inner)) return doubt(ctx, 'borra lo que llega por la tubería')
+    if (DELETE.has(inner)) return hard(ctx, 'borra lo que llega por la tubería')
     if (KILL.has(inner)) return doubt(ctx, 'mata procesos que llegan por la tubería')
     return analyzeWords(rest, cwds, ctx, part)
   }
@@ -3210,7 +3248,10 @@ function analyzeWords(words: Word[], cwds: Cwds, ctx: Ctx, part?: Part, afterCal
           ...positional(args, /^-(?:path|literalpath|lp|pspath|include|exclude|filter|credential|stream)$/i)
         ]
       : positional(args, null, ctx.windows && /^(?:del|erase|rd|rmdir)$/.test(name))
-    if (!targets.length) return doubt(ctx, 'borra lo que llega por la tubería')
+    if (!targets.length) {
+      const incoming = part?.projectListing === true
+      return hard(ctx, incoming && ps ? 'borra la raíz, la carpeta personal o el proyecto entero' : 'borra lo que llega por la tubería')
+    }
     const recursive =
       ps || /^(?:rimraf|rd|rmdir|trash|deltree)$/.test(name) || hasFlag(args, /^(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive|-recurse|\/s)$/i)
     for (const t of targets) checkDelete(t.text, cwds, ctx, recursive)
@@ -3350,6 +3391,7 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
     }
     doubt(ctx, 'llamada a un método de PowerShell')
   }
+  if (!ctx.escapes && /\$[\w.]+\s*\.\s*(?:delete|remove|unlink|rmdir)\s*\(/i.test(text)) hard(ctx, 'borra mediante un método de PowerShell')
   if (!ctx.escapes && /\$[\w.]+\s*\.\s*\w+\s*\(|(?<!&)&\s*\(/.test(text)) doubt(ctx, 'expresión que puede ejecutar código')
   if (/\.env\{[^}]*\}|\.\?\?\*/.test(text)) doubt(ctx, 'expansión que puede leer credenciales')
   if (
@@ -3398,6 +3440,22 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
       if (pipedFromDownload(parts, up)) hard(ctx, 'descarga y ejecuta código')
       else if (prog !== 'xargs' && !p.words.slice(programOf(p).index + 1).some((w) => !w.text.startsWith('-')) && !p.heredocs.length)
         doubt(ctx, `${prog} ejecuta lo que llega por la tubería`)
+    }
+    if (pipedIn && /^(?:remove-item|ri)$/.test(prog) && /^(?:get-childitem|gci|ls|dir)$/.test(programOf(parts[up]).name)) {
+      const listing = parts[up].words.slice(programOf(parts[up]).index + 1)
+      const paths = [
+        ...optionValues(listing, /^-(?:path|literalpath)$/i),
+        ...positional(listing, /^-(?:path|literalpath|filter|include|exclude)$/i)
+      ]
+      p.projectListing =
+        !hasFlag(listing, /^-(?:filter|include)$/i) &&
+        (paths.length ? paths : [{ text: '.' }]).some((w) =>
+          cwds.some((cwd) => {
+            const t = resolveTarget(w.text, cwd, ctx)
+            if (t.kind !== 'path') return false
+            return critical(t.path, ctx) || (/(?:^|[\\/])\*$/.test(w.text) && critical(globParent(t.path) ?? t.path, ctx))
+          })
+        )
     }
     for (const s of p.substs) classifyInto(s, cwds, { ...ctx, depth: ctx.depth + 1 }, fromScript)
     // Archivos que esta orden escribe (redirección, `tee` o un cmdlet de contenido): si luego se ejecutan, se revisan. G4/R4.
@@ -3449,9 +3507,58 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
   }
 }
 
+/** Gramática acotada de lecturas de PowerShell que el motor puede marcar `unparsed` por comas/try/catch/tildes.
+ * No basta reconocer un cmdlet: cada parte debe ser lectura, sin métodos, llamadas ni opciones desconocidas.
+ */
+function knownPowerShellReads(command: string): boolean {
+  const parts = parse(normalizeShellCommand(command, false), false)
+  if (!parts) return false
+  return parts.every((p) => {
+    if (p.group) return true
+    if (p.call || p.redirects.length || p.substs.length) return false
+    const words = [...p.words]
+    while (words.length && /^(?:try|catch|finally)$/i.test(words[0].text)) words.shift()
+    if (!words.length) return true
+    if (words.length === 1 && /^(?:\$_(?:\.\w+)*|\.[A-Za-z]\w*)$/.test(words[0].text)) return true
+    const name = canonical(basename(words[0].text))
+    const grammar: Record<string, [string, string]> = {
+      'get-childitem': ['-file -directory -name -force -recurse', '-path -literalpath -filter -include -exclude -depth'],
+      'get-content': ['-raw -wait', '-path -literalpath -encoding -totalcount -tail -delimiter'],
+      'select-object': ['-unique', '-property -expandproperty -first -last -skip'],
+      'format-table': ['-autosize -wrap -hidetableheaders', '-property'],
+      'format-list': ['', '-property'],
+      'out-string': ['-stream', '-width'],
+      'write-output': ['-noenumerate', '-inputobject'],
+      'write-host': ['-nonewline', '-object -foregroundcolor -backgroundcolor'],
+      'invoke-webrequest': ['-usebasicparsing', '-uri -method -timeoutsec']
+    }
+    const aliases: Record<string, string> = {
+      gci: 'get-childitem',
+      gc: 'get-content',
+      iwr: 'invoke-webrequest',
+      ft: 'format-table',
+      fl: 'format-list',
+      select: 'select-object'
+    }
+    const g = grammar[aliases[name] ?? name]
+    if (!g) return false
+    const flags = g[0].split(' ')
+    const values = g[1].split(' ')
+    for (let i = 1; i < words.length; i++) {
+      const a = words[i].text.toLowerCase()
+      if (a.startsWith('-')) {
+        if (values.includes(a)) {
+          if (!words[++i]) return false
+        } else if (!flags.includes(a)) return false
+      }
+    }
+    return true
+  })
+}
+
 /**
  * Clasifica el comando COMPLETO de una petición de terminal en «Automático». Sin comando, demasiado largo o ilegible →
- * `doubt`. La raíz del proyecto decide qué es «dentro»; sin raíz, toda escritura es `doubt`.
+ * `doubt`. La raíz del proyecto decide qué es «dentro»; sin raíz, toda escritura es `hard`.
  */
 export function classifyAutoCommand(
   command: string | undefined,
@@ -3500,6 +3607,7 @@ export function classifyAutoCommand(
   // R7: además de resolver la redirección/asignación, strictUnparsed exige una gramática conocida en CADA orden.
   // Cualquier argumento, sustitución, expresión o subcomando dudoso ya dejó un motivo arriba. Una redirección nunca
   // convierte una rama antigua sin gramática estricta en allow.
-  if (options.unparsed && !ctx.sawRedirectOrAssign) return { verdict: 'doubt', reason: 'el motor no pudo leer el comando' }
+  if (options.unparsed && !ctx.sawRedirectOrAssign && !(!ctx.escapes && !ctx.cmdShell && knownPowerShellReads(command)))
+    return { verdict: 'doubt', reason: 'el motor no pudo leer el comando' }
   return { verdict: 'allow', reason: 'inofensivo' }
 }

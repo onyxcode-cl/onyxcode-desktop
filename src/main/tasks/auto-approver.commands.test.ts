@@ -195,6 +195,21 @@ it.each(['/work/project', 'C:\\work\\project'])(
 )
 
 describe('V29: Overdrive con el revisor por IA', () => {
+  it.each([
+    'rm notas.txt',
+    'Remove-Item -LiteralPath notas.txt',
+    'find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +',
+    'cp index.html /Users/ana/Desktop/index.html',
+    "Copy-Item index.html -Destination ([Environment]::GetFolderPath('Desktop'))"
+  ])('R7 tarjeta sin revisión ni respuesta automática: %s', async (command) => {
+    const h = harness(/Item/.test(command) ? 'C:/Users/ana/proyecto' : '/work/project', command, 'bash', {
+      review: { decision: 'allow', reason: 'lo pidió' }
+    })
+    expect(await h.approver.considerOne(h.server.folder, false, 'request')).toEqual({ auto: false })
+    expect(h.reviews).toEqual([])
+    expect(h.replies).toEqual([])
+  })
+
   it('allow del revisor → una vez, con la carpeta de la tarea en la ruta y registro', async () => {
     const h = harness('/work/project', 'git push', 'bash', { review: { decision: 'allow', reason: 'lo pidió' } })
     expect(await h.approver.considerOne('/work/project', false, 'request')).toEqual({ auto: true })
@@ -226,7 +241,7 @@ describe('V29: Overdrive con el revisor por IA', () => {
   it('3 bloqueos seguidos en la tarea: el cuarto es tarjeta con el motivo; la persona reinicia la racha', async () => {
     const decisions: string[] = []
     const make = (id: string): ReturnType<typeof harness> => {
-      const h = harness('/work/project', `rm -rf ${id}`, 'bash', { review: { decision: 'block', reason: 'no lo pidió' } })
+      const h = harness('/work/project', `git push origin ${id}`, 'bash', { review: { decision: 'block', reason: 'no lo pidió' } })
       return h
     }
     // Un mismo aprobador (main) para toda la tarea: se inyecta el revisor y se reutiliza.
@@ -255,8 +270,8 @@ describe('V29: Overdrive con el revisor por IA', () => {
       id,
       sessionID: 'session',
       permission: 'bash',
-      patterns: ['rm *'],
-      metadata: { command: `rm -rf ${id}` }
+      patterns: ['git push *'],
+      metadata: { command: `git push origin ${id}` }
     })
     const consider = async (id: string) => {
       await approver.considerPermissions(base.server, [perm(id)])

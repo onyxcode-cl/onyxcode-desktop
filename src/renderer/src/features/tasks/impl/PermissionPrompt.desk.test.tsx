@@ -223,7 +223,12 @@ describe('V29: tarjeta de Overdrive (escritorio) con la petición única del mot
   const v29 = (subcommands: Array<{ command: string; rule: string | null }>): PermissionRequest =>
     req({
       patterns: ['cat /tmp/a.log && npm test'],
-      metadata: { command: 'cat /tmp/a.log && npm test', shell: 'bash', externalDirectories: ['/tmp'], subcommands },
+      metadata: {
+        command: subcommands.map((s) => s.command).join(' && ') || 'cat /tmp/a.log && npm test',
+        shell: 'bash',
+        externalDirectories: ['/tmp'],
+        subcommands
+      },
       always: ['cat *']
     })
 
@@ -249,6 +254,7 @@ describe('V29: tarjeta de Overdrive (escritorio) con la petición única del mot
     )
     expect(html).toContain('No se guardará permiso para estas partes')
     expect(html).toContain('Remove-Item notas.txt')
+    expect(html).toContain('Este comando borra archivos o carpetas.')
     expect(html).toContain('Test-Path *')
     expect(html).toContain('El límite es de 5 reglas')
     expect(html).not.toContain('read4 *')

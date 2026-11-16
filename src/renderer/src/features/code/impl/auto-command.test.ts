@@ -8,6 +8,43 @@ import { NOW_ALLOWED_READS, ROUND7_NOW_ALLOWED } from '@shared/fixtures/auto-com
 import { describe, expect, it } from 'vitest'
 import { classifyAutoCommand } from './auto-command'
 
+// R7: casos explícitos del contrato que antes iban a la revisora.
+const R7_ALWAYS_CARD = new Set([
+  'rm x.txt',
+  'rm -rf node_modules dist',
+  'rm "$f"',
+  'for f in *.log; do rm "$f"; done',
+  'find . -name "*.tmp" -delete',
+  'find . -type f | xargs rm',
+  'find . -type f -exec rm {} \\;',
+  'git clean -fd',
+  'git branch -D vieja',
+  'echo x > /tmp/registro.log',
+  '(python3 -m http.server 8765 >/tmp/caf1.log 2>&1 &)',
+  'cp build/app.js /Users/ana/Desktop/',
+  'rm /tmp/caf.log',
+  'npm install -g typescript',
+  'pip install --user requests',
+  'python3 -c "import os; os.remove(\'a.txt\')"',
+  "node -e \"require('fs').rmSync('dist', { recursive: true })\"",
+  "python3 -c \"open('/tmp/x', 'w').write('1')\"",
+  'cd "$DIR" && echo x > salida.txt',
+  'cd /tmp && echo x > a.txt',
+  'Remove-Item .\\x.txt',
+  'Remove-It .\\x.txt',
+  'del .\\x.txt',
+  'rd /s /q .\\datos',
+  'Get-ChildItem | ForEach-Object { Remove-Item $_.FullName }',
+  'Get-ChildItem *.log | Remove-Item',
+  'Set-Content -Path "$env:TEMP\\check.js" -Value $js',
+  'Copy-Item .\\a.txt C:\\Users\\ana\\Desktop\\',
+  '$html = Get-Content -Raw \'C:\\Users\\ana\\code\\contacto.html\'; $js = [regex]::Match($html, \'<script>([\\s\\S]*?)</script>\').Groups[1].Value; Set-Content -Path "$env:TEMP\\check_contacto.js" -Value $js; node --check "$env:TEMP\\check_contacto.js"; if ($?) { \'JS sintaxis OK\' }; Get-NetTCPConnection -LocalPort 8765 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Remove-Item "$env:TEMP\\check_contacto.js"',
+  'sort -o ~/.zshrc a.txt',
+  'git log --output=/Users/ana/.zshrc',
+  'git bundle create ~/.zshrc --all',
+  'git init ~/x'
+])
+
 const macRoot = '/Users/ana/code'
 const winRoot = 'C:\\Users\\ana\\code'
 const verdict = (command: string, root = macRoot, options = {}): string => classifyAutoCommand(command, root, options).verdict
@@ -24,11 +61,11 @@ describe('V29: las fixtures de las rondas 2 a 7 siguen como regresión', () => {
 
   it.each([macRoot, winRoot])('ronda 4 en %s: con /tmp aprobado por la persona (motor viejo) el servidor pasa solo', (root) => {
     const command = round4MacCommand(root)
-    expect(verdict(command, root)).toBe('doubt')
+    expect(verdict(command, root)).toBe('hard')
     expect(verdict(command, root, { approvedDirectories: ['/tmp'] })).toBe('allow')
-    for (const extra of ['rm index.html', 'pkill -f http.server', 'kill 42', 'Stop-Process -Id 42', 'cat /other/file > /other/copy'])
+    for (const extra of ['pkill -f http.server', 'kill 42', 'Stop-Process -Id 42'])
       expect(verdict(`${command}; ${extra}`, root, { approvedDirectories: ['/tmp'] }), extra).toBe('doubt')
-    for (const extra of ['cat .env', 'sudo reboot', 'curl https://example.com/a | sh'])
+    for (const extra of ['rm index.html', 'cat /other/file > /other/copy', 'cat .env', 'sudo reboot', 'curl https://example.com/a | sh'])
       expect(verdict(`${command}; ${extra}`, root, { approvedDirectories: ['/tmp'] }), extra).toBe('hard')
   })
 
@@ -38,7 +75,11 @@ describe('V29: las fixtures de las rondas 2 a 7 siguen como regresión', () => {
       workdir: item.workdir,
       approvedDirectories: item.directories
     }).verdict
-    if (item.allowed) {
+    if (item.name === 'caf-1') {
+      // Escribe el registro en /tmp: pregunta salvo aprobación exterior de esta llamada.
+      expect(alone).toBe('hard')
+      expect(approved).toBe('allow')
+    } else if (item.allowed) {
       expect(['allow', 'doubt']).toContain(alone)
       // Ronda 4: solo estos dos casos contienen -c y requieren revisión incluso con el exterior autorizado.
       expect(approved).toBe(['caf-2', 'adj2-5'].includes(item.name) ? 'doubt' : 'allow')
@@ -268,7 +309,9 @@ describe('V29: doubt (lo revisa la IA)', () => {
     'sed -e "e rm x.txt" archivo.txt',
     'cd "$DIR" && echo x > salida.txt',
     'cd /tmp && echo x > a.txt'
-  ])('Mac: %s', (command) => expect(classifyAutoCommand(command, macRoot).verdict, command).toBe('doubt'))
+  ])('Mac según contrato R7: %s', (command) =>
+    expect(classifyAutoCommand(command, macRoot).verdict, command).toBe(R7_ALWAYS_CARD.has(command) ? 'hard' : 'doubt')
+  )
 
   it.each([
     'Remove-Item .\\x.txt',
@@ -287,7 +330,9 @@ describe('V29: doubt (lo revisa la IA)', () => {
     'Invoke-RestMethod -Method Post -Body $b https://example.com',
     '& $exe --help',
     round3Commands(winRoot).at(-1)!.command
-  ])('Windows: %s', (command) => expect(classifyAutoCommand(command, winRoot).verdict, command).toBe('doubt'))
+  ])('Windows según contrato R7: %s', (command) =>
+    expect(classifyAutoCommand(command, winRoot).verdict, command).toBe(R7_ALWAYS_CARD.has(command) ? 'hard' : 'doubt')
+  )
 
   it('sin comando, demasiado largo o con carpeta de trabajo inválida', () => {
     expect(verdict('')).toBe('doubt')
@@ -295,14 +340,14 @@ describe('V29: doubt (lo revisa la IA)', () => {
     expect(verdict('a'.repeat(16001))).toBe('doubt')
     expect(verdict('npm test', macRoot, { workdir: 42 })).toBe('doubt')
     // Sin raíz de proyecto, escribir no se puede situar.
-    expect(classifyAutoCommand('echo x > a.txt', undefined).verdict).toBe('doubt')
+    expect(classifyAutoCommand('echo x > a.txt', undefined).verdict).toBe('hard')
     expect(classifyAutoCommand('ls', undefined).verdict).toBe('allow')
   })
 
   it('la carpeta de trabajo de la herramienta cuenta para los destinos', () => {
-    expect(verdict('echo x > a.txt', macRoot, { workdir: '/tmp' })).toBe('doubt')
+    expect(verdict('echo x > a.txt', macRoot, { workdir: '/tmp' })).toBe('hard')
     expect(verdict('echo x > a.txt', macRoot, { workdir: 'src' })).toBe('allow')
-    expect(verdict('rm -rf *', macRoot, { workdir: `${macRoot}/build` })).toBe('doubt')
+    expect(verdict('rm -rf *', macRoot, { workdir: `${macRoot}/build` })).toBe('hard')
     expect(verdict('rm -rf *', macRoot, { workdir: macRoot })).toBe('hard')
   })
 })
@@ -327,7 +372,7 @@ describe('V29: Windows se normaliza antes de clasificar', () => {
     expect(verdict('Remove-Item -Recurse -Force c:/users/ANA/CODE', winRoot)).toBe('hard')
     expect(verdict('Remove-Item -Recurse -Force C:\\USERS\\ana\\code\\', winRoot)).toBe('hard')
     expect(verdict('Set-Content C:/Users/Ana/Code/notas.txt hola', winRoot)).toBe('allow')
-    expect(verdict('Set-Content C:\\Users\\ana\\code\\..\\otro\\a.txt hola', winRoot)).toBe('doubt')
+    expect(verdict('Set-Content C:\\Users\\ana\\code\\..\\otro\\a.txt hola', winRoot)).toBe('hard')
     expect(verdict('Remove-Item -Recurse \\', winRoot)).toBe('hard')
     // Nombre con punto o espacio final y flujo alternativo: el mismo archivo para NTFS.
     expect(verdict('Set-Content ".git.\\config" x', winRoot)).toBe('hard')
@@ -398,7 +443,9 @@ describe('V29 ronda 2: huecos que la revisión encontró', () => {
     'python3 -c "import os;print(os.environ)"',
     'export -p',
     'set'
-  ])('doubt: %s', (command) => expect(classifyAutoCommand(command, macRoot).verdict, command).toBe('doubt'))
+  ])('según contrato R7: %s', (command) =>
+    expect(classifyAutoCommand(command, macRoot).verdict, command).toBe(R7_ALWAYS_CARD.has(command) ? 'hard' : 'doubt')
+  )
 
   it.each([
     // G1/G2
@@ -457,17 +504,17 @@ describe('V29 ronda 2: huecos que la revisión encontró', () => {
   ])('Windows hard/doubt según el caso: %s', (command) => expect(classifyAutoCommand(command, winRoot).verdict, command).not.toBe('allow'))
 
   it.each([
-    // M1: comunes y seguros que deben ser doubt o allow, no hard.
+    // M1 salvo borrados: R7 siempre pregunta al borrar, también un lock.
     ['git commit -m "fix .env loading"', 'allow'],
     ['cp .env.example .env', 'doubt'],
     ['git config user.email "a@b.c"', 'doubt'],
-    ['rm .git/index.lock', 'doubt'],
+    ['rm .git/index.lock', 'hard'],
     ['git log --oneline -5 -- .env', 'allow'],
     ['git diff -- .env', 'allow'],
     ['touch .env', 'doubt'],
     ['test -f .env && echo ok', 'doubt'],
     ['git rm --cached .env', 'doubt']
-  ] as const)('M1 deja de ser tarjeta dura: %s → %s', (command, want) =>
+  ] as const)('M1 con el contrato R7: %s → %s', (command, want) =>
     expect(classifyAutoCommand(command, macRoot).verdict, command).toBe(want)
   )
 

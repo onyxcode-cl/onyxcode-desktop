@@ -8,6 +8,8 @@ import { act } from 'react'
 import type { Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PendingPermission } from './types'
+const { alwaysList } = vi.hoisted(() => ({ alwaysList: vi.fn() }))
+vi.mock('../../../lib/api', () => ({ call: alwaysList }))
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -55,6 +57,7 @@ beforeEach(() => {
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
+  alwaysList.mockReset().mockResolvedValue({ available: false })
   reply.mockClear()
   useCode.setState({ replyPermission: reply as never, reviewNotes: {}, messages: {} })
 })
@@ -149,4 +152,82 @@ it('explica lo excluido fuera del desplegable y anuncia el límite de cinco', ()
 it('sin subcommands ni reglas guardables tampoco ofrece siempre', () => {
   mount({ ...request({ subcommands: undefined }), always: [] })
   expect(button('Permitir y no volver a preguntar en este proyecto')).toBeUndefined()
+})
+
+it('R7: una tarjeta sin siempre explica solo el archivo sensible, sin incluir lecturas normales', () => {
+  mount(
+    request({
+      command: 'cat .env; echo listo; git ls-files',
+      subcommands: [
+        { command: 'cat .env', rule: null },
+        { command: 'echo listo', rule: null },
+        { command: 'git ls-files', rule: null }
+      ]
+    })
+  )
+  const notes = [...host.querySelectorAll('p')].filter((p) => p.textContent?.includes('No se guardará permiso'))
+  expect(notes).toHaveLength(1)
+  expect(notes[0].textContent).toContain('cat .env (toca un archivo sensible)')
+  expect(notes[0].textContent).not.toMatch(/echo|ls-files|borra/)
+})
+
+it('R7: muestra solo reglas nuevas y conserva el botón al llegar las guardadas', async () => {
+  let resolve!: (value: unknown) => void
+  alwaysList.mockImplementation(
+    () =>
+      new Promise((r) => {
+        resolve = r
+      })
+  )
+  mount(
+    request({
+      command: 'git branch -vv; git log -5; echo listo',
+      subcommands: [
+        { command: 'git branch -vv', rule: 'git branch *' },
+        { command: 'git log -5', rule: 'git log *' },
+        { command: 'echo listo', rule: 'echo *' }
+      ]
+    })
+  )
+  const always = button('Permitir y no volver a preguntar en este proyecto')
+  expect(always.disabled).toBe(false)
+  await act(async () =>
+    resolve({
+      available: true,
+      active: true,
+      rules: [
+        { permission: 'bash', pattern: 'git branch *' },
+        { permission: 'bash', pattern: 'git log *' }
+      ]
+    })
+  )
+  expect(button('Permitir y no volver a preguntar en este proyecto')).toBe(always)
+  expect(always.title).toBe('No volverá a preguntar por: echo *')
+  expect(host.textContent).toContain('No volverá a preguntar por: echo *')
+  expect(host.textContent).not.toContain('No volverá a preguntar por: git branch')
+  await act(async () => always.click())
+  expect(reply).toHaveBeenCalledTimes(1)
+})
+
+it('R7: el clic siempre responde aunque la carga de reglas no termine y vuelve a estar disponible', async () => {
+  alwaysList.mockImplementation(() => new Promise(() => {}))
+  // El store real captura errores y conserva la tarjeta; su promesa termina resuelta.
+  reply.mockImplementation(() => Promise.resolve())
+  mount(request())
+  const always = button('Permitir y no volver a preguntar en este proyecto')
+  await act(async () => always.click())
+  expect(reply).toHaveBeenCalledTimes(1)
+  expect(always.disabled).toBe(false)
+  await act(async () => always.click())
+  expect(reply).toHaveBeenCalledTimes(2)
+})
+
+it('R7: el motivo del borrado del proyecto se ve en la tarjeta', () => {
+  mount(
+    request({
+      command: 'find . -mindepth 1 ! -name .git -exec rm -rf {} +',
+      subcommands: [{ command: 'find . -mindepth 1 ! -name .git -exec rm -rf {} +', rule: null }]
+    })
+  )
+  expect(host.textContent).toContain('Este comando borra la raíz, la carpeta personal o el proyecto entero.')
 })

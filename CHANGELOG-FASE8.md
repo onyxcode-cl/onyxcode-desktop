@@ -4622,3 +4622,12 @@ Pruebas: fixture `auto-command-round7.ts` con comandos completos de la copia de 
 El clasificador admite las opciones de lectura de `git branch` y `git status` que faltaban; se fijan regresiones de las tuberías de lectura de PowerShell y GET locales. La tarjeta de Código y Overdrive muestra las reglas que guardará, las partes excluidas y el tope de cinco, sin ofrecer «siempre» cuando no queda ninguna. El rechazo con comentario no solicita otra instrucción y el aviso se retira al terminar la continuación. Los acentos latinos, también combinados, dejan de activar el aviso de caracteres engañosos; controles y letras de otros alfabetos siguen resaltados sin alterar el comando.
 
 Pruebas: `auto-command.r6.test.ts`, `auto-review.test.ts`, `PermissionCard.v29.test.tsx`, `RejectionNotices.test.tsx` y `HostExecApprovalHost.test.tsx`, además de las regresiones de Código y Overdrive.
+
+
+## F8-B317 — V29, ronda 7: borrar y salir del proyecto siempre preguntan
+
+Automático envía directamente a tarjeta los borrados y las escrituras/copias/movimientos fuera del proyecto o hacia destinos variables o desconocidos. Los borrados amplios identifican el proyecto entero; se conservan las carpetas exteriores ya aprobadas para escrituras conocidas y las otras dudas siguen pasando por la revisora. Las lecturas acotadas de PowerShell se comprueban incluso cuando el motor marca `unparsed`.
+
+Las tarjetas reconstruyen las partes completas desde el comando original, sin cortar expresiones ni comas, distinguen el motivo de cada exclusión y no atribuyen borrados a lecturas inocuas. Las reglas ya guardadas se descuentan del anuncio de reglas nuevas mediante una consulta independiente del botón, también en el motor aislado de Overdrive.
+
+Pruebas: `auto-command.app-r7.test.ts`, `auto-review.test.ts`, `PermissionCard.v29.test.tsx`, `store.permisos.test.ts`, `auto-approver.commands.test.ts` y regresiones de las rondas anteriores y de la tarjeta de Overdrive. No se atribuye una causa confirmada al clic intermitente ni al selector nativo observado en la prueba manual.

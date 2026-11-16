@@ -9,7 +9,7 @@
  *  - `unavailable` (o un error, un tope o una respuesta que no se entiende): tarjeta. Nunca `allow` por defecto.
  * Puro salvo `requestReview` (fetch inyectable): lo usan el renderer (Código) y main (Overdrive).
  */
-import type { AutoCommandResult } from './auto-command'
+import { classifyAutoCommand, type AutoCommandResult } from './auto-command'
 
 export type ReviewDecision = { decision: 'allow' | 'block' | 'unavailable'; reason: string }
 
@@ -158,23 +158,100 @@ export function subcommandRules(metadata: unknown): string[] | null {
   return subcommandRuleSummary(metadata)?.rules ?? null
 }
 
-/** Conserva el tope de cinco e informa de las partes que no se guardarán. */
-export function subcommandRuleSummary(metadata: unknown): { rules: string[]; excluded: string[]; truncated: boolean } | null {
-  if (!metadata || typeof metadata !== 'object') return null
-  const list = (metadata as Record<string, unknown>).subcommands
-  if (!Array.isArray(list)) return null
-  const rules: string[] = []
-  const excluded: string[] = []
-  for (const item of list) {
-    const entry = item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
-    const rule = entry.rule
-    const command = typeof entry.command === 'string' ? entry.command : ''
-    const deletion = /(?:^|[;&|]\s*)(?:rm|rmdir|unlink|trash|srm|del|erase|rd|remove-item|ri|rimraf)\b|\s-delete\b/i
-    if (typeof rule === 'string' && rule.trim() && !deletion.test(command) && !deletion.test(rule) && !/^[*?\s]/.test(rule)) {
-      if (!rules.includes(rule)) rules.push(rule)
-    } else if (command) excluded.push(command)
+/** Divide solo separadores exteriores: conserva paréntesis, comas, bloques y comillas tal como se ejecutarán.
+ * Es presentación; nunca se usa para autorizar ni para fabricar reglas.
+ */
+export function displayCommandParts(command: string): string[] {
+  const parts: string[] = []
+  let start = 0
+  let quote = ''
+  const stack: string[] = []
+  for (let i = 0; i < command.length; i++) {
+    const c = command[i]
+    if (quote) {
+      if (c === quote) quote = ''
+      else if ((c === '\\' && quote === '"') || c === '`') i++
+      continue
+    }
+    if (c === '"' || c === "'") {
+      quote = c
+      continue
+    }
+    if (c === '\\' || c === '`') {
+      i++
+      continue
+    }
+    if ('({['.includes(c)) {
+      stack.push(c)
+      continue
+    }
+    if (')}]'.includes(c)) {
+      stack.pop()
+      continue
+    }
+    if (stack.length || !';|&\n'.includes(c)) continue
+    // & al comienzo es el operador de llamada de PowerShell.
+    if (c === '&' && !command.slice(start, i).trim()) continue
+    const piece = command.slice(start, i).trim()
+    if (piece && !parts.includes(piece)) parts.push(piece)
+    if (command[i + 1] === c) i++
+    start = i + 1
   }
-  return { rules: rules.slice(0, 5), excluded, truncated: rules.length > 5 }
+  const last = command.slice(start).trim()
+  if (last && !parts.includes(last)) parts.push(last)
+  return parts
+}
+
+export type RuleExclusionReason = 'delete' | 'sensitive' | 'blocked'
+
+/** Motivo propio de la parte; la tarjeta dura completa no vuelve vetadas las lecturas que la acompañan. */
+function exclusionReason(command: string): RuleExclusionReason | null {
+  const result = classifyAutoCommand(command, '/project', { shell: 'powershell' })
+  if (/borra|vacía la papelera/.test(result.reason)) return 'delete'
+  if (/credencial|sensible|dentro de \.git|configuración de Lazunox/.test(result.reason)) return 'sensitive'
+  return null
+}
+
+/** Prefijos que no admiten reglas por contrato, incluso cuando el resto de la tarjeta es duro. */
+export function vetoedRulePart(command: string): boolean {
+  return /^(?:python[\d.]*|node|bun|deno|ruby|perl|bash|sh|zsh|pwsh|powershell|cmd|sudo|env|xargs|eval|invoke-expression|iex|start-process|npx)(?:\s|$)|^git\s*$|^(?:npm|pnpm|yarn)\s+run(?:\s|$)/i.test(
+    command.trim()
+  )
+}
+
+/** Conserva el tope de cinco. Recompone la presentación desde el comando completo, sin los fragmentos del analizador. */
+export function subcommandRuleSummary(metadata: unknown): {
+  rules: string[]
+  excluded: string[]
+  exclusions: Array<{ command: string; reason: RuleExclusionReason }>
+  truncated: boolean
+} | null {
+  if (!metadata || typeof metadata !== 'object') return null
+  const md = metadata as Record<string, unknown>
+  if (!Array.isArray(md.subcommands)) return null
+  const entries = md.subcommands.map((item) => {
+    const entry = item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+    return { command: typeof entry.command === 'string' ? entry.command.trim() : '', rule: entry.rule }
+  })
+  const rules: string[] = []
+  for (const { command, rule } of entries) {
+    if (typeof rule === 'string' && rule.trim() && !exclusionReason(command) && !exclusionReason(rule) && !/^[*?\s]/.test(rule)) {
+      if (!rules.includes(rule)) rules.push(rule)
+    }
+  }
+  const display =
+    typeof md.command === 'string' && md.command.trim()
+      ? displayCommandParts(md.command)
+      : [...new Set(entries.map((e) => e.command).filter(Boolean))]
+  const exclusions: Array<{ command: string; reason: RuleExclusionReason }> = []
+  for (const command of display) {
+    const reason = exclusionReason(command)
+    // Una entrada del motor que contiene el compuesto entero no veta sus partes inocuas.
+    const matches = entries.filter((e) => e.command === command || (e.command && command.includes(e.command)))
+    const blocked = matches.some((e) => typeof e.rule !== 'string' || !e.rule.trim() || /^[*?\s]/.test(e.rule))
+    if (reason || blocked || vetoedRulePart(command)) exclusions.push({ command, reason: reason ?? 'blocked' })
+  }
+  return { rules: rules.slice(0, 5), excluded: exclusions.map((e) => e.command), exclusions, truncated: rules.length > 5 }
 }
 
 /** Carpetas de fuera del proyecto que toca el comando (`externalDirectories`; motor viejo: `directories`). */
@@ -183,4 +260,14 @@ export function outsideDirectories(metadata: unknown): string[] {
   const md = metadata as Record<string, unknown>
   const list = Array.isArray(md.externalDirectories) ? md.externalDirectories : Array.isArray(md.directories) ? md.directories : []
   return [...new Set(list.filter((d): d is string => typeof d === 'string' && d.trim() !== ''))]
+}
+
+/** Aviso de la tarjeta, independiente de la revisora. Los textos se traducen en la vista. */
+export function hardCommandNotice(result: AutoCommandResult): 'deleteProject' | 'delete' | 'outside' | 'unknownDestination' | null {
+  if (result.verdict !== 'hard') return null
+  if (result.reason === 'borra la raíz, la carpeta personal o el proyecto entero') return 'deleteProject'
+  if (/borra|vacía la papelera/.test(result.reason)) return 'delete'
+  if (/escribe.*(?:no se conoce|variable)|escribe un destino calculado/.test(result.reason)) return 'unknownDestination'
+  if (/escribe.*(?:fuera del proyecto|carpeta personal)|temporal fuera del proyecto/.test(result.reason)) return 'outside'
+  return null
 }
