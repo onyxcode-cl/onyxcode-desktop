@@ -80,6 +80,24 @@ describe('instalación automática en segundo plano', () => {
     expect(useAutoInstall.getState().failed).toEqual({ craft: 'signature' })
   })
 
+  it.each([true, false])('publica el resultado de ArtCraft (%s) antes de instalar la siguiente pieza', async (ok) => {
+    const api = apiWith({
+      craftInstall: async () => ({ ok, error: ok ? undefined : 'hash' }),
+      runtimesInstall: vi.fn(async () => {
+        const s = useAutoInstall.getState()
+        expect(s.phase).toBe('running')
+        expect(autoCompleted().has('craft')).toBe(ok)
+        expect(s.done).toEqual(ok ? ['craft'] : [])
+        expect(s.runtime.craft).toEqual(ok ? undefined : { state: 'failed', error: 'hash' })
+        expect(s.runtime.runtimes?.state).toBe('downloading')
+        return { ok: true }
+      })
+    })
+    await startAutoInstall(['craft', 'runtimes'], base(api))
+    expect(api.runtimesInstall).toHaveBeenCalledOnce()
+    expect(useAutoInstall.getState().failed).toEqual(ok ? {} : { craft: 'hash' })
+  })
+
   it('sin conexión no descarga nada y queda esperando', async () => {
     const api = apiWith()
     await startAutoInstall(['craft'], base(api, { online: () => false }))

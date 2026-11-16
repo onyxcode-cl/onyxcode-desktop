@@ -4684,3 +4684,12 @@ La revisión local determina el recorrido antes de la bienvenida: cuatro pasos e
 El selector de IA abre con la búsqueda vacía y el cursor en el modelo actual incluso después de cerrar con Escape, clic fuera, botón o cambio de tamaño. Comparar ya borraba su búsqueda al desmontar el panel; ahora también coloca el cursor en el modelo actual. Las instrucciones de permisos se muestran únicamente en su etapa.
 
 Pruebas: `shared/preflight.test.ts`, `FirstRunGate.test.tsx`, `Wizard.progress.test.tsx`, regresiones de onboarding, `ModelPicker.shortcuts.test.tsx`, `CompareControls.position.test.tsx` y regresiones de Comparar, con `--testTimeout=20000`. Sin abrir la app ni ejecutar el motor.
+
+
+## F8-B324 — V30: estado inmediato por pieza y npm sin consultas de actualización
+
+La preparación automática publica cada éxito al terminar la pieza, junto con el contador: ArtCraft muestra «Listo» mientras Node.js y uv siguen instalándose, aunque la revisión inicial todavía lo dé por pendiente. Las piezas en espera, en curso o fallidas conservan su propio estado.
+
+El entorno que agrega el Node verificado de la app al PATH incluye `npm_config_update_notifier=false`, tanto en Code (Mac/Windows) como en Overdrive (Mac, aislado y Control total). Evita la consulta de npm al registro solo para anunciar actualizaciones, conservando la prioridad del Node de la persona y las reglas de red existentes.
+
+Pruebas: `FirstRunGate.test.tsx` (Mac y Windows con Node/uv aún instalándose), `auto-install.test.ts` (éxito y error mientras empieza la siguiente pieza), `runtimes/engine-env.test.ts`, `opencode/server.ripgrep-path.test.ts` y `tasks/manager.engine-flags.test.ts` (entorno recibido por los dobles del motor).
