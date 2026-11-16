@@ -20,10 +20,10 @@ describe('resources/opencode-bin/pin.json (beta de Tareas en Windows, 2026-10-07
     expect(pin!.rootfs.sha256).toBe('3af972f6074b8915bde473a6d5c615d37f6e4fb6aa5646219adce3ee3716a248')
     expect(pin!.rootfs.size).toBe(128236044)
     expect(pin!.rootfs.unpackedMax).toBeGreaterThanOrEqual(274501120)
-    expect(pin!.opencode.sha256).toBe('892fda3daede383c85e83bdc751a7ac6b60279178ae1a2b6f732f754725a69ca')
-    expect(pin!.opencode.size).toBe(50912409)
+    expect(pin!.opencode.sha256).toBe('62602cd329bb93b4cede601a4d63afce84b5a827e8151602201e35b9f1c78e1e')
+    expect(pin!.opencode.size).toBe(50914795)
     expect(pin!.opencode.url).toBe(
-      'https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.26/opencode-linux-x64.tar.gz'
+      'https://github.com/onyxcode-cl/lazunox-motor/releases/download/v1.19.0-lazunox.27/opencode-linux-x64.tar.gz'
     )
   })
   it('la url de la imagen es EXACTAMENTE la de wslRootfsUrl (no publicada: el parser no se relajó)', () => {
