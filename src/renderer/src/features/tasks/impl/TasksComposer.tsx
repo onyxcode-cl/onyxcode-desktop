@@ -21,6 +21,7 @@ import { useT } from '../../../lib/i18n'
 import { isRemoteSurface, platformCaps } from '../../../lib/platform'
 import { TASKS_TERMS } from '@shared/tasks-glossary'
 import { ModelPicker } from '../../../components/ModelPicker'
+import { EffortPicker } from '../../../components/EffortPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { errorMessage } from '../../../lib/opencode'
 import { isSubmitKey, useAutosizeTextarea } from '../../../lib/textarea'
@@ -134,7 +135,10 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   }
 
   return (
-    <div className={`mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)] ${hero ? '' : 'pb-4'}`}>
+    <div
+      data-effort-scope=""
+      className={`mx-auto w-full max-w-3xl px-6 desk:max-w-[calc(var(--measure-prose)+48px)] ${hero ? '' : 'pb-4'}`}
+    >
       <NoAiBanner
         gate={aiGate.gate}
         freeModel={aiGate.free}
@@ -279,6 +283,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             )}
             {extra}
             <ModelPicker value={model} onChange={setTaskModel} effort={{ variant, onChange: setTaskVariant }} />
+            <EffortPicker model={model} variant={variant} onChange={setTaskVariant} />
           </div>
           <UsageMeter messages={entries} model={model} />
           {sending ? (

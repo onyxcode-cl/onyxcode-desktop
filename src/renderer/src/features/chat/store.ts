@@ -30,8 +30,25 @@ function readPinned(): Record<string, string[]> {
   }
 }
 
+/** Esfuerzo local por conversación y último nivel elegido para conversaciones nuevas. */
+const LS_CHAT_EFFORT = 'chat.effort'
+function readEffort(): { variants: Record<string, string | null>; lastVariant: string | null } {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_CHAT_EFFORT) ?? '{}')
+    const variants = Object.fromEntries(
+      Object.entries(raw.variants ?? {}).filter(([, v]) => v === null || typeof v === 'string')
+    ) as Record<string, string | null>
+    return { variants, lastVariant: typeof raw.lastVariant === 'string' ? raw.lastVariant : null }
+  } catch {
+    return { variants: {}, lastVariant: null }
+  }
+}
+
 interface ChatState {
   activeSessionId: string | null
+  variants: Record<string, string | null>
+  lastVariant: string | null
+  setVariant: (variant: string | null, sessionID?: string | null) => void
   /** Conversaciones fijadas por carpeta de Chat. */
   pinned: Record<string, string[]>
   /** Vista «Archivadas» de la barra lateral. */
@@ -60,6 +77,19 @@ interface ChatState {
 
 export const useChat = create<ChatState>((set) => ({
   activeSessionId: null,
+  ...readEffort(),
+  setVariant: (variant, sessionID) =>
+    set((s) => {
+      const id = sessionID === undefined ? s.activeSessionId : sessionID
+      const variants = id ? { ...s.variants, [id]: variant } : s.variants
+      const next = { variants, lastVariant: variant }
+      try {
+        localStorage.setItem(LS_CHAT_EFFORT, JSON.stringify(next))
+      } catch {
+        // sin storage
+      }
+      return next
+    }),
   pinned: readPinned(),
   showArchived: false,
   togglePin: (directory, sessionID) =>

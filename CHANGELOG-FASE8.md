@@ -4693,3 +4693,9 @@ La preparación automática publica cada éxito al terminar la pieza, junto con 
 El entorno que agrega el Node verificado de la app al PATH incluye `npm_config_update_notifier=false`, tanto en Code (Mac/Windows) como en Overdrive (Mac, aislado y Control total). Evita la consulta de npm al registro solo para anunciar actualizaciones, conservando la prioridad del Node de la persona y las reglas de red existentes.
 
 Pruebas: `FirstRunGate.test.tsx` (Mac y Windows con Node/uv aún instalándose), `auto-install.test.ts` (éxito y error mientras empieza la siguiente pieza), `runtimes/engine-env.test.ts`, `opencode/server.ripgrep-path.test.ts` y `tasks/manager.engine-flags.test.ts` (entorno recibido por los dobles del motor).
+
+## F8-B325 — V30: espacio para el modelo y el esfuerzo en Code
+
+En la fila del compositor de Code, permisos pasa primero a etiqueta corta y luego a ícono (56/48 rem); Hacer/Planear cede su texto a 36 rem y esfuerzo a 24 rem. Así el nombre del modelo se lee completo con el botón de esfuerzo pegado a su derecha. «Comparar» y el medidor de uso conservan sus anchos de siempre (40 y 34 rem). Los controles que quedan como ícono conservan su `aria-label` y su tooltip.
+
+Chat y Overdrive conservan su presentación: las clases opcionales del selector de esfuerzo se aplican únicamente desde Code.

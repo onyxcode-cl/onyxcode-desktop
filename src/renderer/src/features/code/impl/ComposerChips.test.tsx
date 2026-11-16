@@ -5,8 +5,13 @@ vi.hoisted(() => vi.unstubAllGlobals())
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import type { Provider } from '@opencode-ai/sdk/v2/client'
+import { DEFAULT_SETTINGS } from '@shared/types'
 import { useLang } from '../../../lib/i18n'
-import { AgentChip, PermissionChip } from './ComposerControls'
+import { useProviders } from '../../../stores/providers'
+import { useSettings } from '../../../stores/settings'
+import { useExtrasPrefs } from '../../settings/impl/extras'
+import { AgentChip, ModelControls, PermissionChip } from './ComposerControls'
 import { useCode } from './store'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -40,13 +45,16 @@ describe('PermissionChip (Code)', () => {
     expect(trigger().textContent).toContain('Preguntar siempre')
     expect(trigger().getAttribute('aria-label')).toBe('Modo de permisos: Preguntar siempre')
     const label = Array.from(trigger().querySelectorAll('span')).find((s) => s.textContent === 'Preguntar siempre')!
-    expect(label.className).toContain('desk:@max-[40rem]:sr-only')
+    expect(label.className).toContain('desk:@max-[56rem]:sr-only')
+    expect(trigger().title).toBe('Modo de permisos: Preguntar siempre')
   })
 
   it('al no caber la etiqueta completa queda una etiqueta corta («Preguntar») en el mismo punto de corte, sin cambiar el nombre accesible', () => {
     render(createElement(PermissionChip))
     const short = Array.from(trigger().querySelectorAll('span')).find((x) => x.textContent === 'Preguntar')!
-    expect(short.className).toContain('desk:@max-[40rem]:inline')
+    expect(short.className).toContain('desk:@max-[56rem]:inline')
+    expect(short.className).toContain('desk:@max-[48rem]:sr-only')
+    expect(trigger().querySelector('svg:last-child')?.classList.contains('desk:@max-[48rem]:hidden')).toBe(true)
     expect(short.className).toContain('hidden')
     expect(short.getAttribute('aria-hidden')).toBe('true')
     expect(trigger().getAttribute('aria-label')).toBe('Modo de permisos: Preguntar siempre')
@@ -97,4 +105,46 @@ describe('AgentChip (Build / Plan)', () => {
     expect(trigger().className).toContain('text-accent')
     expect(trigger().textContent).toContain('Planear')
   })
+
+  it.each(['build', 'plan'] as const)('%s cede texto y flecha después de permisos, conservando nombre y tooltip', (agent) => {
+    render(createElement(AgentChip, { agent, onChange: onAgent }))
+    expect(trigger().querySelector('span')?.classList.contains('desk:@max-[36rem]:sr-only')).toBe(true)
+    expect(trigger().querySelector('svg:last-child')?.classList.contains('desk:@max-[36rem]:hidden')).toBe(true)
+    const name = `Modo de trabajo: ${agent === 'build' ? 'Hacer' : 'Planear'}`
+    expect(trigger().getAttribute('aria-label')).toBe(name)
+    expect(trigger().title).toBe(`${name} (⇧Tab)`)
+  })
+})
+
+describe('ModelControls (Code)', () => {
+  it.each(['Claude Haiku 5.5', 'DeepSeek V4.1 Flash 1017'])(
+    'reserva espacio para %s y conserva Estándar hasta después de Hacer/Planear',
+    (name) => {
+      const model = { providerID: 'p', modelID: 'm' }
+      useSettings.setState({ settings: { ...DEFAULT_SETTINGS, defaultModel: model } })
+      useProviders.setState({
+        providers: [
+          { id: 'p', name: 'Proveedor', models: { m: { id: 'm', name, status: 'active', variants: { medium: {} } } } }
+        ] as unknown as Provider[],
+        loaded: true,
+        loading: false,
+        client: null
+      })
+      useExtrasPrefs.setState((s) => ({ prefs: { ...s.prefs, modelsByMode: {}, planExecModels: {} } }))
+      useCode.setState({ model, variant: null, activeSessionID: null, roleModels: {}, directory: null })
+      render(createElement(ModelControls))
+      const picker = host.querySelector<HTMLButtonElement>('[data-model-picker]')!
+      expect(picker.textContent).toBe(name)
+      const modelBox = picker.parentElement!.parentElement!
+      expect(modelBox.classList.contains('desk:shrink')).toBe(true)
+      expect(modelBox.classList.contains('desk:min-w-[4.5rem]')).toBe(true)
+      expect(modelBox.classList.contains('desk:flex-1')).toBe(false)
+      const effort = host.querySelector<HTMLButtonElement>('[data-testid="effort-picker"]')!
+      expect(effort.textContent).toBe('Estándar')
+      expect(effort.querySelector('span')?.classList.contains('desk:@max-[24rem]:sr-only')).toBe(true)
+      expect(effort.querySelector('svg:last-child')?.classList.contains('desk:@max-[24rem]:hidden')).toBe(true)
+      expect(effort.getAttribute('aria-label')).toBe('Esfuerzo del modelo: Estándar')
+      expect(effort.title).toBe('Esfuerzo del modelo: Estándar (⌘E)')
+    }
+  )
 })
