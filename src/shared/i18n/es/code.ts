@@ -1,4 +1,5 @@
 export const code = {
+  'code.msg.modelChanged': 'Cambié a {model} porque lo pediste.',
   'code.summary.move': 'Mover «{title}»',
   'code.summary.moveHelp': 'Arrastra para mover. Con el teclado, usa las flechas arriba y abajo, Inicio o Fin.',
   'code.summary.moved': '«{title}» movida a la posición {position} de {count}.',

@@ -48,6 +48,7 @@ import {
   rememberFullAccess,
   rootTaskId,
   setTaskMeta,
+  taskModelOf,
   useTasks
 } from './store'
 import { markFirstStepDone } from '../../../stores/first-steps'
@@ -536,20 +537,6 @@ export function newTask(): void {
   useTasks.setState({ activeTaskId: null, taskModel: null, taskVariant: null, sideChat: null })
 }
 
-/** Modelo y esfuerzo con que se usó la tarea por última vez (último mensaje del usuario, o el de la sesión). */
-function taskModelOf(sessionID: string): { model: ModelRef; variant: string | null } | null {
-  const st = useSessions.getState()
-  const entries = st.messages[sessionID] ?? []
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const info = entries[i].info
-    if (info.role === 'user' && info.model) {
-      return { model: { providerID: info.model.providerID, modelID: info.model.modelID }, variant: info.model.variant ?? null }
-    }
-  }
-  const m = st.sessions[sessionID]?.model
-  return m ? { model: { providerID: m.providerID, modelID: m.id }, variant: m.variant ?? null } : null
-}
-
 /** Modo unificado: «Sin carpeta (chat nuevo)» del menú. Suelta la carpeta actual (el historial queda en ella) y el próximo envío crea una carpeta de chat nueva. */
 export function startChatWithoutFolder(): void {
   useUnified.setState({ wantAuto: false })
@@ -560,18 +547,15 @@ export function startChatWithoutFolder(): void {
 export async function openTask(sessionID: string): Promise<void> {
   useTasks.setState((s) => ({
     activeTaskId: sessionID,
+    taskModel: s.taskModels[sessionID]?.model ?? null,
+    taskVariant: s.taskModels[sessionID]?.variant ?? null,
     // La Consulta lateral pertenece a una tarea concreta.
     sideChat: s.sideChat && s.sideChat.taskId !== sessionID ? null : s.sideChat
   }))
   clearUnseen(sessionID)
   // Reabrir fija la sesión (activa + acceso) ANTES de cargar (LRU de `messages`).
   useSessions.getState().touchSession(sessionID)
-  await loadTask(sessionID)
-  // La tarea conserva su modelo y su esfuerzo al reabrirla.
-  if (useTasks.getState().activeTaskId === sessionID) {
-    const m = taskModelOf(sessionID)
-    useTasks.setState({ taskModel: m?.model ?? null, taskVariant: m?.variant ?? null })
-  }
+  await loadTask(sessionID, true)
 }
 
 function ctx(): { client: NonNullable<ReturnType<typeof useTasks.getState>['client']>; folder: string } {

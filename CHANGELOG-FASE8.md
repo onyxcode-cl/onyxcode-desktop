@@ -4693,3 +4693,14 @@ La preparación automática publica cada éxito al terminar la pieza, junto con 
 El entorno que agrega el Node verificado de la app al PATH incluye `npm_config_update_notifier=false`, tanto en Code (Mac/Windows) como en Overdrive (Mac, aislado y Control total). Evita la consulta de npm al registro solo para anunciar actualizaciones, conservando la prioridad del Node de la persona y las reglas de red existentes.
 
 Pruebas: `FirstRunGate.test.tsx` (Mac y Windows con Node/uv aún instalándose), `auto-install.test.ts` (éxito y error mientras empieza la siguiente pieza), `runtimes/engine-env.test.ts`, `opencode/server.ripgrep-path.test.ts` y `tasks/manager.engine-flags.test.ts` (entorno recibido por los dobles del motor).
+## F8-B325 — V30: cambio de modelo pedido con palabras en Código
+
+Código valida `session.modelo.cambiado`, actualiza el selector solo de esa conversación y conserva el modelo/esfuerzo para el siguiente envío, también en cola. No modifica ajustes ni activa el modo plan. El cambio explícito prima sobre los modelos configurados para Planear/Hacer. El chat muestra «Cambié a <nombre visible> porque lo pediste.» como texto plano, en español o inglés. Al abrir una conversación sin elección local, recupera el modelo del último mensaje de usuario del motor, incluidos los sintéticos. Un evento durante la carga no se pisa con el historial anterior.
+
+Pruebas: `model-change.test.ts`, `store.model-change.test.ts` y `MessageStream.model-change.test.tsx` (contrato estricto, aislamiento, selector real, envío/cola, reapertura, carrera con carga, aviso y texto plano). Overdrive tiene un manejador y store distintos; su integración queda pendiente, conforme al alcance del encargo.
+
+## F8-B326 — V30, ronda 2: Overdrive sigue el cambio de modelo del motor
+
+Overdrive valida `session.modelo.cambiado` con el contrato compartido y guarda el modelo y el aviso por tarea, acotados al servidor y carpeta actuales. El selector y el siguiente envío usan el modelo nuevo, sin heredar el esfuerzo anterior ni cambiar preferencias. Código y Overdrive comparten la línea de texto plano «Cambié a <nombre visible> porque lo pediste.». Al reabrir se recupera el último mensaje de usuario, también sintético; una elección o evento durante la carga no se pisa con el snapshot anterior. El flujo remoto ya admite este evento por el prefijo `session.` y conserva `properties`, por lo que no requiere cambios.
+
+Pruebas: `features/tasks/impl/store.model-change.test.ts` y `TaskConversation.model-change.test.tsx`, más el validador y las regresiones de Código y Overdrive (aislamiento por tarea/carpeta/motor, siguiente envío, duplicados, reapertura, cargas concurrentes, rutas Windows, selector real, aviso, traducción y texto plano).

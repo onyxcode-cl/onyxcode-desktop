@@ -6,6 +6,7 @@
  */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import { create } from 'zustand'
+import { parseModelChanged, type ModelChanged } from '@shared/model-change'
 import { deferWorkingChange } from '../../../lib/working-change'
 import { useServer } from '../../../stores/server'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
@@ -261,6 +262,9 @@ export interface CodeState {
   todos: Record<string, Todo[]>
   agent: CodeAgent
   model: ModelRef | null
+  /** Elección local por conversación; `requested` prima sobre modelos de Planear/Hacer. Nunca se escribe en ajustes. */
+  sessionModels: Record<string, { model: ModelRef; variant: string | null; requested: boolean }>
+  modelChanges: Record<string, ModelChanged[]>
   /** Modelo de planear/ejecutar cambiado en la conversación (D2), por sesión (`''` = aún sin sesión). Solo memoria; no toca los ajustes. */
   roleModels: Record<string, PlanExecModels>
   /** Aviso (no bloquea) de que el modelo de planear/ejecutar ya no existe o no tiene clave y se usó el de la conversación. */
@@ -708,7 +712,7 @@ export const useCode = create<CodeState>((set, get) => {
   /** Cargas de `loadMessages` en vuelo por sesión (F7-B11): una segunda llamada reutiliza la promesa. */
   const inflightLoads = new Map<string, Promise<void>>()
 
-  const loadMessages = (sessionID: string): Promise<void> => {
+  const loadMessages = (sessionID: string, restoreModel = false): Promise<void> => {
     const client = getClient()
     const dir = get().sessionProject[sessionID] ?? get().directory
     if (!client || !dir) return Promise.resolve()
@@ -719,6 +723,7 @@ export const useCode = create<CodeState>((set, get) => {
       lastAccess.set(sessionID, ++accessTick)
       return running
     }
+    const selectionAtLoad = get().sessionModels[sessionID]
     const p: Promise<void> = (async () => {
       lastAccess.set(sessionID, ++accessTick) // cargar es acceder
       deltaQueue.flush() // los deltas anteriores a la carga no deben registrarse en el tracker
@@ -735,8 +740,29 @@ export const useCode = create<CodeState>((set, get) => {
         const entries = data.map((m) => ({ info: m.info, parts: [...m.parts].sort(byId) })).sort((a, b) => byId(a.info, b.info))
         set((s) => {
           const merged = mergeSnapshot(entries, s.messages[sessionID] ?? [], tracker)
+          // El último usuario también puede ser sintético: es como el motor persiste un cambio de modelo.
+          // Al reabrir manda el historial; una elección/evento recibido DURANTE la carga gana al snapshot anterior.
+          const lastUser = [...merged].reverse().find((m) => m.info.role === 'user')
+          const info = lastUser?.info
+          const selection =
+            (!s.sessionModels[sessionID] || (restoreModel && s.sessionModels[sessionID] === selectionAtLoad)) &&
+            info?.role === 'user' &&
+            info.model
+              ? {
+                  model: info.model,
+                  variant: 'variant' in info && typeof info.variant === 'string' ? info.variant : null,
+                  // Reabrir debe mostrar y usar el último modelo del motor, también con ajustes de Planear/Hacer.
+                  requested: true
+                }
+              : undefined
           // Sesión que SE SABE ociosa: lo «en curso» que traiga la base del motor es un fantasma (reinicio del motor).
           return {
+            ...(selection
+              ? {
+                  sessionModels: { ...s.sessionModels, [sessionID]: selection },
+                  ...(s.activeSessionID === sessionID ? { model: selection.model, variant: selection.variant } : {})
+                }
+              : {}),
             messages: { ...s.messages, [sessionID]: s.runState[sessionID] === 'idle' ? (interruptRunningParts(merged) ?? merged) : merged }
           }
         })
@@ -798,6 +824,8 @@ export const useCode = create<CodeState>((set, get) => {
       permissions: bySession(s.permissions),
       questions: bySession(s.questions),
       plans: without(s.plans),
+      sessionModels: without(s.sessionModels),
+      modelChanges: without(s.modelChanges),
       elicitations: bySession(s.elicitations),
       elicitationNotices: bySession(s.elicitationNotices),
       turnsBySession: without(s.turnsBySession),
@@ -1070,7 +1098,9 @@ export const useCode = create<CodeState>((set, get) => {
     lastAccess.set(sid, ++accessTick)
     // Modelo efectivo: sin ninguna IA conectada no se envía (evita el error técnico del motor).
     // Modelo pedido: el elegido en esta sesión de la app o el del modo Code (`modelsByMode.code`, si no el predeterminado).
-    const wanted = model ?? resolveModelForMode('code')
+    const selection = get().sessionModels[sid]
+    const wanted = selection?.model ?? model ?? resolveModelForMode('code')
+    const sendVariant = selection ? selection.variant : variant
     const aiGate = currentAiGate(wanted)
     if (aiGate.gate.blocked) {
       setError(sid, NO_AI_ERROR)
@@ -1079,15 +1109,16 @@ export const useCode = create<CodeState>((set, get) => {
     const conversationModel = aiGate.avail === 'unknown' ? wanted : aiGate.effective
     // D2: con «modelo para planear/ejecutar» definidos, el modelo sale según el agente. Si el elegido ya no existe o no tiene clave,
     // se usa el de la conversación y queda un aviso visible (nunca en silencio).
-    const roleChoice = conversationModel
-      ? chooseRoleModel({
-          agent,
-          config: useExtrasPrefs.getState().prefs.planExecModels,
-          override: get().roleModels[sid] ?? get().roleModels[''],
-          conversation: conversationModel,
-          isUnavailable: (m) => currentAiGate(m, { strict: true }).unavailable
-        })
-      : null
+    const roleChoice =
+      conversationModel && !selection?.requested
+        ? chooseRoleModel({
+            agent,
+            config: useExtrasPrefs.getState().prefs.planExecModels,
+            override: get().roleModels[sid] ?? get().roleModels[''],
+            conversation: conversationModel,
+            isUnavailable: (m) => currentAiGate(m, { strict: true }).unavailable
+          })
+        : null
     const sendModel = roleChoice?.model ?? conversationModel
     {
       const had = !!get().roleNotices[sid]
@@ -1161,7 +1192,7 @@ export const useCode = create<CodeState>((set, get) => {
           agent,
           model: sendModel ? { providerID: sendModel.providerID, modelID: sendModel.modelID } : undefined,
           // El esfuerzo de razonamiento es del modelo de la conversación: no se aplica a otro modelo (D2).
-          variant: sameModel(sendModel, conversationModel) ? (variant ?? undefined) : undefined,
+          variant: sameModel(sendModel, conversationModel) ? (sendVariant ?? undefined) : undefined,
           // Memoria aprendida (decisión del dueño, 2026-10-07): nunca desde el celular. `PROMPT_KEYS` en
           // `remote/policy.ts` no incluye `system`, así que un `system` armado en el celular (con memoria
           // que ese mismo celular pudo manipular en su copia local de los ajustes) sería una forma de colar
@@ -1291,6 +1322,8 @@ export const useCode = create<CodeState>((set, get) => {
     todos: {},
     agent: initialAgent(),
     model: null,
+    sessionModels: {},
+    modelChanges: {},
     roleModels: {},
     roleNotices: {},
     variant: null,
@@ -1509,6 +1542,8 @@ export const useCode = create<CodeState>((set, get) => {
 
     newSessionAt: async (dir, title) => {
       const mode = get().lastPermissionMode
+      const draftModel =
+        !get().activeSessionID && get().model ? { model: get().model!, variant: get().variant, requested: false } : undefined
       const agent = get().activeSessionID ? (mode === 'plan' ? 'plan' : 'build') : get().agent
       try {
         const client = requireClient()
@@ -1529,6 +1564,7 @@ export const useCode = create<CodeState>((set, get) => {
         lsSetJSON(LS_SESSION_MODES, sessionPermissionModes)
         set((s) => ({
           sessionPermissionModes,
+          ...(draftModel ? { sessionModels: { ...s.sessionModels, [sess.id]: draftModel } } : {}),
           sessions: { ...s.sessions, [sess.id]: sess },
           sessionProject: { ...s.sessionProject, [sess.id]: dir },
           messages: { ...s.messages, [sess.id]: s.messages[sess.id] ?? [] }
@@ -1549,14 +1585,31 @@ export const useCode = create<CodeState>((set, get) => {
       const mode = sessionID ? sessionMode(get(), sessionID) : get().lastPermissionMode
       const sessionPermissionModes = sessionID ? { ...get().sessionPermissionModes, [sessionID]: mode } : get().sessionPermissionModes
       lsSetJSON(LS_SESSION_MODES, sessionPermissionModes)
-      set({ activeSessionID: sessionID, permissionMode: mode, sessionPermissionModes, agent: mode === 'plan' ? 'plan' : 'build' })
+      const before = get()
+      const sessionModels = { ...before.sessionModels }
+      if (before.activeSessionID && before.model)
+        sessionModels[before.activeSessionID] = {
+          model: before.model,
+          variant: before.variant,
+          requested: sessionModels[before.activeSessionID]?.requested ?? false
+        }
+      const selection = sessionID ? sessionModels[sessionID] : undefined
+      set({
+        activeSessionID: sessionID,
+        permissionMode: mode,
+        sessionPermissionModes,
+        sessionModels,
+        model: selection?.model ?? null,
+        variant: selection?.variant ?? null,
+        agent: mode === 'plan' ? 'plan' : 'build'
+      })
       const dir = get().directory
       if (dir) lsSet(LS_SESSION + dir, sessionID)
       if (!sessionID) return
       // Reabrir fija la sesión (activa + acceso) ANTES de cargar: no se desaloja a mitad de la recarga.
       get().touchSession(sessionID)
       get().markRead(sessionID)
-      await loadMessages(sessionID)
+      await loadMessages(sessionID, true)
     },
 
     deleteSession: async (sessionID) => {
@@ -2087,7 +2140,18 @@ export const useCode = create<CodeState>((set, get) => {
 
     setModel: (model, remember = true) => {
       if (remember && deferCodeChange(() => get().setModel(model), false, true)) return
-      set({ model, variant: null })
+      set((s) => ({
+        model,
+        variant: null,
+        ...(s.activeSessionID
+          ? {
+              sessionModels: {
+                ...s.sessionModels,
+                [s.activeSessionID]: { model, variant: null, requested: s.sessionModels[s.activeSessionID]?.requested ?? false }
+              }
+            }
+          : {})
+      }))
       if (remember) setModeModel('code', model)
     },
     setRoleModel: (role, model) => {
@@ -2104,7 +2168,21 @@ export const useCode = create<CodeState>((set, get) => {
       }),
     setVariant: (variant) => {
       if (deferCodeChange(() => get().setVariant(variant), variant === get().variant)) return
-      set({ variant })
+      set((s) => ({
+        variant,
+        ...(s.activeSessionID && s.model
+          ? {
+              sessionModels: {
+                ...s.sessionModels,
+                [s.activeSessionID]: {
+                  model: s.model,
+                  variant,
+                  requested: s.sessionModels[s.activeSessionID]?.requested ?? false
+                }
+              }
+            }
+          : {})
+      }))
     },
 
     // -- Cola de mensajes --
@@ -2432,6 +2510,25 @@ export const useCode = create<CodeState>((set, get) => {
         return
       }
       deltaQueue.flush() // orden: lo encolado va antes que este evento
+      if ((event.type as string) === 'session.modelo.cambiado') {
+        const change = parseModelChanged((event as { properties?: unknown }).properties)
+        if (!change) return
+        const state = get()
+        const project = state.sessionProject[change.sessionID]
+        // No adoptar sesiones desconocidas ni aceptar el id de otra carpeta/servidor.
+        if (!project || !(sameDir(project, eventDir) || sameDir(state.sessions[change.sessionID]?.directory ?? '', eventDir))) return
+        const selection = {
+          model: { providerID: change.nuevo.providerID, modelID: change.nuevo.modelID },
+          variant: change.nuevo.variant ?? null,
+          requested: true
+        }
+        set((s) => ({
+          sessionModels: { ...s.sessionModels, [change.sessionID]: selection },
+          modelChanges: { ...s.modelChanges, [change.sessionID]: [...(s.modelChanges[change.sessionID] ?? []), change] },
+          ...(s.activeSessionID === change.sessionID ? { model: selection.model, variant: selection.variant } : {})
+        }))
+        return
+      }
       // Modo plan (motor propio, bandera experimental `modoPlan`): eventos que no están en la unión de tipos del SDK fijado.
       if ((event.type as string).startsWith('session.plan.')) {
         applyPlanEvent(event.type as string, (event as { properties?: unknown }).properties, eventDir)

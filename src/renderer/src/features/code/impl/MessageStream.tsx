@@ -1,3 +1,4 @@
+import { ModelChangeNote } from '../../../components/conversation/ModelChangeNote'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Sparkles, Undo2 } from 'lucide-react'
@@ -745,6 +746,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   const retryLast = useCode((s) => s.retryLast)
   const compactSession = useCode((s) => s.compactSession)
   const streamSessionID = entries[0]?.info.sessionID
+  const modelChanges = useCode((s) => (streamSessionID ? s.modelChanges[streamSessionID] : undefined))
   const turnList = useCode((s) => (streamSessionID ? s.turnsBySession[streamSessionID] : undefined))
   const loadTurns = useCode((s) => s.loadTurns)
   const changesByUser = useMemo(() => turnsWithChanges(turnList), [turnList])
@@ -849,6 +851,9 @@ export function MessageStream(props: Props): React.JSX.Element {
               </button>
             </div>
           )}
+          {modelChanges?.map((change, index) => (
+            <ModelChangeNote key={index} {...m('meta')} change={change} />
+          ))}
           {streamSessionID && <RewindNoticeHost sessionID={streamSessionID} busy={busy} />}
           {streamSessionID && <RewindDialogHost sessionID={streamSessionID} />}
           {loosePerms.map((perm) => (

@@ -37,6 +37,7 @@ import {
 import { DISPLAY_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
+import { parseModelChanged, type ModelChanged } from '@shared/model-change'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
 import { noteRetryStatus } from '../../../lib/retry-info'
@@ -67,6 +68,11 @@ export interface BlockedAppEntry {
   bundleId: string
   name: string
   kind: BlockedAppKind
+}
+
+interface TaskModelSelection {
+  model: ModelRef
+  variant: string | null
 }
 
 interface TasksState {
@@ -152,6 +158,8 @@ interface TasksState {
   taskModel: ModelRef | null
   /** Esfuerzo (variante) elegido para la tarea (null = el predeterminado del modelo). */
   taskVariant: string | null
+  taskModels: Record<string, TaskModelSelection>
+  modelChanges: Record<string, (ModelChanged & { eventID?: string })[]>
   /** Preferencias de Tareas (null = sin cargar; usar `DEFAULT_TASKS_PREFS`). */
   prefs: TasksPrefs | null
   /** Política gestionada por la organización (null = ninguna o sin cargar). */
@@ -301,6 +309,8 @@ export const useTasks = create<TasksState>((set) => ({
   folderSet: null,
   taskModel: null,
   taskVariant: null,
+  taskModels: {},
+  modelChanges: {},
   prefs: null,
   policy: null,
   sideChat: null,
@@ -716,6 +726,26 @@ export function clearUnseen(sessionID: string): void {
 export function handleEvent(event: OcEvent, directory: string): void {
   const st = useTasks.getState()
   if (!st.folder || directory !== sdkDir(st.folder) || !st.conn) return
+  if ((event.type as string) === 'session.modelo.cambiado') {
+    const change = parseModelChanged((event as { properties?: unknown }).properties)
+    if (!change) return
+    const { sessions, sessionSource } = useSessions.getState()
+    // Una sesión ajena, desconocida o hija no cambia el modelo de la tarea raíz.
+    const session = sessions[change.sessionID]
+    if (!session || session.directory !== directory || sessionSource[change.sessionID] !== st.conn.baseUrl) return
+    if (event.id && st.modelChanges[change.sessionID]?.some((c) => c.eventID === event.id)) return
+    // El contrato confirmado no trae variante: descartar el esfuerzo del modelo anterior.
+    const selection = { model: { providerID: change.nuevo.providerID, modelID: change.nuevo.modelID }, variant: null }
+    useTasks.setState((s) => ({
+      taskModels: { ...s.taskModels, [change.sessionID]: selection },
+      modelChanges: {
+        ...s.modelChanges,
+        [change.sessionID]: [...(s.modelChanges[change.sessionID] ?? []), { ...change, eventID: event.id }]
+      },
+      ...(s.activeTaskId === change.sessionID ? { taskModel: selection.model, taskVariant: selection.variant } : {})
+    }))
+    return
+  }
   const prevRun =
     event.type === 'session.idle' || event.type === 'session.status' ? useSessions.getState().status[event.properties.sessionID] : undefined
   // Origen = servidor de esta carpeta/modo (no mezclar con sesiones de Code/Chat, B2).
@@ -896,6 +926,8 @@ export async function connectFolder(folder: string, fullAccess = fullAccessFor(f
     folderSet: null,
     taskModel: null,
     taskVariant: null,
+    taskModels: {},
+    modelChanges: {},
     sideChat: null,
     viewerRequest: null
   })
@@ -1048,7 +1080,11 @@ export function clearFolder(): void {
     networkBlocked: {},
     blockedApps: {},
     deleteGrant: null,
-    folderSet: null
+    folderSet: null,
+    taskModel: null,
+    taskVariant: null,
+    taskModels: {},
+    modelChanges: {}
   })
 }
 
@@ -1199,12 +1235,24 @@ async function syncRunStatus(client: OpencodeClient, folder: string): Promise<vo
   }
 }
 
-export async function loadTask(sessionID: string): Promise<void> {
-  const { client, folder } = useTasks.getState()
+export async function loadTask(sessionID: string, restoreModel = false): Promise<void> {
+  const { client, folder, taskModels } = useTasks.getState()
+  const selectionAtLoad = taskModels[sessionID]
   if (!client || !folder) return
   const sessions = useSessions.getState()
   try {
     await sessions.loadMessages(client, sessionID, sdkDir(folder))
+    const now = useTasks.getState()
+    // No restaurar un snapshot anterior sobre un evento/elección manual recibido durante la carga.
+    if (now.client !== client || now.folder !== folder) return
+    if (!now.taskModels[sessionID] || (restoreModel && now.taskModels[sessionID] === selectionAtLoad)) {
+      const selection = taskModelOf(sessionID)
+      if (selection)
+        useTasks.setState((s) => ({
+          taskModels: { ...s.taskModels, [sessionID]: selection },
+          ...(s.activeTaskId === sessionID ? { taskModel: selection.model, taskVariant: selection.variant } : {})
+        }))
+    }
     const todos = await client.session.todo({ sessionID, directory: sdkDir(folder) })
     if (todos.data) useTasks.setState((s) => ({ todos: { ...s.todos, [sessionID]: todos.data ?? [] } }))
     const status = await client.session.status({ directory: sdkDir(folder) })
@@ -1521,6 +1569,23 @@ export async function loadPolicy(): Promise<void> {
   }
 }
 
+/** Modelo persistido por el motor: último usuario (también sintético), antes que el de creación de la sesión. */
+export function taskModelOf(sessionID: string): TaskModelSelection | null {
+  const st = useSessions.getState()
+  const entries = st.messages[sessionID] ?? []
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const info = entries[i].info
+    if (info.role === 'user' && info.model) {
+      return {
+        model: { providerID: info.model.providerID, modelID: info.model.modelID },
+        variant: 'variant' in info && typeof info.variant === 'string' ? info.variant : (info.model.variant ?? null)
+      }
+    }
+  }
+  const m = st.sessions[sessionID]?.model
+  return m ? { model: { providerID: m.providerID, modelID: m.id }, variant: m.variant ?? null } : null
+}
+
 /** Modelo de la tarea: el elegido para ella o, si no hay, el configurado para el modo Tareas. */
 export function currentTasksModel(): ModelRef {
   return useTasks.getState().taskModel ?? resolveModelForMode('tasks')
@@ -1539,13 +1604,24 @@ export function setTaskModel(m: ModelRef): void {
   if (deferTaskChange(() => setTaskModel(m), false, true)) return
   const cur = useTasks.getState().taskModel
   const changed = !cur || cur.providerID !== m.providerID || cur.modelID !== m.modelID
-  useTasks.setState((s) => ({ taskModel: m, taskVariant: changed ? null : s.taskVariant }))
+  useTasks.setState((s) => {
+    const variant = changed ? null : s.taskVariant
+    return {
+      taskModel: m,
+      taskVariant: variant,
+      ...(s.activeTaskId ? { taskModels: { ...s.taskModels, [s.activeTaskId]: { model: m, variant } } } : {})
+    }
+  })
   setModeModel('tasks', m)
 }
 
 export function setTaskVariant(v: string | null): void {
   if (deferTaskChange(() => setTaskVariant(v))) return
-  useTasks.setState({ taskVariant: v })
+  const model = currentTasksModel()
+  useTasks.setState((s) => ({
+    taskVariant: v,
+    ...(s.activeTaskId ? { taskModels: { ...s.taskModels, [s.activeTaskId]: { model, variant: v } } } : {})
+  }))
 }
 
 /** ¿La tarea está usando el Mac ahora? (Control total, corriendo y con una acción de hace < 15 s.) */

@@ -17,7 +17,8 @@ const NONE: PlanExecModels = {}
 export function useRoleModels(sessionID: string | null): PlanExecModels {
   const config = useExtrasPrefs((s) => s.prefs.planExecModels) ?? NONE
   const override = useCode((s) => s.roleModels[sessionID ?? ''] ?? s.roleModels[''])
-  return { plan: override?.plan ?? config.plan, exec: override?.exec ?? config.exec }
+  const requested = useCode((s) => !!sessionID && s.sessionModels[sessionID]?.requested)
+  return requested ? NONE : { plan: override?.plan ?? config.plan, exec: override?.exec ?? config.exec }
 }
 
 export function PlanExecStrip({ sessionID }: { sessionID: string | null }): React.JSX.Element | null {
