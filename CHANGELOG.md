@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.30] - 2026-11-16
+
+### Arreglos importantes
+
+- **En Windows, la primera apertura prepara todo antes de entrar:** aparece «Preparando Lazunox» con el espacio de Overdrive y ArtCraft, y muestra el avance de cada uno, igual que en Mac. Antes pasaba directo a la pantalla de la clave.
+- **El selector de IA ya no queda tapado** cuando tienes muchas IA conectadas: se abre hacia donde hay espacio, la lista se achica si la ventana es baja y el buscador siempre se puede usar. En Chat, Code, Overdrive y Comparar.
+
 ## [1.8.29] - 2026-11-15
 
 ### Código y Overdrive
