@@ -47,7 +47,8 @@ export const useSandbox = create<SandboxStore>((set) => ({
 export function initSandbox(): () => void {
   if (platformCaps().tasksSandbox !== 'wsl') return () => undefined
   const off = onTasks('tasks:sandbox:progress', (status) => useSandbox.setState({ status }))
-  void useSandbox.getState().refresh()
+  // Montar la pantalla de Overdrive es el primer uso; main comparte las llamadas simultáneas.
+  void useSandbox.getState().setup()
   return off
 }
 

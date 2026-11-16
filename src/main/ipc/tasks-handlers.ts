@@ -108,6 +108,7 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     tasksWin: deps.tasksWin,
     computerWin: deps.computerWin,
     winBackend: deps.winBackend,
+    prepareSandbox: () => sandboxModule.prepare(),
     modelFallback: () => settingsStore.get().modelFallback,
     extraEngineEnv: () => ({
       ...engineFlagEnvFor(settingsStore.get(), 'tasks'),
@@ -351,12 +352,18 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     registerTasksConnectorHandlers(ctx),
     registerTasksRestoreHandlers(ctx),
     sandboxModule,
-    registerTasksPreflightHandlers(ctx, { computer, sandboxStatus: sandboxModule.status }),
+    registerTasksPreflightHandlers(ctx, {
+      computer,
+      // Consultar WSL ejecuta el probe y enciende la distro. Se difiere todo al primer uso de Overdrive.
+      sandboxStatus: process.platform === 'win32' ? undefined : sandboxModule.status
+    }),
     registerTasksViewerHandlers(ctx)
   ]
 
   scheduler.start()
-  tasks.startBackgroundWarmup()
+  // En Windows la última carpeta de Overdrive se prepara cuando se usa: nunca se arranca WSL al abrir la app.
+  // En Mac la precarga sigue igual que antes (no toca ninguna distro).
+  if (process.platform !== 'win32') tasks.startBackgroundWarmup()
 
   return {
     tasks,

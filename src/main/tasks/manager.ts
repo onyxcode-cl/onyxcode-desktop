@@ -315,6 +315,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       /** Bandera efectiva `tasksWin` y proveedor del backend de Windows (los trae `main`). Ausentes: en Windows no se lanza nada. */
       tasksWin?: boolean
       winBackend?: WinBackendProvider
+      /** Preparación diferida de WSL compartida con la tarjeta, antes de la puerta estricta de ejecución. */
+      prepareSandbox?: () => Promise<void>
       /** Bandera efectiva `computerWin` (la trae `main`). Ausente: en Windows el agente `computer` sigue siendo el de macOS y no se usa. */
       computerWin?: boolean
       /** ¿Lazunox corre elevado en Windows? (pruebas); por defecto `detectElevated`. `true`/`null` = elevado/desconocido. */
@@ -1299,6 +1301,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
    */
   async start(folder: string, fullAccess = false): Promise<TasksConnection> {
     const generation = ++this.foregroundStarts
+    if (this.win && !fullAccess) await this.opts.prepareSandbox?.()
     return this.startServer(folder, fullAccess, undefined, generation)
   }
 

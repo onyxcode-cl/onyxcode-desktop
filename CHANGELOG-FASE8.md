@@ -4639,3 +4639,12 @@ Código y Overdrive permiten elegir otro modelo durante `retry`; un envío norma
 Las tarjetas existentes de errores abren el detalle redactado del proveedor en errores de cuota, incluido el límite gratuito. Código conserva el objeto de `session.error` para no perder el estado HTTP ni el cuerpo de la respuesta. No se modifica el motor.
 
 Pruebas: `store.retry-send.test.ts`, `send-retry.test.ts`, `TasksComposer.sending.render.test.tsx`, render de `MessageStream` y `TaskConversation`, y `ErrorNotice.test.tsx`; regresiones de colas, adjuntos, doble envío, reversión y cambio de modelo.
+
+
+## F8-B319 — V29, ronda 8: permisos coherentes y WSL al usar Overdrive
+
+Código y Overdrive ocultan «Permitir y no volver a preguntar» cuando el clasificador devuelve `hard`, hay carpetas externas en la metadata o el permiso es `external_directory`. También ocultan el anuncio de reglas a guardar. Los motivos de confirmación permanente se traducen al español e inglés y quedan visibles, incluido el celular; los comandos dudosos normales conservan sus opciones.
+
+En Windows la revisión inicial deja de consultar WSL (el sondeo encendía la distro) y de provocar su instalación automática; tampoco se precarga la última carpeta. La tarjeta de Overdrive solicita la preparación al montarse y `TasksManager.start` la espera antes de la ejecución aislada, también para sus otros consumidores. Las llamadas simultáneas comparten una preparación, con el progreso existente; cerrar sin usar Overdrive no consulta WSL. Se conservan la importación, baja y controles de integridad del backend.
+
+Pruebas: `auto-review.permission.test.ts`, tarjetas Código/Overdrive y celular, `sandbox-service.test.ts` y `tasks-handlers.lazy-wsl.test.ts` (registro real de handlers con plataforma Windows y backend falso; arranque sin sondeo ni carga, primer uso con una sola carga).

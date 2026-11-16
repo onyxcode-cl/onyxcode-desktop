@@ -8,11 +8,13 @@ import { useT } from '../../lib/i18n'
 export function RememberRules({
   metadata,
   rules,
-  available = true
+  available = true,
+  showLimit = true
 }: {
   metadata: unknown
   rules: string[]
   available?: boolean
+  showLimit?: boolean
 }): React.JSX.Element {
   const t = useT()
   const summary = subcommandRuleSummary(metadata)
@@ -24,7 +26,7 @@ export function RememberRules({
         .map((e) => (
           <p key={e.command}>{t('perm.rulesExcluded', { commands: e.command, reason: t(`perm.rulesExcluded.${e.reason}`) })}</p>
         ))}
-      {summary?.truncated && <p>{t('perm.rulesLimit')}</p>}
+      {showLimit && summary?.truncated && <p>{t('perm.rulesLimit')}</p>}
     </div>
   )
 }

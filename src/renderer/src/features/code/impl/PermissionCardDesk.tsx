@@ -13,6 +13,7 @@ import {
   PermCommand,
   PermNoteField,
   PermOutside,
+  PermCommandNotice,
   PermPreview,
   PermScope,
   previewFits,
@@ -22,8 +23,7 @@ import {
 import { RememberRules, useNewPermissionRules } from '../../../components/permission/RememberRules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { readPermissionSuggestion } from '@shared/permission-suggestion'
-import { outsideDirectories, subcommandRules, hardCommandNotice } from '@shared/auto-review'
-import { classifyAutoCommand } from '@shared/auto-command'
+import { outsideDirectories, subcommandRules, permissionCommandPolicy } from '@shared/auto-review'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import { DiffView, diffStats } from './DiffView'
@@ -120,15 +120,8 @@ export function PermissionCardDesk({
   const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
   // Contrato V29 §1: reglas por parte del comando; sin `subcommands` (motor viejo) se conserva el «siempre» de antes.
   const rules = shell ? subcommandRules(md) : null
-  const commandNotice =
-    shell && command
-      ? hardCommandNotice(
-          classifyAutoCommand(command, root ?? undefined, {
-            workdir: cwd ?? undefined,
-            shell: typeof md.shell === 'string' ? md.shell : undefined
-          })
-        )
-      : null
+  const policy = permissionCommandPolicy(request, root, input)
+  const canAlways = !sub.child && !protectedPath && !policy.alwaysAsk && !!(rules ?? request.always).length
   const newRules = useNewPermissionRules(rules ?? request.always, request.permission, root, request.id)
   const outside = shell
     ? outsideDirectories(md)
@@ -144,7 +137,7 @@ export function PermissionCardDesk({
 
   const actions: PermAction[] = [
     // «No volver a preguntar» no se ofrece a un ayudante (ampliaría lo que la persona permitió) ni sin reglas que guardar.
-    ...(sub.child || protectedPath || !(rules ?? request.always).length
+    ...(!canAlways
       ? []
       : [
           {
@@ -248,16 +241,12 @@ export function PermissionCardDesk({
           : t('code.perm.agentWants', { label })
       }
       preview={
-        previewNode || suggestionNode || reviewNode || outside.length || rules ? (
+        previewNode || suggestionNode || reviewNode || outside.length || rules || policy.notice ? (
           <>
             {previewNode}
-            <RememberRules metadata={md} rules={newRules} available={!sub.child && !protectedPath && !!(rules ?? request.always).length} />
+            <RememberRules metadata={md} rules={newRules} available={canAlways} showLimit={!policy.alwaysAsk} />
             <PermOutside dirs={outside} />
-            {commandNotice && (
-              <p role="note" className="text-meta text-warning">
-                {t(`perm.commandNotice.${commandNotice}`)}
-              </p>
-            )}
+            <PermCommandNotice notice={policy.notice} />
             {reviewNode}
             {suggestionNode}
           </>

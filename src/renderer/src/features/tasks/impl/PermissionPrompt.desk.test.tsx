@@ -239,8 +239,8 @@ describe('V29: tarjeta de Overdrive (escritorio) con la petición única del mot
     expect(html).toContain('placeholder="¿Qué hacer distinto? (opcional)"')
     expect(html).toContain('>No<')
     expect(html).toContain('>Permitir<')
-    expect(html).toContain('Permitir y no volver a preguntar en este proyecto')
-    expect(html).toContain('npm test *')
+    expect(html).not.toContain('Permitir y no volver a preguntar en este proyecto')
+    expect(html).not.toContain('npm test *')
   })
 
   it('explica el borrado excluido y el tope de cinco junto a las reglas útiles', () => {
@@ -255,8 +255,8 @@ describe('V29: tarjeta de Overdrive (escritorio) con la petición única del mot
     expect(html).toContain('No se guardará permiso para estas partes')
     expect(html).toContain('Remove-Item notas.txt')
     expect(html).toContain('Este comando borra archivos o carpetas.')
-    expect(html).toContain('Test-Path *')
-    expect(html).toContain('El límite es de 5 reglas')
+    expect(html).not.toContain('Test-Path *')
+    expect(html).not.toContain('El límite es de 5 reglas')
     expect(html).not.toContain('read4 *')
   })
 
@@ -268,5 +268,25 @@ describe('V29: tarjeta de Overdrive (escritorio) con la petición única del mot
   it('con el tope de bloqueos del revisor, su motivo queda a la vista', () => {
     const html = render(v29([]), { ...base, autoNotes: { p1: 'no lo pidió la persona' } })
     expect(html).toContain('Revisión automática: no lo pidió la persona')
+  })
+})
+
+describe('R8: permisos que siempre preguntan en Overdrive', () => {
+  it.each(['rm notas.txt', 'cp notas.txt /tmp/notas.txt', 'npm install -g cowsay', 'pip install --user requests'])(
+    '%s no ofrece guardar y explica el motivo',
+    (command) => {
+      const r = req({ metadata: { command, subcommands: [{ command: 'npm install cowsay', rule: 'npm install *' }] }, always: ['*'] })
+      const html = render(r, base)
+      expect(html).not.toContain('data-perm-act="always"')
+      expect(html).not.toContain('No volverá a preguntar por:')
+      expect(html).toContain('data-perm-act="once"')
+      expect(html).toContain('data-perm-note')
+      expect(html).toMatch(/Instala para|borra archivos|escribe fuera/)
+      expect(renderToStaticMarkup(<ApprovalBarDesk request={r} more={0} />)).not.toContain('data-perm-act="always"')
+    }
+  )
+  it('un comando dudoso normal conserva siempre', () => {
+    const html = render(req({ metadata: { command: 'git push' }, always: ['git push *'] }), base)
+    expect(html).toContain('data-perm-act="always"')
   })
 })
