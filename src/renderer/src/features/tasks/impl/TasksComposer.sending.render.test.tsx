@@ -11,9 +11,21 @@ vi.mock('./store', async (importOriginal) => {
   )
   return { ...mod, useTasks }
 })
+vi.mock('../../../stores/sessions', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../../stores/sessions')>()
+  return {
+    ...mod,
+    useSessions: Object.assign((selector: (s: unknown) => unknown) => selector(mod.useSessions.getState()), mod.useSessions)
+  }
+})
+vi.mock('../../../lib/ai-gate', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../../lib/ai-gate')>()
+  return { ...mod, useAiGate: (model: unknown) => ({ effective: model, gate: { blocked: false }, avail: 'available' }) }
+})
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
 import { TasksComposer } from './TasksComposer'
+import { useSessions } from '../../../stores/sessions'
 
 const render = (): string => renderToStaticMarkup(<TasksComposer onSend={() => undefined} busy={false} />)
 
@@ -34,4 +46,17 @@ describe('TasksComposer: envío en curso', () => {
     expect(html).toMatch(/<textarea[^>]*disabled/)
     over.patch = {}
   })
+})
+
+it.each(['retry', 'busy'] as const)('con texto durante %s muestra enviar o detener', (run) => {
+  over.patch = { sending: false, draft: 'continúa', activeTaskId: 's1' }
+  useSessions.setState({ status: { s1: run } })
+  const html = renderToStaticMarkup(<TasksComposer onSend={() => undefined} busy />)
+  const label = run === 'retry' ? 'Enviar' : 'Detener'
+  const button = html.match(new RegExp(`<button[^>]*aria-label="${label}"[^>]*>`))?.[0]
+  expect(button).toBeDefined()
+  expect(html).not.toContain(`aria-label="${run === 'retry' ? 'Detener' : 'Enviar'}"`)
+  expect(html).not.toContain('tasks-message-queue')
+  expect(button).not.toMatch(/\sdisabled(?:=|\s|>)/)
+  over.patch = {}
 })

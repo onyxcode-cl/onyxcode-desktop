@@ -24,3 +24,22 @@ describe('TaskConversation (render estático)', () => {
     expect(stripDesk(html)).toMatchSnapshot()
   })
 })
+
+const QUOTA = {
+  name: 'APIError' as const,
+  data: {
+    message: 'Provider allowance exhausted for this account',
+    statusCode: 429,
+    isRetryable: false,
+    responseBody: '{"error":"usage_limit_reached"}'
+  }
+}
+
+it.each(['session', 'assistant'])('cuota terminal (%s): detalle del proveedor visible una sola vez', (source) => {
+  const entries = source === 'assistant' ? [{ ...assistantFull, info: { ...assistantFull.info, error: QUOTA } }] : [userWithFile]
+  const html = renderToStaticMarkup(<TaskConversation busy={false} permissions={[]} entries={entries} error={QUOTA} />)
+  expect(html).toContain('role="alert"')
+  expect(html).toMatch(/<details open=""/)
+  expect(html).toContain(QUOTA.data.message)
+  expect(html.match(/Provider allowance exhausted/g)).toHaveLength(1)
+})

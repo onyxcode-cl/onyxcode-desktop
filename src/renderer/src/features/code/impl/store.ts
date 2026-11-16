@@ -329,6 +329,8 @@ export interface CodeState {
   /** Envía un prompt. `files` = rutas relativas al proyecto mencionadas con @. */
   /** Devuelve `true` si el motor aceptó el mensaje (el compositor restaura el borrador si no). */
   send: (text: string, files?: string[], attachments?: Attachment[]) => Promise<boolean>
+  /** Envío normal del compositor: busy encola, retry interrumpe la espera y respeta FIFO. */
+  submit: (text: string, files?: string[], attachments?: Attachment[]) => Promise<boolean>
   /** Ejecuta un comando del servidor (`/nombre args`). */
   runCommand: (name: string, args: string) => Promise<void>
   abort: () => Promise<void>
@@ -1210,21 +1212,53 @@ export const useCode = create<CodeState>((set, get) => {
     sendNotification(isSub && subTitle ? subTitle : title, body, { mode: 'code', id: root, directory })
   }
 
-  /** Si hay mensajes en cola para `sessionID`, envía el primero (se llama al quedar libre). */
-  const maybeAutoSend = (sessionID: string): void => {
+  // El idle que produce abort no debe sacar otro mensaje mientras se interrumpe la espera.
+  const restartingQueue = new Set<string>()
+
+  /** Envía un solo pendiente; el resto conserva su orden hasta que termine ese turno. */
+  const maybeAutoSend = (sessionID: string, selection?: Pick<CodeState, 'agent' | 'model' | 'variant'>): Promise<void> => {
     const s = get()
     const q = s.queue[sessionID]
-    if (!q || q.length === 0) return
+    if ((!selection && restartingQueue.has(sessionID)) || !q?.length) return Promise.resolve()
+    const dir = s.sessionProject[sessionID] ?? s.directory
+    const client = getClient()
+    if (!dir || !client) return Promise.resolve()
+    const [next, ...rest] = q
+    set((st) => ({ queue: { ...st.queue, [sessionID]: rest } }))
+    const { agent, model, variant } = selection ?? s
+    const restore = (): void => {
+      if (!known(sessionID)) return
+      set((st) => ({ queue: { ...st.queue, [sessionID]: [next, ...(st.queue[sessionID] ?? [])] } }))
+    }
+    return doSend(client, dir, sessionID, next.text, next.files, next.attachments, agent, model, variant).then(
+      (ok) => {
+        if (!ok) restore()
+      },
+      (err: unknown) => {
+        setError(sessionID, errorMessage(err))
+        restore()
+      }
+    )
+  }
+
+  /** Retry es una espera, no trabajo: interrumpirla permite usar ya el modelo del selector. */
+  const resumeRetryQueue = async (sessionID: string): Promise<void> => {
+    const s = get()
+    if (restartingQueue.has(sessionID) || !s.queue[sessionID]?.length) return
     const dir = s.sessionProject[sessionID] ?? s.directory
     const client = getClient()
     if (!dir || !client) return
-    const [next, ...rest] = q
-    set((st) => ({ queue: { ...st.queue, [sessionID]: rest } }))
-    void doSend(client, dir, sessionID, next.text, next.files, next.attachments, s.agent, s.model, s.variant).then((ok) => {
-      // F7-B18: si el envío falla el ítem no se pierde: vuelve al frente de la cola (si la sesión sigue existiendo).
-      if (ok || !known(sessionID)) return
-      set((st) => ({ queue: { ...st.queue, [sessionID]: [next, ...(st.queue[sessionID] ?? [])] } }))
-    })
+    restartingQueue.add(sessionID)
+    try {
+      sdkData(await client.session.abort({ sessionID, directory: dir }))
+      if (getClient() === client && known(sessionID)) await maybeAutoSend(sessionID, s)
+    } catch (err) {
+      // No sacar nada de la cola si no se pudo interrumpir la espera.
+      setError(sessionID, errorMessage(err))
+      return
+    } finally {
+      restartingQueue.delete(sessionID)
+    }
   }
 
   const initialProjects = parseOpenProjects(lsGet(LS_PROJECTS), lsGet(LS_PROJECT), MAX_OPEN_PROJECTS)
@@ -1537,6 +1571,19 @@ export const useCode = create<CodeState>((set, get) => {
       deltaQueue.flush()
       set((s) => purgePatch(s, sessionID))
       purgeSessionSideState(sessionID)
+    },
+
+    submit: async (text, files = [], attachments = []) => {
+      const sid = get().activeSessionID
+      if (
+        sid &&
+        (restartingQueue.has(sid) || get().runState[sid] === 'busy' || get().runState[sid] === 'retry' || get().queue[sid]?.length)
+      ) {
+        const accepted = get().enqueue(sid, text, files, attachments)
+        if (accepted && get().runState[sid] === 'idle') void maybeAutoSend(sid)
+        return accepted
+      }
+      return get().send(text, files, attachments)
     },
 
     send: async (text, files = [], attachments = []) => {
@@ -2039,7 +2086,7 @@ export const useCode = create<CodeState>((set, get) => {
     },
 
     setModel: (model, remember = true) => {
-      if (remember && deferCodeChange(() => get().setModel(model))) return
+      if (remember && deferCodeChange(() => get().setModel(model), false, true)) return
       set({ model, variant: null })
       if (remember) setModeModel('code', model)
     },
@@ -2066,6 +2113,7 @@ export const useCode = create<CodeState>((set, get) => {
       if (!trimmed && attachments.length === 0) return false
       const item: QueuedMessage = { id: `q${Date.now()}${Math.random().toString(36).slice(2, 6)}`, text: trimmed, files, attachments }
       set((s) => ({ queue: { ...s.queue, [sessionID]: [...(s.queue[sessionID] ?? []), item] } }))
+      if (get().runState[sessionID] === 'retry') void resumeRetryQueue(sessionID)
       return true
     },
     dequeue: (sessionID, id) => {
@@ -2429,6 +2477,7 @@ export const useCode = create<CodeState>((set, get) => {
           if (next !== 'idle') idleSeen.delete(sessionID) // `busy` confirmado por el servidor: nueva ejecución
           const prev = get().runState[sessionID]
           set((s) => ({ runState: { ...s.runState, [sessionID]: next } }))
+          if (next === 'retry') void resumeRetryQueue(sessionID)
           if (prev !== 'idle' && next === 'idle') {
             idleSeen.set(sessionID, { kind: 'status', at: Date.now() })
             set((s) => ({ fsVersion: s.fsVersion + 1 }))
@@ -2465,7 +2514,7 @@ export const useCode = create<CodeState>((set, get) => {
         case 'session.error': {
           const { sessionID, error } = event.properties
           if (sessionID && known(sessionID) && error && error.name !== 'MessageAbortedError') {
-            setError(sessionID, errorMessage(error))
+            setError(sessionID, error)
           }
           break
         }
@@ -2779,14 +2828,14 @@ useProviders.subscribe((s) => {
 })
 
 /** Protege también los atajos y los modelos de Planear/Hacer, con el estado visible del compositor. */
-export function deferCodeChange(apply: () => void | Promise<void>, unchanged = false): boolean {
+export function deferCodeChange(apply: () => void | Promise<void>, unchanged = false, allowRetry = false): boolean {
   const { activeSessionID: id, directory } = useCode.getState()
   const client = useServer.getState().client
   return deferWorkingChange(
     {
       busy: () => {
         const run = selectCodeRunOf(useCode.getState(), id)
-        return run === 'busy' || run === 'retry'
+        return run === 'busy' || (run === 'retry' && !allowRetry)
       },
       current: () =>
         useCode.getState().activeSessionID === id && useCode.getState().directory === directory && useServer.getState().client === client,

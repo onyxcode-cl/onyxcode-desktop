@@ -99,7 +99,7 @@ function buildDetail(n: Normalized): string {
 }
 
 const NETWORK_RE = /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|EAI_AGAIN|fetch failed|socket hang up/i
-const QUOTA_RE = /rate.?limit|quota|insufficient|credit|too many requests/i
+const QUOTA_RE = /rate.?limit|quota|insufficient|credit|too many requests|usage[ _-]*limit|FreeUsageLimit/i
 const AUTH_RE =
   /unauthorized|invalid api key|invalid_api_key|token refresh failed|oauth callback timeout|login cancell?ed|failed to initiate device authorization/i
 /** El servicio del modelo (no tu conexión) no responde: típico de modelos gratuitos caídos o saturados. Sin depender del proveedor. */

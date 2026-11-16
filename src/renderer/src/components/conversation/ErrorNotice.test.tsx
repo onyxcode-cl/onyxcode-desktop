@@ -30,3 +30,14 @@ describe('ErrorNotice', () => {
     expect(html).toContain('Conectar una IA')
   })
 })
+
+it('límite gratuito sin statusCode: el detalle se abre y mantiene la redacción de secretos', () => {
+  const html = renderToStaticMarkup(
+    createElement(ErrorNotice, {
+      error: { name: 'UnknownError', data: { message: 'Free usage limit reached. sk-abcdefghijklmnopqrstuvwxyz1234567890' } }
+    })
+  )
+  expect(html).toMatch(/<details open=""/)
+  expect(html).toContain('Free usage limit reached.')
+  expect(html).not.toContain('sk-abcdefghijklmnopqrstuvwxyz1234567890')
+})

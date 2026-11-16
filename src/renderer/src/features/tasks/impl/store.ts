@@ -1536,7 +1536,7 @@ export function currentTasksVariant(): string | undefined {
  * NUNCA toca `settings.defaultModel` (es el de Chat). Si cambia de modelo, se descarta el esfuerzo.
  */
 export function setTaskModel(m: ModelRef): void {
-  if (deferTaskChange(() => setTaskModel(m))) return
+  if (deferTaskChange(() => setTaskModel(m), false, true)) return
   const cur = useTasks.getState().taskModel
   const changed = !cur || cur.providerID !== m.providerID || cur.modelID !== m.modelID
   useTasks.setState((s) => ({ taskModel: m, taskVariant: changed ? null : s.taskVariant }))

@@ -156,6 +156,37 @@ it('informa las exclusiones y el tope sin guardar borrados aunque traigan una re
   expect(subcommandRuleSummary({ subcommands })).toEqual({
     rules: ['read0 *', 'read1 *', 'read2 *', 'read3 *', 'read4 *'],
     excluded: ['Remove-Item x', 'rm x'],
+    exclusions: [
+      { command: 'Remove-Item x', reason: 'delete' },
+      { command: 'rm x', reason: 'delete' }
+    ],
     truncated: true
   })
+})
+
+it('R7: recompone expresiones y comas, deduplica y no acusa a echo o git ls-files de borrar', () => {
+  const copy = "Copy-Item index.html -Destination ([Environment]::GetFolderPath('Desktop')) -PassThru"
+  const select = 'Select-Object FullName, Length'
+  const summary = subcommandRuleSummary({
+    command: `${copy} | ${select}; ${select}`,
+    subcommands: [
+      { command: 'Copy-Item index.html -Destination', rule: null },
+      { command: "[Environment]::GetFolderPath('Desktop')", rule: null },
+      { command: 'Select-Object FullName', rule: null },
+      { command: 'Select-Object FullName', rule: null },
+      { command: `${copy} | ${select}; ${select}`, rule: null }
+    ]
+  })!
+  expect(summary.excluded).toEqual([copy, select])
+  expect(summary.exclusions.every((e) => e.reason === 'blocked')).toBe(true)
+  expect(
+    subcommandRuleSummary({
+      command: 'cat .env; echo listo; git ls-files',
+      subcommands: [
+        { command: 'cat .env', rule: null },
+        { command: 'echo listo', rule: null },
+        { command: 'git ls-files', rule: null }
+      ]
+    })?.exclusions[0]
+  ).toEqual({ command: 'cat .env', reason: 'sensitive' })
 })

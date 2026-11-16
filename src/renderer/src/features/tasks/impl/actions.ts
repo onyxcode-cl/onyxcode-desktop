@@ -660,8 +660,7 @@ function buildSystemPrompt(): string | undefined {
 }
 
 /** Texto final del mensaje con la lista de adjuntos (rutas relativas a la carpeta). */
-function withAttachments(text: string): string {
-  const files = useTasks.getState().attachments
+function withAttachments(text: string, files = useTasks.getState().attachments): string {
   if (files.length === 0) return text
   const list = files.map((f) => `- ${f.relPath}`).join('\n')
   return `${text}\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n${list}` // i18n-ignore: prompt al agente (se queda en español)
@@ -676,8 +675,19 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
   // Protección contra doble envío: mientras uno está en curso (comprobaciones, punto de restauración, creación de la tarea)
   // el compositor se ve bloqueado y un segundo clic/Enter no crea otra tarea con el mismo texto.
   if (useTasks.getState().sending) return
+  const state = useTasks.getState()
+  const id = state.activeTaskId
+  const run = id ? useSessions.getState().status[id] : undefined
+  if (run === 'busy') return
   useTasks.setState({ sending: true })
   try {
+    if (id && run === 'retry') {
+      const { client, folder } = ctx()
+      const res = await client.session.abort({ sessionID: id, directory: sdkDir(folder) })
+      if (res.error) throw new Error(errorMessage(res.error))
+      const now = useTasks.getState()
+      if (now.activeTaskId !== id || now.client !== client || now.folder !== folder || now.conn !== state.conn) return
+    }
     await sendToTaskNow(rawText, model, opts)
   } finally {
     useTasks.setState({ sending: false })
@@ -686,6 +696,12 @@ export async function sendToTask(rawText: string, model?: ModelRef, opts?: { var
 
 async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant?: string }): Promise<void> {
   const { client, folder } = ctx()
+  let sessionID = useTasks.getState().activeTaskId
+  const connection = useTasks.getState().conn
+  const current = (): boolean => {
+    const now = useTasks.getState()
+    return now.activeTaskId === sessionID && now.client === client && now.folder === folder && now.conn === connection
+  }
   // Sandbox: el servidor solo tiene los proveedores con clave de API (SANDBOX_PROVIDER_IDS); con un modelo de otro proveedor, error claro (no fallo silencioso).
   // Modelo efectivo contra las IA conectadas (globales): sin ninguna, no se envía; no se persiste nada.
   const wanted = model ?? currentTasksModel()
@@ -708,17 +724,17 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
   }
   // La memoria (`.lazunox/memoria.md`) puede haber cambiado desde que se conectó: se relee antes de armar el prompt.
   await loadProjectAndMemory(folder)
-  const text = withAttachments(rawText)
-  // Elementos del navegador: texto sintético (+ captura `data:` si la casilla está marcada). El modo selección se apaga al enviar.
-  const elementParts = elementPartsOf(useTasks.getState().elements)
+  if (!current()) return
   const prevAttachments = useTasks.getState().attachments
   const prevElements = useTasks.getState().elements
+  const text = withAttachments(rawText, prevAttachments)
+  // Elementos del navegador: texto sintético (+ captura `data:` si la casilla está marcada). El modo selección se apaga al enviar.
+  const elementParts = elementPartsOf(prevElements)
   useTasks.setState({ attachments: [], elements: [], draft: '' })
   stopPicking({ kind: 'tasks', folder })
   const useModel = sendModel
   const variant = opts?.variant ?? currentTasksVariant()
   const sessions = useSessions.getState()
-  let sessionID = useTasks.getState().activeTaskId
   const createdHere = !sessionID
   if (!sessionID) {
     const folders = extraFolders()
@@ -746,6 +762,7 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
   // Punto de restauración: copia de la carpeta justo antes de que el agente toque nada. Si falla o
   // se salta, el mensaje se envía igualmente y se avisa en la conversación.
   await saveRestorePoint(folder, sessionID, rawText.slice(0, 80))
+  if (!current()) return
   sessions.touchSession(sessionID)
   sessions.setError(sessionID, null)
   sessions.setStatus(sessionID, 'busy')
@@ -782,7 +799,11 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
     })
     promptError = res.error
   } catch (err) {
-    if (!createdHere) throw err
+    if (!createdHere) {
+      sessions.setStatus(sessionID, 'idle')
+      sessions.setError(sessionID, errorMessage(err))
+      throw err
+    }
     rollbackNew()
     throw err
   }
@@ -792,7 +813,7 @@ async function sendToTaskNow(rawText: string, model?: ModelRef, opts?: { variant
       throw new Error(errorMessage(promptError))
     }
     sessions.setStatus(sessionID, 'idle')
-    sessions.setError(sessionID, errorMessage(promptError))
+    sessions.setError(sessionID, typeof promptError === 'object' ? promptError : errorMessage(promptError))
   } else if (text.trim()) {
     // El motor aceptó el mensaje: también cuenta como «primera pregunta» y «ya hay un modelo» en Primeros pasos.
     markFirstStepDone('message')

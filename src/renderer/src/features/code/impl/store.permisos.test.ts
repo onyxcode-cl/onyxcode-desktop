@@ -1407,10 +1407,28 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
     expect(reviewed).toEqual([])
   })
 
+  it.each(['v1', 'v2'] as const)('%s: R7 borrar y escribir fuera siempre son tarjeta, aunque la revisora aprobaría', async (api) => {
+    const { reply } = setup()
+    const reviewed = fakeReviewer(() => 'allow')
+    for (const command of [
+      'rm notas.txt',
+      'Remove-Item -LiteralPath notas.txt',
+      'find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +',
+      'cp index.html /Users/ana/Desktop/index.html',
+      "Copy-Item index.html -Destination ([Environment]::GetFolderPath('Desktop'))"
+    ]) {
+      const id = run(command, { shell: /Item/.test(command) ? 'powershell' : 'zsh', externalDirectories: [] }, api)
+      expect(st().permissions[id], command).toBeDefined()
+      expect(answersFor(reply, id), command).toEqual([])
+    }
+    await Promise.resolve()
+    expect(reviewed).toEqual([])
+  })
+
   it.each(['v1', 'v2'] as const)('%s: doubt + el revisor aprueba → «una vez»', async (api) => {
     const { reply } = setup()
     const reviewed = fakeReviewer(() => 'allow')
-    const id = run('rm -rf dist', {}, api)
+    const id = run('git push origin dist', {}, api)
     expect(st().permissions[id]).toBeUndefined()
     await vi.waitFor(() => expect(answersFor(reply, id).map((a) => a.reply)).toEqual(['once']))
     expect(reviewed).toEqual([id])
@@ -1420,7 +1438,7 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
   it('doubt + el revisor bloquea → rechazo con el motivo para la IA, sin tarjeta ni aviso de rechazo', async () => {
     const { reply } = setup()
     fakeReviewer(() => 'block', 'la persona no pidió borrar dist.')
-    const id = run('rm -rf dist')
+    const id = run('git push origin dist')
     await vi.waitFor(() => expect(answersFor(reply, id)).toHaveLength(1))
     expect(answersFor(reply, id)[0]).toEqual({
       requestID: id,
@@ -1466,7 +1484,7 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
           })
         : Promise.resolve(new Response('{}', { status: 404 }))
     ) as never
-    const id = run('rm -rf dist')
+    const id = run('git push origin dist')
     await vi.waitFor(() => expect(typeof answer).toBe('function'))
     // La persona pasa la conversación a «Preguntar siempre» mientras se revisa.
     apply(sessionCreated({ ...st().sessions.s1, permission: rulesetFor('manual') } as never))
@@ -1479,12 +1497,19 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
     const { reply } = setup()
     reply.mockImplementation(() => Promise.reject(new Error('sin conexión')))
     const reviewed = fakeReviewer(() => 'block')
-    const id = run('rm -rf dist')
+    const id = run('git push origin dist')
     await vi.waitFor(() => expect(st().permissions[id]).toBeDefined())
     // Un evento repetido no desencadena otra revisión (quedó para la persona).
     apply(
       partUpdated(
-        toolPart(`part${n}`, 'm1', 's1', 'bash', { status: 'running', input: { command: 'rm -rf dist' }, time: { start: 2 } }, `c${n}`),
+        toolPart(
+          `part${n}`,
+          'm1',
+          's1',
+          'bash',
+          { status: 'running', input: { command: 'git push origin dist' }, time: { start: 2 } },
+          `c${n}`
+        ),
         D
       )
     )
@@ -1511,17 +1536,17 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
     const { reply } = setup()
     fakeReviewer(() => 'block', 'no lo pidió la persona')
     for (let i = 0; i < 3; i++) {
-      const id = run(`rm -rf tmp${i}`)
+      const id = run(`git push origin tmp${i}`)
       await vi.waitFor(() => expect(answersFor(reply, id).map((a) => a.reply)).toEqual(['reject']))
     }
-    const fourth = run('rm -rf tmp3')
+    const fourth = run('git push origin tmp3')
     await vi.waitFor(() => expect(st().permissions[fourth]).toBeDefined())
     expect(st().reviewNotes[fourth]).toBe('no lo pidió la persona')
     expect(answersFor(reply, fourth)).toEqual([])
     // La persona lo permite: la racha vuelve a cero y el siguiente bloqueo vuelve a la IA.
     await st().replyPermission(st().permissions[fourth], 'once')
     expect(st().reviewNotes[fourth]).toBeUndefined()
-    const fifth = run('rm -rf tmp4')
+    const fifth = run('git push origin tmp4')
     await vi.waitFor(() => expect(answersFor(reply, fifth).map((a) => a.reply)).toEqual(['reject']))
   })
 
@@ -1530,21 +1555,21 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
     let decision: 'allow' | 'block' = 'block'
     fakeReviewer(() => decision)
     for (let i = 0; i < 20; i++) {
-      const id = run(`rm -rf a${i}`)
+      const id = run(`git push origin a${i}`)
       await vi.waitFor(() => expect(answersFor(reply, id).map((a) => a.reply)).toEqual(['reject']))
       // Un «permitir» del revisor cada dos bloqueos: nunca 3 seguidos.
       if (i % 2) {
         decision = 'allow'
-        const ok = run(`rm -rf ok${i}`)
+        const ok = run(`git push origin ok${i}`)
         await vi.waitFor(() => expect(answersFor(reply, ok).map((a) => a.reply)).toEqual(['once']))
         decision = 'block'
       }
     }
-    const next = run('rm -rf ultimo')
+    const next = run('git push origin ultimo')
     await vi.waitFor(() => expect(st().permissions[next]).toBeDefined())
     expect(st().reviewNotes[next]).toBe('no lo pidió la persona')
     await st().replyPermission(st().permissions[next], 'once')
-    const after = run('rm -rf otra')
+    const after = run('git push origin otra')
     await vi.waitFor(() => expect(st().permissions[after]).toBeDefined())
   })
 

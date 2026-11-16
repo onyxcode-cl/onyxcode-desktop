@@ -4,7 +4,7 @@ import { useTasks } from './store'
 import { useUnified } from './unified'
 
 /** Mismo estado y misma acción que Detener en el compositor de Overdrive. */
-export function deferTaskChange(apply: () => void | Promise<void>, unchanged = false): boolean {
+export function deferTaskChange(apply: () => void | Promise<void>, unchanged = false, allowRetry = false): boolean {
   const { activeTaskId: id, conn, folder } = useTasks.getState()
   const current = (): boolean => {
     const s = useTasks.getState()
@@ -12,7 +12,10 @@ export function deferTaskChange(apply: () => void | Promise<void>, unchanged = f
   }
   return deferWorkingChange(
     {
-      busy: () => !!id && (useSessions.getState().status[id] ?? 'idle') !== 'idle',
+      busy: () => {
+        const run = id ? useSessions.getState().status[id] : undefined
+        return run === 'busy' || (run === 'retry' && !allowRetry)
+      },
       current,
       stop: async () => {
         // El store también usa esta guardia: cargar las acciones aquí evita un ciclo store → acciones → store al iniciar.

@@ -5,9 +5,9 @@
  */
 import { useEffect, useState } from 'react'
 import { Folder, ShieldAlert, ShieldCheck } from 'lucide-react'
-import { RememberRules } from '../../../components/permission/RememberRules'
+import { RememberRules, useNewPermissionRules } from '../../../components/permission/RememberRules'
 import { rememberablePatterns } from './util'
-import { outsideDirectories } from '@shared/auto-review'
+import { outsideDirectories, hardCommandNotice } from '@shared/auto-review'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import {
@@ -24,6 +24,7 @@ import {
 } from '../../../components/permission/PermissionShell'
 import { isProtectedPermission } from '@shared/protected-path'
 import { Button } from '../../../components/Button'
+import { classifyAutoCommand } from '@shared/auto-command'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import {
@@ -36,7 +37,7 @@ import {
   useRequestTitle,
   useToolInput
 } from './PermissionPrompt'
-import { useShowPath } from './conn-paths'
+import { sdkDir, useShowPath } from './conn-paths'
 import { useTasks } from './store'
 
 /**
@@ -66,6 +67,14 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
   const autoNote = useTasks((s) => s.autoNotes?.[request.id])
   const canAlways = useCanAlways(request, d.danger)
   const folder = useTasks((s) => s.folder)
+  const connection = useTasks((s) => s.conn)
+  const newRules = useNewPermissionRules(
+    rememberablePatterns(request),
+    request.permission,
+    folder ? sdkDir(folder) : null,
+    request.id,
+    connection
+  )
   const fullAccess = useTasks((s) => s.conn?.fullAccess === true)
   const home = useTasks((s) => s.fullAccessInfo?.home)
   const mac = isMacPlatform()
@@ -73,6 +82,15 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
 
   const showDiff = !!d.diff && hasDiffChanges(d.diff)
   const isBash = request.permission === 'bash'
+  const commandNotice =
+    (isBash || request.permission === 'bgshell_start') && d.detail
+      ? hardCommandNotice(
+          classifyAutoCommand(d.detail, folder ? sdkDir(folder) : undefined, {
+            workdir: toolInput?.workdir ?? toolInput?.cwd,
+            shell: typeof request.metadata.shell === 'string' ? request.metadata.shell : undefined
+          })
+        )
+      : null
   const outside = isBash || request.permission === 'bgshell_start' ? outsideDirectories(request.metadata) : []
 
   const actions: PermAction[] = [
@@ -84,7 +102,7 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
             side: 'left' as const,
             permit: true,
             act: 'always' as const,
-            title: alwaysHint(request),
+            title: newRules.length ? t('perm.allowProjectRules', { rules: newRules.join(', ') }) : undefined,
             onClick: () => answer('always')
           }
         ]
@@ -205,7 +223,12 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
             <>
               {d.detail && <PermPreview text={d.detail} prompt={isBash} danger={d.danger} />}
               <PermOutside dirs={outside} />
-              <RememberRules metadata={request.metadata} rules={rememberablePatterns(request)} available={canAlways} />
+              {commandNotice && (
+                <p role="note" className="text-meta text-warning">
+                  {t(`perm.commandNotice.${commandNotice}`)}
+                </p>
+              )}
+              <RememberRules metadata={request.metadata} rules={newRules} available={canAlways} />
               {autoNote && (
                 <p role="note" className="flex items-start gap-1.5 text-meta text-warning">
                   <ShieldAlert size={13} className="mt-0.5 shrink-0" />

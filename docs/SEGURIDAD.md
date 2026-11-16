@@ -3257,3 +3257,12 @@ El caso real caf2 conserva dos permisos: el comando de shell acaba en `pkill`, y
 Las opciones nuevas admitidas por el clasificador se limitan a `git branch -vv/-r` y `git status -b/-sb`; permanecen las comprobaciones de borrado, credenciales, configuración y ejecución. Las tuberías de lectura de PowerShell y las consultas locales ya admitidas se fijan con regresiones, incluidas combinaciones con acciones peligrosas. El clasificador sigue siendo una heurística, sin ejecutar comandos para decidir.
 
 La tarjeta muestra fuera del desplegable las reglas por parte del comando, las partes sin regla o de borrado y el límite existente de cinco. No se amplía el tope ni se recuerda un borrado aunque venga con una regla sugerida. La presentación de caracteres acepta letras latinas y diacríticos combinados tras una letra latina, conserva el texto original y sigue marcando controles invisibles y letras de alfabetos que imitan el latino.
+
+
+### V29 ronda 7 — Borrado y escritura exterior sin revisora (F8-B317)
+
+El clasificador compartido por Código y Overdrive marca como `hard` los borrados de archivos/carpetas y las escrituras, copias o movimientos fuera del proyecto o hacia destinos desconocidos/variables. Esto incluye scripts que borran, `find -delete/-exec rm`, `git clean`, temporales exteriores y destinos calculados de PowerShell aunque `externalDirectories` llegue vacío. Un `hard` conserva la petición para la persona y no consulta al revisor; una instrucción por chat no omite la tarjeta. Las aprobaciones de carpetas conocidas siguen ligadas a la llamada y no autorizan borrados. Las otras dudas, incluidos procesos, push y reset, siguen con revisión.
+
+El respaldo para lecturas de PowerShell con `unparsed` exige que todas las partes pertenezcan a una gramática acotada, sin opciones desconocidas, llamadas, redirecciones ni sustituciones; las guardas de credenciales, métodos, descarga/ejecución y cuerpos de catch se aplican antes. La política sigue siendo heurística y no inspecciona los scripts opacos del proyecto ni sustituye el sandbox.
+
+La reconstrucción de partes y la consulta de reglas guardadas son presentación: no fabrican reglas, no autorizan comandos y no bloquean la respuesta. Las reglas siguen viniendo de los metadatos del motor y conservan el límite de cinco. No se modifican canales ni zonas intocables.
