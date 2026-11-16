@@ -29,3 +29,8 @@ export interface RuntimesSnapshot {
 }
 
 export type RuntimesInstallResult = { ok: true } | { ok: false; error: string; message: string }
+
+/** Node.js y uv sirven a la IA aunque no haya conectores locales para la plataforma. */
+export function runtimesOffered(platform: string): boolean {
+  return platform === 'darwin' || platform === 'win32'
+}

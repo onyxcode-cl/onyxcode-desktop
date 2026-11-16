@@ -1,13 +1,12 @@
 /**
  * Servicio de los runtimes de la app (Node.js y uv, F8-B195): estado, instalación bajo demanda (el botón o la preparación inicial ES
- * el consentimiento; el texto avisa qué se descarga y de dónde), quitar, y las rutas ABSOLUTAS que usan los conectores locales.
+ * el consentimiento; el texto avisa qué se descarga y de dónde), quitar, y las rutas ABSOLUTAS para los conectores locales y el PATH de los motores.
  * La lógica y sus pruebas viven en `runtime-install.ts`; aquí solo se cablea Electron (`userData`, `net`, el registro de problemas).
  */
 import { app, net } from 'electron'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { RuntimesInstallResult, RuntimesSnapshot } from '@shared/runtimes'
-import { LOCAL_CATALOG } from '@shared/mcp-catalog'
+import { runtimesOffered as offeredOnPlatform, type RuntimesInstallResult, type RuntimesSnapshot } from '@shared/runtimes'
 import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { createManualFetch, type NetLike } from '../remote/tunnel/manual-fetch'
 import { unpacked } from '../util/asar'
@@ -24,9 +23,9 @@ import {
   type RuntimeState
 } from './runtime-install'
 
-/** ¿Esta plataforma ofrece algún conector local? (si no, los runtimes no se ofrecen ni se descargan). */
+/** Herramientas para la IA y los conectores, aunque el catálogo local esté vacío. */
 export function runtimesOffered(platform: string = process.platform): boolean {
-  return LOCAL_CATALOG.some((i) => i.runtime.platforms.includes(platform))
+  return offeredOnPlatform(platform)
 }
 
 export function loadRuntimePin(path: string): RuntimePin | null {

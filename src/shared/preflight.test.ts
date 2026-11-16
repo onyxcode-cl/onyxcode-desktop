@@ -320,6 +320,12 @@ describe('recorrido de la primera vez: etapas', () => {
     expect(m.installStageNeeded(win)).toBe(true)
     expect(m.permsStageNeeded(win)).toBe(false)
     expect(m.firstRunTotal(win)).toBe(3)
+    const readyMac = { ...(mac as PreflightReport), components: [comp('perms', true), comp('files', false)] }
+    expect(m.permsStageNeeded(readyMac)).toBe(false)
+    expect(m.firstRunTotal(readyMac)).toBe(3)
+    expect(m.firstRunTotal({ ...readyMac, skipped: true })).toBe(2)
+    expect(m.firstRunTotal(null)).toBe(2)
+    expect(m.firstRunTotal({ ...readyMac, platform: 'win32', components: [comp('perms', false)] })).toBe(3)
   })
 })
 

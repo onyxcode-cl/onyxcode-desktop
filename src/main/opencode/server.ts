@@ -45,6 +45,7 @@ import { LineRing } from '../diagnostics/log-ring'
 import { CODE_INTERNAL_MCP } from '@shared/mcp-permissions'
 import { MCP_ENV_WRAPPER } from '../tasks/mcp-tasks'
 import { runtimesService } from '../runtimes/service'
+import { appRuntimePathEnv } from '../runtimes/engine-env'
 import { SHELL_BG_SERVER, bgshellConfigPermission, prepareShellBgDirs, shellBgMcpConfig, shellBgPaths } from './shell-bg-mcp'
 import { bundledShellBgPath } from './shell-bg-bundled'
 import { ShellBgWake, createSdkWakeEngine } from './shell-bg-wake'
@@ -352,6 +353,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
           })
         )
       })
+      Object.assign(childEnv, appRuntimePathEnv(childEnv))
       const child = spawn(exec.command, exec.args, {
         cwd: this.options.chatDirectory,
         env: childEnv,

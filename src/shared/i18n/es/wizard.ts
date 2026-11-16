@@ -251,7 +251,10 @@ export const wizard = {
   'wizard.example.title': 'Probar con un ejemplo',
   'wizard.example.body': 'Mira cómo funciona con una tarea de ejemplo ya escrita: «{sample}» Solo tendrás que enviarla.',
   'wizard.welcome.start': 'Empezar',
-  'wizard.welcome.greetingNote':
+  'wizard.welcome.step': 'Paso 1 de {total}',
+  'wizard.welcome.greetingNote': 'Son unos pasos cortos: instalar lo necesario y conectar tu IA. Puedes empezar gratis.',
+  'wizard.welcome.greetingNote.connect': 'Ahora vamos a conectar tu IA. Puedes empezar gratis.',
+  'wizard.welcome.greetingNote.perms':
     'Son unos pasos cortos: instalar lo necesario, activar los permisos (solo en Mac) y conectar tu IA. Puedes empezar gratis.',
   'wizard.auth.moreWays': 'Otras formas de conectar'
 } as const

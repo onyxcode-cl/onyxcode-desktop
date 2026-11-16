@@ -167,6 +167,17 @@ function Launcher({
     )
   }, [providers, query])
 
+  // Launcher se desmonta al cerrar: la búsqueda siempre nace vacía. Sitúa también el cursor en el modelo actual.
+  useEffect(() => {
+    if (query) return
+    const i = rows.findIndex((r) => r.ref.providerID === current.providerID && r.ref.modelID === current.modelID)
+    setCursor(Math.max(0, i))
+  }, [query, rows, current.providerID, current.modelID])
+
+  useEffect(() => {
+    listRef.current?.querySelector(`[data-idx="${cursor}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [cursor, rows])
+
   useLayoutEffect(() => {
     const panel = rootRef.current
     const rect = anchor.current?.getBoundingClientRect()

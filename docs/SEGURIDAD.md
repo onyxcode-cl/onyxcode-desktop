@@ -2095,7 +2095,7 @@ directorio privado, zsh/bash/python/curl y `git` con el `GIT_CONFIG_GLOBAL` priv
 rutas y `GIT_CONFIG_GLOBAL`). Verificado además contra el binario real del motor (`/global/health` sano con el HOME real y
 con uno temporal) y en la app (ver CHANGELOG-FASE8, F8-B194).
 
-## 3 quinquagies septendecies. Node.js y uv de la app para los conectores locales (F8-B195)
+## 3 quinquagies septendecies. Node.js y uv de la app para la IA y los conectores locales (F8-B195/F8-B322)
 
 Los conectores locales (Gmail/Calendar/Drive con `uv`, Outlook/Calendario/OneDrive con `npm`) ya no piden que la persona instale nada a mano:
 Lazunox descarga **Node.js** y **uv** a su propia carpeta, con versión, tamaño y SHA-256 fijados. Esto significa **ejecutar programas
@@ -2121,21 +2121,27 @@ Sin administrador, sin tocar el PATH del sistema, sin instalar nada global ni `.
 **Cómo se usan.** `local-connectors.ts` lanza `uv` o `node` + `npm-cli.js` **por ruta absoluta** (el runtime de la app SIEMPRE que exista; el del
 sistema solo de respaldo, buscado con rutas absolutas y sin carpetas relativas del PATH), con `execFile`, entorno mínimo y **PATH acotado** a la
 carpeta del runtime más `/usr/bin:/bin` (nunca el PATH del usuario). Se mantienen `uv … --require-hashes --only-binary :all:` y `npm ci --ignore-scripts`. El servidor
-instalado se lanza con el Node de la app. **Los runtimes no se usan para nada más** que los conectores locales que la persona aprobó con sus dos casillas: no hay
-`npx` ni instalación de paquetes arbitrarios, y no se exponen al agente.
+instalado se lanza con el Node de la app. Estas rutas y su entorno no cambian con F8-B322.
+
+**Uso por la IA (F8-B322).** Se ofrecen en Mac y Windows aunque no haya conectores locales, con la preparación automática inicial existente.
+Code (Mac/Windows) y Overdrive (Mac, aislado o Control total) añaden al final de su PATH las carpetas de los runtimes instalados y verificados:
+Node comparte carpeta con npm/npx. El Node que la persona tenga en su PATH conserva prioridad. Se consulta el disco en cada arranque;
+si falta un runtime o se está instalando, el motor arranca sin él y lo ve en su siguiente arranque. No se cambia el PATH del sistema.
+Seatbelt permite **solo lectura** de las carpetas de esas versiones (incluida la biblioteca de npm); sigue denegando escritura y el resto de
+userData. Node/uv y los procesos que lancen heredan el sandbox y sus restricciones. Overdrive Windows usa las herramientas Linux de la distro:
+no recibe rutas de runtimes del host. La disponibilidad de npm/npx para la IA no concede permisos nuevos a sus comandos.
 
 **Riesgos que quedan (dichos con honestidad).** (1) La confianza se apoya en el pin dentro del código firmado de la app: si el pin o las sumas oficiales
 fueran manipuladas antes de fijarlas, se descargaría eso (el script de verificación y la revisión humana son el control). No se verifica la firma GPG
-de `SHASUMS256.txt` ni la firma de Apple del binario (sí queda dentro del hash). (2) Node y uv corren con los permisos del usuario, fuera del
-sandbox de Overdrive (igual que los conectores). (3) Las versiones fijadas se quedan viejas: hay que actualizar el pin con cada versión de la app; una versión
+de `SHASUMS256.txt` ni la firma de Apple del binario (sí queda dentro del hash). (2) Fuera de Overdrive aislado, Node y uv corren con los permisos del usuario (igual que los conectores). (3) Las versiones fijadas se quedan viejas: hay que actualizar el pin con cada versión de la app; una versión
 antigua de runtime no se borra sola (los conectores ya instalados apuntan a su ruta). (4) Quitar los runtimes desde Ajustes deja sin arrancar los conectores
 instalados hasta reinstalarlos. (5) uv, al crear el entorno de Google, descarga Python de GitHub por su cuenta (ya era así; ver §3 quinquagies decies).
 
 **IPC.** `runtimes:status|install|cancel|remove` (esquema estricto sin parámetros, clase **X** en `policy.ts`: nunca desde el celular). La instalación es siempre una acción de
-la persona (botón «Instalar lo necesario», «Preparar todo» o Ajustes); nada se descarga solo.
+la persona (botón «Instalar lo necesario», «Preparar todo» o Ajustes), o parte de la preparación automática inicial.
 
-**Qué NO bloquea.** Es un componente opcional de «Preparando Lazunox»: si la descarga falla o se deja para después, la app funciona y solo fallan los conectores locales; se reintenta desde la
-misma pantalla, la ficha o Ajustes › Overdrive › «Node.js y uv». En Windows las funciones están implementadas y probadas, pero no se ofrecen (los conectores locales siguen «Solo en Mac»).
+**Qué NO bloquea.** Es un componente opcional de «Preparando Lazunox»: si la descarga falla o se deja para después, la app funciona y la IA usa las herramientas del sistema que encuentre; los conectores pueden fallar. Se reintenta desde la
+misma pantalla, la ficha o Ajustes › Overdrive › «Node.js y uv». En Windows también se ofrecen e instalan Node.js y uv; los conectores locales siguen «Solo en Mac».
 
 ## 3 quinquagies duodevicies. Uso de Overdrive, causas de fallo de instalación y firma de commits en Windows (F8-B198)
 

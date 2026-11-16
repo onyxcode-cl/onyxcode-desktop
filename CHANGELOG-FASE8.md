@@ -4666,3 +4666,21 @@ Pruebas: `preflight/sandbox.test.ts`, `tasks-handlers.lazy-wsl.test.ts`, `FirstR
 El lanzador de Comparar usa un selector propio: se aplica allí el mismo portal y cálculo, conservando la selección múltiple y la alineación al botón. Chat, Código, Overdrive, rutinas y el asistente inicial reciben el arreglo a través del componente compartido.
 
 Pruebas: `ModelPicker.position.test.tsx`, atajos y esfuerzo de `ModelPicker`, `CompareControls.position.test.tsx`, render de Comparar, compositores de Chat/Código/Overdrive y menú lateral (128 pruebas, `--testTimeout=20000`). Incluyen botón superior/inferior, ventana de 600 px, ancho reducido, `no-drag`, foco, teclado, clic, scroll, resize y hoja móvil.
+
+
+## F8-B322 — V30: Node.js y uv de la app disponibles para la IA en Mac y Windows
+
+Los runtimes se ofrecen con la preparación automática inicial en ambas plataformas, sin depender de los conectores locales. Se conserva el pin, sus hashes y tamaños y la extracción estricta; el tamaño de la simulación de arranque se obtiene del pin de cada plataforma.
+
+Code en Mac/Windows y Overdrive en Mac agregan sus carpetas al final del PATH en cada arranque, conservando la prioridad del Node de la persona. Sin runtimes instalados el motor arranca igual y los incorpora en su siguiente arranque. Seatbelt permite leer únicamente las versiones verificadas (también la biblioteca de npm), sin escritura ni acceso al resto de userData. Overdrive Windows sigue usando las herramientas Linux de la distro. Los conectores conservan sus rutas absolutas y entorno.
+
+Pruebas: `runtimes/service.test.ts`, `engine-env.test.ts`, `runtime-install.win.test.ts` (ZIP y proceso dobles con geometría del pin real, hash/tamaño), `opencode/server.ripgrep-path.test.ts`, `tasks/manager.engine-flags.test.ts`, `manager.winpaths.test.ts`, perfiles Seatbelt y guardias de paridad/plataforma. Sin abrir la app, cambiar el motor ni ejecutar Windows real.
+
+
+## F8-B323 — V30: pasos coherentes de primera apertura y búsqueda nueva al abrir el selector
+
+La revisión local determina el recorrido antes de la bienvenida: cuatro pasos en Mac con permisos pendientes, tres si ya están concedidos o en Windows. La preparación siempre ocupa el segundo paso; los permisos anunciados conservan su paso aunque se concedan durante el recorrido. La bienvenida anuncia solo las etapas previstas. Cuentas, modelo, modos y cierre comparten el último número global, incluida la barra accesible, sin volver a «Paso 1». Una revisión omitida, fallida o fuera de plazo cuenta solo bienvenida y conexión; un informe tardío puede preparar herramientas en segundo plano sin retroceder en el recorrido. Las descargas empiezan después de «Empezar».
+
+El selector de IA abre con la búsqueda vacía y el cursor en el modelo actual incluso después de cerrar con Escape, clic fuera, botón o cambio de tamaño. Comparar ya borraba su búsqueda al desmontar el panel; ahora también coloca el cursor en el modelo actual. Las instrucciones de permisos se muestran únicamente en su etapa.
+
+Pruebas: `shared/preflight.test.ts`, `FirstRunGate.test.tsx`, `Wizard.progress.test.tsx`, regresiones de onboarding, `ModelPicker.shortcuts.test.tsx`, `CompareControls.position.test.tsx` y regresiones de Comparar, con `--testTimeout=20000`. Sin abrir la app ni ejecutar el motor.

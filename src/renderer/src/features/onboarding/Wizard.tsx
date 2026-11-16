@@ -1,6 +1,6 @@
 /**
- * Paso 3 del primer uso (tras la bienvenida y «Preparando»): «Conecta tu IA», modelo, modos y cierre «Todo listo» (4 pasos). Va sobre fondo opaco: la pantalla de inicio no se ve detrás. Solo con un motor propio o sin motor se
- * añade el paso del motor (OpenCode) al principio (5 pasos). Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
+ * Último paso del primer uso: «Conecta tu IA», modelo, modos y cierre «Todo listo» son pantallas del mismo paso global.
+ * Va sobre fondo opaco; solo con un motor propio o sin motor se añade su configuración al principio. Los permisos de macOS ya no se piden aquí: se piden al usar «Control total».
  * «Conecta tu IA» ofrece primero lo gratuito (los modelos gratuitos de OpenCode, sin cuenta ni clave), luego OpenCode Go (con suscripción)
  * y cualquier otro servicio del catálogo de OpenCode (clave u OAuth). Nada de pago se destaca como recomendado.
  * El último paso ofrece «Probar con un ejemplo» a la vista.
@@ -53,10 +53,8 @@ import {
   decideOnboarding,
   engineStepNeeded,
   nextStep,
-  stepsFor,
   opencodeStepMode,
   prevStep,
-  stepIndex,
   stepTitle,
   type OnboardingStep,
   type ProviderState
@@ -66,14 +64,14 @@ const GO_PROVIDER = 'opencode-go'
 const GO_FORM_PROVIDERS = [{ id: GO_PROVIDER, name: 'OpenCode Go', env: [] as string[] }]
 
 /** Puerta del asistente: no monta nada hasta que los ajustes cargaron y `onboarded` es false. */
-export function OnboardingGate(): React.JSX.Element | null {
+export function OnboardingGate({ total }: { total: number }): React.JSX.Element | null {
   const loaded = useSettings((s) => s.loaded)
   const onboarded = useSettings((s) => s.settings.onboarded)
   if (!loaded || onboarded) return null
-  return <OnboardingHost />
+  return <OnboardingHost total={total} />
 }
 
-function OnboardingHost(): React.JSX.Element | null {
+function OnboardingHost({ total }: { total: number }): React.JSX.Element | null {
   const t = useT()
   const client = useServer((s) => s.client)
   const serverStatus = useServer((s) => s.status)
@@ -141,7 +139,6 @@ function OnboardingHost(): React.JSX.Element | null {
 
   if (!step) return null
 
-  const steps = stepsFor(undefined, withEngine)
   const finish = (): void => void update({ onboarded: true })
   // «Probar con un ejemplo»: cierra la guía, abre Tareas y deja una tarea de ejemplo escrita para que solo haya que enviarla.
   const tryExample = (): void => {
@@ -167,9 +164,7 @@ function OnboardingHost(): React.JSX.Element | null {
         <header className="border-b border-border/60 px-6 pt-5 pb-4">
           <p className="flex items-center gap-2 text-meta text-muted">
             <LogoMark size={18} animated={false} />
-            <span data-testid="onboarding-progress">
-              {t('wizard.header', { step: stepIndex(step, undefined, withEngine) + 1, total: steps.length })}
-            </span>
+            <span data-testid="onboarding-progress">{t('wizard.header', { step: total, total })}</span>
           </p>
           <h2
             id="onboarding-title"
@@ -182,16 +177,13 @@ function OnboardingHost(): React.JSX.Element | null {
           <div
             className="mt-3 flex gap-1.5"
             role="progressbar"
-            aria-label={t('wizard.header', { step: stepIndex(step, undefined, withEngine) + 1, total: steps.length })}
+            aria-label={t('wizard.header', { step: total, total })}
             aria-valuemin={1}
-            aria-valuemax={steps.length}
-            aria-valuenow={stepIndex(step, undefined, withEngine) + 1}
+            aria-valuemax={total}
+            aria-valuenow={total}
           >
-            {steps.map((s, i) => (
-              <span
-                key={s}
-                className={`h-1 flex-1 rounded-full ${i <= stepIndex(step, undefined, withEngine) ? 'bg-accent' : 'bg-active'}`}
-              />
+            {Array.from({ length: total }, (_, i) => (
+              <span key={i} className="h-1 flex-1 rounded-full bg-accent" />
             ))}
           </div>
         </header>

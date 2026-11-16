@@ -98,7 +98,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const bytes = downloadBytes(report, effUnchecked)
   const anyFailed = Object.values(runtime).some((r) => r?.state === 'failed')
   const location = report.components.find((c) => c.id === 'location' && !c.ok)?.reason
-  const perms = report.components.find((c) => c.id === 'perms')
+  const perms = stage === 'install' ? undefined : report.components.find((c) => c.id === 'perms')
   // «Ubicación de la app» es un aviso (tiene su propia nota), no una tarea pendiente: por sí sola no quita el botón «Continuar».
   const todo = optional.filter((c) => c.id !== 'location')
   const allDone =

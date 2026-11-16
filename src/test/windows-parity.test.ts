@@ -8,6 +8,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { runtimesOffered } from '@shared/runtimes'
 import { TASKS_WIN_BUILD } from '@shared/feature-flags'
 import { LOCAL_CATALOG } from '@shared/mcp-catalog'
 import { AUTO_INSTALL_IDS } from '@shared/preflight'
@@ -19,7 +20,7 @@ const ROOT = resolve(__dirname, '../..')
 const ESCALA = ['IGUAL', 'DIFERENTE A PROPÓSITO', 'FALTA TRABAJO', 'ROTO', 'NO VERIFICADO']
 
 interface Comprobacion {
-  tipo: 'cap' | 'flag' | 'sandbox' | 'catalogo'
+  tipo: 'cap' | 'flag' | 'sandbox' | 'catalogo' | 'runtimes'
   clave?: string
   esperado?: unknown
   backend?: string
@@ -167,10 +168,11 @@ describe('tabla de paridad: instalación automática y catálogo', () => {
     expect(pin('resources/runtimes/pin.json')).toContain('"win32-x64"')
     expect(pin('resources/python-bin/pin.json')).toContain('"win32-x64"')
   })
-  it('lo que la tabla dice de runtimesOffered coincide con el catálogo real', () => {
+  it('la tabla distingue la oferta de runtimes del catálogo de conectores', () => {
     for (const f of tabla.features) {
-      if (f.comprobacion?.tipo !== 'catalogo') continue
-      for (const [plat, v] of Object.entries(f.comprobacion.runtimesOffered ?? {})) expect(offered(plat), `${f.id}: ${plat}`).toBe(v)
+      if (f.comprobacion?.tipo !== 'catalogo' && f.comprobacion?.tipo !== 'runtimes') continue
+      const check = f.comprobacion.tipo === 'runtimes' ? runtimesOffered : offered
+      for (const [plat, v] of Object.entries(f.comprobacion.runtimesOffered ?? {})) expect(check(plat), `${f.id}: ${plat}`).toBe(v)
     }
   })
 })

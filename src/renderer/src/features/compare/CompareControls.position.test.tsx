@@ -99,6 +99,25 @@ describe('Comparar: selector dentro de la ventana', () => {
     expect(panel()!.style.bottom).toBe('88px')
   })
 
+  it('reabre vacío con el cursor en el modelo actual, aunque no sea el primero', () => {
+    act(() => root.render(<CompareControls mode="chat" directory={null} current={{ providerID: 'p', modelID: 'm25' }} />))
+    open()
+    const input = panel()!.querySelector('input')!
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'sin-coincidencias')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(panel()!.querySelectorAll('[role="option"]')).toHaveLength(0)
+    press('Escape')
+    open()
+    expect(panel()!.querySelector('input')!.value).toBe('')
+    expect(panel()!.querySelectorAll('[role="option"]')).toHaveLength(47)
+    const id = panel()!.querySelector('[role="listbox"]')!.getAttribute('aria-activedescendant')!
+    expect(document.getElementById(id)?.textContent).toContain('Modelo 25')
+    press('Enter')
+    expect(panel()!.querySelectorAll('[role="option"][aria-selected="true"]')).toHaveLength(0)
+  })
+
   it('mantiene flechas, Enter, selección múltiple y Esc; el scroll y clic internos no cierran', () => {
     open()
     act(() =>
