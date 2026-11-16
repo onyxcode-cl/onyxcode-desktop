@@ -196,7 +196,7 @@
       "win32": 3
     },
     "src/main/preflight/real.ts": {
-      "darwin": 6
+      "darwin": 5
     },
     "src/main/preflight/sandbox.ts": {
       "win32": 1
@@ -273,6 +273,9 @@
     "src/main/remote/tunnel/test-fake.ts": {
       "binSh": 1
     },
+    "src/main/runtimes/engine-env.ts": {
+      "win32": 2
+    },
     "src/main/runtimes/runtime-install.ts": {
       "win32": 3
     },
@@ -328,6 +331,7 @@
       "win32": 2
     },
     "src/main/tasks/manager.ts": {
+      "darwin": 1,
       "win32": 16
     },
     "src/main/tasks/mcp-tasks.ts": {
@@ -471,6 +475,13 @@
       "win32": 1
     },
     "src/shared/platform-caps.ts": {
+      "darwin": 1,
+      "win32": 1
+    },
+    "src/shared/preflight.ts": {
+      "darwin": 1
+    },
+    "src/shared/runtimes.ts": {
       "darwin": 1,
       "win32": 1
     },

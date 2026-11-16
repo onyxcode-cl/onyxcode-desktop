@@ -1,5 +1,5 @@
 /**
- * Pin de los runtimes (Node.js y uv) que la app descarga para los conectores locales (F8-B195). Es la raíz de confianza de la
+ * Pin de los runtimes (Node.js y uv) que la app descarga para la IA y los conectores locales (F8-B195/F8-B322). Es la raíz de confianza de la
  * descarga: `parseRuntimePin` es ESTRICTO y devuelve `null` ante cualquier desvío (ningún campo se corrige ni se rellena).
  * Puro: sin red ni disco. El archivo es `resources/runtimes/pin.json` (dentro del código firmado de la app).
  *

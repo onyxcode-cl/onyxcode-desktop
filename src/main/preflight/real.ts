@@ -16,7 +16,8 @@ import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { makeRedactor } from '../diagnostics/redact'
 import { E2E_HEADLESS } from '../e2e-headless'
 import { craftService } from '../office/craft/service'
-import { runtimesService } from '../runtimes/service'
+import { assetFor } from '../runtimes/runtime-pin'
+import { runtimesOffered, runtimesService } from '../runtimes/service'
 import { getOpencodeInfo } from '../opencode/binary'
 import { resolveOpencodeAsync } from '../opencode/server'
 import type { ComputerService } from '../computer/service'
@@ -179,7 +180,11 @@ function testDeps(kind: string): PreflightDeps {
     ...base,
     engine: async () => (kind === 'sin-motor' ? { found: false, version: null } : { found: true, version: '1.18.32' }),
     craft: () => ({ state: 'missing', version: '0.5.0', sizeBytes: 205_000_000, parts: [] }),
-    runtimes: () => ({ offered: process.platform === 'darwin', ready: false, broken: false, sizeBytes: 67_329_746 }),
+    runtimes: () => {
+      const { pin } = runtimesService().deps()
+      const sizeBytes = (['node', 'uv'] as const).reduce((n, id) => n + (assetFor(pin, id)?.size ?? 0), 0)
+      return { offered: runtimesOffered(), ready: false, broken: false, sizeBytes }
+    },
     sandbox: undefined,
     helperPresent: undefined,
     fullDisk: process.platform === 'darwin' ? async () => 'denied' : undefined,

@@ -256,7 +256,10 @@ export const wizard = {
   'wizard.example.title': 'Try an example',
   'wizard.example.body': 'See how it works with a sample task already written: “{sample}” You only have to send it.',
   'wizard.welcome.start': 'Get started',
-  'wizard.welcome.greetingNote':
+  'wizard.welcome.step': 'Step 1 of {total}',
+  'wizard.welcome.greetingNote': 'A few short steps: install what is needed and connect your AI. You can start for free.',
+  'wizard.welcome.greetingNote.connect': 'Next, connect your AI. You can start for free.',
+  'wizard.welcome.greetingNote.perms':
     'A few short steps: install what is needed, turn on permissions (Mac only) and connect your AI. You can start for free.',
   'wizard.auth.moreWays': 'Other ways to connect'
 } as const satisfies Messages<typeof es>

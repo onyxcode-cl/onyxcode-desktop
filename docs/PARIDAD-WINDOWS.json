@@ -14,7 +14,7 @@
     "features[].estado": "Uno de la escala. IGUAL, DIFERENTE A PROPÓSITO, FALTA TRABAJO, ROTO o NO VERIFICADO.",
     "features[].evidencia": "Lista de «ruta:línea» relativas a la raíz del repositorio; la prueba comprueba que el archivo exista y que la línea esté dentro de él.",
     "features[].nota": "Texto libre breve (qué cuenta como diferencia o qué falta).",
-    "features[].comprobacion": "null si no se puede comprobar en ejecución. Si no: {tipo:\"cap\", clave, esperado} (clave de PlatformCaps, valor esperado en win32); {tipo:\"flag\", clave, esperado} (clave de CapsFlags); {tipo:\"sandbox\", backend, sinAdministrador, conAdministrador}; {tipo:\"catalogo\", runtimesOffered:{darwin,win32}} (solo la prueba de Vitest, no se ve en ejecución).",
+    "features[].comprobacion": "null si no se puede comprobar en ejecución. Si no: {tipo:\"cap\", clave, esperado} (clave de PlatformCaps, valor esperado en win32); {tipo:\"flag\", clave, esperado} (clave de CapsFlags); {tipo:\"sandbox\", backend, sinAdministrador, conAdministrador}; {tipo:\"catalogo\"|\"runtimes\", runtimesOffered:{darwin,win32}} (solo la prueba de Vitest, no se ve en ejecución).",
     "windowsSkippedBaseline": "Número de pruebas saltadas en Windows (E5/C15). null mientras no se haya medido; si sube sin explicación, el release lo marca."
   },
   "schemaVersion": 1,
@@ -762,7 +762,7 @@
         "resources/catalogo/catalogo.json:571",
         "src/main/runtimes/service.ts:28"
       ],
-      "nota": "platforms:[\"darwin\"]; por eso runtimesOffered(\"win32\") es false.",
+      "nota": "Los conectores locales siguen siendo solo darwin. Node.js y uv se ofrecen independientemente para la IA en ambas plataformas (N02).",
       "comprobacion": {
         "tipo": "catalogo",
         "runtimesOffered": {
@@ -888,21 +888,19 @@
     {
       "id": "N02",
       "funcion": "Node.js y uv se instalan solos en segundo plano",
-      "estado": "FALTA TRABAJO",
+      "estado": "IGUAL",
       "evidencia": [
-        "src/shared/preflight.ts:171",
         "src/main/runtimes/service.ts:28",
-        "src/main/runtimes/service.ts:77",
         "resources/runtimes/pin.json:24",
         "resources/runtimes/pin.json:56",
-        "resources/catalogo/catalogo.json:450"
+        "src/main/runtimes/runtime-install.win.test.ts:44"
       ],
-      "nota": "Mac: sí. Windows: el pin trae win32-x64 y AUTO_INSTALL_IDS incluye runtimes, pero runtimesOffered(\"win32\") es false (todos los conectores locales del catálogo son solo darwin), así que no se ofrece ni se instala. Posterior al inventario.",
+      "nota": "F8-B322: se ofrecen para la IA en Mac y Windows, sin depender del catálogo local. Instalación automática existente con hash y tamaño; ZIP de Windows probado con dobles. Pendiente prueba manual en Windows real.",
       "comprobacion": {
-        "tipo": "catalogo",
+        "tipo": "runtimes",
         "runtimesOffered": {
           "darwin": true,
-          "win32": false
+          "win32": true
         }
       }
     },
@@ -1128,6 +1126,19 @@
         "src/renderer/src/features/onboarding/FirstRunGate.test.tsx:1"
       ],
       "nota": "Windows lista ArtCraft y el entorno de Overdrive; sin WSL reutiliza su guía existente. Mac lista ArtCraft, Node.js y uv y conserva firma, permisos, ubicación y helper. Fallos con Reintentar, avance por pieza y arranque posterior directo si todo está listo. Pruebas con plataformas inyectadas, sin app ni WSL real.",
+      "comprobacion": null
+    },
+    {
+      "id": "N21",
+      "funcion": "Node.js y uv de la app en el PATH de la IA",
+      "estado": "DIFERENTE A PROPÓSITO",
+      "evidencia": [
+        "src/main/runtimes/engine-env.ts:8",
+        "src/main/opencode/server.ripgrep-path.test.ts:132",
+        "src/main/tasks/manager.engine-flags.test.ts:70",
+        "src/main/tasks/manager.winpaths.test.ts:19"
+      ],
+      "nota": "F8-B322: Code en Mac/Windows y Overdrive en Mac agregan al final las carpetas verificadas. Seatbelt solo permite leer esas versiones. Overdrive Windows conserva las herramientas Linux de la distro; no recibe rutas del host. Pruebas con plataforma inyectada y procesos dobles; Windows real pendiente.",
       "comprobacion": null
     }
   ]

@@ -16,6 +16,7 @@ import { isUnifiedAppsEnabled } from '@shared/unified-bridge'
 import { buildSandboxProfile, sandboxEnv } from '../sandbox-profile'
 import { ensureTaskAppDirs, ensureTaskPrivateDir } from '../private-dir'
 import { bundledRipgrepPathEnv } from '../ripgrep-runtime'
+import { appRuntimeReadOnlyDirs } from '../../runtimes/engine-env'
 import { spawnOnHost } from './spawn'
 import type { SandboxBackend, SandboxDenialControl, SandboxIsolation, SandboxNetworkOptions } from './types'
 
@@ -38,7 +39,7 @@ export function seatbeltProfileText(folder: string, iso: SandboxIsolation, confi
     folder,
     privateDir: iso.privateDir,
     userData: iso.userData,
-    readOnly: [configDir],
+    readOnly: [configDir, ...appRuntimeReadOnlyDirs()],
     allowedOutboundPorts: network?.allowedOutboundPorts,
     serverPort: network?.serverPort,
     allowDelete: network?.allowDelete,

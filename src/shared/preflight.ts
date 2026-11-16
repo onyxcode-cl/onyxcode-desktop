@@ -151,12 +151,13 @@ export function installStageNeeded(report: PreflightReport): boolean {
 
 /** ¿Hay que ofrecer el paso de permisos? Solo en macOS (en Windows no hay componente `perms`) y mientras falte alguno. */
 export function permsStageNeeded(report: PreflightReport): boolean {
-  return !report.skipped && report.components.some((c) => c.id === 'perms' && !c.ok)
+  return !report.skipped && report.platform === 'darwin' && report.components.some((c) => c.id === 'perms' && !c.ok)
 }
 
-/** Total de pasos del primer uso: bienvenida, instalar, [permisos en macOS] y conectar la IA. */
-export function firstRunTotal(report: PreflightReport): number {
-  return report.components.some((c) => c.id === 'perms') ? 4 : 3
+/** Total del primer uso: bienvenida, preparar, [permisos pendientes] y conectar. Sin revisión, solo bienvenida y conexión. */
+export function firstRunTotal(report: PreflightReport | null): number {
+  if (!report || report.skipped) return 2
+  return permsStageNeeded(report) ? 4 : 3
 }
 
 /** Todo lo instalable que falta, sin mirar casillas: lo que instala «Aceptar todo e instalar». */

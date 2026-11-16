@@ -136,16 +136,15 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
 
   // Al abrir, situar el cursor en el modelo actual.
   useEffect(() => {
-    if (!open) return
+    if (!open || query) return
     const i = flat.findIndex((r) => r.providerID === value.providerID && r.modelID === value.modelID)
     setCursor(i >= 0 ? i : 0)
     setSub(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, query, flat, value.providerID, value.modelID])
 
   useEffect(() => {
     listRef.current?.querySelector(`[data-idx="${cursor}"]`)?.scrollIntoView({ block: 'nearest' })
-  }, [cursor])
+  }, [cursor, open, flat])
 
   // Dentro del submenú el foco vive en la fila actual (así el teclado del menú sigue funcionando).
   useEffect(() => {
@@ -414,7 +413,11 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setQuery('')
+          setSub(false)
+          setOpen((o) => !o)
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
         className={`no-drag flex max-w-[280px] items-center desk:max-w-[min(280px,100%)] desk:min-w-0 gap-1.5 rounded-full px-2.5 text-[13px] transition-colors ${sheet ? 'min-h-11 min-w-0 px-3' : 'py-1'} ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}

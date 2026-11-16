@@ -16,6 +16,7 @@ const state = vi.hoisted(() => ({
   appPath: '/no-existe',
   node: null as string | null,
   script: null as string | null,
+  uv: null as string | null,
   wakes: [] as Array<{ eventsFile: string; started: number; stopped: number }>,
   // Confianza (lazunox.16): lo que se declaró al arrancar y el estado del sidecar en ese momento.
   declared: [] as Array<{ baseUrl: string; always: string[]; statusThen: string | null }>,
@@ -23,7 +24,7 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => state.userData, getAppPath: () => state.appPath } }))
-vi.mock('../runtimes/service', () => ({ runtimesService: () => ({ bins: () => ({ node: state.node, uv: null, npmCli: null }) }) }))
+vi.mock('../runtimes/service', () => ({ runtimesService: () => ({ bins: () => ({ node: state.node, uv: state.uv, npmCli: null }) }) }))
 vi.mock('./shell-bg-bundled', () => ({ bundledShellBgPath: () => state.script }))
 vi.mock('../tasks/mcp-tasks', () => ({ MCP_ENV_WRAPPER: ['/usr/bin/env', '-u', 'OPENCODE_SERVER_PASSWORD'] }))
 vi.mock('./shell-bg-wake', () => ({
@@ -109,6 +110,8 @@ describe('sidecar principal (Chat/Code): el rg incluido va al principio del PATH
   const dirs: string[] = []
   beforeEach(() => {
     process.env.OPENCODE_BIN = process.execPath
+    state.node = null
+    state.uv = null
   })
   afterEach(() => {
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
@@ -127,6 +130,19 @@ describe('sidecar principal (Chat/Code): el rg incluido va al principio del PATH
     expect(path[0]).toBe(bin)
     expect(path.filter((d) => d === bin)).toHaveLength(1)
     expect(path.length).toBeGreaterThan(1)
+  })
+
+  it('Code agrega Node y uv al final y consulta de nuevo al arrancar', async () => {
+    const app = mkdtempSync(join(tmpdir(), 'lazunox-runtimepath-'))
+    dirs.push(app)
+    const before = await pathFor(app)
+    state.node = join(app, 'runtimes', 'node-1', 'bin', 'node')
+    state.uv = join(app, 'runtimes', 'uv-1', 'bin', 'uv')
+    const after = await pathFor(app)
+    expect(after).toEqual([...before, join(state.node, '..'), join(state.uv, '..')])
+    state.node = null
+    state.uv = null
+    expect(await pathFor(app)).toEqual(before)
   })
 
   it('sin rg incluido: el PATH queda como siempre (no se añade ninguna carpeta inexistente)', async () => {

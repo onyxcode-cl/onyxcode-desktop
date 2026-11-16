@@ -1,7 +1,7 @@
 /**
  * Paso 1 del primer uso: la bienvenida. Solo saluda (animación de marca, «Hecho por …») y dice en una frase qué viene: preparar el equipo
  * y conectar la IA. No revisa ni descarga nada: la lista de piezas con sus casillas vive en UNA sola pantalla («Preparando», paso 2) y
- * el asistente de conectar la IA es el paso 3. Así se ve una sola cosa a la vez y la misma lista no aparece tres veces.
+ * el asistente de conectar la IA es el último paso. Así se ve una sola cosa a la vez y la misma lista no aparece tres veces.
  */
 import { useEffect, useRef } from 'react'
 import { DISPLAY_NAME, MADE_BY } from '@shared/brand'
@@ -9,7 +9,7 @@ import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { useT } from '../../lib/i18n'
 
-export function Welcome({ onDone }: { onDone: () => void }): React.JSX.Element {
+export function Welcome({ onDone, total = 3 }: { onDone: () => void; total?: number }): React.JSX.Element {
   const t = useT()
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -35,6 +35,9 @@ export function Welcome({ onDone }: { onDone: () => void }): React.JSX.Element {
             <LogoMark size={92} variant="tile" animated={false} />
           </div>
         </div>
+        <p className="mb-2 text-meta font-medium text-muted" data-testid="welcome-step">
+          {t('wizard.welcome.step', { total })}
+        </p>
         <h1
           id="welcome-title"
           ref={titleRef}
@@ -54,7 +57,13 @@ export function Welcome({ onDone }: { onDone: () => void }): React.JSX.Element {
           {t('wizard.welcome.madeBy', { maker: MADE_BY })}
         </p>
         <p className="welcome-rise mt-8 max-w-sm text-[13px] leading-[18px] text-muted" style={{ ['--d' as string]: '1000ms' }}>
-          {t('wizard.welcome.greetingNote')}
+          {t(
+            total === 4
+              ? 'wizard.welcome.greetingNote.perms'
+              : total === 2
+                ? 'wizard.welcome.greetingNote.connect'
+                : 'wizard.welcome.greetingNote'
+          )}
         </p>
         <div className="welcome-rise mt-6 flex w-full justify-center" style={{ ['--d' as string]: '1200ms' }}>
           <Button variant="primary" onClick={onDone}>

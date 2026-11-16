@@ -79,6 +79,9 @@ import { createOwnDeleteHandler } from './own-delete-handler'
 import { createOwnDeleteRuntimeHandler } from './own-delete-runtime'
 import { prepareOwnDeleteBin } from './own-delete-runtime-files'
 import { bundledPythonEnv } from './python-runtime'
+import { appRuntimePathEnv } from '../runtimes/engine-env'
+import { minimalEnv } from '../process/child-env'
+import { bundledRipgrepPathEnv } from './ripgrep-runtime'
 
 import { deleteEngineMessages } from './own-delete-engine'
 import type { DeleteBaseline } from './own-delete'
@@ -1845,6 +1848,8 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
           // Ganchos de usuario: SOLO Control total (sin sandbox). Con sandbox nunca: un gancho es un comando con los permisos de la persona,
           // fuera de lo que Seatbelt/WSL permiten, y userData ni siquiera es legible allí.
           ...userHooksEnvForTasksServer(this.opts.extraEngineEnv?.() ?? {}, fullAccess),
+          // Runtimes del Mac al final del PATH. Windows usa las herramientas Linux de la distro, incluso sin runtimes del host.
+          ...(this.platform === 'darwin' ? appRuntimePathEnv(minimalEnv(bundledRipgrepPathEnv())) : {}),
           OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
           ...(fullAccess ? { LAZUNOX_FULL_ACCESS: '1' } : {}),
           // Plugin `lazunox-plan-gate` (bash/edit/write/etc. bloqueados hasta aprobar el plan):

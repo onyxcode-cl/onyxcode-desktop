@@ -57,7 +57,10 @@ vi.mock('../tasks/impl/bridge', () => ({
     return undefined
   })
 }))
-vi.mock('./Wizard', () => ({ OnboardingGate: () => createElement('div', { 'data-testid': 'wizard-step' }, 'Conecta tu IA') }))
+vi.mock('./Wizard', () => ({
+  OnboardingGate: ({ total }: { total: number }) =>
+    createElement('div', { 'data-testid': 'wizard-step' }, `Conectar tu IA · Paso ${total} de ${total}`)
+}))
 const runtimesInstall = vi.fn(async () => ({ ok: true }))
 vi.mock('../settings/impl/runtimes-view', () => ({
   runtimesApi: { install: (...a: unknown[]) => runtimesInstall(...(a as [])), status: vi.fn(async () => ({})) },
@@ -121,12 +124,14 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     }
   }
 
-  it('1) bienvenida primero: no revisa nada ni muestra la lista ni el asistente', async () => {
+  it('1) bienvenida primero: revisa el recorrido sin descargar ni mostrar la lista o el asistente', async () => {
     await mount(false)
     expect(q('welcome')).not.toBeNull()
     expect(q('preflight-screen')).toBeNull()
     expect(q('wizard-step')).toBeNull()
-    expect(calls).not.toContain('preflight:run')
+    expect(calls).toEqual(['preflight:run'])
+    expect(q('welcome-step')?.textContent).toBe('Paso 1 de 4')
+    expect(q('welcome')?.textContent).toContain('activar los permisos')
   })
 
   it('2) «Empezar» → «Instalar lo necesario» (paso 2 de 4 en Mac): lista ArtCraft, Node.js y uv y firma; las herramientas se instalan solas', async () => {
@@ -212,7 +217,7 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     await act(async () => btn('Más tarde')!.click())
     await flush()
     expect(q('preflight-screen')).toBeNull()
-    expect(q('wizard-step')).not.toBeNull()
+    expect(q('wizard-step')?.textContent).toContain('Paso 4 de 4')
     expect(localStorage.getItem('lazunox.preflight.dismissed')).toContain('trust')
     expect(localStorage.getItem('lazunox.preflight.dismissed')).not.toContain('craft')
   })
@@ -430,12 +435,13 @@ describe('V30: preparación visible y no bloqueante', () => {
     }
   })
 
-  it('primera revisión lenta de Windows: no deja pasar a los 3,5 s y presenta el informe a los 6 s', async () => {
-    await mount(false, 'win32')
+  it('primera revisión lenta de Windows: espera el recorrido antes de anunciarlo, sin descargar en la bienvenida', async () => {
+    platform = 'win32'
+    useSettings.setState({ loaded: true, settings: { ...DEFAULT_SETTINGS, onboarded: false } })
     vi.useFakeTimers()
     try {
       reportRun = () => new Promise((resolve) => setTimeout(() => resolve(report()), 6000))
-      await act(async () => btn('Empezar')!.click())
+      await act(async () => root.render(createElement(FirstRunGate)))
       await act(async () => {
         await vi.advanceTimersByTimeAsync(3500)
       })
@@ -444,8 +450,82 @@ describe('V30: preparación visible y no bloqueante', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2500)
       })
+      expect(q('welcome-step')?.textContent).toBe('Paso 1 de 3')
+      expect(calls).not.toContain('craft:install')
+      await act(async () => btn('Empezar')!.click())
+      expect(q('preflight-step')?.textContent).toContain('Paso 2 de 3')
       expect(q('preflight-row-sandbox')).not.toBeNull()
-      expect(calls).toContain('tasks:sandbox:setup')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it.each(['darwin', 'win32'] as const)('%s sin permisos pendientes: solo tres pasos, sin anunciarlos en la bienvenida', async (os) => {
+    allReady = true
+    await mount(false, os)
+    expect(q('welcome-step')?.textContent).toBe('Paso 1 de 3')
+    expect(q('welcome')?.textContent).not.toMatch(/permisos|Mac/)
+    await act(async () => btn('Empezar')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 3')
+    await act(async () => btn('Continuar')!.click())
+    expect(q('wizard-step')?.textContent).toContain('Paso 3 de 3')
+    expect(q('preflight-screen')).toBeNull()
+  })
+
+  it('Mac con solo permisos pendientes: conserva preparar como paso 2 y no cambia el total al concederlos', async () => {
+    reportRun = async () => ({ ...report(), components: [c('engine'), c('perms', { ok: false })] })
+    await mount(false)
+    expect(q('welcome-step')?.textContent).toBe('Paso 1 de 4')
+    await act(async () => btn('Empezar')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 4')
+    await act(async () => btn('Continuar')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 3 de 4')
+    reportRun = async () => ({ ...report(), components: [c('engine'), c('perms')] })
+    await act(async () => btn('Revisar de nuevo')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 3 de 4')
+    await act(async () => btn('Continuar')!.click())
+    expect(q('wizard-step')?.textContent).toContain('Paso 4 de 4')
+  })
+
+  it('Mac: conceder permisos mientras prepara no elimina el paso anunciado; fallar al revisar tampoco lo salta', async () => {
+    await mount(false)
+    await act(async () => btn('Empezar')!.click())
+    allReady = true
+    await act(async () => btn('Revisar de nuevo')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 2 de 4')
+    await act(async () => btn('Continuar')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 3 de 4')
+    expect(q('preflight-row-perms')?.getAttribute('data-state')).toBe('ready')
+    reportRun = async () => {
+      throw new Error('revisión no disponible')
+    }
+    await act(async () => btn('Revisar de nuevo')!.click())
+    expect(q('preflight-step')?.textContent).toContain('Paso 3 de 4')
+    await act(async () => btn('Continuar')!.click())
+    expect(q('wizard-step')?.textContent).toContain('Paso 4 de 4')
+  })
+
+  it('sin revisión: cuenta solo bienvenida y conexión, y un informe tardío no retrocede desde conectar', async () => {
+    platform = 'darwin'
+    useSettings.setState({ loaded: true, settings: { ...DEFAULT_SETTINGS, onboarded: false } })
+    let resolve!: (r: PreflightReport) => void
+    reportRun = () =>
+      new Promise((done) => {
+        resolve = done
+      })
+    vi.useFakeTimers()
+    try {
+      await act(async () => root.render(createElement(FirstRunGate)))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(q('welcome-step')?.textContent).toBe('Paso 1 de 2')
+      expect(q('welcome')?.textContent).not.toMatch(/instalar|permisos/)
+      await act(async () => btn('Empezar')!.click())
+      expect(q('wizard-step')?.textContent).toContain('Paso 2 de 2')
+      await act(async () => resolve(report()))
+      expect(q('wizard-step')?.textContent).toContain('Paso 2 de 2')
+      expect(q('preflight-screen')).toBeNull()
     } finally {
       vi.useRealTimers()
     }

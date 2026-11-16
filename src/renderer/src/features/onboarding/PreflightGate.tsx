@@ -1,5 +1,5 @@
 /**
- * Puerta de la revisión de arranque (en el primer uso es el paso 2 de 3: bienvenida → preparar el equipo → conectar la IA). En CADA arranque pide a main `preflight:run` (solo local, sin red) antes de enseñar la app:
+ * Puerta de la revisión de arranque (primer uso: bienvenida → preparar el equipo → permisos pendientes → conectar la IA). En CADA arranque pide a main `preflight:run` (solo local, sin red) antes de enseñar la app:
  *  - todo listo (o revisión omitida): deja pasar de inmediato, sin mostrar nada;
  *  - falta algo esencial: pantalla «Preparando Lazunox» que no se puede omitir, con el botón «Instalar lo que falta»;
  *  - solo avisos no esenciales: la misma pantalla con «Continuar de todos modos» (se recuerda por versión y por pendientes).
@@ -119,9 +119,18 @@ function maybeStartAuto(r: PreflightReport, alive: () => boolean, after: () => v
   }).then(() => alive() && after())
 }
 
-export function PreflightGate({ children }: { children?: React.ReactNode }): React.JSX.Element {
+export function PreflightGate({
+  children,
+  welcome
+}: {
+  children?: React.ReactNode | ((total: number) => React.ReactNode)
+  welcome?: (total: number) => React.ReactNode
+}): React.JSX.Element {
   const t = useT()
   const auto = useAutoInstall()
+  // Se fija con la primera revisión: conceder permisos después no renumera pantallas ya vistas.
+  const firstTotal = useRef<number | null>(null)
+  const welcoming = Boolean(welcome)
   const [phase, setPhase] = useState<Phase>('checking')
   const [report, setReport] = useState<PreflightReport | null>(null)
   const [runtime, setRuntime] = useState<RuntimeMap>({})
@@ -165,11 +174,9 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       if (!alive.current) return
       const current = { ...r, components: r.components.map((c) => (autoCompleted().has(c.id) ? { ...c, ok: true } : c)) }
       setReport(r)
-      maybeStartAuto(
-        current,
-        () => alive.current,
-        () => void check()
-      )
+      // Si venció la revisión inicial, el informe tardío permite descargar sin retroceder en el recorrido ya anunciado.
+      if (initialFirstRun.current && firstTotal.current === 2 && !forced.current) return
+      firstTotal.current ??= firstRunTotal(r)
       const v = screenReport(current, true)
       const autoMissing = !v.skipped && v.components.some((c) => AUTO_INSTALL_IDS.includes(c.id) && !c.ok)
       const show =
@@ -177,7 +184,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
         (!continued.current &&
           ((!v.skipped && initialFirstRun.current) || presented.current || autoMissing || shouldShow(screenReport(v), readDismissed())))
       setStage((cur) => {
-        if (cur === 'install' && !installStageNeeded(v) && permsStageNeeded(v)) return 'perms'
+        if (!initialFirstRun.current && cur === 'install' && !installStageNeeded(v) && permsStageNeeded(v)) return 'perms'
         return cur
       })
       presented.current = Boolean(show)
@@ -185,10 +192,24 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
     }
     if (race.report) present(race.report)
     else {
-      setPhase('clear')
+      // Un fallo al revisar de nuevo no salta etapas que ya se anunciaron.
+      if (firstTotal.current === null) {
+        firstTotal.current = firstRunTotal(null)
+        setPhase('clear')
+      }
       if (race.timedOut) void race.late.then((r) => r && present(r))
     }
   }, [])
+
+  useEffect(() => {
+    if (!report || welcoming) return
+    const current = { ...report, components: report.components.map((c) => (autoCompleted().has(c.id) ? { ...c, ok: true } : c)) }
+    maybeStartAuto(
+      current,
+      () => alive.current,
+      () => void check()
+    )
+  }, [report, welcoming, check])
 
   const retryAuto = useCallback((): void => {
     retryAutoPieces(AUTO_INSTALL_IDS)
@@ -337,7 +358,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
 
   const proceed = useCallback((): void => {
     // De «Instalar» a «Permisos» (solo macOS y si falta alguno); de «Permisos» —o sin permisos— se sale.
-    if (guided && stage === 'install' && report && permsStageNeeded(report)) {
+    if (guided && stage === 'install' && report && (firstRun && !forced.current ? firstTotal.current === 4 : permsStageNeeded(report))) {
       setStage('perms')
       return
     }
@@ -345,17 +366,19 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
     forced.current = false
     continued.current = true
     setPhase('clear')
-  }, [report, guided, stage])
+  }, [report, guided, stage, firstRun])
 
-  const total = report ? firstRunTotal(report) : 3
-  const stepLabel = firstRun
-    ? t(stage === 'perms' ? 'preflight.step.perms' : 'preflight.step.install', { n: stage === 'perms' ? 3 : 2, total })
-    : undefined
+  const total = firstTotal.current ?? firstRunTotal(report)
+  const stepLabel =
+    firstRun && !forced.current
+      ? t(stage === 'perms' ? 'preflight.step.perms' : 'preflight.step.install', { n: stage === 'perms' ? 3 : 2, total })
+      : undefined
   const pill = <AutoInstallPill onRetry={retryAuto} />
+  if (phase !== 'checking' && welcome) return <>{welcome(total)}</>
   if (phase === 'clear')
     return (
       <>
-        {children}
+        {typeof children === 'function' ? children(total) : children}
         {pill}
       </>
     )

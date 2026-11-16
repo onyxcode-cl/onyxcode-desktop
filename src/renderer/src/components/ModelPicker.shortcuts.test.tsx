@@ -110,6 +110,29 @@ describe('ModelPicker: atajos numéricos, predeterminado y altura', () => {
     expect(list.contains(document.body.querySelector('input'))).toBe(false)
   })
 
+  it.each(['escape', 'outside', 'trigger', 'resize'] as const)(
+    'reabre vacío y Enter elige el modelo actual tras cerrar con %s',
+    (method) => {
+      open()
+      const input = document.body.querySelector('input')!
+      act(() => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'sin-coincidencias')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      expect(rows()).toHaveLength(0)
+      if (method === 'escape') press('Escape', {})
+      if (method === 'outside') act(() => document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })))
+      if (method === 'trigger') open()
+      if (method === 'resize') act(() => window.dispatchEvent(new Event('resize')))
+      expect(document.body.querySelector('[role="listbox"]')).toBeNull()
+      open()
+      expect(document.body.querySelector('input')!.value).toBe('')
+      expect(rows()).toHaveLength(14)
+      press('Enter', {})
+      expect(onChange).toHaveBeenCalledWith({ providerID: 'opencode-go', modelID: 'a2' })
+    }
+  )
+
   it('flechas y Enter siguen funcionando, y Esc cierra', () => {
     open()
     press('ArrowDown', {})

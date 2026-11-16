@@ -1,6 +1,6 @@
 /**
  * Instalación de los runtimes de la app (F8-B195): Node.js y uv, descargados bajo demanda de las releases OFICIALES con versión,
- * tamaño y SHA-256 fijados (`resources/runtimes/pin.json`), para que los conectores locales funcionen sin que la persona instale nada.
+ * tamaño y SHA-256 fijados (`resources/runtimes/pin.json`), para que la IA y los conectores locales funcionen sin que la persona instale nada.
  *
  * Garantías (cada una con prueba en `runtime-install.test.ts` / `archive.test.ts`):
  *  - Se descarga con `pinnedDownload` (el mismo de las imágenes de WSL): solo https, host de la lista de ESE runtime (Node: solo
@@ -10,7 +10,7 @@
  *  - Todo queda en `userData/runtimes/<runtime>-<versión>/`, sin administrador, sin tocar el PATH del sistema, sin scripts de
  *    instalación ni instaladores `.pkg`/`.msi`. Se arma en una carpeta temporal y se renombra de una vez: nunca queda a medias.
  *  - Antes de dar por bueno el runtime se ejecuta `--version` y debe devolver EXACTAMENTE la versión fijada.
- *  - Los runtimes sirven SOLO a los conectores locales que la persona aprobó: esta app no los usa para nada más ni expone `npx`.
+ *  - Los conectores conservan sus rutas absolutas; los motores añaden las carpetas al final de su PATH (F8-B322).
  */
 import { execFile } from 'node:child_process'
 import { lstatSync, readFileSync, statSync } from 'node:fs'

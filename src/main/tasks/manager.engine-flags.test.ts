@@ -3,12 +3,13 @@
  * se lee en CADA arranque (un servidor nuevo ve los Ajustes actuales) y no puede pisar las claves de seguridad.
  */
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { macOnly } from '../../test/platform'
 
-const state = vi.hoisted(() => ({ userData: '' }))
+const state = vi.hoisted(() => ({ userData: '', home: '', node: null as string | null, uv: null as string | null }))
+vi.mock('node:os', async (orig) => ({ ...(await orig<typeof import('node:os')>()), homedir: () => state.home }))
+vi.mock('../runtimes/service', () => ({ runtimesService: () => ({ bins: () => ({ node: state.node, uv: state.uv, npmCli: null }) }) }))
 const started = vi.hoisted(() => [] as Array<{ extraEnv: Record<string, string> | undefined }>)
 
 vi.mock('../project-profile', () => ({ projectProfiles: () => ({ accessOf: () => 'comandos' }) }))
@@ -18,6 +19,19 @@ vi.mock('electron', () => ({
 vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({
   embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null }
+}))
+vi.mock('./mcp-proxy', () => ({
+  McpProxy: class {
+    port = 1
+    async start(): Promise<void> {}
+    async stop(): Promise<void> {}
+    addRoute(): never {
+      throw new Error('sin rutas en esta prueba')
+    }
+    setLocalHandler(): { url: string; token: string } {
+      return { url: 'http://127.0.0.1:1/guard', token: 'prueba' }
+    }
+  }
 }))
 vi.mock('./policy', () => ({ loadManagedPolicy: () => null, isHostCommandsDisabled: () => false }))
 vi.mock('./sandbox', () => ({
@@ -44,12 +58,15 @@ let home: string
 let prevHome: string | undefined
 
 beforeEach(() => {
-  root = realpathSync(mkdtempSync(join(homedir(), '.lazunox-engflags-test-')))
+  root = realpathSync(mkdtempSync(join(process.cwd(), '.lazunox-engflags-test-')))
   home = join(root, 'home')
+  state.home = home
   mkdirSync(join(home, 'Documents'), { recursive: true })
   state.userData = join(root, 'userData')
   mkdirSync(state.userData, { recursive: true })
   started.length = 0
+  state.node = null
+  state.uv = null
   prevHome = process.env.HOME
   process.env.HOME = home
 })
@@ -60,6 +77,24 @@ afterEach(() => {
 })
 
 describe.skipIf(!macOnly)('extraEngineEnv del gestor de Tareas', () => {
+  it.each([false, true])('Mac, Control total %s: añade runtimes al final solo tras instalarlos', async (fullAccess) => {
+    const m = new TasksManager({})
+    const docs = m.approveFolder(join(home, 'Documents')).path
+    if (fullAccess) m.grantFullAccessConsent()
+    await m.start(docs, fullAccess)
+    expect(started[0].extraEnv!.PATH).toBeUndefined()
+    state.node = join(root, 'runtimes', 'node-1', 'bin', 'node')
+    state.uv = join(root, 'runtimes', 'uv-1', 'bin', 'uv')
+    if (fullAccess) {
+      await m.stop(docs)
+      await m.start(docs, true)
+    } else expect(await m.restartSandbox(docs)).toBe(true)
+    const path = started[1].extraEnv!.PATH.split(delimiter)
+    expect(path.slice(-2)).toEqual([join(state.node, '..'), join(state.uv, '..')])
+    const original = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
+    expect(path.indexOf(original[0])).toBeLessThan(path.length - 2)
+  })
+
   it('mezcla las variables en extraEnv sin quitar las de seguridad', async () => {
     const m = new TasksManager({ extraEngineEnv: () => ({ OPENCODE_EXPERIMENTAL_CODE_MODE: 'true' }) })
     const docs = m.approveFolder(join(home, 'Documents')).path
