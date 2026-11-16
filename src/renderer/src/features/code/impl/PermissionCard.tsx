@@ -1,9 +1,10 @@
+import { PermCommandNotice } from '../../../components/permission/PermCommandNotice'
 import { useCallback, useRef, useState } from 'react'
 import { FilePen, Loader2, ShieldAlert, SquareTerminal } from 'lucide-react'
 import type { MsgKey } from '@shared/i18n'
 import { isProtectedPermission } from '@shared/protected-path'
 import { readPermissionSuggestion } from '@shared/permission-suggestion'
-import { outsideDirectories, subcommandRules } from '@shared/auto-review'
+import { outsideDirectories, subcommandRules, permissionCommandPolicy } from '@shared/auto-review'
 import { QuestionCard as SharedQuestionCard } from '../../../components/QuestionCard'
 import { useT } from '../../../lib/i18n'
 import { isRemoteSurface } from '../../../lib/platform'
@@ -97,6 +98,7 @@ function MobilePermissionCard({
 
   const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
   const rules = shell ? subcommandRules(md) : null
+  const policy = permissionCommandPolicy(request, root)
   const outside = shell
     ? outsideDirectories(md)
     : request.permission === 'external_directory' && command
@@ -120,7 +122,7 @@ function MobilePermissionCard({
 
   // «No volver a preguntar» no se ofrece a un ayudante (ampliaría lo permitido) ni sin reglas que guardar; el celular nunca lo ofrece.
   const allowedActions = (allowed ? actions.filter((a) => allowed.includes(a.reply as 'once' | 'reject')) : actions).filter(
-    (a) => !((sub.child || protectedPath || (rules !== null && !rules.length)) && a.reply === 'always')
+    (a) => !((sub.child || protectedPath || policy.alwaysAsk || (rules !== null && !rules.length)) && a.reply === 'always')
   )
   // Celular: la acción principal va a la derecha (Rechazar a la izquierda, Permitir una vez a la derecha).
   const shown = mobile
@@ -173,6 +175,7 @@ function MobilePermissionCard({
           {patterns.map((p) => relPath(p, root)).join('\n')}
         </pre>
       )}
+      <PermCommandNotice notice={policy.notice} />
       {outside.length > 0 && (
         <p className="mx-3.5 mb-2.5 break-all font-mono text-xs text-muted">{t('perm.outside', { dirs: outside.join(', ') })}</p>
       )}

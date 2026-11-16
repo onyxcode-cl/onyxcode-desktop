@@ -9,7 +9,7 @@ import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
 export function registerTasksPreflightHandlers(
   ctx: TasksIpcContext,
-  o: { computer?: ComputerService; sandboxStatus: () => Promise<TasksSandboxStatus> }
+  o: { computer?: ComputerService; sandboxStatus?: () => Promise<TasksSandboxStatus> }
 ): TasksSubmodule {
   configurePreflight({ computer: o.computer, sandboxStatus: o.sandboxStatus })
   ctx.handle('preflight:run', () => runPreflight())

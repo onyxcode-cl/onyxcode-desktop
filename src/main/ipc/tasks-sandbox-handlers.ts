@@ -11,6 +11,7 @@ import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 export interface TasksSandboxModule extends TasksSubmodule {
   /** Estado del entorno aislado (lo usa también la revisión de arranque). */
   status: (force?: boolean) => Promise<TasksSandboxStatus>
+  prepare: () => Promise<void>
 }
 
 export function registerTasksSandboxHandlers(
@@ -33,9 +34,9 @@ export function registerTasksSandboxHandlers(
   handle('tasks:sandbox:cancel', () => service.cancel())
   return {
     status: (force = false) => service.status({ force }),
+    prepare: () => service.prepare(),
     dispose: async () => {
-      await service.cancel()
-      await Promise.race([service.idle(), new Promise<void>((r) => setTimeout(r, 3_000).unref?.())])
+      await Promise.race([service.dispose(), new Promise<void>((r) => setTimeout(r, 3_000).unref?.())])
     }
   }
 }

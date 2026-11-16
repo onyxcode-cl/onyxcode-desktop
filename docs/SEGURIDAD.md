@@ -6,6 +6,12 @@ Resumen de las defensas del proceso principal, las ventanas y los procesos hijos
 hallazgos y su estado en `AUDIT.md`; motivación en notas privadas (fuera del repositorio)
 («Lecciones para Lazunox», bloques A y B).
 
+### V29, ronda 8 (F8-B319): confirmaciones y preparación diferida
+
+Las tarjetas no ofrecen persistir permisos para acciones `hard`, peticiones con carpetas externas ni `external_directory`. Es coherencia de presentación; la autorización del motor y la política remota siguen siendo las autoridades. Cada familia de riesgo lleva un aviso traducido visible.
+
+El arranque de Windows no consulta ni prepara WSL: se retira el sondeo de la revisión inicial y la precarga de la última carpeta. La preparación se solicita al abrir Overdrive y se espera en `TasksManager.start` antes de ejecutar una tarea aislada. Sigue pasando por `selectBackend` con propósito `setup`; el arranque posterior mantiene la puerta estricta `run` (elevación, pin, paquete, carga, estado y política). No cambia el código de importación o baja de la distro. El cierre sin uso tampoco sondea WSL. Las llamadas simultáneas comparten la preparación y sus eventos de progreso.
+
 ## 1. Renderer y ventanas
 
 | Control                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Dónde                                                           |

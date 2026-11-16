@@ -233,3 +233,34 @@ describe('instalación', () => {
     expect((await svc.cancel()).state).toBe('ready')
   })
 })
+
+describe('R8: preparación diferida', () => {
+  it('crear y cerrar el servicio sin usar Overdrive no consulta ni instala en WSL', async () => {
+    const getBackend = vi.fn()
+    const { svc } = make({ getBackend })
+    await svc.dispose()
+    expect(getBackend).not.toHaveBeenCalled()
+  })
+  it('el primer uso y la tarjeta simultáneos cargan el paquete una sola vez, con progreso', async () => {
+    let finish!: () => void
+    const install = vi.fn(async (progress: (pct: number, phase: string) => void) => {
+      progress(25, 'installing')
+      await new Promise<void>((resolve) => {
+        finish = resolve
+      })
+      bk.cur.state = 'ready'
+    })
+    const bk = backend({ state: 'needsSetup', detail: 'update:payload' }, install)
+    const { svc, emitted } = make({ getBackend: async () => bk.b })
+    const first = svc.prepare()
+    const card = await svc.setup()
+    expect(card.setup?.running).toBe(true)
+    expect(install).toHaveBeenCalledTimes(1)
+    expect(emitted.some((s) => s.setup?.running && s.setup.pct === 25)).toBe(true)
+    finish()
+    await first
+    await svc.prepare()
+    expect(install).toHaveBeenCalledTimes(1)
+    expect(await svc.status()).toMatchObject({ state: 'ready', setup: null })
+  })
+})

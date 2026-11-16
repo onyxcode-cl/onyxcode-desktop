@@ -5,6 +5,8 @@
  * Siempre se muestra el comando, la ruta o los parámetros LITERALES; la descripción del modelo va aparte
  * y marcada como no verificada.
  */
+import { permissionCommandPolicy } from '@shared/auto-review'
+import { PermCommandNotice } from '../../../components/permission/PermCommandNotice'
 import { hasHiddenChars } from '../../../components/permission/PermissionShell'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
@@ -27,7 +29,7 @@ import { computerToolInfo, computerToolKind } from './computer-tools'
 import { metadataJson, parseMcpPermission, showAlways } from './conversation-logic'
 import { FolderRequestCard } from './FolderRequestCard'
 import { permActions } from './perm-actions'
-import { useShowPath } from './conn-paths'
+import { sdkDir, useShowPath } from './conn-paths'
 import { useTaskSubagentOfRequest } from './subagent-of-request'
 import { useTasks } from './store'
 import { baseName, rememberablePatterns, stripGlob } from './util'
@@ -334,13 +336,20 @@ export function RejectWithNote({
   )
 }
 
+export function usePermissionCommandPolicy(request: PermissionRequest): ReturnType<typeof permissionCommandPolicy> {
+  const folder = useTasks((s) => s.folder)
+  const input = useToolInput(request)
+  return permissionCommandPolicy(request, folder ? sdkDir(folder) : undefined, input)
+}
+
 /** ¿Se ofrece «Siempre»? Oculto con la política `disableAlwaysAllow` o si nada de la petición se puede recordar. */
 export function useCanAlways(request: PermissionRequest, danger: boolean): boolean {
   const disable = useTasks((s) => s.policy?.disableAlwaysAllow === true)
   // Un ayudante (subagente) nunca ofrece «Siempre»: la regla se guardaría para la carpeta y ampliaría lo que la persona permitió.
   const { child } = useTaskSubagentOfRequest(request.sessionID)
   // I5: el celular nunca ofrece «no volver a preguntar» (la política remota lo rechaza; lo decide la persona en el Mac).
-  if (isRemoteSurface() || child) return false
+  const policy = usePermissionCommandPolicy(request)
+  if (isRemoteSurface() || child || policy.alwaysAsk) return false
   return showAlways({ danger, disableAlwaysAllow: disable, rememberableCount: rememberablePatterns(request).length })
 }
 
@@ -386,6 +395,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
   const { busy, error, answer, reject } = useReply(request)
   const [noting, setNoting] = useState(false)
   const canAlways = useCanAlways(request, d.danger)
+  const policy = usePermissionCommandPolicy(request)
   const Icon = d.icon
   const showDiff = !!d.diff && hasDiffChanges(d.diff)
   // Celular (decisiones-pwa #1): el orden y las variantes salen de `permActions`; la tarjeta solo recorre la lista.
@@ -412,6 +422,7 @@ function GenericPermissionCard({ request }: { request: PermissionRequest }): Rea
               {d.detail}
             </pre>
           )}
+          <PermCommandNotice notice={policy.notice} />
           {d.diff && (
             <div className="mt-2 overflow-hidden rounded-md border border-border bg-code">
               {showDiff ? (

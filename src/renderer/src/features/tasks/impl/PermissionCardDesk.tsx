@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { Folder, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { RememberRules, useNewPermissionRules } from '../../../components/permission/RememberRules'
 import { rememberablePatterns } from './util'
-import { outsideDirectories, hardCommandNotice } from '@shared/auto-review'
+import { outsideDirectories } from '@shared/auto-review'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
 import {
@@ -16,6 +16,7 @@ import {
   PermCommand,
   PermNoteField,
   PermOutside,
+  PermCommandNotice,
   PermPreview,
   PermScope,
   previewFits,
@@ -24,7 +25,6 @@ import {
 } from '../../../components/permission/PermissionShell'
 import { isProtectedPermission } from '@shared/protected-path'
 import { Button } from '../../../components/Button'
-import { classifyAutoCommand } from '@shared/auto-command'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform } from '../../../lib/platform'
 import {
@@ -32,6 +32,7 @@ import {
   describePermission,
   hasHiddenChars,
   useCanAlways,
+  usePermissionCommandPolicy,
   useMcpServers,
   useReply,
   useRequestTitle,
@@ -82,15 +83,7 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
 
   const showDiff = !!d.diff && hasDiffChanges(d.diff)
   const isBash = request.permission === 'bash'
-  const commandNotice =
-    (isBash || request.permission === 'bgshell_start') && d.detail
-      ? hardCommandNotice(
-          classifyAutoCommand(d.detail, folder ? sdkDir(folder) : undefined, {
-            workdir: toolInput?.workdir ?? toolInput?.cwd,
-            shell: typeof request.metadata.shell === 'string' ? request.metadata.shell : undefined
-          })
-        )
-      : null
+  const policy = usePermissionCommandPolicy(request)
   const outside = isBash || request.permission === 'bgshell_start' ? outsideDirectories(request.metadata) : []
 
   const actions: PermAction[] = [
@@ -219,16 +212,12 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
         title={title}
         effect={d.effect}
         preview={
-          d.detail || outside.length || autoNote || request.metadata.subcommands ? (
+          d.detail || outside.length || autoNote || request.metadata.subcommands || policy.notice ? (
             <>
               {d.detail && <PermPreview text={d.detail} prompt={isBash} danger={d.danger} />}
               <PermOutside dirs={outside} />
-              {commandNotice && (
-                <p role="note" className="text-meta text-warning">
-                  {t(`perm.commandNotice.${commandNotice}`)}
-                </p>
-              )}
-              <RememberRules metadata={request.metadata} rules={newRules} available={canAlways} />
+              <PermCommandNotice notice={policy.notice} />
+              <RememberRules metadata={request.metadata} rules={newRules} available={canAlways} showLimit={!policy.alwaysAsk} />
               {autoNote && (
                 <p role="note" className="flex items-start gap-1.5 text-meta text-warning">
                   <ShieldAlert size={13} className="mt-0.5 shrink-0" />

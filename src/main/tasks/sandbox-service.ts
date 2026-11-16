@@ -37,6 +37,7 @@ export class TasksSandboxService {
   private setupState: TasksSandboxSetup | null = null
   private running: { promise: Promise<void>; abort: AbortController } | null = null
   private inflight: Promise<Omit<TasksSandboxStatus, 'setup'>> | null = null
+  private starting: Promise<TasksSandboxStatus> | null = null
   private backendP: Promise<SandboxBackend> | null = null
 
   constructor(private readonly deps: SandboxServiceDeps) {}
@@ -90,7 +91,14 @@ export class TasksSandboxService {
   }
 
   /** Instala o repara. Devuelve el estado al empezar; el avance y el final salen por `emit`. */
-  async setup(): Promise<TasksSandboxStatus> {
+  setup(): Promise<TasksSandboxStatus> {
+    this.starting ??= this.startSetup().finally(() => {
+      this.starting = null
+    })
+    return this.starting
+  }
+
+  private async startSetup(): Promise<TasksSandboxStatus> {
     if (this.running) return this.status()
     const before = await this.status({ force: true })
     if (before.backend !== 'wsl') return before
@@ -121,6 +129,19 @@ export class TasksSandboxService {
     })()
     this.running = { promise: run, abort }
     return { ...before, setup: { ...this.setupState } }
+  }
+
+  /** Primer uso: comparte la preparación con la tarjeta y espera antes de pasar la puerta estricta de ejecución. */
+  async prepare(): Promise<void> {
+    await this.setup()
+    await this.idle()
+  }
+
+  /** Cerrar sin haber usado Overdrive no consulta ni enciende WSL. */
+  async dispose(): Promise<void> {
+    await this.starting
+    this.running?.abort.abort()
+    await this.idle()
   }
 
   /** Cancela la instalación. Si no hay ninguna, no hace nada. */

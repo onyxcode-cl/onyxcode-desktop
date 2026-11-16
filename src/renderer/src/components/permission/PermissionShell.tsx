@@ -314,6 +314,8 @@ export function PermOutside({ dirs }: { dirs: string[] }): React.JSX.Element | n
   return <p className="break-all font-mono text-meta text-muted">{t('perm.outside', { dirs: dirs.join(', ') })}</p>
 }
 
+export { PermCommandNotice } from './PermCommandNotice'
+
 // ───────────────────────────── Guardia (teclado + armado) ─────────────────────────────
 
 function scrollParent(el: HTMLElement): HTMLElement | null {

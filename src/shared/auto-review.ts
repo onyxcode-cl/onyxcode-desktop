@@ -262,12 +262,60 @@ export function outsideDirectories(metadata: unknown): string[] {
   return [...new Set(list.filter((d): d is string => typeof d === 'string' && d.trim() !== ''))]
 }
 
-/** Aviso de la tarjeta, independiente de la revisora. Los textos se traducen en la vista. */
-export function hardCommandNotice(result: AutoCommandResult): 'deleteProject' | 'delete' | 'outside' | 'unknownDestination' | null {
+/** Presentación común a Código, Overdrive y celular; no concede permisos. */
+export function permissionCommandPolicy(
+  request: { permission: string; metadata: Record<string, unknown>; patterns: string[] },
+  root?: string | null,
+  input?: Record<string, unknown> | null
+): { alwaysAsk: boolean; notice: ReturnType<typeof hardCommandNotice> } {
+  const md = request.metadata
+  const shell = request.permission === 'bash' || request.permission === 'bgshell_start'
+  const command =
+    typeof md.command === 'string' ? md.command : typeof input?.command === 'string' ? input.command : request.patterns.join('\n')
+  const outside = outsideDirectories(md)
+  const result =
+    shell && command
+      ? classifyAutoCommand(command, root ?? undefined, {
+          workdir: input?.cwd ?? input?.workdir ?? md.workdir,
+          shell: typeof md.shell === 'string' ? md.shell : undefined,
+          externalDirectories: outside
+        })
+      : null
+  return {
+    alwaysAsk: request.permission === 'external_directory' || outside.length > 0 || result?.verdict === 'hard',
+    notice: result ? hardCommandNotice(result) : null
+  }
+}
+
+/** Aviso traducible de cada familia de motivos hard; nunca muestra el diagnóstico interno del clasificador. */
+export function hardCommandNotice(
+  result: AutoCommandResult
+):
+  | 'deleteProject'
+  | 'delete'
+  | 'outside'
+  | 'unknownDestination'
+  | 'globalInstall'
+  | 'sensitive'
+  | 'system'
+  | 'admin'
+  | 'downloadExecute'
+  | 'repository'
+  | 'moveProject'
+  | 'confirm'
+  | null {
   if (result.verdict !== 'hard') return null
-  if (result.reason === 'borra la raíz, la carpeta personal o el proyecto entero') return 'deleteProject'
-  if (/borra|vacía la papelera/.test(result.reason)) return 'delete'
-  if (/escribe.*(?:no se conoce|variable)|escribe un destino calculado/.test(result.reason)) return 'unknownDestination'
-  if (/escribe.*(?:fuera del proyecto|carpeta personal)|temporal fuera del proyecto/.test(result.reason)) return 'outside'
-  return null
+  const reason = result.reason
+  if (reason === 'borra la raíz, la carpeta personal o el proyecto entero') return 'deleteProject'
+  if (/borra|vacía la papelera/.test(reason)) return 'delete'
+  if (/instala/.test(reason)) return 'globalInstall'
+  if (/permisos de administrador/.test(reason)) return 'admin'
+  if (/descarg|descarga y ejecuta/.test(reason)) return 'downloadExecute'
+  if (/dentro de \.git|git config que ejecuta/.test(reason)) return 'repository'
+  if (/mueve la raíz/.test(reason)) return 'moveProject'
+  if (/cambio del sistema|cambia |carpeta del sistema|escribe en un disco/.test(reason)) return 'system'
+  if (/credencial|contraseña|secreto|sensible|Lazunox|llaves GPG|historial de Mensajes/.test(reason)) return 'sensitive'
+  if (/(?:escribe|mueve).*(?:no se conoce|variable)|escribe un destino calculado/.test(reason)) return 'unknownDestination'
+  if (/fuera del proyecto|carpeta personal/.test(reason)) return 'outside'
+  return 'confirm'
 }

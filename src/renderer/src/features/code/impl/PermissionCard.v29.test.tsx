@@ -34,6 +34,17 @@ const request = (metadata: Record<string, unknown> = {}): PendingPermission => (
   api: 'v1'
 })
 
+const ordinary = (metadata: Record<string, unknown> = {}): PendingPermission =>
+  request({
+    command: 'cat notas.txt && npm test',
+    externalDirectories: [],
+    subcommands: [
+      { command: 'cat notas.txt', rule: 'cat *' },
+      { command: 'npm test', rule: 'npm test *' }
+    ],
+    ...metadata
+  })
+
 let host: HTMLDivElement
 let root: Root
 let createRoot: (typeof import('react-dom/client'))['createRoot']
@@ -61,7 +72,8 @@ beforeEach(() => {
   reply.mockClear()
   useCode.setState({ replyPermission: reply as never, reviewNotes: {}, messages: {} })
 })
-afterEach(() => {
+afterEach(async () => {
+  await act(async () => {})
   act(() => root.unmount())
   host.remove()
   vi.useRealTimers()
@@ -86,7 +98,7 @@ describe('V29: tarjeta de permiso de Código', () => {
   })
 
   it('«Permitir y no volver a preguntar en este proyecto» manda las reglas no nulas', () => {
-    mount(request())
+    mount(ordinary())
     const always = button('Permitir y no volver a preguntar en este proyecto')
     expect(always.title).toBe('No volverá a preguntar por: cat *, npm test *')
     act(() => always.click())
@@ -100,7 +112,7 @@ describe('V29: tarjeta de permiso de Código', () => {
   })
 
   it('motor viejo (sin `subcommands`): se conserva el «no volver a preguntar» de antes', () => {
-    mount(request({ subcommands: undefined }))
+    mount(ordinary({ subcommands: undefined }))
     act(() => button('Permitir y no volver a preguntar en este proyecto').click())
     expect(reply).toHaveBeenCalledWith(expect.anything(), 'always', false, undefined)
   })
@@ -143,8 +155,8 @@ it('explica lo excluido fuera del desplegable y anuncia el límite de cinco', ()
   )
   const visible = [...host.querySelectorAll('p')].find((p) => p.textContent?.includes('No se guardará permiso'))
   expect(host.textContent).toContain('No se guardará permiso para estas partes')
-  expect(host.textContent).toContain('El límite es de 5 reglas')
-  expect(host.textContent).toContain('git status 4 *')
+  expect(host.textContent).not.toContain('El límite es de 5 reglas')
+  expect(host.textContent).not.toContain('git status 4 *')
   expect(host.textContent).not.toContain('git status 5 *')
   expect(visible?.closest('[hidden]')).toBeFalsy()
 })
@@ -182,6 +194,7 @@ it('R7: muestra solo reglas nuevas y conserva el botón al llegar las guardadas'
   mount(
     request({
       command: 'git branch -vv; git log -5; echo listo',
+      externalDirectories: [],
       subcommands: [
         { command: 'git branch -vv', rule: 'git branch *' },
         { command: 'git log -5', rule: 'git log *' },
@@ -213,7 +226,7 @@ it('R7: el clic siempre responde aunque la carga de reglas no termine y vuelve a
   alwaysList.mockImplementation(() => new Promise(() => {}))
   // El store real captura errores y conserva la tarjeta; su promesa termina resuelta.
   reply.mockImplementation(() => Promise.resolve())
-  mount(request())
+  mount(ordinary())
   const always = button('Permitir y no volver a preguntar en este proyecto')
   await act(async () => always.click())
   expect(reply).toHaveBeenCalledTimes(1)
@@ -230,4 +243,37 @@ it('R7: el motivo del borrado del proyecto se ve en la tarjeta', () => {
     })
   )
   expect(host.textContent).toContain('Este comando borra la raíz, la carpeta personal o el proyecto entero.')
+})
+
+describe('R8: las acciones que siempre preguntan no ofrecen guardar', () => {
+  it.each(['rm notas.txt && git status', 'cp notas.txt /tmp/notas.txt', 'npm install -g cowsay', 'pip install --user requests'])(
+    '%s, incluso con reglas sugeridas',
+    (command) => {
+      mount(ordinary({ command }))
+      expect(button('Permitir y no volver a preguntar en este proyecto')).toBeUndefined()
+      expect(host.textContent).not.toContain('No volverá a preguntar por:')
+      expect(button('Permitir')).toBeTruthy()
+      expect(button('No')).toBeTruthy()
+      expect(host.querySelector('input[data-perm-note]')).toBeTruthy()
+      const notice = [...host.querySelectorAll('[role="note"]')].find((n) =>
+        /Instala para|borra archivos|escribe fuera/.test(n.textContent ?? '')
+      )
+      expect(notice).toBeTruthy()
+      expect(notice?.closest('[hidden]')).toBeNull()
+    }
+  )
+  it('una tarjeta repetida con externalDirectories tampoco ofrece siempre', async () => {
+    alwaysList.mockResolvedValue({ available: true, active: true, rules: [{ permission: 'bash', pattern: 'cat *' }] })
+    mount(ordinary({ externalDirectories: ['/tmp'] }))
+    await act(async () => {})
+    expect(button('Permitir y no volver a preguntar en este proyecto')).toBeUndefined()
+  })
+  it('external_directory sin comando tampoco ofrece siempre', () => {
+    mount({ ...ordinary({ command: undefined }), permission: 'external_directory' })
+    expect(button('Permitir y no volver a preguntar en este proyecto')).toBeUndefined()
+  })
+  it('un comando dudoso normal conserva la opción', () => {
+    mount(ordinary({ command: 'git push', subcommands: [{ command: 'git push', rule: 'git push *' }] }))
+    expect(button('Permitir y no volver a preguntar en este proyecto')).toBeTruthy()
+  })
 })
