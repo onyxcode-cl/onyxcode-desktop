@@ -2,13 +2,15 @@
  * Botón «Comparar» del compositor (Code y Chat), su lanzador (2–4 modelos) y el chip «Comparar ×N» con el que se arma la
  * comparación. En el celular no existe (devuelve `null`).
  */
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, Columns3, Search, X } from 'lucide-react'
 import { COMPARE_MODELS_MAX } from '@shared/ipc-code'
 import type { CompareMode, CompareModelRef } from '@shared/ipc-code'
 import type { ModelRef } from '@shared/types'
 import { Button } from '../../components/Button'
 import { useT } from '../../lib/i18n'
+import { portalContentHeight, portalPosition } from '../../lib/portal-position'
 import { sortProviders, useProviders } from '../../stores/providers'
 import { useServer } from '../../stores/server'
 import { compareAvailable } from './api'
@@ -68,7 +70,9 @@ export function CompareControls({
         <span className={iconOnly ? 'sr-only' : 'shrink-0 desk:@max-[34rem]:sr-only'}>{t('compare.action')}</span>
       </button>
       {armed && <ArmedChip count={armed.length} onRemove={() => disarm(mode, directory)} />}
-      {open && <Launcher mode={mode} directory={directory} current={current} variant={variant} align={align} onClose={close} />}
+      {open && (
+        <Launcher mode={mode} directory={directory} current={current} variant={variant} align={align} anchor={triggerRef} onClose={close} />
+      )}
     </div>
   )
 }
@@ -101,6 +105,7 @@ function Launcher({
   current,
   variant,
   align,
+  anchor,
   onClose
 }: {
   mode: CompareMode
@@ -108,6 +113,7 @@ function Launcher({
   current: ModelRef
   variant?: string | null
   align: 'left' | 'right'
+  anchor: React.RefObject<HTMLButtonElement | null>
   onClose: (focus?: boolean) => void
 }): React.JSX.Element {
   const t = useT()
@@ -121,6 +127,7 @@ function Launcher({
   const rootRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [position, setPosition] = useState<ReturnType<typeof portalPosition> | null>(null)
 
   useEffect(() => {
     if (client) void load(client)
@@ -132,11 +139,22 @@ function Launcher({
 
   useEffect(() => {
     const onDown = (e: MouseEvent): void => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose(false)
+      const target = e.target as Node
+      if (!rootRef.current?.contains(target) && !anchor.current?.contains(target)) onClose(false)
+    }
+    const close = (): void => onClose(false)
+    const onScroll = (e: Event): void => {
+      if (e.target instanceof Node && !rootRef.current?.contains(e.target)) close()
     }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [onClose])
+    window.addEventListener('resize', close)
+    document.addEventListener('scroll', onScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', close)
+      document.removeEventListener('scroll', onScroll, true)
+    }
+  }, [onClose, anchor])
 
   const rows = useMemo<Row[]>(() => {
     const q = query.trim().toLowerCase()
@@ -148,6 +166,27 @@ function Launcher({
         .map((m) => ({ ref: { providerID: p.id, modelID: m.id }, name: m.name, provider: p.name }))
     )
   }, [providers, query])
+
+  useLayoutEffect(() => {
+    const panel = rootRef.current
+    const rect = anchor.current?.getBoundingClientRect()
+    if (!panel || !rect) return
+    const listLimit = 18 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16)
+    const next = portalPosition({
+      anchor: rect,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      height: portalContentHeight(panel, listRef.current, listLimit),
+      width: 340,
+      placement: 'top',
+      topInset: 48,
+      gap: 8,
+      align: align === 'right' ? 'end' : 'start'
+    })
+    setPosition((prev) =>
+      prev && Object.keys(next).every((key) => prev[key as keyof typeof next] === next[key as keyof typeof next]) ? prev : next
+    )
+  }, [anchor, align, rows, selected, loaded, loading, t])
 
   const isOn = (r: CompareModelRef): boolean => selected.some((s) => s.providerID === r.providerID && s.modelID === r.modelID)
   const toggle = (r: CompareModelRef): void =>
@@ -206,22 +245,27 @@ function Launcher({
         ? t('compare.launcher.max')
         : t('compare.launcher.hint')
 
-  return (
+  return createPortal(
     <div
       ref={rootRef}
       role="dialog"
       aria-label={t('compare.launcher.title')}
       data-testid="compare-launcher"
       onKeyDown={onKeyDown}
-      className={`absolute bottom-full z-50 mb-2 w-[340px] max-w-[calc(100vw-2rem)] animate-pop-in rounded-xl border border-border bg-elevated shadow-lg ${align === 'right' ? 'right-0 origin-bottom-right' : 'left-0 origin-bottom-left'}`}
+      style={
+        position
+          ? { top: position.top, bottom: position.bottom, left: position.left, width: position.width, maxHeight: position.maxHeight }
+          : undefined
+      }
+      className={`no-drag [&_*]:[-webkit-app-region:no-drag] fixed z-50 flex w-[340px] flex-col overflow-hidden animate-pop-in rounded-xl border border-border bg-elevated shadow-lg ${position?.side === 'top' ? 'origin-bottom' : 'origin-top'}`}
     >
-      <div className="flex h-9 items-center gap-2 px-3 pt-1">
+      <div className="flex h-9 shrink-0 items-center gap-2 px-3 pt-1">
         <span className="text-[13px] font-medium">{t('compare.launcher.title')}</span>
         <span role="status" aria-live="polite" className="ml-auto text-[11.5px] desk:text-meta text-subtle">
           {hint}
         </span>
       </div>
-      <div className="flex items-center gap-2 border-y border-border px-3 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-y border-border px-3 py-2">
         <Search size={13} className="text-subtle" aria-hidden />
         <input
           ref={inputRef}
@@ -244,7 +288,7 @@ function Launcher({
         aria-label={t('compare.launcher.list')}
         aria-activedescendant={rows[cursor] ? `${uid}-o${cursor}` : undefined}
         tabIndex={0}
-        className="max-h-72 overflow-y-auto p-1 outline-none"
+        className="min-h-0 max-h-72 overflow-y-auto p-1 outline-none"
       >
         {!loaded && loading && <div className="px-3 py-3 text-[13px] text-muted">{t('compare.launcher.loading')}</div>}
         {loaded && rows.length === 0 && <div className="px-3 py-3 text-[13px] text-muted">{t('compare.launcher.empty')}</div>}
@@ -281,12 +325,13 @@ function Launcher({
           )
         })}
       </div>
-      <div className="flex items-center gap-2 border-t border-border p-2.5">
+      <div className="flex shrink-0 items-center gap-2 border-t border-border p-2.5">
         <p className="min-w-0 flex-1 text-[11.5px] desk:text-meta leading-snug text-subtle">{t('compare.launcher.note')}</p>
         <Button size="sm" variant="primary" disabled={!!issue} onClick={submit}>
           {t('compare.launcher.submit', { count: selected.length })}
         </Button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

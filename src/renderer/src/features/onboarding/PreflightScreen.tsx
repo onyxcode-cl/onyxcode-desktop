@@ -22,7 +22,7 @@ import {
   type PreflightReport,
   type RuntimeMap
 } from '@shared/preflight'
-import { CLICK_IDS, PERMS_IDS } from '@shared/preflight'
+import { AUTO_INSTALL_IDS, CLICK_IDS, PERMS_IDS } from '@shared/preflight'
 import { Button } from '../../components/Button'
 import { LogoMark } from '../../components/Logo'
 import { call } from '../../lib/api'
@@ -38,6 +38,9 @@ export interface PreflightScreenProps {
   runtime: RuntimeMap
   /** Hay una instalación en curso. */
   installing: boolean
+  /** Las piezas automáticas avanzan sin impedir continuar. */
+  automatic?: boolean
+  backgroundInstalling?: boolean
   /** Detalle redactado de cada fallo (para «Copiar detalle»). */
   details: Partial<Record<PreflightId, string>>
   /** Componente cuyo detalle se acaba de copiar. */
@@ -88,7 +91,9 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const optional = optionalPending(report).filter((c) =>
     stage === 'perms' ? PERMS_IDS.includes(c.id) : stage === 'install' ? !PERMS_IDS.includes(c.id) : true
   )
-  const choices = installable(report).map((c) => c.id)
+  const choices = installable(report)
+    .filter((c) => !p.automatic || !AUTO_INSTALL_IDS.includes(c.id))
+    .map((c) => c.id)
   const plan = installPlan(report, effUnchecked)
   const bytes = downloadBytes(report, effUnchecked)
   const anyFailed = Object.values(runtime).some((r) => r?.state === 'failed')
@@ -96,7 +101,12 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
   const perms = report.components.find((c) => c.id === 'perms')
   // «Ubicación de la app» es un aviso (tiene su propia nota), no una tarea pendiente: por sí sola no quita el botón «Continuar».
   const todo = optional.filter((c) => c.id !== 'location')
-  const allDone = block.length === 0 && (stage === 'install' ? choices.length === 0 : todo.length === 0)
+  const allDone =
+    block.length === 0 && !p.backgroundInstalling && (stage === 'install' ? installable(report).length === 0 : todo.length === 0)
+  const canLeave = canContinue(
+    report,
+    p.automatic ? Object.fromEntries(Object.entries(runtime).filter(([id]) => !AUTO_INSTALL_IDS.includes(id as PreflightId))) : runtime
+  )
   const guided = stage === 'install' && p.onAcceptAll !== undefined
   const permsPending = stage === 'perms' && report.components.some((c) => c.id === 'perms' && !c.ok)
   const size = sizeParts(bytes)
@@ -144,11 +154,13 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
             ? t('preflight.perms.intro', { app: DISPLAY_NAME })
             : block.length > 0
               ? t('preflight.subtitle.blocking', { app: DISPLAY_NAME })
-              : guided
-                ? t(p.mode === 'firstRun' ? 'preflight.firstRun.subtitle' : 'preflight.acceptAll.subtitle', { app: DISPLAY_NAME })
-                : t(showPicks && choices.length > 0 ? 'preflight.subtitle.optional.pick' : 'preflight.subtitle.optional', {
-                    app: DISPLAY_NAME
-                  })}
+              : p.automatic
+                ? t('preflight.firstRun.subtitle', { app: DISPLAY_NAME })
+                : guided
+                  ? t(p.mode === 'firstRun' ? 'preflight.firstRun.subtitle' : 'preflight.acceptAll.subtitle', { app: DISPLAY_NAME })
+                  : t(showPicks && choices.length > 0 ? 'preflight.subtitle.optional.pick' : 'preflight.subtitle.optional', {
+                      app: DISPLAY_NAME
+                    })}
         </p>
 
         <ul className="mt-6 w-full space-y-2 text-left" aria-live="polite">
@@ -192,7 +204,12 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                   )}
                   {st === 'failed' && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => p.onInstall([c.id])} disabled={p.installing}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => p.onInstall([c.id])}
+                        disabled={p.installing || (AUTO_INSTALL_IDS.includes(c.id) && p.backgroundInstalling)}
+                      >
                         <RefreshCw size={13} /> {t('preflight.retry')}
                       </Button>
                       {p.details[c.id] && (
@@ -228,7 +245,11 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
                         </Button>
                       )}
                       {c.reason !== 'accessibility' && c.reason !== 'accessibility-adhoc' && (
-                        <Button variant="secondary" size="sm" onClick={() => void cw('computer:guideAppAccess', { pane: 'screen' }).catch(() => undefined)}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => void cw('computer:guideAppAccess', { pane: 'screen' }).catch(() => undefined)}
+                        >
                           {t('preflight.perms.showApp', { app: DISPLAY_NAME })}
                         </Button>
                       )}
@@ -242,11 +263,13 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         </ul>
 
         {(location === 'translocated' || location === 'volume') && <AppLocationNotice location={location} />}
-        {perms && !perms.ok && perms.reason !== 'accessibility' && perms.reason !== 'accessibility-adhoc' && perms.reason !== 'unknown' && <AppAccessGuide />}
+        {perms && !perms.ok && perms.reason !== 'accessibility' && perms.reason !== 'accessibility-adhoc' && perms.reason !== 'unknown' && (
+          <AppAccessGuide />
+        )}
         {perms && !perms.ok && perms.reason === 'restart' && <ScreenRestartNotice />}
         {perms && !perms.ok && p.permsStalled && <PermsHelp />}
 
-        {guided && p.installing && p.progress && p.progress.total > 0 && (
+        {(p.installing || p.backgroundInstalling) && p.progress && p.progress.total > 0 && (
           <div className="mt-4 w-full" data-testid="preflight-progress">
             <div
               role="progressbar"
@@ -282,7 +305,7 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
         )}
         {block.length > 0 && <p className="mt-2 text-[12px] text-subtle">{t('preflight.cannotSkip', { app: DISPLAY_NAME })}</p>}
 
-        {stage !== 'perms' && optional.length > 0 && canContinue(report, runtime) && (
+        {stage !== 'perms' && optional.length > 0 && canLeave && (
           <p className="mt-2 text-[12px] text-subtle" data-testid="preflight-later-hint">
             {t('preflight.laterHint')}
           </p>
@@ -293,11 +316,13 @@ export function PreflightScreen(p: PreflightScreenProps): React.JSX.Element {
             <RefreshCw size={14} /> {t('preflight.recheck')}
           </Button>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {(stage === 'perms' ? permsPending : optional.length > 0) && !allDone && canContinue(report, runtime) && (
-              <Button variant="secondary" onClick={p.onContinue}>
-                {t('preflight.continueAnyway')}
-              </Button>
-            )}
+            {(stage === 'perms' ? permsPending || p.backgroundInstalling : optional.length > 0 || p.backgroundInstalling) &&
+              !allDone &&
+              canLeave && (
+                <Button variant="secondary" onClick={p.onContinue}>
+                  {t(p.backgroundInstalling ? 'preflight.continueBackground' : 'preflight.continueAnyway')}
+                </Button>
+              )}
             {allDone && (
               <Button variant="primary" onClick={p.onContinue}>
                 {t('preflight.continue')}

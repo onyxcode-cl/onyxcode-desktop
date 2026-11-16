@@ -1,12 +1,12 @@
 /**
  * Instalación AUTOMÁTICA en segundo plano de lo que la app necesita para funcionar al nivel de siempre (ArtCraft, Node.js y uv y, en
- * Windows, el entorno aislado de Overdrive): sin pantalla, sin casillas y sin pedir permiso. Reutiliza `runInstall` (las mismas descargas,
+ * Windows, el entorno aislado de Overdrive): comparte su avance con la pantalla, sin casillas ni aprobación adicional. Reutiliza `runInstall` (las mismas descargas,
  * con las mismas verificaciones de integridad: no se debilita nada) y solo añade: avance no bloqueante, esperas silenciosas si falla la red y
  * un error claro con «Reintentar» cuando falla de verdad. No toca lo que exige a una persona (permisos de macOS, contraseña, administrador).
  * Sin React ni IPC directo: se prueba con `auto-install.test.ts`.
  */
 import { create } from 'zustand'
-import { AUTO_RETRY_DELAYS_MS, retryableCode, type PreflightId } from '@shared/preflight'
+import { AUTO_RETRY_DELAYS_MS, retryableCode, type PreflightId, type RuntimeMap } from '@shared/preflight'
 import { runInstall, type InstallApi } from './preflight-run'
 
 export type AutoPhase =
@@ -24,6 +24,7 @@ export type AutoPhase =
   | 'failed'
 
 export interface AutoState {
+  runtime: RuntimeMap
   phase: AutoPhase
   /** Piezas de la tanda y las ya listas. */
   ids: PreflightId[]
@@ -36,7 +37,7 @@ export interface AutoState {
   details: Partial<Record<PreflightId, string>>
 }
 
-const INITIAL: AutoState = { phase: 'idle', ids: [], done: [], pct: null, failed: {}, details: {} }
+const INITIAL: AutoState = { runtime: {}, phase: 'idle', ids: [], done: [], pct: null, failed: {}, details: {} }
 
 export const useAutoInstall = create<AutoState>(() => ({ ...INITIAL }))
 /** Solo éxitos confirmados: intentar descargar no equivale a tener la pieza instalada. Evita repetir éxitos ante un informe atrasado. */
@@ -105,6 +106,12 @@ export function startAutoInstall(ids: readonly PreflightId[], deps: AutoDeps): P
       set({ phase: 'running', pct: null })
       const outcomes = await runInstall(pending, api, {
         onRuntime: (id, rt) => {
+          useAutoInstall.setState((s) => {
+            const runtime = { ...s.runtime }
+            if (rt) runtime[id] = rt
+            else delete runtime[id]
+            return { runtime }
+          })
           if (rt === null) {
             useAutoInstall.setState((s) => ({ done: s.done.includes(id) ? s.done : [...s.done, id], pct: null }))
           } else if (rt.state === 'downloading') set({ pct: rt.pct ?? null })
@@ -163,4 +170,19 @@ export function clearAutoIfIdle(): void {
 /** Estado actual sin suscribirse (para decidir si arrancar). */
 export function autoPhase(): AutoPhase {
   return useAutoInstall.getState().phase
+}
+
+/** Reintento desde una fila: conserva los éxitos de las otras piezas y reutiliza el mismo instalador automático. */
+export function retryAutoPieces(ids: readonly PreflightId[]): void {
+  if (running) return
+  const s = useAutoInstall.getState()
+  const failed = { ...s.failed }
+  const runtime = { ...s.runtime }
+  const details = { ...s.details }
+  for (const id of ids) {
+    delete failed[id]
+    delete runtime[id]
+    delete details[id]
+  }
+  set({ phase: Object.keys(failed).length > 0 ? 'failed' : 'idle', failed, runtime, details })
 }

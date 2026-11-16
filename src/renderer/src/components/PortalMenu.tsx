@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { portalPosition } from '../lib/portal-position'
 
 /**
  * Menú «⋯» de las filas de la barra lateral de escritorio. Sale en un portal con posición FIJA (en `document.body`): la lista tiene scroll
@@ -28,12 +29,15 @@ export function PortalMenu({
     if (!open) return setPos(null)
     const r = anchor.current?.getBoundingClientRect()
     if (!r) return
-    const needed = 140
-    const below = window.innerHeight - r.bottom
-    setPos({
-      right: Math.max(8, window.innerWidth - r.right),
-      ...(below >= needed || below >= r.top ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 })
+    const position = portalPosition({
+      anchor: r,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      height: 140,
+      width: 240,
+      placement: 'bottom'
     })
+    setPos({ top: position.top, bottom: position.bottom, right: Math.max(8, window.innerWidth - r.right) })
   }, [open, anchor])
 
   useEffect(() => {

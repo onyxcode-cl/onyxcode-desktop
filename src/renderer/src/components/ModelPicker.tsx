@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Brain, Check, ChevronDown, ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react'
 import type { ModelRef } from '@shared/types'
 import { PREFERRED_PROVIDER, sortProviders, useProviders } from '../stores/providers'
@@ -8,11 +9,12 @@ import { useT } from '../lib/i18n'
 import { isMacPlatform, isRemoteSurface } from '../lib/platform'
 import { useSettings } from '../stores/settings'
 import { Sheet } from './mobile/Sheet'
+import { portalContentHeight, portalPosition } from '../lib/portal-position'
 
 interface Props {
   value: ModelRef
   onChange: (model: ModelRef) => void
-  /** Hacia dónde se abre el menú. */
+  /** Dirección preferida; se invierte si no cabe en la ventana. */
   placement?: 'top' | 'bottom'
   /** El modelo elegido no está en la lista: se muestra su id marcado como «no disponible» (no se sustituye por otro). */
   unavailable?: boolean
@@ -42,6 +44,9 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   const [sub, setSub] = useState(false)
   const [subCursor, setSubCursor] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<ReturnType<typeof portalPosition> | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const subRef = useRef<HTMLDivElement>(null)
 
@@ -52,10 +57,22 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   useEffect(() => {
     if (!open || sheet) return
     const onDown = (e: MouseEvent): void => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false)
+    }
+    // Como PortalMenu, cierra al cambiar la ventana o desplazar el ancla; el scroll de la lista sigue funcionando.
+    const close = (): void => setOpen(false)
+    const onScroll = (e: Event): void => {
+      if (e.target instanceof Node && !panelRef.current?.contains(e.target)) close()
     }
     document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
+    window.addEventListener('resize', close)
+    document.addEventListener('scroll', onScroll, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('resize', close)
+      document.removeEventListener('scroll', onScroll, true)
+    }
   }, [open, sheet])
 
   const current = useMemo(() => {
@@ -90,6 +107,32 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   }, [providers, query])
 
   const flat = useMemo(() => groups.flatMap((g) => g.models.map((m) => ({ providerID: g.provider.id, modelID: m.id }))), [groups])
+
+  // Medir al cambiar el contenido incluye búsqueda, proveedores tardíos y el submenú de esfuerzo.
+  // offsetHeight no incluye la escala de animate-pop-in; el alto natural de la lista se limita a 20rem.
+  useLayoutEffect(() => {
+    if (!open || sheet) return
+    const panel = panelRef.current
+    const anchor = triggerRef.current?.getBoundingClientRect()
+    if (!panel || !anchor) return
+    const list = listRef.current
+    const listLimit = 20 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16)
+    const height = portalContentHeight(panel, sub ? subRef.current : list, sub ? Infinity : listLimit)
+    const next = portalPosition({
+      anchor,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      height,
+      width: listLimit,
+      placement,
+      topInset: 48,
+      gap: 8,
+      align: 'start'
+    })
+    setPosition((prev) =>
+      prev && Object.keys(next).every((key) => prev[key as keyof typeof next] === next[key as keyof typeof next]) ? prev : next
+    )
+  }, [open, sheet, sub, placement, groups, hasEffort, effortVariants, loading, error, t])
 
   // Al abrir, situar el cursor en el modelo actual.
   useEffect(() => {
@@ -215,7 +258,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
       <>
         <div
           {...(sheet ? { 'data-model-search': '' } : {})}
-          className="flex items-center gap-2 border-b border-border px-3 py-2.5 desk:h-10 desk:gap-2.5 desk:py-0"
+          className={`flex items-center gap-2 border-b border-border px-3 py-2.5 desk:h-10 desk:gap-2.5 desk:py-0${sheet ? '' : ' shrink-0'}`}
         >
           <Search size={sheet ? 16 : 14} className="text-subtle" />
           <input
@@ -234,7 +277,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
           ref={listRef}
           role="listbox"
           aria-label={t('common.modelPicker.sheetTitle')}
-          className={sheet ? 'p-1' : 'max-h-[min(20rem,calc(100vh-14rem))] overflow-y-auto p-1'}
+          className={sheet ? 'p-1' : 'min-h-0 max-h-80 overflow-y-auto p-1'}
         >
           {loading && (
             <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
@@ -301,7 +344,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
           ))}
         </div>
         {hasEffort && (
-          <div className="border-t border-border p-1">
+          <div className={`border-t border-border p-1${sheet ? '' : ' shrink-0'}`}>
             <button
               type="button"
               role="menuitem"
@@ -326,7 +369,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
     )
 
   const subBody = (
-    <div ref={subRef} role="menu" aria-label={t('common.effort.menu')} className="p-1">
+    <div ref={subRef} role="menu" aria-label={t('common.effort.menu')} className={sheet ? 'p-1' : 'min-h-0 overflow-y-auto p-1'}>
       <button
         type="button"
         data-effort-back=""
@@ -369,6 +412,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
   return (
     <div ref={rootRef} className="relative desk:max-w-full desk:min-w-[4rem]">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
@@ -403,14 +447,23 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
           <div onKeyDown={onKeyDown}>{sub ? subBody : body}</div>
         </Sheet>
       )}
-      {open && !sheet && (
-        <div
-          className={`absolute left-0 z-50 w-80 animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated shadow-xl desk:rounded-card desk:shadow-pop ${placement === 'top' ? 'bottom-full mb-2 origin-bottom-left' : 'top-full mt-2 origin-top-left'}`}
-          onKeyDown={onKeyDown}
-        >
-          {sub ? subBody : body}
-        </div>
-      )}
+      {open &&
+        !sheet &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={
+              position
+                ? { top: position.top, bottom: position.bottom, left: position.left, width: position.width, maxHeight: position.maxHeight }
+                : undefined
+            }
+            className={`no-drag [&_*]:[-webkit-app-region:no-drag] fixed z-50 flex w-80 flex-col animate-pop-in overflow-hidden rounded-xl border border-border bg-elevated shadow-xl desk:rounded-card desk:shadow-pop ${position?.side === 'top' ? 'origin-bottom-left' : 'origin-top-left'}`}
+            onKeyDown={onKeyDown}
+          >
+            {sub ? subBody : body}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

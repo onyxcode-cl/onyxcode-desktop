@@ -35,7 +35,13 @@ const HINTS: Partial<Record<PreflightId, Record<string, MsgKey>>> = {
   engine: { 'not-found': 'preflight.hint.engine.not-found', 'not-responding': 'preflight.hint.engine.not-responding' },
   craft: { missing: 'preflight.hint.craft.missing', incomplete: 'preflight.hint.craft.incomplete' },
   runtimes: { missing: 'preflight.hint.runtimes.missing', broken: 'preflight.hint.runtimes.broken' },
-  sandbox: { needsSetup: 'preflight.hint.sandbox.needsSetup', broken: 'preflight.hint.sandbox.broken' },
+  sandbox: {
+    needsSetup: 'preflight.hint.sandbox.needsSetup',
+    broken: 'preflight.hint.sandbox.broken',
+    needsWsl: 'tasks.sandbox.needsWsl.body',
+    needsWsl2: 'tasks.sandbox.needsWsl2.body',
+    needsVirtualization: 'tasks.sandbox.needsVirtualization.body'
+  },
   trust: { missing: 'preflight.hint.trust.missing' },
   helper: { 'not-found': 'preflight.hint.helper.not-found' },
   perms: {
@@ -63,6 +69,7 @@ const FALLBACK: Partial<Record<PreflightId, MsgKey>> = {
 
 /** Clave del texto que explica por qué un componente no está listo, o `null` si está listo. */
 export function hintKey(c: PreflightComponent): MsgKey | null {
+  if (c.id === 'sandbox' && c.reason === 'needsWsl' && c.detail === 'org') return 'tasks.sandbox.needsWsl.org'
   if (c.ok) return null
   const byReason = c.reason ? HINTS[c.id]?.[c.reason] : undefined
   if (byReason) return byReason

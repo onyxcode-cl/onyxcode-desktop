@@ -62,13 +62,15 @@ afterEach(() => {
   host.remove()
 })
 
-const trigger = (): HTMLButtonElement => host.querySelector('button[aria-haspopup="listbox"]') as HTMLButtonElement
+const trigger = (): HTMLButtonElement => document.body.querySelector('button[aria-haspopup="listbox"]') as HTMLButtonElement
 const open = (): void => act(() => trigger().click())
-const effortRow = (): HTMLButtonElement | null => host.querySelector('[data-effort-row]')
-const subItems = (): HTMLButtonElement[] => Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'))
+const effortRow = (): HTMLButtonElement | null => document.body.querySelector('[data-effort-row]')
+const subItems = (): HTMLButtonElement[] => Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'))
 const press = (k: string, init: KeyboardEventInit = {}): void => {
   const active = document.activeElement
-  const target = (active && host.contains(active) && active !== document.body ? active : host.querySelector('input')) as HTMLElement
+  const target = (
+    active && document.body.contains(active) && active !== document.body ? active : document.body.querySelector('input')
+  ) as HTMLElement
   act(() => {
     target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init }))
   })
@@ -77,7 +79,7 @@ const press = (k: string, init: KeyboardEventInit = {}): void => {
 describe('ModelPicker: esfuerzo como submenú', () => {
   it('con esfuerzo estándar el chip no muestra el valor, pero el menú ofrece «Esfuerzo» con su valor actual', () => {
     mount('a', null)
-    expect(host.querySelector('[data-testid="model-effort-badge"]')).toBeNull()
+    expect(document.body.querySelector('[data-testid="model-effort-badge"]')).toBeNull()
     expect(trigger().getAttribute('aria-label')).toBe('Modelo: Modelo A')
     open()
     expect(effortRow()!.textContent).toContain('Esfuerzo')
@@ -87,7 +89,7 @@ describe('ModelPicker: esfuerzo como submenú', () => {
 
   it('con un esfuerzo distinto del predeterminado el chip lo muestra y lo dice en su nombre accesible', () => {
     mount('a', 'high')
-    const badge = host.querySelector('[data-testid="model-effort-badge"]')!
+    const badge = document.body.querySelector('[data-testid="model-effort-badge"]')!
     expect(badge.textContent).toBe('High')
     expect(badge.querySelector('span')!.className).toContain('desk:@max-[41rem]:sr-only')
     expect(trigger().getAttribute('aria-label')).toBe('Modelo: Modelo A, Esfuerzo del modelo: High')
@@ -97,7 +99,7 @@ describe('ModelPicker: esfuerzo como submenú', () => {
     mount('b', 'high')
     open()
     expect(effortRow()).toBeNull()
-    expect(host.querySelector('[data-testid="model-effort-badge"]')).toBeNull()
+    expect(document.body.querySelector('[data-testid="model-effort-badge"]')).toBeNull()
     act(() => trigger().click())
     mount('a', null, false)
     open()
@@ -112,7 +114,7 @@ describe('ModelPicker: esfuerzo como submenú', () => {
     expect(subItems().map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false'])
     act(() => subItems()[3]!.click())
     expect(onEffort).toHaveBeenCalledWith('high')
-    expect(host.querySelector('[role="listbox"]')).toBeNull()
+    expect(document.body.querySelector('[role="listbox"]')).toBeNull()
     expect(onChange).not.toHaveBeenCalled()
   })
 
@@ -124,7 +126,7 @@ describe('ModelPicker: esfuerzo como submenú', () => {
     expect(subItems().length).toBe(4)
     expect(document.activeElement).toBe(subItems()[3])
     press('Escape')
-    expect(host.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.querySelector('[role="listbox"]')).not.toBeNull()
     expect(subItems().length).toBe(0)
     press('e', { ctrlKey: true })
     press('ArrowUp')

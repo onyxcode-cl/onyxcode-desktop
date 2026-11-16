@@ -127,7 +127,7 @@ export const wizard = {
   'preflight.acceptAll.size.win':
     'About {size} will be downloaded in total, from GitHub; it is verified as authentic and asks for no administrator password.',
   'preflight.firstRun.subtitle':
-    '{app} is already downloading what it needs in the background (you will see the progress below). Only what needs your approval is left here.',
+    '{app} automatically prepares missing tools. You can see their progress here and continue while they finish.',
   'preflight.acceptAll.progress': '{done} of {total} ready',
   'preflight.custom.show': 'Choose what to install',
   'preflight.custom.hide': 'Back to the single button',
@@ -167,12 +167,14 @@ export const wizard = {
   'preflight.copied': 'Details copied',
   'preflight.continueAnyway': 'Later',
   'preflight.continue': 'Continue',
+  'preflight.continueBackground': 'Continue while it finishes',
   'preflight.cannotSkip': 'This cannot be skipped: {app} does not work without it.',
   'preflight.allReady': 'All set.',
   'preflight.engine.pick': 'Choose engine…',
   'preflight.perms.grant': 'Grant permissions',
   'preflight.perms.showApp': 'Show {app}',
-  'preflight.perms.guide': 'Drag {app} into the list (it opens in Finder) or press “+” and paste the path with Cmd+Shift+G (already copied). Turn the switch on and press “Restart {app}”.',
+  'preflight.perms.guide':
+    'Drag {app} into the list (it opens in Finder) or press “+” and paste the path with Cmd+Shift+G (already copied). Turn the switch on and press “Restart {app}”.',
   'preflight.state.ready': 'Ready',
   'preflight.state.missing': 'Missing',
   'preflight.state.downloading': 'Installing…',

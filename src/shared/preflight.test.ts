@@ -368,6 +368,14 @@ describe('instalación automática (AUTO_INSTALL_IDS)', () => {
     expect(autoDiskEnough(rep({ freeBytes: null }))).toBe(true)
   })
 
+  it('V30: la pantalla de preparación conserva el plan automático y el aviso de disco', () => {
+    const r = rep()
+    r.components = r.components.map((c) => (c.id === 'disk' ? { ...c, ok: false } : c))
+    const visible = screenReport(r, true)
+    expect(visible.components.map((c) => c.id)).toEqual(['storage', 'disk', 'engine', 'craft', 'runtimes', 'sandbox'])
+    expect(shouldShow(visible, null)).toBe('optional')
+  })
+
   it('screenReport quita lo automático y el aviso de disco que causa: la pantalla no se abre por eso', () => {
     const r = rep({}, [])
     r.components = r.components.map((x) => (x.id === 'disk' ? { ...x, ok: false, reason: 'low-space' } : x))

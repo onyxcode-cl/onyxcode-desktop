@@ -4648,3 +4648,21 @@ Código y Overdrive ocultan «Permitir y no volver a preguntar» cuando el clasi
 En Windows la revisión inicial deja de consultar WSL (el sondeo encendía la distro) y de provocar su instalación automática; tampoco se precarga la última carpeta. La tarjeta de Overdrive solicita la preparación al montarse y `TasksManager.start` la espera antes de la ejecución aislada, también para sus otros consumidores. Las llamadas simultáneas comparten una preparación, con el progreso existente; cerrar sin usar Overdrive no consulta WSL. Se conservan la importación, baja y controles de integridad del backend.
 
 Pruebas: `auto-review.permission.test.ts`, tarjetas Código/Overdrive y celular, `sandbox-service.test.ts` y `tasks-handlers.lazy-wsl.test.ts` (registro real de handlers con plataforma Windows y backend falso; arranque sin sondeo ni carga, primer uso con una sola carga).
+
+
+## F8-B320 — V30: preparar las herramientas desde la primera apertura
+
+«Preparando Lazunox» muestra ArtCraft, Node.js/uv donde se ofrecen y el entorno de Overdrive en Windows. Comparte el instalador automático y su avance por pieza; permite continuar mientras termina y muestra fallos con «Reintentar». Una actualización que deje piezas pendientes vuelve a ofrecer la preparación; con todo listo, los arranques posteriores pasan directo. Mac conserva los pasos de firma y permisos, la ubicación y el helper.
+
+El inventario de Windows consulta únicamente versión y lista de WSL: una distro existente no se enciende, no se escribe ni se carga el paquete. La preparación usa los controles existentes y la validación/actualización completa sigue al primer uso de Overdrive. Si falta WSL se reutiliza la guía actual. La primera revisión espera hasta 30 s; los arranques siguientes conservan el plazo visible de 3,5 s y atienden el informe tardío. El servicio deja completar los comandos locales de WSL (20 s en paralelo, margen de 1 s), sin perder la pieza por un corte prematuro.
+
+Pruebas: `preflight/sandbox.test.ts`, `tasks-handlers.lazy-wsl.test.ts`, `FirstRunGate.test.tsx`, render de `PreflightScreen`, y regresiones de onboarding, preflight, tareas y runtimes. Sin abrir la app ni ejecutar WSL real.
+
+
+## F8-B321 — V30: selector de IA visible y clicable en ventanas bajas
+
+`ModelPicker` usa un portal fijo al botón y comparte el cálculo de posición con `PortalMenu`. Respeta `placement` cuando cabe; en caso contrario elige el lado con más espacio, reserva los 48 px de la cabecera y un margen de 8 px, limita el ancho y encoge solo la lista. El buscador y la fila de esfuerzo permanecen visibles; el panel y todos sus descendientes son `no-drag`. Conserva los atajos, el foco inicial y la hoja del celular. Cierra al redimensionar o desplazar el exterior, sin cerrar por clic ni scroll internos.
+
+El lanzador de Comparar usa un selector propio: se aplica allí el mismo portal y cálculo, conservando la selección múltiple y la alineación al botón. Chat, Código, Overdrive, rutinas y el asistente inicial reciben el arreglo a través del componente compartido.
+
+Pruebas: `ModelPicker.position.test.tsx`, atajos y esfuerzo de `ModelPicker`, `CompareControls.position.test.tsx`, render de Comparar, compositores de Chat/Código/Overdrive y menú lateral (128 pruebas, `--testTimeout=20000`). Incluyen botón superior/inferior, ventana de 600 px, ancho reducido, `no-drag`, foco, teclado, clic, scroll, resize y hoja móvil.

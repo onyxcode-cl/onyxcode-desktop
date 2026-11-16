@@ -56,10 +56,10 @@ afterEach(() => {
   host.remove()
 })
 
-const open = (): void => act(() => (host.querySelector('button[aria-haspopup="listbox"]') as HTMLButtonElement).click())
-const rows = (): HTMLButtonElement[] => Array.from(host.querySelectorAll<HTMLButtonElement>('[role="option"]'))
+const open = (): void => act(() => (document.body.querySelector('button[aria-haspopup="listbox"]') as HTMLButtonElement).click())
+const rows = (): HTMLButtonElement[] => Array.from(document.body.querySelectorAll<HTMLButtonElement>('[role="option"]'))
 const press = (k: string, init: KeyboardEventInit): void => {
-  const input = host.querySelector('input') as HTMLInputElement
+  const input = document.body.querySelector('input') as HTMLInputElement
   act(() => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init }))
   })
@@ -99,15 +99,15 @@ describe('ModelPicker: atajos numéricos, predeterminado y altura', () => {
     expect(def).toHaveLength(1)
     expect(def[0]!.textContent).toContain('Modelo A1')
     expect(rows().filter((r) => r.getAttribute('aria-selected') === 'true')[0]!.textContent).toContain('Modelo A2')
-    expect(host.textContent).toContain('Recomendado')
+    expect(document.body.textContent).toContain('Recomendado')
   })
 
   it('la lista tiene altura máxima ligada a la ventana y scroll propio; la búsqueda queda fuera del scroll', () => {
     open()
-    const list = host.querySelector('[role="listbox"]') as HTMLElement
-    expect(list.className).toContain('max-h-[min(20rem,calc(100vh-14rem))]')
+    const list = document.body.querySelector('[role="listbox"]') as HTMLElement
+    expect(list.className).toContain('max-h-80')
     expect(list.className).toContain('overflow-y-auto')
-    expect(list.contains(host.querySelector('input'))).toBe(false)
+    expect(list.contains(document.body.querySelector('input'))).toBe(false)
   })
 
   it('flechas y Enter siguen funcionando, y Esc cierra', () => {
@@ -117,6 +117,6 @@ describe('ModelPicker: atajos numéricos, predeterminado y altura', () => {
     expect(onChange).toHaveBeenCalledWith({ providerID: 'opencode-go', modelID: 'a3' })
     open()
     press('Escape', {})
-    expect(host.querySelector('[role="listbox"]')).toBeNull()
+    expect(document.body.querySelector('[role="listbox"]')).toBeNull()
   })
 })

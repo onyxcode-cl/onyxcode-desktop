@@ -266,7 +266,7 @@ describe('texto de arriba según el modo (C1)', () => {
 
   it('primer uso con solo «firma»: dice que lo demás baja en segundo plano', () => {
     const html = render(report(firma()), { ...guiado, mode: 'firstRun' })
-    expect(html).toContain('ya está descargando en segundo plano')
+    expect(html).toContain('prepara automáticamente las herramientas que faltan')
     expect(html).not.toContain('Un clic y')
   })
   it('abierta a mano (Ajustes): «Un clic y…» como siempre', () => {
@@ -283,5 +283,23 @@ describe('texto de arriba según el modo (C1)', () => {
   it('sin etapa y con la casilla de firma: dice «marca»', () => {
     const html = render(report(firma()), { mode: 'startup' })
     expect(html).toContain('marca lo que quieras e instálalo ahora')
+  })
+})
+
+describe('V30: guía existente para WSL y continuación en segundo plano', () => {
+  it('sin WSL ofrece las instrucciones actuales, sin instalar como administrador', () => {
+    const html = render(report([c('sandbox', { ok: false, installable: false, reason: 'needsWsl' })]), { automatic: true })
+    expect(html).toContain('terminal de administrador')
+    expect(html).toContain('reinicia')
+    expect(html).not.toContain('Instalar lo marcado')
+  })
+  it('en permisos permite continuar aunque las herramientas sigan instalándose', () => {
+    const html = render(report([c('perms'), c('craft')]), {
+      stage: 'perms',
+      automatic: true,
+      backgroundInstalling: true,
+      runtime: { craft: { state: 'downloading', pct: 37 } }
+    })
+    expect(html).toContain('Continuar mientras termina')
   })
 })

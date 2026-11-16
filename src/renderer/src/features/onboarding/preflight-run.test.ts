@@ -160,7 +160,7 @@ describe('textos de la pantalla', () => {
     expect(hintKey(c({ id: 'perms', essential: false, reason: 'restart' }))).toBe('preflight.hint.perms.restart')
     expect(hintKey(c({ id: 'perms', essential: false, reason: 'both-adhoc' }))).toBe('preflight.hint.perms.both-adhoc')
     expect(hintKey(c({ id: 'perms', essential: false, reason: 'accessibility-adhoc' }))).toBe('preflight.hint.perms.accessibility-adhoc')
-    expect(hintKey(c({ id: 'sandbox', reason: 'needsWsl' }))).toBe('preflight.hint.sandbox.other')
+    expect(hintKey(c({ id: 'sandbox', reason: 'needsWsl' }))).toBe('tasks.sandbox.needsWsl.body')
     expect(hintKey(c({ id: 'helper', essential: false, reason: 'x' }))).toBe('preflight.hint.generic.optional')
     expect(hintKey(c({ ok: true }))).toBeNull()
   })

@@ -198,6 +198,9 @@
     "src/main/preflight/real.ts": {
       "darwin": 6
     },
+    "src/main/preflight/sandbox.ts": {
+      "win32": 1
+    },
     "src/main/preflight/service.ts": {
       "darwin": 1
     },

@@ -367,3 +367,22 @@ describe('«Confiar en la firma» (solo macOS con la firma fijada)', () => {
     expect(onCheckError).toHaveBeenCalled()
   })
 })
+
+describe('V30: revisión local lenta de Windows', () => {
+  it('conserva la pieza sandbox cuando versión/lista tardan más de los antiguos cuatro segundos', async () => {
+    vi.useFakeTimers()
+    try {
+      const promise = runPreflightChecks(
+        deps({
+          platform: 'win32',
+          sandbox: () => new Promise((resolve) => setTimeout(() => resolve({ state: 'needsSetup' }), 6000))
+        })
+      )
+      await vi.advanceTimersByTimeAsync(6000)
+      const report = await promise
+      expect(report.components.find((c) => c.id === 'sandbox')).toMatchObject({ ok: false, installable: true, reason: 'needsSetup' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

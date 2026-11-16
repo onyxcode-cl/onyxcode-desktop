@@ -628,7 +628,8 @@ it('selector real de Chat: muestra la IA actual al esperar y la elegida al termi
     )
   )
   act(() => host.querySelector<HTMLButtonElement>('button')!.click())
-  const item = Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(
+  // V30: el panel del selector va en un portal fuera de `host`.
+  const item = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
     (b) => b.getAttribute('role') === 'option' && b.textContent?.includes('Next')
   )
   expect(item).toBeDefined()

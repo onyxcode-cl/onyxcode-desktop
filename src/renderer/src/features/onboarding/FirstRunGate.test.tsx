@@ -21,6 +21,8 @@ let trustResult: { ok: boolean; error?: string } = { ok: true }
 let craftResult: { ok: boolean; error?: string } = { ok: true }
 let craftRun: (() => Promise<typeof craftResult>) | undefined
 let freeBytes = 50e9
+let allReady = false
+let reportRun: (() => Promise<PreflightReport>) | undefined
 const report = (): PreflightReport => ({
   at: 1,
   platform,
@@ -43,8 +45,13 @@ vi.mock('../tasks/impl/bridge', () => ({
   hasTasksBridge: () => true,
   cw: vi.fn(async (channel: string) => {
     calls.push(channel)
-    if (channel === 'preflight:run') return report()
+    if (channel === 'preflight:run') {
+      if (reportRun) return reportRun()
+      const r = report()
+      return allReady ? { ...r, components: r.components.map((c) => ({ ...c, ok: true })) } : r
+    }
     if (channel === 'preflight:trust') return trustResult
+    if (channel === 'craft:status') return { installing: true, progress: { total: 100, done: 37 } }
     if (channel === 'craft:install') return craftRun ? craftRun() : craftResult
     if (channel === 'tasks:sandbox:status') return { state: 'ready', setup: null }
     return undefined
@@ -91,6 +98,8 @@ beforeEach(() => {
   craftResult = { ok: true }
   craftRun = undefined
   freeBytes = 50e9
+  allReady = false
+  reportRun = undefined
   Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   resetAutoInstall()
   localStorage.clear?.()
@@ -120,12 +129,12 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     expect(calls).not.toContain('preflight:run')
   })
 
-  it('2) «Empezar» → «Instalar lo necesario» (paso 2 de 4 en Mac): solo lo que pide una persona; ArtCraft y Node.js y uv se instalan solos, sin botón', async () => {
+  it('2) «Empezar» → «Instalar lo necesario» (paso 2 de 4 en Mac): lista ArtCraft, Node.js y uv y firma; las herramientas se instalan solas', async () => {
     await start()
     expect(q('preflight-step')?.textContent).toContain('Paso 2 de 4')
     expect(q('preflight-row-trust')).not.toBeNull()
-    expect(q('preflight-row-craft')).toBeNull()
-    expect(q('preflight-row-runtimes')).toBeNull()
+    expect(q('preflight-row-craft')).not.toBeNull()
+    expect(q('preflight-row-runtimes')).not.toBeNull()
     expect(q('pick-craft')).toBeNull()
     expect(calls).toContain('craft:install')
     expect(runtimesInstall).toHaveBeenCalledTimes(1)
@@ -208,10 +217,12 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
     expect(localStorage.getItem('lazunox.preflight.dismissed')).not.toContain('craft')
   })
 
-  it('Windows: sin firma ni permisos y con ArtCraft, Node.js y uv y el entorno aislado ya instalándose solos, no hay nada que pida una persona: pasa directo al asistente', async () => {
+  it('Windows: muestra ArtCraft y el entorno de Overdrive, instala solo y permite continuar al asistente', async () => {
     await start(false, 'win32')
-    expect(q('preflight-screen')).toBeNull()
-    expect(q('wizard-step')).not.toBeNull()
+    expect(q('preflight-screen')).not.toBeNull()
+    expect(q('preflight-row-craft')).not.toBeNull()
+    expect(q('preflight-row-sandbox')).not.toBeNull()
+    expect(q('wizard-step')).toBeNull()
     expect(calls).toContain('craft:install')
     expect(calls).toContain('tasks:sandbox:setup')
     expect(runtimesInstall).toHaveBeenCalledTimes(1)
@@ -221,6 +232,7 @@ describe('primera vez: Bienvenida → Aceptar todo → Permisos → Conectar IA'
 describe('quien ya terminó el asistente', () => {
   it('no ve la bienvenida y, tras «Más tarde» en un arranque anterior, la lista no vuelve sola', async () => {
     localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.9', ids: ['craft', 'runtimes', 'trust', 'perms'] }))
+    allReady = true
     await mount(true)
     expect(q('welcome')).toBeNull()
     expect(q('preflight-screen')).toBeNull()
@@ -244,9 +256,10 @@ describe('quien ya terminó el asistente', () => {
 })
 
 describe('instalación automática en segundo plano', () => {
-  it('en cada arranque en que falten, instala ArtCraft y Node.js y uv solo: sin pantalla, sin casillas y con la app ya usable', async () => {
+  it('tras actualizar, las piezas faltantes abren la pantalla e instalan solas aunque se hayan descartado antes', async () => {
+    localStorage.setItem('lazunox.preflight.dismissed', JSON.stringify({ version: '1.8.8', ids: ['craft', 'runtimes', 'sandbox'] }))
     await mount(true, 'win32')
-    expect(q('preflight-screen')).toBeNull()
+    expect(q('preflight-screen')).not.toBeNull()
     expect(q('pick-craft')).toBeNull()
     expect(calls).toContain('craft:install')
     expect(calls).toContain('tasks:sandbox:setup')
@@ -325,13 +338,17 @@ describe('instalación automática en segundo plano', () => {
     const pill = q('autoinstall-pill')!
     expect(pill.getAttribute('data-phase')).toBe('failed')
     expect(btn('Reintentar')).toBeDefined()
-    expect(q('preflight-screen')).toBeNull()
+    expect(q('preflight-screen')).not.toBeNull()
+    expect(q('preflight-row-craft')?.getAttribute('data-state')).toBe('failed')
+    expect(q('preflight-row-craft')?.textContent).toContain('Reintentar')
     craftResult = { ok: true }
     const before = calls.filter((x) => x === 'craft:install').length
     await act(async () => btn('Reintentar')!.click())
     await flush()
     await flush()
     expect(calls.filter((x) => x === 'craft:install').length).toBe(before + 1)
+    expect(runtimesInstall).toHaveBeenCalledTimes(1)
+    expect(calls.filter((x) => x === 'tasks:sandbox:setup')).toHaveLength(1)
   })
 
   it('Ajustes › «Instalar o activar piezas» sigue mostrando todo con sus casillas (recomendado marcado, Node.js y uv desmarcado)', async () => {
@@ -343,6 +360,95 @@ describe('instalación automática en segundo plano', () => {
     expect((q('pick-craft') as HTMLInputElement).checked).toBe(true)
     expect((q('pick-runtimes') as HTMLInputElement).checked).toBe(false)
     expect(btn('Instalar lo marcado')).toBeDefined()
+  })
+})
+
+describe('V30: preparación visible y no bloqueante', () => {
+  it('Windows: avance de cada pieza y continuar mientras termina; el final no vuelve a abrir la pantalla', async () => {
+    let finish!: (result: typeof craftResult) => void
+    craftRun = () => new Promise((resolve) => (finish = resolve))
+    await mount(false, 'win32')
+    await act(async () => btn('Empezar')!.click())
+    await flush()
+    expect(q('preflight-screen')).not.toBeNull()
+    expect(q('preflight-row-craft')?.getAttribute('data-state')).toBe('downloading')
+    expect(q('preflight-row-craft')?.textContent).toContain('37 %')
+    expect(q('preflight-row-sandbox')?.textContent).toContain('Overdrive')
+    expect(q('preflight-progress')).not.toBeNull()
+    expect(btn('Continuar mientras termina')?.disabled).toBe(false)
+    await act(async () => btn('Continuar mientras termina')!.click())
+    expect(q('preflight-screen')).toBeNull()
+    expect(q('wizard-step')).not.toBeNull()
+    expect(q('autoinstall-pill')?.getAttribute('data-phase')).toBe('running')
+    await act(async () => finish({ ok: true }))
+    await flush()
+    expect(calls.filter((c) => c === 'craft:install')).toHaveLength(1)
+    expect(calls.filter((c) => c === 'tasks:sandbox:setup')).toHaveLength(1)
+    expect(q('preflight-screen')).toBeNull()
+  })
+
+  it('segunda apertura con todo listo: pasa directo sin instalar', async () => {
+    allReady = true
+    await mount(true, 'win32')
+    expect(q('preflight-screen')).toBeNull()
+    expect(q('wizard-step')).not.toBeNull()
+    expect(calls).not.toContain('craft:install')
+    expect(calls).not.toContain('tasks:sandbox:setup')
+    expect(runtimesInstall).not.toHaveBeenCalled()
+  })
+
+  it('primer recorrido con todo listo: muestra la revisión y permite continuar', async () => {
+    allReady = true
+    await mount(false, 'win32')
+    await act(async () => btn('Empezar')!.click())
+    await flush()
+    expect(q('preflight-screen')).not.toBeNull()
+    expect(btn('Continuar')).toBeDefined()
+  })
+
+  it('arranque posterior: conserva los 3,5 s y ofrece la preparación si el informe tardío trae piezas faltantes', async () => {
+    platform = 'win32'
+    ;(window as unknown as { api: unknown }).api = { platform, capsFlags: { tasksWin: true } }
+    useSettings.setState({ loaded: true, settings: { ...DEFAULT_SETTINGS, onboarded: true } })
+    vi.useFakeTimers()
+    try {
+      reportRun = () => new Promise((resolve) => setTimeout(() => resolve(report()), 6000))
+      await act(async () => root.render(createElement(FirstRunGate)))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3500)
+      })
+      expect(q('preflight-checking')).toBeNull()
+      expect(q('wizard-step')).not.toBeNull()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
+      })
+      expect(q('preflight-row-craft')).not.toBeNull()
+      expect(q('preflight-row-sandbox')).not.toBeNull()
+      expect(calls).toContain('tasks:sandbox:setup')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('primera revisión lenta de Windows: no deja pasar a los 3,5 s y presenta el informe a los 6 s', async () => {
+    await mount(false, 'win32')
+    vi.useFakeTimers()
+    try {
+      reportRun = () => new Promise((resolve) => setTimeout(() => resolve(report()), 6000))
+      await act(async () => btn('Empezar')!.click())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3500)
+      })
+      expect(q('preflight-checking')).not.toBeNull()
+      expect(q('wizard-step')).toBeNull()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
+      })
+      expect(q('preflight-row-sandbox')).not.toBeNull()
+      expect(calls).toContain('tasks:sandbox:setup')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

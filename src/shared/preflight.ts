@@ -165,7 +165,7 @@ export function acceptAllPlan(report: PreflightReport): PreflightComponent[] {
 }
 
 /**
- * Piezas que la app instala SOLA en segundo plano, sin pantalla ni casillas: solo descargan (verificadas) y no piden administrador ni
+ * Piezas que la app instala SOLA, con avance en la preparación o en segundo plano, sin casillas: solo descargan (verificadas) y no piden administrador ni
  * contraseña. `trust` (contraseña de macOS) y los permisos NO están aquí: los decide una persona y siguen en la pantalla.
  */
 export const AUTO_INSTALL_IDS: readonly PreflightId[] = ['craft', 'runtimes', 'sandbox']
@@ -184,10 +184,11 @@ export function autoDiskEnough(report: PreflightReport, plan: readonly Preflight
 }
 
 /**
- * El informe tal como lo ve la pantalla «Preparando» cuando la app instala sola: sin las piezas automáticas (siguen su propio avance)
- * y sin el aviso de disco que ellas causan. Quedan lo que exige a una persona (permisos, firma, motor, ubicación).
+ * Con `showAutomatic`, la preparación muestra todas las piezas y el disco. Sin él, obtiene los pendientes que requieren a una
+ * persona (permisos, firma, motor, ubicación), cuya huella de «Más tarde» se conserva aparte de las descargas automáticas.
  */
-export function screenReport(report: PreflightReport): PreflightReport {
+export function screenReport(report: PreflightReport, showAutomatic = false): PreflightReport {
+  if (showAutomatic) return report
   return { ...report, components: report.components.filter((c) => !AUTO_INSTALL_IDS.includes(c.id) && c.id !== 'disk') }
 }
 

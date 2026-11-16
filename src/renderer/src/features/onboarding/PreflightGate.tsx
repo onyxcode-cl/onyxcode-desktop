@@ -43,13 +43,15 @@ import {
   autoPhase,
   clearAutoIfIdle,
   markAutoBlocked,
-  resetAutoInstall,
+  retryAutoPieces,
   startAutoInstall,
   useAutoInstall
 } from './auto-install'
 
 /** Plazo máximo de espera de la revisión: pasado, se entra a la app (la revisión nunca debe dejarla bloqueada). */
 export const PREFLIGHT_TIMEOUT_MS = 3500
+/** 20 s de comandos WSL + comprobaciones locales posteriores y margen IPC. Solo el primer recorrido espera más. */
+export const FIRST_RUN_PREFLIGHT_TIMEOUT_MS = 30_000
 const DISMISS_KEY = 'lazunox.preflight.dismissed'
 
 function readDismissed(): ReturnType<typeof parseDismissal> {
@@ -69,9 +71,9 @@ function saveDismissed(report: PreflightReport): void {
 }
 
 /** Pide el informe con plazo. Si vence, `late` sigue esperando ese mismo pedido (ver `preflight-late.ts`). */
-async function fetchReport(): Promise<ReportRace<PreflightReport>> {
+async function fetchReport(firstRun: boolean): Promise<ReportRace<PreflightReport>> {
   if (!hasTasksBridge()) return { report: null, timedOut: false, late: Promise.resolve(null) }
-  return raceReport(cw('preflight:run'), PREFLIGHT_TIMEOUT_MS)
+  return raceReport(cw('preflight:run'), firstRun ? FIRST_RUN_PREFLIGHT_TIMEOUT_MS : PREFLIGHT_TIMEOUT_MS)
 }
 
 type Phase = 'checking' | 'show' | 'clear'
@@ -98,7 +100,7 @@ function buildInstallApi(alive: () => boolean): InstallApi {
 }
 
 /**
- * Instala sola, en segundo plano, lo instalable que falte (ArtCraft, Node.js y uv, entorno aislado de Windows): sin pantalla ni casillas.
+ * Instala sola lo instalable que falte (ArtCraft, Node.js y uv, entorno aislado de Windows); la pantalla y el aviso comparten su avance.
  * No descarga sin conexión ni si no alcanza el disco (regla `DISK_FACTOR`); entonces solo deja el aviso discreto. `after` vuelve a revisar.
  */
 function maybeStartAuto(r: PreflightReport, alive: () => boolean, after: () => void): void {
@@ -119,6 +121,7 @@ function maybeStartAuto(r: PreflightReport, alive: () => boolean, after: () => v
 
 export function PreflightGate({ children }: { children?: React.ReactNode }): React.JSX.Element {
   const t = useT()
+  const auto = useAutoInstall()
   const [phase, setPhase] = useState<Phase>('checking')
   const [report, setReport] = useState<PreflightReport | null>(null)
   const [runtime, setRuntime] = useState<RuntimeMap>({})
@@ -142,6 +145,9 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   const started = useRef(false)
   /** Abierta a pedido desde Ajustes: no se cierra sola aunque «Más tarde» ya se hubiera elegido; se cierra con «Continuar». */
   const forced = useRef(false)
+  const continued = useRef(false)
+  const presented = useRef(false)
+  const initialFirstRun = useRef(firstRun)
   // Se vuelve a marcar vivo al montar: con StrictMode (desarrollo) React monta, desmonta y monta de nuevo el mismo componente, y sin esto la
   // primera revisión se descartaba (`alive` quedaba en false) y la pantalla se quedaba en «checking» para siempre.
   useEffect(() => {
@@ -153,43 +159,39 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
 
   /** Revisa y decide: mostrar la pantalla o dejar pasar. Con `keepOnClear` (revisión manual) no se cierra sola si no hay nada. */
   const check = useCallback(async (): Promise<void> => {
-    const race = await fetchReport()
+    const race = await fetchReport(initialFirstRun.current)
     if (!alive.current) return
-    const r = race.report
-    if (!r) {
-      setPhase('clear')
-      // Plazo vencido: la app ya entró; si el informe llega tarde solo se arranca la instalación automática, sin abrir la pantalla.
-      if (race.timedOut)
-        void race.late.then((late) => {
-          if (late && alive.current)
-            maybeStartAuto(
-              late,
-              () => alive.current,
-              () => void check()
-            )
-        })
-      return
+    const present = (r: PreflightReport): void => {
+      if (!alive.current) return
+      const current = { ...r, components: r.components.map((c) => (autoCompleted().has(c.id) ? { ...c, ok: true } : c)) }
+      setReport(r)
+      maybeStartAuto(
+        current,
+        () => alive.current,
+        () => void check()
+      )
+      const v = screenReport(current, true)
+      const autoMissing = !v.skipped && v.components.some((c) => AUTO_INSTALL_IDS.includes(c.id) && !c.ok)
+      const show =
+        forced.current ||
+        (!continued.current &&
+          ((!v.skipped && initialFirstRun.current) || presented.current || autoMissing || shouldShow(screenReport(v), readDismissed())))
+      setStage((cur) => {
+        if (cur === 'install' && !installStageNeeded(v) && permsStageNeeded(v)) return 'perms'
+        return cur
+      })
+      presented.current = Boolean(show)
+      setPhase(show ? 'show' : 'clear')
     }
-    setReport(r)
-    // Lo instalable lo instala la app sola, en segundo plano; la pantalla solo enseña lo que exige a una persona (permisos, firma, motor…).
-    // Abierta a pedido desde Ajustes (`forced`) enseña todo, con sus casillas, como siempre.
-    maybeStartAuto(
-      r,
-      () => alive.current,
-      () => void check()
-    )
-    const v = forced.current ? r : screenReport(r)
-    const show = forced.current || shouldShow(v, readDismissed())
-    // Recorrido guiado: al terminar «Instalar» se pasa solo a «Permisos» (si hay) y, sin nada que hacer en una etapa, se salta.
-    setStage((cur) => {
-      if (cur === 'install' && !installStageNeeded(v) && permsStageNeeded(v)) return 'perms'
-      return cur
-    })
-    setPhase(show ? 'show' : 'clear')
+    if (race.report) present(race.report)
+    else {
+      setPhase('clear')
+      if (race.timedOut) void race.late.then((r) => r && present(r))
+    }
   }, [])
 
   const retryAuto = useCallback((): void => {
-    resetAutoInstall()
+    retryAutoPieces(AUTO_INSTALL_IDS)
     void check()
   }, [check])
 
@@ -235,7 +237,16 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       if (!report || installing) return
       const wanted = only ?? installPlan(report, unchecked).map((c) => c.id)
       // Lo que la instalación automática tiene en curso no se instala dos veces a la vez.
-      const ids = autoBusy(useAutoInstall.getState()) ? wanted.filter((id) => !AUTO_INSTALL_IDS.includes(id)) : wanted
+      const automatic = wanted.filter((id) => AUTO_INSTALL_IDS.includes(id))
+      if (automatic.length > 0 && !autoBusy(useAutoInstall.getState())) {
+        retryAutoPieces(automatic)
+        maybeStartAuto(
+          report,
+          () => alive.current,
+          () => void check()
+        )
+      }
+      const ids = wanted.filter((id) => !AUTO_INSTALL_IDS.includes(id))
       if (ids.length === 0) return
       setInstalling(true)
       setDetails({})
@@ -321,7 +332,7 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   /** «Aceptar todo e instalar»: todo lo instalable, sin mirar casillas y sin tocar los permisos (esos tienen su paso). */
   const acceptAll = useCallback((): void => {
     if (!report) return
-    void install(acceptAllPlan(forced.current ? report : screenReport(report)).map((c) => c.id))
+    void install(acceptAllPlan(report).map((c) => c.id))
   }, [report, install])
 
   const proceed = useCallback((): void => {
@@ -330,8 +341,9 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
       setStage('perms')
       return
     }
-    forced.current = false
     if (report) saveDismissed(forced.current ? report : screenReport(report))
+    forced.current = false
+    continued.current = true
     setPhase('clear')
   }, [report, guided, stage])
 
@@ -352,10 +364,16 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
   return (
     <>
       <PreflightScreen
-        report={forced.current ? report : screenReport(report)}
-        runtime={runtime}
+        report={
+          forced.current
+            ? report
+            : { ...report, components: report.components.map((c) => (autoCompleted().has(c.id) ? { ...c, ok: true } : c)) }
+        }
+        runtime={{ ...auto.runtime, ...runtime }}
+        automatic={!forced.current}
+        backgroundInstalling={autoBusy(auto)}
         installing={installing}
-        details={details}
+        details={{ ...auto.details, ...details }}
         copied={copied}
         permsStalled={permsStalled}
         permsWaiting={permsWaiting}
@@ -367,9 +385,9 @@ export function PreflightGate({ children }: { children?: React.ReactNode }): Rea
         custom={custom}
         onCustom={() => setCustom((c) => !c)}
         progress={{
-          total: batch.length,
-          done: done.length,
-          pct: Object.values(runtime).find((r) => r?.state === 'downloading')?.pct ?? null
+          total: autoBusy(auto) ? auto.ids.length : batch.length,
+          done: autoBusy(auto) ? auto.done.length : done.length,
+          pct: autoBusy(auto) ? auto.pct : (Object.values(runtime).find((r) => r?.state === 'downloading')?.pct ?? null)
         }}
         onToggle={(id) => setUnchecked((u) => toggleChecked(u, id))}
         onInstall={(ids) => void install(ids)}

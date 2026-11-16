@@ -5,12 +5,17 @@
 import { selectBackend, type WinBackendProvider } from '../tasks/backends'
 import { seatbeltAvailable } from '../tasks/backends/seatbelt'
 import { TasksSandboxService } from '../tasks/sandbox-service'
+import { readStartupSandbox } from '../preflight/sandbox'
+import { loadManagedPolicy } from '../tasks/policy'
+import { buildWslSpawn } from '../tasks/backends/wsl-spec'
+import { realRun } from '../tasks/backends/wsl-real-deps'
 import type { TasksSandboxStatus } from '@shared/ipc-tasks'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
 export interface TasksSandboxModule extends TasksSubmodule {
   /** Estado del entorno aislado (lo usa también la revisión de arranque). */
   status: (force?: boolean) => Promise<TasksSandboxStatus>
+  startupStatus: () => Promise<TasksSandboxStatus>
   prepare: () => Promise<void>
 }
 
@@ -34,6 +39,13 @@ export function registerTasksSandboxHandlers(
   handle('tasks:sandbox:cancel', () => service.cancel())
   return {
     status: (force = false) => service.status({ force }),
+    startupStatus: () =>
+      readStartupSandbox({
+        platform: process.platform,
+        available: o.tasksWin === true && o.winBackend?.build === true,
+        policyDisabled: () => loadManagedPolicy()?.disableWslTasks === true,
+        run: (kind, ms) => realRun(buildWslSpawn({ kind }, process.env), ms)
+      }),
     prepare: () => service.prepare(),
     dispose: async () => {
       await Promise.race([service.dispose(), new Promise<void>((r) => setTimeout(r, 3_000).unref?.())])

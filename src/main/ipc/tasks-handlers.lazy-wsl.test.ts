@@ -29,6 +29,15 @@ vi.mock('../computer/service', () => ({
 vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))
 vi.mock('../embedded-browser/mcp-server', () => ({ embeddedBrowserMcp: { setApi: () => undefined, configFor: async () => null } }))
 
+const inventory = vi.hoisted(() => ({
+  run: vi.fn(async (spec: { args: string[] }) => ({
+    code: 0,
+    stdout: Buffer.from(spec.args.includes('--version') ? 'WSL: 2.6.0.0\nKernel: 6.6.0.0' : '* Lazunox-Tareas Stopped 2', 'utf16le'),
+    stderr: Buffer.alloc(0)
+  }))
+}))
+vi.mock('../tasks/backends/wsl-real-deps', () => ({ realRun: inventory.run }))
+
 const preflight = vi.hoisted(() => ({ configure: vi.fn() }))
 vi.mock('../preflight/real', () => ({
   configurePreflight: preflight.configure,
@@ -44,7 +53,7 @@ const { registerTasksHandlers } = await import('./tasks-handlers')
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-it('R8: arrancar y cerrar no toca WSL; primer uso comparte una única carga con la tarjeta', async () => {
+it('V30: arrancar solo lista WSL sin probe ni carga; primer uso comparte la preparación con la tarjeta', async () => {
   vi.useFakeTimers()
   const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
   let state = 'needsSetup'
@@ -73,7 +82,11 @@ it('R8: arrancar y cerrar no toca WSL; primer uso comparte una única carga con 
   })
   try {
     await vi.advanceTimersByTimeAsync(2500)
-    expect(preflight.configure).toHaveBeenLastCalledWith(expect.objectContaining({ sandboxStatus: undefined }))
+    expect(preflight.configure).toHaveBeenLastCalledWith(expect.objectContaining({ sandboxStatus: expect.any(Function) }))
+    const startup = preflight.configure.mock.lastCall![0].sandboxStatus
+    expect(await startup()).toMatchObject({ state: 'ready' })
+    expect(inventory.run.mock.calls.map(([spec]) => spec.args)).toEqual([['--version'], ['-l', '-v']])
+    expect(provider.create).not.toHaveBeenCalled()
     expect(provider.gate).not.toHaveBeenCalled()
     expect(status).not.toHaveBeenCalled()
     expect(setup).not.toHaveBeenCalled()

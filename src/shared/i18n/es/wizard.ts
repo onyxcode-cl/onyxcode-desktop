@@ -123,7 +123,7 @@ export const wizard = {
   'preflight.acceptAll.size.win':
     'Se descargarán unos {size} en total, de GitHub; se comprueba que sean auténticos y no pide contraseña de administrador.',
   'preflight.firstRun.subtitle':
-    '{app} ya está descargando en segundo plano lo que necesita (verás el avance abajo). Aquí solo queda lo que necesita tu aprobación.',
+    '{app} prepara automáticamente las herramientas que faltan. Aquí puedes ver su avance y continuar mientras terminan.',
   'preflight.acceptAll.progress': 'Listas {done} de {total}',
   'preflight.custom.show': 'Elegir qué instalar',
   'preflight.custom.hide': 'Volver al botón único',
@@ -163,12 +163,14 @@ export const wizard = {
   'preflight.copied': 'Detalle copiado',
   'preflight.continueAnyway': 'Más tarde',
   'preflight.continue': 'Continuar',
+  'preflight.continueBackground': 'Continuar mientras termina',
   'preflight.cannotSkip': 'No se puede omitir: sin esto {app} no funciona.',
   'preflight.allReady': 'Todo listo.',
   'preflight.engine.pick': 'Elegir motor…',
   'preflight.perms.grant': 'Dar permisos',
   'preflight.perms.showApp': 'Mostrar {app}',
-  'preflight.perms.guide': 'Arrastra {app} a la lista (se muestra en Finder) o pulsa «+» y pega la ruta con Cmd+Mayús+G (ya está copiada). Enciende el interruptor y pulsa «Reiniciar {app}».',
+  'preflight.perms.guide':
+    'Arrastra {app} a la lista (se muestra en Finder) o pulsa «+» y pega la ruta con Cmd+Mayús+G (ya está copiada). Enciende el interruptor y pulsa «Reiniciar {app}».',
   'preflight.state.ready': 'Listo',
   'preflight.state.missing': 'Falta',
   'preflight.state.downloading': 'Instalando…',

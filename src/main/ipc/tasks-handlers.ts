@@ -354,8 +354,8 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
     sandboxModule,
     registerTasksPreflightHandlers(ctx, {
       computer,
-      // Consultar WSL ejecuta el probe y enciende la distro. Se difiere todo al primer uso de Overdrive.
-      sandboxStatus: process.platform === 'win32' ? undefined : sandboxModule.status
+      // En Windows solo versión/lista: el probe y la carga siguen al primer uso de Overdrive.
+      sandboxStatus: process.platform === 'win32' ? sandboxModule.startupStatus : sandboxModule.status
     }),
     registerTasksViewerHandlers(ctx)
   ]

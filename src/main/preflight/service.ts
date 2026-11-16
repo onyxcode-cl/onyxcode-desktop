@@ -2,7 +2,7 @@
  * Servicio de la revisión de arranque: AGREGA las comprobaciones que ya existen (motor, ArtCraft, permisos y ubicación de la app,
  * ayudante, entorno aislado, disco) en un `PreflightReport`, sin duplicarlas. Todo lo que toca el sistema entra por `PreflightDeps`
  * (se prueba sin Electron). Solo mira el disco y procesos locales: nada de red, y cada comprobación tiene su plazo para que el total
- * quede muy por debajo de 2 s. Nunca lanza: una comprobación que se rompe NO bloquea la app (se anota y se da por buena).
+ * no se quede esperando para siempre. Nunca lanza: una comprobación que se rompe NO bloquea la app (se anota y se da por buena).
  */
 import type { PreflightComponent, PreflightReport } from '@shared/preflight'
 import { SANDBOX_APPROX_BYTES, DISK_FACTOR } from '@shared/preflight'
@@ -65,8 +65,8 @@ export interface PreflightDeps {
   timeoutMs?: number
 }
 
-/** Plazo de la consulta al entorno aislado de Windows (`wsl.exe` puede tardar más que el resto de comprobaciones). */
-export const SANDBOX_TIMEOUT_MS = 4000
+/** Los dos comandos locales de WSL corren en paralelo con tope de 20 s. Se conserva su resultado también si llega tarde al renderer. */
+export const SANDBOX_TIMEOUT_MS = 21_000
 
 /** El botón instala el entorno si falta (`needsSetup`) o si su imagen está rota (`broken/payload`); lo demás pide cambios del sistema o de la organización. */
 const sandboxInstallable = (s: { state: string; detail?: string }): boolean =>

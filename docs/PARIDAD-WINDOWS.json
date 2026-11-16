@@ -1107,7 +1107,7 @@
     },
     {
       "id": "N19",
-      "funcion": "Overdrive en Windows: la distro se prepara al primer uso, no al abrir la app (V29 ronda 8)",
+      "funcion": "Overdrive en Windows: inventario liviano al abrir y validación completa al usarlo (V30)",
       "estado": "NO VERIFICADO",
       "evidencia": [
         "src/main/ipc/tasks-handlers.ts:1",
@@ -1115,7 +1115,19 @@
         "src/main/tasks/manager.ts:1",
         "src/main/ipc/tasks-handlers.lazy-wsl.test.ts:1"
       ],
-      "nota": "En win32 la revisión de arranque no consulta WSL y no hay precarga; la tarjeta de Overdrive y TasksManager.start preparan la distro una sola vez. En Mac la precarga de la última carpeta sigue igual. Falta prueba a mano en Windows real.",
+      "nota": "V30 restaura versión/lista de WSL en el inventario de arranque, sin probe ni selección del backend, carga del paquete o escritura en la distro existente. Si falta la distro se prepara con la instalación automática visible; validación y actualización del paquete siguen al primer uso. Mac conserva su precarga. Probado con dobles; falta prueba a mano en Windows real.",
+      "comprobacion": null
+    },
+    {
+      "id": "N20",
+      "funcion": "Primera apertura: preparación visible con instalación automática y continuación en segundo plano (V30)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/preflight/sandbox.test.ts:1",
+        "src/main/ipc/tasks-handlers.lazy-wsl.test.ts:1",
+        "src/renderer/src/features/onboarding/FirstRunGate.test.tsx:1"
+      ],
+      "nota": "Windows lista ArtCraft y el entorno de Overdrive; sin WSL reutiliza su guía existente. Mac lista ArtCraft, Node.js y uv y conserva firma, permisos, ubicación y helper. Fallos con Reintentar, avance por pieza y arranque posterior directo si todo está listo. Pruebas con plataformas inyectadas, sin app ni WSL real.",
       "comprobacion": null
     }
   ]
