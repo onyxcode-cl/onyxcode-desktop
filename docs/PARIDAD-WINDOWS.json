@@ -1104,6 +1104,19 @@
       ],
       "nota": "Regla rm/rmdir/unlink allow solo en carpeta aislada sin permiso de borrar; Seatbelt y Landlock conservan protección de previos. Mac usa Python incluido y wrappers en configuración de solo lectura; WSL usa Python de imagen y wrappers root-owned antes de Landlock. Inventario independiente de copia. Mecanismo por billetes implementado pero puerta OWN_DELETE_RUNTIME_VERIFIED=false hasta prueba de app real con modelo en Mac y Windows; C:/D: y Landlock reales pendientes.",
       "comprobacion": null
+    },
+    {
+      "id": "N19",
+      "funcion": "Overdrive en Windows: la distro se prepara al primer uso, no al abrir la app (V29 ronda 8)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/ipc/tasks-handlers.ts:1",
+        "src/main/tasks/sandbox-service.ts:1",
+        "src/main/tasks/manager.ts:1",
+        "src/main/ipc/tasks-handlers.lazy-wsl.test.ts:1"
+      ],
+      "nota": "En win32 la revisión de arranque no consulta WSL y no hay precarga; la tarjeta de Overdrive y TasksManager.start preparan la distro una sola vez. En Mac la precarga de la última carpeta sigue igual. Falta prueba a mano en Windows real.",
+      "comprobacion": null
     }
   ]
 }

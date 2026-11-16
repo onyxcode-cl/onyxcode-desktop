@@ -78,11 +78,11 @@ describe('tarjeta de permisos', () => {
     expect(html).not.toContain('no volver a preguntar')
     expect(html).toContain('>No<')
   })
-  it('escritorio: fuera del proyecto sigue igual (tres botones)', () => {
+  it('escritorio: fuera del proyecto ofrece Permitir y No, sin «no volver a preguntar» (V29 ronda 8: siempre vuelve a preguntar)', () => {
     surface('darwin')
     const html = card('external_directory')
     expect(html).toContain('>Permitir<')
-    expect(html).toContain('no volver a preguntar')
+    expect(html).not.toContain('no volver a preguntar')
     expect(html).not.toContain('Apruébalo en el Mac')
   })
 })

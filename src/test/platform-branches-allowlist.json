@@ -154,6 +154,9 @@
       "win32": 3,
       "usrBin": 3
     },
+    "src/main/ipc/tasks-handlers.ts": {
+      "win32": 2
+    },
     "src/main/ipc/telegram-handlers.ts": {
       "darwin": 1
     },
