@@ -14,6 +14,7 @@ vi.mock('electron', () => ({
 }))
 
 import { buildInlineConfig, type InlineConfigInput } from './inline-config'
+import { TASKS_BASE_PERMISSION } from './helper-permissions'
 import { CHAT_AGENT_ID, COMPUTER_AGENT_ID, TASKS_AGENT_ID } from './opencode-config'
 
 const AGENTS_DIR = join(process.cwd(), 'resources', 'opencode', 'agents')
@@ -76,11 +77,15 @@ describe('buildInlineConfig: ids de agente', () => {
 
   it.each(scenarios)('%s: toda clave agent.<id> tiene su agente definido (o es un disable del computer)', (_n, input) => {
     const defined = definedAgents()
-    for (const id of Object.keys(agentsOf(buildInlineConfig(input)))) expect(defined).toContain(id)
+    for (const [id, agent] of Object.entries(agentsOf(buildInlineConfig(input)))) {
+      if (id === 'lazunox-worker') expect(agent).toMatchObject({ mode: 'subagent', prompt: expect.any(String) })
+      else expect(defined).toContain(id)
+    }
   })
 
   it.each(scenarios)('%s: solo se tocan los agentes de tareas y computer, nunca chat', (_n, input) => {
-    for (const id of Object.keys(agentsOf(buildInlineConfig(input)))) expect([TASKS_AGENT_ID, COMPUTER_AGENT_ID]).toContain(id)
+    for (const id of Object.keys(agentsOf(buildInlineConfig(input))))
+      expect([TASKS_AGENT_ID, COMPUTER_AGENT_ID, 'lazunox-worker']).toContain(id)
   })
 })
 
@@ -91,15 +96,24 @@ describe('buildInlineConfig: share', () => {
 })
 
 describe('buildInlineConfig: permisos del agente de tareas', () => {
-  it('sandbox vacío: solo oculta el agente computer', () => {
+  it('sandbox vacío: oculta computer e incluye el ejecutor aislado', () => {
     const c = buildInlineConfig(empty)
-    expect(c).toEqual({ autoupdate: false, share: 'disabled', agent: { [COMPUTER_AGENT_ID]: { disable: true } } })
+    expect(c).toEqual({
+      autoupdate: false,
+      share: 'disabled',
+      agent: {
+        [COMPUTER_AGENT_ID]: { disable: true },
+        [TASKS_AGENT_ID]: { permission: { task: TASKS_BASE_PERMISSION.task } },
+        'lazunox-worker': expect.objectContaining({ mode: 'subagent' })
+      }
+    })
   })
 
   it('sandbox + extras: external_directory pregunta por defecto y permite las carpetas extra (orden importa)', () => {
     const c = buildInlineConfig({ ...empty, extras: [{ path: '/fixture/a' }, { path: '/fixture/b' }] })
     const perm = agentsOf(c)[TASKS_AGENT_ID].permission!
     expect(perm).toEqual({
+      task: TASKS_BASE_PERMISSION.task,
       external_directory: { '*': 'ask', '/fixture/a': 'allow', '/fixture/a/*': 'allow', '/fixture/b': 'allow', '/fixture/b/*': 'allow' }
     })
     expect(Object.keys(perm.external_directory as object)[0]).toBe('*')
@@ -109,6 +123,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
   it('sandbox + allowDirs (skills de la app): se leen sin preguntar aunque no haya carpetas extra', () => {
     const c = buildInlineConfig({ ...empty, allowDirs: ['/fixture/cfg/skills'] })
     expect(agentsOf(c)[TASKS_AGENT_ID].permission).toEqual({
+      task: TASKS_BASE_PERMISSION.task,
       external_directory: { '*': 'ask', '/fixture/cfg/skills': 'allow', '/fixture/cfg/skills/*': 'allow' }
     })
   })
@@ -120,6 +135,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
       toSandbox: (p) => `/win/${p[0]!.toLowerCase()}${p.slice(2).replace(/\\/g, '/')}`
     })
     expect(agentsOf(win)[TASKS_AGENT_ID].permission).toEqual({
+      task: TASKS_BASE_PERMISSION.task,
       external_directory: { '*': 'ask', '/win/d/Datos/b': 'allow', '/win/d/Datos/b/*': 'allow' }
     })
     const mac = buildInlineConfig({ ...empty, extras: [{ path: '/fixture/a' }] })
@@ -131,7 +147,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
   it('sandbox: el navegador entra como MCP sin deny de browser_*', () => {
     const c = buildInlineConfig({ ...empty, browserMcp: BROWSER })
     expect(c.mcp).toEqual({ browser: BROWSER })
-    expect(agentsOf(c)[TASKS_AGENT_ID]).toBeUndefined()
+    expect(agentsOf(c)[TASKS_AGENT_ID]).toEqual({ permission: { task: TASKS_BASE_PERMISSION.task } })
   })
 
   it('Control total: el agente de tareas deniega computer_* y browser_* (solo si hay navegador)', () => {
@@ -160,6 +176,7 @@ describe('buildInlineConfig: permisos del agente de tareas', () => {
     })
     const a = agentsOf(c)
     expect(a[TASKS_AGENT_ID].permission).toEqual({
+      task: TASKS_BASE_PERMISSION.task,
       external_directory: {
         '*': 'ask',
         '/fixture/a': 'allow',

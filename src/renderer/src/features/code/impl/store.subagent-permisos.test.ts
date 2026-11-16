@@ -163,14 +163,13 @@ describe('permisos de un subagente (sesión hija)', () => {
     expect(v2reply).toHaveBeenCalledWith({ sessionID: 'kid', requestID: 'perm_v2', reply: 'once' })
   })
 
-  it('el modo Automático no aprueba solo el comando de una hija (su sesión no lleva el bloque del modo)', () => {
+  it('el modo Automático aprueba el mismo comando de lectura de una hija y de la raíz', () => {
     const { reply } = install()
     apply(sessionCreated(makeSession('root', D, { permission: rulesetFor('auto') })))
     apply(sessionCreated(makeSession('kid', D, { parentID: 'root' })))
     useCode.setState({ activeSessionID: 'root' })
     ask('perm_kid', 'kid', 'bash', 'ls -la')
-    expect(reply).not.toHaveBeenCalled()
-    expect(st().permissions['perm_kid']).toBeDefined()
+    expect(reply).toHaveBeenCalledWith({ requestID: 'perm_kid', reply: 'once', directory: D })
     // La misma orden en la raíz sí se aprueba (comportamiento previo, sin cambios).
     ask('perm_root', 'root', 'bash', 'ls -la')
     expect(reply).toHaveBeenCalledWith({ requestID: 'perm_root', reply: 'once', directory: D })

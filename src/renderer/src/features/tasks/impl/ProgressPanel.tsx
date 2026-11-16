@@ -4,6 +4,7 @@
  * usados, con scroll a la conversación), Programada (rutina vinculada, con enlace a la sesión de
  * cada ejecución) y Actividad agrupada por paso.
  */
+import { HelperModelNote } from '../../../components/conversation/HelperModelNote'
 import { useEffect, useMemo, useState } from 'react'
 import { friendlyToolError, isInternalAccessNoise, isPlanGateText } from '../../../lib/plan-gate'
 import type { Todo, ToolPart } from '@opencode-ai/sdk/v2/client'
@@ -135,6 +136,7 @@ export function ActivityRow({ part }: { part: ToolPart }): React.JSX.Element {
           )
         )}
       </div>
+      {part.tool === 'task' && <HelperModelNote part={part} />}
       {part.state.status === 'error' && !isInternalAccessNoise(part.state.error) && (
         <p
           className={`mt-0.5 ml-7 line-clamp-2 ${isPlanGateText(part.state.error) ? 'text-muted' : 'text-danger'}`}

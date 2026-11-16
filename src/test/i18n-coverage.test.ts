@@ -82,6 +82,8 @@ export const MIGRATED: string[] = [
   'src/renderer/src/components/TranscriptLoader.tsx',
   'src/renderer/src/components/UsageMeter.tsx',
   'src/renderer/src/components/conversation/ErrorNotice.tsx',
+  'src/renderer/src/components/conversation/HelperModelNote.tsx',
+  'src/renderer/src/components/conversation/ModelChangeNote.tsx',
   'src/renderer/src/components/conversation/Reasoning.tsx',
   'src/renderer/src/features/browser/AgentBar.tsx',
   'src/renderer/src/features/browser/BrowserPanel.tsx',

@@ -25,6 +25,7 @@ export interface BackgroundJob {
   /** Descripción corta que dio el agente (o el título de la sesión). */
   title: string
   /** Tipo de subagente (`explore`, `general`…), si lo hay. */
+  modelName?: string
   agent: string | null
   state: BackgroundJobState
   startedAt: number
@@ -61,6 +62,7 @@ export interface BackgroundJobsInput {
 interface TaskRef {
   childId: string
   title: string
+  modelName?: string
   agent: string | null
   background: boolean
   partStatus: string
@@ -86,6 +88,7 @@ function taskRefs(entries: ReadonlyArray<{ parts: Part[] }>): Map<string, TaskRe
         childId,
         title: str(input.description) || str(state.title),
         agent: str(input.subagent_type) || null,
+        ...(str(meta.modelName) ? { modelName: str(meta.modelName) } : {}),
         background: meta.background === true || input.background === true,
         partStatus: str(state.status),
         start: typeof time.start === 'number' ? time.start : null
@@ -136,6 +139,7 @@ export function selectBackgroundJobs(input: BackgroundJobsInput): BackgroundJobs
       id: ref.childId,
       title: ref.title || sess.title || ref.childId,
       agent: ref.agent,
+      ...(ref.modelName ? { modelName: ref.modelName } : {}),
       state,
       startedAt,
       endedAt,

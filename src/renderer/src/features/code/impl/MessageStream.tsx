@@ -1,5 +1,6 @@
+import { modelChangeNotes } from '../../../lib/model-change-notes'
 import { ModelChangeNote } from '../../../components/conversation/ModelChangeNote'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { AssistantMessage, FilePart, Part, ReasoningPart, TextPart, ToolPart } from '@opencode-ai/sdk/v2/client'
 import { AtSign, Copy, Check, GitFork, Loader2, Pencil, RotateCw, Sparkles, Undo2 } from 'lucide-react'
 import { Button } from '../../../components/Button'
@@ -764,6 +765,7 @@ export function MessageStream(props: Props): React.JSX.Element {
   )
   const hidden = entries.length - visible.length
   const turns = useMemo(() => buildTurns(visible), [visible])
+  const changeNotes = useMemo(() => modelChangeNotes(visible, modelChanges), [visible, modelChanges])
   const compactableAt = useMemo(
     () =>
       compactableTurns(turns, (u) =>
@@ -825,21 +827,29 @@ export function MessageStream(props: Props): React.JSX.Element {
               <Loader2 size={15} className="animate-spin" /> {t('code.msg.loading')}
             </div>
           )}
+          {(changeNotes.get('') ?? []).map((change, index) => (
+            <ModelChangeNote key={`initial-${index}`} {...m('meta')} change={change} />
+          ))}
           {turns.map((turn, ti) => (
-            <TurnView
-              key={turn.user?.info.id ?? `t${ti}`}
-              user={turn.user}
-              assistant={turn.assistant}
-              isLastTurn={ti === turns.length - 1}
-              old={isOldRow(ti, turns.length, 4)}
-              busy={busy}
-              root={root}
-              perms={turnPerms[ti]}
-              hotkeyID={hotkeyID}
-              changes={turn.user ? changesByUser.get(turn.user.info.id) : undefined}
-              compactable={compactableAt[ti]}
-              revertedFiles={rewoundSet && turn.user && turn.user.info.id >= rewound!.fromMessageID ? rewoundSet : undefined}
-            />
+            <Fragment key={turn.user?.info.id ?? `t${ti}`}>
+              <TurnView
+                key={turn.user?.info.id ?? `t${ti}`}
+                user={turn.user}
+                assistant={turn.assistant}
+                isLastTurn={ti === turns.length - 1}
+                old={isOldRow(ti, turns.length, 4)}
+                busy={busy}
+                root={root}
+                perms={turnPerms[ti]}
+                hotkeyID={hotkeyID}
+                changes={turn.user ? changesByUser.get(turn.user.info.id) : undefined}
+                compactable={compactableAt[ti]}
+                revertedFiles={rewoundSet && turn.user && turn.user.info.id >= rewound!.fromMessageID ? rewoundSet : undefined}
+              />
+              {(changeNotes.get(turn.user?.info.id ?? '__none__') ?? []).map((change, index) => (
+                <ModelChangeNote key={index} {...m('meta')} change={change} />
+              ))}
+            </Fragment>
           ))}
           {hidden > 0 && (
             <div className="flex items-center justify-between rounded-xl border border-dashed border-border-strong px-3 py-2 text-sm text-muted">
@@ -851,9 +861,6 @@ export function MessageStream(props: Props): React.JSX.Element {
               </button>
             </div>
           )}
-          {modelChanges?.map((change, index) => (
-            <ModelChangeNote key={index} {...m('meta')} change={change} />
-          ))}
           {streamSessionID && <RewindNoticeHost sessionID={streamSessionID} busy={busy} />}
           {streamSessionID && <RewindDialogHost sessionID={streamSessionID} />}
           {loosePerms.map((perm) => (

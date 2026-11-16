@@ -108,3 +108,29 @@ describe('selector y línea del cambio de modelo', () => {
     expect(note.textContent).toBe('I switched to <b>Modelo</b> because you asked.')
   })
 })
+
+it('ancla el aviso al turno del cambio; no se mueve con turnos nuevos y se reconstruye al reabrir', () => {
+  const initial = [{ info: userMessage('m1', 's1', { model: old }), parts: [textPart('p1', 'm1', 's1', 'cambia de modelo')] }]
+  useCode.setState({ messages: { s1: initial } })
+  mounted = mount(<MessageStream {...base} entries={initial} />)
+  change()
+  const synthetic = {
+    info: userMessage('m2', 's1', { model: next }),
+    parts: [{ ...textPart('p2', 'm2', 's1', 'continuar'), synthetic: true }]
+  }
+  const later = [
+    ...initial,
+    synthetic,
+    { info: userMessage('m3', 's1', { model: next }), parts: [textPart('p3', 'm3', 's1', 'mensaje posterior')] }
+  ]
+  mounted.rerender(<MessageStream {...base} entries={later} />)
+  const check = (): void => {
+    expect(mounted!.host.querySelectorAll('[data-testid="model-change-note"]')).toHaveLength(1)
+    const text = mounted!.host.textContent!
+    expect(text.indexOf('porque lo pediste.')).toBeLessThan(text.indexOf('mensaje posterior'))
+  }
+  check()
+  act(() => useCode.setState({ modelChanges: {} }))
+  mounted.rerender(<MessageStream {...base} entries={later} />)
+  check()
+})

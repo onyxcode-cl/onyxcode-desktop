@@ -10,6 +10,9 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { subagentGuardPluginSource } from './subagent-guard'
+import { buildInlineConfig } from '../tasks/inline-config'
+import { TASKS_BASE_PERMISSION } from '../tasks/helper-permissions'
+import { deepMerge } from '../tasks/config-merge'
 import { McpProxy } from '../tasks/mcp-proxy'
 import { createGuardInfoHandler, GUARD_PATH_PREFIX } from '../tasks/guard-info'
 
@@ -328,8 +331,8 @@ describe('lazunox-subagent-guard: task no puede dar más libertad que el padre',
 
 describe('agentes empaquetados: contención estática', () => {
   const taskRules = (a: string): Rule[] => AGENTS[a].filter((x) => x.permission === 'task')
-  it('tasks solo puede lanzar lazunox-helper (lista blanca explícita, no allow global)', () => {
-    expect(taskRules('tasks')).toEqual([r('task', 'deny'), r('task', 'allow', 'lazunox-helper')])
+  it('tasks solo puede lanzar lazunox-helper y lazunox-worker (lista blanca explícita, no allow global)', () => {
+    expect(taskRules('tasks')).toEqual([r('task', 'deny'), r('task', 'allow', 'lazunox-helper'), r('task', 'allow', 'lazunox-worker')])
   })
   it('computer deniega task; lazunox-helper es solo lectura y no lanza subagentes', () => {
     expect(taskRules('computer')).toEqual([r('task', 'deny')])
@@ -562,5 +565,34 @@ describe('lazunox-subagent-guard por el canal de solo lectura de main (Tareas co
     await expect(task(h['tool.execute.before'] as Before, ROOT, 'lazunox-helper')).rejects.toThrow(
       /no se pudo consultar la sesion al motor/
     )
+  })
+})
+
+describe('ejecutor de Overdrive (V31)', () => {
+  it('la configuración final del ejecutor pasa el guardián real sin superar al principal', async () => {
+    const c = buildInlineConfig({
+      fullAccess: false,
+      extras: [{ path: '/extra' }],
+      browserMcp: null,
+      computerMcp: null,
+      mcpContribution: { mcp: {}, permission: { 'crm_*': 'ask', 'computer_*': 'deny' } },
+      rulesPermission: { bash: { 'npm test': 'ask' } },
+      skills: {}
+    }) as { agent: Record<string, { permission: Record<string, unknown> }> }
+    const flatten = (p: Record<string, unknown>): Rule[] =>
+      Object.entries(p).flatMap(([permission, v]) =>
+        typeof v === 'string'
+          ? [{ permission, pattern: '*', action: v as Action }]
+          : Object.entries(v as Record<string, string>).map(([pattern, action]) => ({ permission, pattern, action: action as Action }))
+      )
+    const parent = flatten(deepMerge(TASKS_BASE_PERMISSION, c.agent.tasks.permission))
+    const worker = flatten(c.agent['lazunox-worker'].permission)
+    const h = await load({ sessions: { root: { id: 'root', agent: 'tasks' } }, agents: { tasks: parent, 'lazunox-worker': worker } })
+    await expect(task(h.before, 'root', 'lazunox-worker')).resolves.toBeUndefined()
+    const unsafe = await load({
+      sessions: { root: { id: 'root', agent: 'tasks' } },
+      agents: { tasks: parent, 'lazunox-worker': [...worker, r('bash', 'allow', 'npm test')] }
+    })
+    await expect(task(unsafe.before, 'root', 'lazunox-worker')).rejects.toThrow('mas libertad')
   })
 })

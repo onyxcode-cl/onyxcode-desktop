@@ -200,6 +200,7 @@ export function BackgroundJobs({
                       job.title
                     )}
                     {job.agent && <span className="text-subtle"> · {t('code.bg.agent', { agent: job.agent })}</span>}
+                    {job.modelName && <span className="block text-muted">{t('helpers.model', { model: job.modelName })}</span>}
                   </span>
                   <span className="shrink-0 text-xs text-muted">{t(STATE_KEY[job.state])}</span>
                   <span className="shrink-0 text-xs tabular-nums text-subtle">{formatElapsed(job.elapsedMs)}</span>

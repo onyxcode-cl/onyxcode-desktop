@@ -16,6 +16,7 @@ export const RESERVED_HELPER_NAMES: readonly string[] = [
   'tasks',
   'computer',
   'lazunox-helper',
+  'lazunox-worker',
   'lazunox-chat-helper',
   'build',
   'plan',

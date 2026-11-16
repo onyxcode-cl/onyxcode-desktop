@@ -8,7 +8,10 @@ const ROOT = 'ses_root'
 const sess = (id: string, parentID: string | undefined, created = NOW - 60_000, updated = NOW - 1000, title = id): never =>
   ({ id, parentID, title, time: { created, updated } }) as never
 
-const taskPart = (child: string, over: { background?: boolean; status?: string; description?: string; agent?: string } = {}): Part =>
+const taskPart = (
+  child: string,
+  over: { background?: boolean; status?: string; description?: string; agent?: string; modelName?: string } = {}
+): Part =>
   ({
     id: `prt_${child}`,
     sessionID: ROOT,
@@ -19,7 +22,11 @@ const taskPart = (child: string, over: { background?: boolean; status?: string; 
     state: {
       status: over.status ?? 'completed',
       input: { description: over.description ?? `Trabajo ${child}`, subagent_type: over.agent ?? 'explore' },
-      metadata: { sessionId: child, ...(over.background === false ? {} : { background: true }) },
+      metadata: {
+        sessionId: child,
+        ...(over.modelName ? { modelName: over.modelName } : {}),
+        ...(over.background === false ? {} : { background: true })
+      },
       time: { start: NOW - 60_000, end: NOW - 59_000 }
     }
   }) as never
@@ -50,6 +57,18 @@ describe('selectBackgroundJobs', () => {
       expect.objectContaining({ id: 'c1', title: 'Revisar pruebas', agent: 'general', state: 'running', elapsedMs: 65_000, endedAt: null })
     ])
     expect(v.overLimit).toBe(false)
+  })
+
+  it('conserva el nombre de modelo de task en la lista de subtareas', () => {
+    const view = selectBackgroundJobs(
+      input({
+        parts: [taskPart('c1', { modelName: 'Kimi visible', background: false })],
+        sessions: { [ROOT]: sess(ROOT, undefined), c1: sess('c1', ROOT) },
+        status: { c1: 'busy' },
+        includeForeground: true
+      })
+    )
+    expect(view.jobs[0]).toMatchObject({ id: 'c1', modelName: 'Kimi visible' })
   })
 
   it('excluye la consulta lateral: es sesión hija pero no tiene parte `task`', () => {

@@ -3,6 +3,19 @@
 exports[`buildInlineConfig: permisos del agente de tareas > control total + computer + navegador: snapshot completo del config 1`] = `
 {
   "agent": {
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "browser_*": "deny",
+        "computer_*": "deny",
+        "task": {
+          "*": "deny",
+        },
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
     "tasks": {
       "permission": {
         "browser_*": "deny",
@@ -39,6 +52,26 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total + todo
         "github_*": "ask",
       },
     },
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "bash": {
+          "npm test": "allow",
+        },
+        "browser_*": "deny",
+        "computer_*": "deny",
+        "external_directory": {
+          "/fixture/x/*": "allow",
+        },
+        "github_*": "ask",
+        "task": {
+          "*": "deny",
+        },
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
     "tasks": {
       "permission": {
         "bash": {
@@ -74,6 +107,18 @@ exports[`buildInlineConfig: permisos del agente de tareas > control total + todo
 exports[`buildInlineConfig: permisos del agente de tareas > control total vacío: snapshot completo del config 1`] = `
 {
   "agent": {
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "computer_*": "deny",
+        "task": {
+          "*": "deny",
+        },
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
     "tasks": {
       "permission": {
         "computer_*": "deny",
@@ -100,6 +145,48 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + MCP usuari
         "github_*": "ask",
       },
     },
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "*": "allow",
+        "bash": {
+          "*": "allow",
+          "find * -delete*": "ask",
+          "git push*": "deny",
+          "npm test": "allow",
+          "rm *": "ask",
+          "rmdir *": "ask",
+          "shutdown*": "deny",
+          "sudo *": "deny",
+          "trash *": "ask",
+          "unlink *": "ask",
+        },
+        "doom_loop": "ask",
+        "edit": "allow",
+        "external_directory": {
+          "*": "ask",
+          "/fixture/x/*": "allow",
+        },
+        "github_*": "ask",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "question": "allow",
+        "read": {
+          "*": "allow",
+          "mcp:*": "ask",
+        },
+        "task": {
+          "*": "deny",
+        },
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
     "tasks": {
       "permission": {
         "bash": {
@@ -109,6 +196,11 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + MCP usuari
           "/fixture/x/*": "allow",
         },
         "github_*": "ask",
+        "task": {
+          "*": "deny",
+          "lazunox-helper": "allow",
+          "lazunox-worker": "allow",
+        },
       },
     },
   },
@@ -128,6 +220,49 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + extras: sn
     "computer": {
       "disable": true,
     },
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "*": "allow",
+        "bash": {
+          "*": "allow",
+          "find * -delete*": "ask",
+          "git push*": "deny",
+          "rm *": "ask",
+          "rmdir *": "ask",
+          "shutdown*": "deny",
+          "sudo *": "deny",
+          "trash *": "ask",
+          "unlink *": "ask",
+        },
+        "doom_loop": "ask",
+        "edit": "allow",
+        "external_directory": {
+          "*": "ask",
+          "/fixture/a": "allow",
+          "/fixture/a/*": "allow",
+          "/fixture/b": "allow",
+          "/fixture/b/*": "allow",
+        },
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "question": "allow",
+        "read": {
+          "*": "allow",
+          "mcp:*": "ask",
+        },
+        "task": {
+          "*": "deny",
+        },
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
     "tasks": {
       "permission": {
         "external_directory": {
@@ -136,6 +271,11 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + extras: sn
           "/fixture/a/*": "allow",
           "/fixture/b": "allow",
           "/fixture/b/*": "allow",
+        },
+        "task": {
+          "*": "deny",
+          "lazunox-helper": "allow",
+          "lazunox-worker": "allow",
         },
       },
     },
@@ -150,6 +290,52 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + navegador:
   "agent": {
     "computer": {
       "disable": true,
+    },
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "*": "allow",
+        "bash": {
+          "*": "allow",
+          "find * -delete*": "ask",
+          "git push*": "deny",
+          "rm *": "ask",
+          "rmdir *": "ask",
+          "shutdown*": "deny",
+          "sudo *": "deny",
+          "trash *": "ask",
+          "unlink *": "ask",
+        },
+        "doom_loop": "ask",
+        "edit": "allow",
+        "external_directory": "ask",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "question": "allow",
+        "read": {
+          "*": "allow",
+          "mcp:*": "ask",
+        },
+        "task": {
+          "*": "deny",
+        },
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
+    "tasks": {
+      "permission": {
+        "task": {
+          "*": "deny",
+          "lazunox-helper": "allow",
+          "lazunox-worker": "allow",
+        },
+      },
     },
   },
   "autoupdate": false,
@@ -168,6 +354,52 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox vacío: snap
   "agent": {
     "computer": {
       "disable": true,
+    },
+    "lazunox-worker": {
+      "description": "Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea",
+      "mode": "subagent",
+      "model": "inherit",
+      "permission": {
+        "*": "allow",
+        "bash": {
+          "*": "allow",
+          "find * -delete*": "ask",
+          "git push*": "deny",
+          "rm *": "ask",
+          "rmdir *": "ask",
+          "shutdown*": "deny",
+          "sudo *": "deny",
+          "trash *": "ask",
+          "unlink *": "ask",
+        },
+        "doom_loop": "ask",
+        "edit": "allow",
+        "external_directory": "ask",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "question": "allow",
+        "read": {
+          "*": "allow",
+          "mcp:*": "ask",
+        },
+        "task": {
+          "*": "deny",
+        },
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+      },
+      "prompt": "Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.",
+    },
+    "tasks": {
+      "permission": {
+        "task": {
+          "*": "deny",
+          "lazunox-helper": "allow",
+          "lazunox-worker": "allow",
+        },
+      },
     },
   },
   "autoupdate": false,

@@ -6,7 +6,8 @@
  */
 import { useRejectionNotices, rejectedPermissionDetail } from '../../../stores/rejection-notices'
 import { create } from 'zustand'
-import { parseModelChanged, type ModelChanged } from '@shared/model-change'
+import { parseModelChanged } from '@shared/model-change'
+import { modelChangeAnchor, type ModelChangeNotice } from '../../../lib/model-change-notes'
 import { deferWorkingChange } from '../../../lib/working-change'
 import { useServer } from '../../../stores/server'
 import type { FilePart, Session, SessionStatus, TextPart } from '@opencode-ai/sdk/v2/client'
@@ -39,6 +40,7 @@ import {
 } from '@shared/permission-rules'
 import { isProtectedPermission } from '@shared/protected-path'
 import { classifyAutoCommand } from './auto-command'
+import { approvalSession, autoHelperEdit } from './helper-auto'
 import { ReviewTracker, decideAuto, requestReview } from '@shared/auto-review'
 import { NO_AI_ERROR } from '@shared/ai-errors'
 import { buildCodeSystemPrompt } from '@shared/code-prompt'
@@ -264,7 +266,7 @@ export interface CodeState {
   model: ModelRef | null
   /** Elección local por conversación; `requested` prima sobre modelos de Planear/Hacer. Nunca se escribe en ajustes. */
   sessionModels: Record<string, { model: ModelRef; variant: string | null; requested: boolean }>
-  modelChanges: Record<string, ModelChanged[]>
+  modelChanges: Record<string, ModelChangeNotice[]>
   /** Modelo de planear/ejecutar cambiado en la conversación (D2), por sesión (`''` = aún sin sesión). Solo memoria; no toca los ajustes. */
   roleModels: Record<string, PlanExecModels>
   /** Aviso (no bloquea) de que el modelo de planear/ejecutar ya no existe o no tiene clave y se usó el de la conversación. */
@@ -888,7 +890,7 @@ export const useCode = create<CodeState>((set, get) => {
   }
   const retryPendingPermissions = (sid?: string): void => {
     for (const p of Object.values(get().permissions)) {
-      if (!sid || p.sessionID === sid) autoApproveCommand(p)
+      if (!sid || p.sessionID === sid || rootSessionID(get().sessions, p.sessionID) === sid) autoApproveCommand(p)
     }
   }
 
@@ -994,8 +996,16 @@ export const useCode = create<CodeState>((set, get) => {
     const background = p.permission === 'bgshell_start'
     // Motor viejo: la salida del proyecto del MISMO comando llega como `external_directory` con el comando en metadata.
     const exteriorAsk = p.permission === 'external_directory'
-    if ((p.permission !== 'bash' && !background && !exteriorAsk) || isProtectedPermission(p.metadata)) return false
-    const kind = approvalKindOf(get().sessions[p.sessionID]?.permission)
+    if (isProtectedPermission(p.metadata)) return false
+    const state = get()
+    const root = approvalSession(state.sessions, state.sessionProject, p.sessionID)
+    const child = state.sessions[p.sessionID]
+    if (root && child && autoHelperEdit(p, root, child, state.sessionProject[p.sessionID] ?? '')) {
+      void get().replyPermission(p, 'once', false, { auto: true })
+      return true
+    }
+    if (p.permission !== 'bash' && !background && !exteriorAsk) return false
+    const kind = approvalKindOf(root?.permission)
     if (!kind || ((background || exteriorAsk) && kind !== 'auto')) return false
     const md = p.metadata as Record<string, unknown> | undefined
     const commandMetadata = typeof md?.command === 'string' ? md.command : undefined
@@ -1065,7 +1075,11 @@ export const useCode = create<CodeState>((set, get) => {
     void decideAuto(verdict, () => requestReview(conn, target), reviewTracker, key).then((decision) => {
       if (resolvedPermissions.has(p.id) || !reviewing.has(p.id)) return
       // I4: la revisión tarda hasta 25 s; si la conversación dejó de estar en «Automático», la decide la persona.
-      if (decision.action !== 'card' && approvalKindOf(get().sessions[p.sessionID]?.permission) !== 'auto') return showPermissionCard(p)
+      if (
+        decision.action !== 'card' &&
+        approvalKindOf(approvalSession(get().sessions, get().sessionProject, p.sessionID)?.permission) !== 'auto'
+      )
+        return showPermissionCard(p)
       if (decision.action === 'card') return showPermissionCard(p, decision.note)
       reviewing.delete(p.id)
       // M2: tras aprobar o rechazar, si la respuesta al motor falla (`replyPermission` repone la tarjeta sin resolver la
@@ -2524,7 +2538,13 @@ export const useCode = create<CodeState>((set, get) => {
         }
         set((s) => ({
           sessionModels: { ...s.sessionModels, [change.sessionID]: selection },
-          modelChanges: { ...s.modelChanges, [change.sessionID]: [...(s.modelChanges[change.sessionID] ?? []), change] },
+          modelChanges: {
+            ...s.modelChanges,
+            [change.sessionID]: [
+              ...(s.modelChanges[change.sessionID] ?? []),
+              { ...change, afterUserID: modelChangeAnchor(s.messages[change.sessionID] ?? []) }
+            ]
+          },
           ...(s.activeSessionID === change.sessionID ? { model: selection.model, variant: selection.variant } : {})
         }))
         return

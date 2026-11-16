@@ -9,7 +9,7 @@ export const TASKS_BASE_PERMISSION = {
   todowrite: 'allow',
   webfetch: 'allow',
   websearch: 'allow',
-  task: { '*': 'deny', 'lazunox-helper': 'allow' },
+  task: { '*': 'deny', 'lazunox-helper': 'allow', 'lazunox-worker': 'allow' },
   question: 'allow',
   external_directory: 'ask',
   doom_loop: 'ask',

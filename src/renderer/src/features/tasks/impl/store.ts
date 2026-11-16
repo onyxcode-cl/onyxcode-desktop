@@ -37,7 +37,8 @@ import {
 import { DISPLAY_NAME } from '@shared/brand'
 import { t } from '@shared/i18n'
 import type { ModelRef } from '@shared/types'
-import { parseModelChanged, type ModelChanged } from '@shared/model-change'
+import { parseModelChanged } from '@shared/model-change'
+import { modelChangeAnchor, type ModelChangeNotice } from '../../../lib/model-change-notes'
 import { errorMessage, startEventStream, type OcEvent, type OpencodeClient } from '../../../lib/opencode'
 import { sendNotification } from '../../../lib/notify'
 import { noteRetryStatus } from '../../../lib/retry-info'
@@ -159,7 +160,7 @@ interface TasksState {
   /** Esfuerzo (variante) elegido para la tarea (null = el predeterminado del modelo). */
   taskVariant: string | null
   taskModels: Record<string, TaskModelSelection>
-  modelChanges: Record<string, (ModelChanged & { eventID?: string })[]>
+  modelChanges: Record<string, ModelChangeNotice[]>
   /** Preferencias de Tareas (null = sin cargar; usar `DEFAULT_TASKS_PREFS`). */
   prefs: TasksPrefs | null
   /** Política gestionada por la organización (null = ninguna o sin cargar). */
@@ -740,7 +741,10 @@ export function handleEvent(event: OcEvent, directory: string): void {
       taskModels: { ...s.taskModels, [change.sessionID]: selection },
       modelChanges: {
         ...s.modelChanges,
-        [change.sessionID]: [...(s.modelChanges[change.sessionID] ?? []), { ...change, eventID: event.id }]
+        [change.sessionID]: [
+          ...(s.modelChanges[change.sessionID] ?? []),
+          { ...change, eventID: event.id, afterUserID: modelChangeAnchor(useSessions.getState().messages[change.sessionID] ?? []) }
+        ]
       },
       ...(s.activeTaskId === change.sessionID ? { taskModel: selection.model, taskVariant: selection.variant } : {})
     }))

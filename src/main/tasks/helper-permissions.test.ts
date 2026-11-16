@@ -7,6 +7,24 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+type TestConfig = {
+  agent: Record<
+    string,
+    {
+      mode?: string
+      model?: string
+      permission: {
+        edit: string
+        write?: string
+        task: Record<string, string>
+        bash: Record<string, string>
+        external_directory: Record<string, string>
+        [key: string]: unknown
+      }
+    }
+  >
+}
+
 describe('permisos de ayudantes aislados', () => {
   it('las reglas base coinciden con el agente empaquetado', () => {
     const text = readFileSync('resources/opencode/agents/tasks.md', 'utf8').split('---')[1]
@@ -40,16 +58,45 @@ describe('permisos de ayudantes aislados', () => {
         rulesPermission: { bash: { 'npm test': 'allow' } },
         skills: {},
         projectText: { instructionFile: '/instrucciones', skillDirs: [], agents: helpers.agents }
-      }) as any
+      }) as unknown as TestConfig
       const p = c.agent.tasks.permission
       expect(c.agent.normal.permission).toEqual(p)
       expect(c.agent.amplio.permission).toEqual({ ...p, write: 'deny', edit: 'deny' })
       expect(p.bash).toMatchObject({ 'git push*': 'deny', 'rm *': 'ask', 'npm test': 'allow' })
       expect(p.external_directory['/extra/*']).toBe('allow')
-      expect(p.task).toEqual({ '*': 'deny', 'lazunox-helper': 'allow', amplio: 'allow', normal: 'allow' })
+      expect(p.task).toEqual({ '*': 'deny', 'lazunox-helper': 'allow', 'lazunox-worker': 'allow', amplio: 'allow', normal: 'allow' })
       expect(p['equipo_*']).toBe('allow')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+})
+
+// La configuración se arma en el anfitrión para ambos motores: macOS y Linux en WSL.
+describe.each(['macOS', 'Windows/WSL'])('ejecutor de Overdrive: %s', (platform) => {
+  it('copia las restricciones efectivas del principal, incluidas MCP, borrado y carpetas de la distro', () => {
+    const c = buildInlineConfig({
+      fullAccess: false,
+      allowDelete: false,
+      extras: [{ path: 'D:\\Datos' }],
+      toSandbox: platform === 'Windows/WSL' ? () => '/win/d/Datos' : undefined,
+      browserMcp: null,
+      computerMcp: null,
+      mcpContribution: { mcp: {}, permission: { 'crm_*': 'ask', 'computer_*': 'deny' } },
+      rulesPermission: { bash: { 'npm test': 'allow' } },
+      skills: {}
+    }) as unknown as TestConfig
+    const p = c.agent['lazunox-worker'].permission
+    expect(c.agent['lazunox-worker']).toMatchObject({ mode: 'subagent', model: 'inherit' })
+    expect(p).toMatchObject({
+      edit: 'allow',
+      'crm_*': 'ask',
+      'computer_*': 'deny',
+      external_directory: { '*': 'ask' },
+      bash: { 'rm *': 'allow', 'git push*': 'deny', 'sudo *': 'deny', 'npm test': 'allow' },
+      task: { '*': 'deny' }
+    })
+    if (platform === 'Windows/WSL') expect(p.external_directory['/win/d/Datos/*']).toBe('allow')
+    expect(readFileSync('resources/opencode/agents/lazunox-helper.md', 'utf8')).toContain('"*": deny')
   })
 })

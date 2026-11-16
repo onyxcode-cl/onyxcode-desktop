@@ -50,7 +50,7 @@ describe('nombres de ayudantes', () => {
     expect(checkHelperName(undefined)).toMatchObject({ ok: false })
     expect(checkHelperName(7)).toMatchObject({ ok: false })
   })
-  it('los once nombres reservados no se pueden usar, tampoco con otras mayúsculas', () => {
+  it('los doce nombres reservados no se pueden usar, tampoco con otras mayúsculas', () => {
     expect([...RESERVED_HELPER_NAMES].sort()).toEqual(
       [
         'build',
@@ -60,6 +60,7 @@ describe('nombres de ayudantes', () => {
         'general',
         'lazunox-chat-helper',
         'lazunox-helper',
+        'lazunox-worker',
         'plan',
         'revisor',
         'tasks',

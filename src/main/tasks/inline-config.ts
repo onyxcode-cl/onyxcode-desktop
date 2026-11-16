@@ -194,6 +194,7 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     permission.task = {
       '*': 'deny',
       'lazunox-helper': 'allow',
+      'lazunox-worker': 'allow',
       ...Object.fromEntries(Object.keys(i.projectText!.agents!).map((name) => [name, 'allow']))
     }
     agents[TASKS_AGENT_ID] = { ...agents[TASKS_AGENT_ID], permission }
@@ -213,6 +214,41 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
           )
         )
       }
+    }
+  }
+  if (!i.fullAccess) {
+    const agents = result.agent as Record<string, Record<string, unknown>>
+    const overrides = (agents[TASKS_AGENT_ID]?.permission as Record<string, unknown>) ?? {}
+    const defaults = Object.fromEntries(
+      Object.entries(TASKS_BASE_PERMISSION).map(([key, value]) => [
+        key,
+        typeof value === 'string' && typeof overrides[key] === 'object' ? { '*': value } : value
+      ])
+    )
+    const permission = deepMerge(defaults, overrides)
+    // También al reinstalar la misma versión: no depender de la copia anterior de tasks.md en userData.
+    agents[TASKS_AGENT_ID] = { ...agents[TASKS_AGENT_ID], permission: { ...overrides, task: permission.task } }
+    // Config inline compartida con macOS y el motor Linux de WSL. Copiar DESPUÉS de MCP, carpetas y reglas recordadas.
+    // No abre Control total ni otros agentes integrados; el guardián sigue comparando los permisos efectivos.
+    agents['lazunox-worker'] = {
+      mode: 'subagent',
+      model: 'inherit',
+      description: 'Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea',
+      prompt:
+        'Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.',
+      permission: { ...permission, task: { '*': 'deny' } }
+    }
+  } else {
+    // Control total: el ejecutor usa los permisos efectivos del agente de la tarea (nunca más), sin lanzar otros ayudantes.
+    const agents = result.agent as Record<string, Record<string, unknown>>
+    const own = (agents[TASKS_AGENT_ID]?.permission as Record<string, unknown>) ?? {}
+    agents['lazunox-worker'] = {
+      mode: 'subagent',
+      model: 'inherit',
+      description: 'Ejecuta un plan creando y editando archivos dentro de la carpeta de la tarea',
+      prompt:
+        'Eres el ayudante ejecutor de Overdrive. Ejecuta el encargo directamente en los archivos de la carpeta de trabajo, verifica el resultado y resume los cambios. Respeta las instrucciones de la tarea, sus permisos y su aislamiento. No devuelvas el código como sustituto de escribir los archivos. No controles otras aplicaciones ni lances otros ayudantes.',
+      permission: { ...own, task: { '*': 'deny' } }
     }
   }
   return result

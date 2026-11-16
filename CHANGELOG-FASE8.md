@@ -4711,3 +4711,13 @@ Pruebas: `features/tasks/impl/store.model-change.test.ts` y `TaskConversation.mo
 En la fila del compositor de Code, permisos pasa primero a etiqueta corta y luego a ícono (56/48 rem); Hacer/Planear cede su texto a 36 rem y esfuerzo a 24 rem. Así el nombre del modelo se lee completo con el botón de esfuerzo pegado a su derecha. «Comparar» y el medidor de uso conservan sus anchos de siempre (40 y 34 rem). Los controles que quedan como ícono conservan su `aria-label` y su tooltip.
 
 Chat y Overdrive conservan su presentación: las clases opcionales del selector de esfuerzo se aplican únicamente desde Code.
+
+## F8-B328 — V31: permisos y modelos de los ayudantes, aviso de cambio anclado
+
+Code aplica Automático a los ayudantes de una raíz conocida del mismo proyecto: las ediciones locales se responden una vez y los comandos pasan por la política y revisión habituales. No se aprueban rutas protegidas, configuraciones ejecutables, patrones ambiguos ni ediciones exteriores; Manual y Solo explorar conservan las tarjetas. Se mantienen la degradación de «siempre», el control de borrados y la revisión de instalaciones globales.
+
+Overdrive aislado incorpora `lazunox-worker` en la configuración inline para ejecutar y editar directamente con el modelo pedido. Copia los permisos efectivos del principal después de carpetas, MCP y reglas recordadas; conserva el valor por defecto al fusionar permisos con mapas y no puede lanzar más ayudantes. `lazunox-helper` conserva la lectura para planes y revisiones. La misma configuración se usa en macOS y en Linux dentro de WSL, con las rutas traducidas existentes; Control total mantiene su prohibición de subagentes.
+
+Las subtareas muestran `modelName` como texto y recuperan el nombre del catálogo desde la sesión hija si aún falta esa metadata. La lista de trabajos también muestra el modelo recibido. Los avisos de cambio de modelo quedan asociados al turno original y se reconstruyen desde los usuarios sintéticos del historial, sin repetirse al continuar o reabrir.
+
+Pruebas: `store.helper-auto.test.ts` (rutas macOS/Windows, permisos y entrada tardía), `store.subagent-permisos.test.ts`, `helper-permissions.test.ts` (paridad de tasks.md y ejecutor macOS/WSL), `inline-config.test.ts`, `ActivityRow.helper-model.test.tsx`, `MessageStream.model-change.test.tsx` y `TaskConversation.model-change.test.tsx`.

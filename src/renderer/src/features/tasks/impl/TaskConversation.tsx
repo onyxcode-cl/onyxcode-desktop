@@ -1,3 +1,4 @@
+import { modelChangeNotes } from '../../../lib/model-change-notes'
 import { ModelChangeNote } from '../../../components/conversation/ModelChangeNote'
 import { useTasks } from './store'
 /**
@@ -52,6 +53,7 @@ import { stripSkillProposalBlock } from '@shared/skill-proposal'
 export const ATTACH_MARKER = '\n\nArchivos adjuntos (ya copiados en la carpeta de la tarea):\n' // i18n-ignore: marca del mensaje al agente (se queda en español)
 
 type Block =
+  | { kind: 'model-change'; id: string; change: import('@shared/model-change').ModelChanged; partIds: string[] }
   | { kind: 'user'; id: string; text: string; files: string[]; elements: string[]; partIds: string[]; wake?: ShellBgWakeInfo }
   | { kind: 'text'; id: string; text: string; partIds: string[] }
   | { kind: 'steps'; id: string; parts: Array<ToolPart | ReasoningPart>; partIds: string[] }
@@ -447,7 +449,24 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
   const retrySid = taskId ?? entries[0]?.info.sessionID
   const modelChanges = useTasks((s) => (retrySid ? s.modelChanges?.[retrySid] : undefined))
   const retrying = useIsRetrying(retrySid)
-  const allBlocks = useMemo(() => buildBlocks(entries, busy), [entries, busy])
+  const allBlocks = useMemo(() => {
+    const notes = modelChangeNotes(entries, modelChanges)
+    const result: Block[] = []
+    const append = (anchor: string): void => {
+      for (const [index, change] of (notes.get(anchor) ?? []).entries())
+        result.push({ kind: 'model-change', id: `model-change-${anchor}-${index}`, change, partIds: [] })
+    }
+    let anchor = ''
+    for (const block of buildBlocks(entries, busy)) {
+      if (block.kind === 'user' && (block.text || block.files.length)) {
+        append(anchor)
+        anchor = block.id
+      }
+      result.push(block)
+    }
+    append(anchor)
+    return result
+  }, [entries, busy, modelChanges])
   // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
   const readingStored = useWorkView('code')
   const reading = isRemoteSurface() ? 'normal' : readingStored
@@ -503,6 +522,8 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
         <div className="mx-auto flex max-w-3xl flex-col gap-4 px-6 py-8 desk:max-w-[calc(var(--measure-prose)+48px)] desk:gap-8">
           {blocks.map((b, i) => {
             switch (b.kind) {
+              case 'model-change':
+                return <ModelChangeNote key={b.id} change={b.change} />
               case 'user':
                 if (b.wake) return <ShellBgWakeNote key={b.id} info={b.wake} />
                 return (
@@ -562,9 +583,6 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                 return null
             }
           })}
-          {modelChanges?.map((change, index) => (
-            <ModelChangeNote key={index} change={change} />
-          ))}
           {permissions.map((p) => (
             <PermissionCard key={p.id} request={p} />
           ))}

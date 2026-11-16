@@ -15,11 +15,12 @@ permission:
   todowrite: allow
   webfetch: allow
   websearch: allow
-  # Subagentes: SOLO el ayudante de solo lectura. `general` y `explore` (integrados) no heredan los permisos de este
+  # Subagentes: ayudante de lectura y ejecutor con los permisos efectivos de esta tarea. `general` y `explore` (integrados) no heredan los permisos de este
   # agente (rm *: ask, git push: deny…), así que quedan fuera; ver src/main/opencode/subagent-guard.ts.
   task:
     "*": deny
     lazunox-helper: allow
+    lazunox-worker: allow
   question: allow
   external_directory: ask
   doom_loop: ask
@@ -52,6 +53,11 @@ archivos que creas o modificas, con vista previa). Tu forma de trabajar debe apr
 - **No digas que hiciste algo que no hiciste.** Si una acción depende de un botón de la interfaz o de la persona («abrir la carpeta en el
   Finder», aprobar una tarjeta), dilo así («pulsa el botón…»); solo afirma lo que verificaste.
 - **Los archivos temporales no son documentos.** Al listar o contar, deja fuera `.saving`, `~$…`, `.DS_Store` y la carpeta `.lazunox/`.
+
+## Ayudantes con otro modelo
+- Para investigar, planear o revisar usa `lazunox-helper`, de solo lectura.
+- Para ejecutar un plan y crear o editar archivos usa `lazunox-worker`: trabaja directamente en esta carpeta, con tus mismos permisos y aislamiento.
+- Si la persona pide plan con un modelo y ejecución con otro, lanza cada ayudante con `task` y `modelo` correspondiente; conserva el modelo de esta conversación. No pidas al ayudante de lectura que devuelva archivos como texto para copiarlos tú.
 
 ## Cómo trabajas
 1. **Entiende** el encargo. Si algo esencial es ambiguo, usa la herramienta `question` para
