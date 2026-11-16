@@ -238,6 +238,22 @@ describe('V29: tarjeta de Overdrive (escritorio) con la petición única del mot
     expect(html).toContain('npm test *')
   })
 
+  it('explica el borrado excluido y el tope de cinco junto a las reglas útiles', () => {
+    const html = render(
+      v29([
+        { command: 'Remove-Item notas.txt', rule: null },
+        { command: 'Test-Path notas.txt', rule: 'Test-Path *' },
+        ...Array.from({ length: 5 }, (_, i) => ({ command: `read${i}`, rule: `read${i} *` }))
+      ]),
+      base
+    )
+    expect(html).toContain('No se guardará permiso para estas partes')
+    expect(html).toContain('Remove-Item notas.txt')
+    expect(html).toContain('Test-Path *')
+    expect(html).toContain('El límite es de 5 reglas')
+    expect(html).not.toContain('read4 *')
+  })
+
   it('sin reglas sugeridas no ofrece «no volver a preguntar»', () => {
     const html = render(v29([{ command: 'cat /tmp/a.log', rule: null }]), base)
     expect(html).not.toContain('no volver a preguntar')

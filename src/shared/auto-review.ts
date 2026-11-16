@@ -155,15 +155,26 @@ export async function decideAuto(
 
 /** Reglas de «no volver a preguntar en este proyecto» (contrato §1): las `rule` no nulas de `subcommands`, sin repetir. */
 export function subcommandRules(metadata: unknown): string[] | null {
+  return subcommandRuleSummary(metadata)?.rules ?? null
+}
+
+/** Conserva el tope de cinco e informa de las partes que no se guardarán. */
+export function subcommandRuleSummary(metadata: unknown): { rules: string[]; excluded: string[]; truncated: boolean } | null {
   if (!metadata || typeof metadata !== 'object') return null
   const list = (metadata as Record<string, unknown>).subcommands
   if (!Array.isArray(list)) return null
   const rules: string[] = []
+  const excluded: string[] = []
   for (const item of list) {
-    const rule = item && typeof item === 'object' ? (item as Record<string, unknown>).rule : null
-    if (typeof rule === 'string' && rule.trim() && !rules.includes(rule)) rules.push(rule)
+    const entry = item && typeof item === 'object' ? (item as Record<string, unknown>) : {}
+    const rule = entry.rule
+    const command = typeof entry.command === 'string' ? entry.command : ''
+    const deletion = /(?:^|[;&|]\s*)(?:rm|rmdir|unlink|trash|srm|del|erase|rd|remove-item|ri|rimraf)\b|\s-delete\b/i
+    if (typeof rule === 'string' && rule.trim() && !deletion.test(command) && !deletion.test(rule) && !/^[*?\s]/.test(rule)) {
+      if (!rules.includes(rule)) rules.push(rule)
+    } else if (command) excluded.push(command)
   }
-  return rules.slice(0, 5)
+  return { rules: rules.slice(0, 5), excluded, truncated: rules.length > 5 }
 }
 
 /** Carpetas de fuera del proyecto que toca el comando (`externalDirectories`; motor viejo: `directories`). */

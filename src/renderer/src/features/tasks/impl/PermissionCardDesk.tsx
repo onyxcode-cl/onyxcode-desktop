@@ -5,6 +5,8 @@
  */
 import { useEffect, useState } from 'react'
 import { Folder, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { RememberRules } from '../../../components/permission/RememberRules'
+import { rememberablePatterns } from './util'
 import { outsideDirectories } from '@shared/auto-review'
 import type { PermissionRequest } from '@opencode-ai/sdk/v2/client'
 import { DiffView, hasDiffChanges } from '../../../components/DiffView'
@@ -199,10 +201,11 @@ export function PermissionCardDesk({ request }: { request: PermissionRequest }):
         title={title}
         effect={d.effect}
         preview={
-          d.detail || outside.length || autoNote ? (
+          d.detail || outside.length || autoNote || request.metadata.subcommands ? (
             <>
               {d.detail && <PermPreview text={d.detail} prompt={isBash} danger={d.danger} />}
               <PermOutside dirs={outside} />
+              <RememberRules metadata={request.metadata} rules={rememberablePatterns(request)} available={canAlways} />
               {autoNote && (
                 <p role="note" className="flex items-start gap-1.5 text-meta text-warning">
                   <ShieldAlert size={13} className="mt-0.5 shrink-0" />

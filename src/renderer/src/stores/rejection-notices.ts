@@ -8,6 +8,8 @@ export interface RejectionNotice {
   requestID: string
   kind: 'permission' | 'question'
   detail: string
+  hasComment?: boolean
+  resumed?: boolean
 }
 
 const keyOf = (n: RejectionNotice): string => JSON.stringify([n.mode, n.directory, n.sessionID, n.kind, n.requestID])
@@ -16,6 +18,7 @@ export const useRejectionNotices = create<{
   notices: RejectionNotice[]
   add: (notice: RejectionNotice) => void
   dismiss: (notice: RejectionNotice) => void
+  turnStatus: (conversation: Pick<RejectionNotice, 'mode' | 'directory' | 'sessionID'>, busy: boolean) => void
   clearConversation: (conversation: Pick<RejectionNotice, 'mode' | 'directory' | 'sessionID'>) => void
 }>((set) => ({
   notices: [],
@@ -24,6 +27,14 @@ export const useRejectionNotices = create<{
       notices: [...s.notices.filter((n) => keyOf(n) !== keyOf(notice)), { ...notice, detail: notice.detail.slice(0, 2000) }].slice(-100)
     })),
   dismiss: (notice) => set((s) => ({ notices: s.notices.filter((n) => keyOf(n) !== keyOf(notice)) })),
+  turnStatus: ({ mode, directory, sessionID }, busy) =>
+    set((s) => ({
+      notices: s.notices.flatMap((n) => {
+        if (n.mode !== mode || n.directory !== directory || n.sessionID !== sessionID) return [n]
+        if (busy) return [{ ...n, resumed: true }]
+        return n.resumed ? [] : [n]
+      })
+    })),
   clearConversation: ({ mode, directory, sessionID }) =>
     set((s) => ({ notices: s.notices.filter((n) => n.mode !== mode || n.directory !== directory || n.sessionID !== sessionID) }))
 }))

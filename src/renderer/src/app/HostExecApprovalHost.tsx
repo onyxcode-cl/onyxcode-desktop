@@ -46,11 +46,18 @@ export function hostApprovalView(
 
 /** Trozos del comando para pintarlo: texto ASCII normal, saltos y tabuladores marcados, y lo que no es ASCII resaltado. */
 export type CommandPiece = { kind: 'text' | 'newline' | 'tab' | 'nonascii'; text: string }
+// Acepta acentos combinados tras letras latinas sin cambiar los bytes del comando.
+function suspiciousCharacter(ch: string, afterLatin = false): boolean {
+  if (afterLatin && /[\u0300-\u034e\u0350-\u036f]/u.test(ch)) return false
+  return !/[\x20-\x7e\t\n]/.test(ch) && !(/\p{Letter}/u.test(ch) && /\p{Script=Latin}/u.test(ch))
+}
 export function commandPieces(command: string): CommandPiece[] {
   const out: CommandPiece[] = []
+  let afterLatin = false
   for (const ch of command) {
-    const cp = ch.codePointAt(0) ?? 0
-    const kind: CommandPiece['kind'] = ch === '\n' ? 'newline' : ch === '\t' ? 'tab' : cp > 0x7e || cp < 0x20 ? 'nonascii' : 'text'
+    const kind: CommandPiece['kind'] =
+      ch === '\n' ? 'newline' : ch === '\t' ? 'tab' : suspiciousCharacter(ch, afterLatin) ? 'nonascii' : 'text'
+    afterLatin = /\p{Script=Latin}/u.test(ch) || (afterLatin && /\p{Mark}/u.test(ch))
     const last = out[out.length - 1]
     if (last && last.kind === kind && (kind === 'text' || kind === 'nonascii')) last.text += ch
     else out.push({ kind, text: ch })
@@ -59,7 +66,11 @@ export function commandPieces(command: string): CommandPiece[] {
 }
 
 export function commandStats(command: string): { lines: number; chars: number; nonAscii: boolean } {
-  return { lines: command.split('\n').length, chars: [...command].length, nonAscii: /[^\x20-\x7e\t\n]/.test(command) }
+  return {
+    lines: command.split('\n').length,
+    chars: [...command].length,
+    nonAscii: commandPieces(command).some((p) => p.kind === 'nonascii')
+  }
 }
 
 function measureScroll(el: HTMLElement): { overflows: boolean; atEnd: boolean } {
