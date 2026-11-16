@@ -30,7 +30,7 @@ export const common = {
   'perm.rulesExcluded': 'No se guardará permiso para estas partes: {commands} ({reason}). Se aprobarán solo esta vez.',
   'perm.rulesExcluded.delete': 'borra archivos o carpetas',
   'perm.rulesExcluded.sensitive': 'toca un archivo sensible',
-  'perm.rulesExcluded.blocked': 'parte vetada para reglas',
+  'perm.rulesExcluded.blocked': 'siempre pide permiso',
   'perm.commandNotice.globalInstall': 'Instala para todo el computador o tu cuenta de usuario.',
   'perm.commandNotice.sensitive': 'Toca archivos sensibles o credenciales.',
   'perm.commandNotice.system': 'Cambia la configuración o archivos del sistema.',

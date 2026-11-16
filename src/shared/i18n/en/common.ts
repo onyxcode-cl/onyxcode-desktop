@@ -33,7 +33,7 @@ export const common = {
   'perm.rulesExcluded': 'Permission will not be saved for these parts: {commands} ({reason}). They will be allowed only this time.',
   'perm.rulesExcluded.delete': 'deletes files or folders',
   'perm.rulesExcluded.sensitive': 'accesses a sensitive file',
-  'perm.rulesExcluded.blocked': 'part excluded from saved rules',
+  'perm.rulesExcluded.blocked': 'always asks for permission',
   'perm.commandNotice.globalInstall': 'Installs for the whole computer or your user account.',
   'perm.commandNotice.sensitive': 'Accesses sensitive files or credentials.',
   'perm.commandNotice.system': 'Changes system settings or files.',
