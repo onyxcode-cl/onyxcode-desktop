@@ -24,8 +24,8 @@ describe('cuadro de escribir de Code (E6)', () => {
   })
   it('con esfuerzo se cede primero permisos, luego Hacer/Planear y al final el nivel de esfuerzo', () => {
     expect(controls).toContain('collapseClass="inline desk:@max-[36rem]:sr-only"')
-    expect(controls).toContain('collapseClass="desk:@max-[24rem]:sr-only"')
-    expect(controls).toContain('chevronClass="desk:@max-[24rem]:hidden"')
+    expect(controls).toContain('collapseClass="inline desk:@max-[24rem]:sr-only"')
+    expect(controls).toContain('chevronClass="block desk:@max-[24rem]:hidden"')
   })
   it('«Comparar» y el medidor de uso se esconden antes de que falte sitio; el modelo conserva un mínimo legible', () => {
     expect(controls).toContain('desk:@max-[40rem]:hidden">\n        <CompareControls')

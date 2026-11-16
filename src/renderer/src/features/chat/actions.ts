@@ -352,7 +352,9 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       sessionID,
       directory,
       agent: CHAT_AGENT,
-      model: { providerID: model.providerID, modelID: model.modelID, ...(variant ? { variant } : {}) },
+      model: { providerID: model.providerID, modelID: model.modelID },
+      // El esfuerzo va al nivel del pedido (como en Code y Overdrive): dentro de `model` el motor lo ignora.
+      ...(variant ? { variant } : {}),
       // Instrucciones personalizadas + memoria aprobada (relevada justo ahora, para que lo aprobado hace un momento ya valga).
       // Nunca desde el celular: ver el comentario equivalente en `code/impl/store.ts`.
       system: await chatSystemPrompt(sessionID, text),

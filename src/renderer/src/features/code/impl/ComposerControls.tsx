@@ -247,8 +247,8 @@ export function ModelControls(): React.JSX.Element {
           model={effective}
           variant={variant}
           onChange={setVariant}
-          collapseClass="desk:@max-[24rem]:sr-only"
-          chevronClass="desk:@max-[24rem]:hidden"
+          collapseClass="inline desk:@max-[24rem]:sr-only"
+          chevronClass="block desk:@max-[24rem]:hidden"
         />
       )}
       <div className="block desk:@max-[34rem]:hidden">

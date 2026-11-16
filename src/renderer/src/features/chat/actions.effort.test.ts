@@ -52,23 +52,24 @@ describe('Chat: esfuerzo por conversación', () => {
     const a = await setup()
     a.setChatVariant('medium')
     await a.sendChatMessage('hola')
-    expect(a.session.promptAsync).toHaveBeenLastCalledWith(expect.objectContaining({ model: { ...MODEL, variant: 'medium' } }))
+    expect(a.session.promptAsync).toHaveBeenLastCalledWith(expect.objectContaining({ model: MODEL, variant: 'medium' }))
     a.setChatVariant(null)
     await a.sendChatMessage('hola')
     const model = (a.session.promptAsync.mock.calls[1][0] as { model: object }).model
     expect(model).toEqual(MODEL)
     expect(model).not.toHaveProperty('variant')
+    expect(a.session.promptAsync.mock.calls[1][0]).not.toHaveProperty('variant')
   })
 
   it('reintentar y reenviar usan el nivel de la conversación', async () => {
     const a = await setup()
     a.setChatVariant('high')
     await a.retryChat('c1')
-    expect(a.session.promptAsync).toHaveBeenLastCalledWith(expect.objectContaining({ model: { ...MODEL, variant: 'high' } }))
+    expect(a.session.promptAsync).toHaveBeenLastCalledWith(expect.objectContaining({ model: MODEL, variant: 'high' }))
     a.useSessions.setState({ messages: { c1: [{ info: userMessage('m1', 'c1'), parts: [textPart('p1', 'm1', 'c1', 'hola')] }] } })
     await a.resendFromMessage('c1', 'm1', 'editado')
     expect(a.session.promptAsync).toHaveBeenLastCalledWith(
-      expect.objectContaining({ model: { ...MODEL, variant: 'high' }, parts: [{ type: 'text', text: 'editado' }] })
+      expect.objectContaining({ model: MODEL, variant: 'high', parts: [{ type: 'text', text: 'editado' }] })
     )
   })
 
@@ -84,9 +85,7 @@ describe('Chat: esfuerzo por conversación', () => {
     expect(a.currentChatVariant()).toBe('low')
     await a.sendChatMessage('nueva')
     expect(a.useChat.getState().variants.new).toBe('low')
-    expect(a.session.promptAsync).toHaveBeenLastCalledWith(
-      expect.objectContaining({ sessionID: 'new', model: { ...MODEL, variant: 'low' } })
-    )
+    expect(a.session.promptAsync).toHaveBeenLastCalledWith(expect.objectContaining({ sessionID: 'new', model: MODEL, variant: 'low' }))
     expect(JSON.parse(localStorage.getItem('chat.effort')!)).toEqual({
       variants: { c1: 'medium', c2: 'low', new: 'low' },
       lastVariant: 'low'
