@@ -227,6 +227,33 @@ function parse(command: string, escapes = true): Part[] | null {
   for (let i = 0; i < command.length; i++) {
     const c = command[i]
     if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(c)) return null
+    // PowerShell: las comillas del cuerpo no cierran un here-string. Es un único valor,
+    // que solo se convierte en código si se entrega a un intérprete.
+    if (!escapes && c === '@' && !started && /^(?:@'|@")\r?\n/.test(command.slice(i))) {
+      const q = command[i + 1]
+      const start = command.indexOf('\n', i) + 1
+      const end = new RegExp(`^${q}@(?=\\s|[|;&]|$)`, 'm').exec(command.slice(start))
+      if (!end) return null
+      const body = command.slice(start, start + end.index).replace(/\r?\n$/, '')
+      word += body
+      started = quoted = true
+      dynamic ||= q === '"' && /[$`]/.test(body)
+      if (q === '"') {
+        for (let j = 0; j < body.length; j++) {
+          if (body[j] === '`') {
+            j++
+            continue
+          }
+          if (!body.startsWith('$(', j)) continue
+          const close = matchClose(body, j + 1, '(', ')')
+          if (close < 0) return null
+          part.substs.push(body.slice(j + 2, close))
+          j = close
+        }
+      }
+      i = start + end.index + 1
+      continue
+    }
     if (c === "'") {
       const close = command.indexOf("'", i + 1)
       if (close < 0) return null
@@ -3338,7 +3365,68 @@ function programOf(part: Part): { name: string; index: number } {
 }
 
 const STDIN_RUNNERS = (prog: string): boolean =>
-  SHELLS.test(prog) || SCRIPTING.test(prog) || PS.test(prog) || CMD.test(prog) || /^(?:iex|invoke-expression|eval|source|sudo)$/.test(prog)
+  SHELLS.test(prog) ||
+  SCRIPTING.test(prog) ||
+  PS.test(prog) ||
+  CMD.test(prog) ||
+  /^(?:iex|invoke-expression|eval|source|sudo|wsl)$/.test(prog)
+
+/** Salida conocida de un productor de texto, sin leer archivos ni evaluar expansiones. */
+function pipedLiteral(part: Part): string | null {
+  if (part.substs.length || part.redirects.length) return null
+  const { name, index } = programOf(part)
+  const args = part.words.slice(index + 1)
+  if (part.words.some((w) => w.dynamic)) return null
+  if (part.words.length === 1 && part.words[0].quoted) return part.words[0].text
+  if (name === 'cat' && !args.length && part.heredocs.length === 1) {
+    const h = part.heredocs[0]
+    return h.quoted || !/[$`\\]/.test(h.body) ? h.body : null
+  }
+  if (name === 'write-output') {
+    const values = args.filter((a) => /^-(?:inputobject|noenumerate)$/i.test(a.text) === false)
+    return values.some((a) => a.text.startsWith('-')) ? null : values.map((a) => a.text).join('\n')
+  }
+  if (name === 'echo') {
+    let i = 0
+    while (i < args.length && /^-[neE]+$/.test(args[i].text)) i++
+    const text = args
+      .slice(i)
+      .map((a) => a.text)
+      .join(' ')
+    if (args.slice(i).some((a) => a.text.startsWith('-'))) return null
+    return args.slice(0, i).some((a) => a.text.includes('e')) ? literalEscapes(text) : text
+  }
+  if (name !== 'printf' || !args.length) return null
+  // Formatos acotados; el resto sigue en doubt. No se interpreta salida calculada.
+  const format = literalEscapes(args[0].text)
+  if (format === null) return null
+  let arg = 1
+  let text = ''
+  do {
+    let valid = true
+    let consumed = false
+    text += format.replace(/%%|%s|%b|%/g, (token) => {
+      if (token === '%%') return '%'
+      if (token === '%') {
+        valid = false
+        return token
+      }
+      consumed = true
+      const value = args[arg++]?.text ?? ''
+      const decoded = token === '%s' ? value : literalEscapes(value)
+      if (decoded === null) valid = false
+      return decoded ?? value
+    })
+    if (!valid || text.length > 16000) return null
+    if (!consumed) break
+  } while (arg < args.length)
+  return text
+}
+
+function literalEscapes(text: string): string | null {
+  if (/\\(?![nrt\\])/.test(text)) return null
+  return text.replace(/\\([nrt\\])/g, (_, c: string) => ({ n: '\n', r: '\r', t: '\t', '\\': '\\' })[c]!)
+}
 
 /** Contenido literal que una orden deja en un archivo (heredoc, `echo`/`printf` literal); `null` si no se conoce. */
 function writtenContent(part: Part): string | null {
@@ -3451,8 +3539,23 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
     // Tubería hacia un intérprete (o xargs) con una descarga delante: descargar y ejecutar. G4.
     if (pipedIn && (STDIN_RUNNERS(prog) || prog === 'xargs')) {
       if (pipedFromDownload(parts, up)) hard(ctx, 'descarga y ejecuta código')
-      else if (prog !== 'xargs' && !p.words.slice(programOf(p).index + 1).some((w) => !w.text.startsWith('-')) && !p.heredocs.length)
+      else if (prog !== 'xargs') {
+        const literal = pipedLiteral(parts[up])
+        const receiver =
+          prog === 'wsl'
+            ? (p.words
+                .slice(programOf(p).index + 1)
+                .map((w) => basename(w.text))
+                .find((n) => SHELLS.test(n) || PS.test(n) || CMD.test(n)) ?? 'bash')
+            : prog
+        if (literal !== null) {
+          const inner = { ...ctx, depth: ctx.depth + 1, escapes: SHELLS.test(receiver), cmdShell: CMD.test(receiver) }
+          if (SCRIPTING.test(receiver)) analyzeInline(literal, cwds, inner)
+          else classifyInto(literal, cwds, inner, true)
+        }
+        // Incluso con opciones/archivo, stdin desconocido no se convierte en una aprobación.
         doubt(ctx, `${prog} ejecuta lo que llega por la tubería`)
+      }
     }
     if (pipedIn && /^(?:remove-item|ri)$/.test(prog) && /^(?:get-childitem|gci|ls|dir)$/.test(programOf(parts[up]).name)) {
       const listing = parts[up].words.slice(programOf(parts[up]).index + 1)

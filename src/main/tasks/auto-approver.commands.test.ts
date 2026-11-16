@@ -27,6 +27,7 @@ function harness(
     cwd?: string
     noCwd?: boolean
     todo?: boolean
+    shell?: string
     /** V29: respuesta del revisor del motor (`POST /permission/{id}/review`); sin ella la ruta no existe (404). */
     review?: { decision: string; reason: string } | 'error'
   } = {}
@@ -39,7 +40,7 @@ function harness(
     sessionID: 'session',
     permission,
     patterns: permission === 'bash' ? ['Get-ChildItem *'] : ['*'],
-    metadata: permission === 'bash' ? { command } : {},
+    metadata: permission === 'bash' ? { command, ...(opts.shell ? { shell: opts.shell } : {}) } : {},
     tool: { messageID: 'message', callID: 'call' }
   }
   const fetchFn = (async (input: string, init?: RequestInit) => {
@@ -195,6 +196,21 @@ it.each(['/work/project', 'C:\\work\\project'])(
 )
 
 describe('V29: Overdrive con el revisor por IA', () => {
+  it.each(['/work/project', 'C:/work/project'])('V31: el borrado por tubería nunca llega a la revisora (%s)', async (root) => {
+    for (const [shell, command] of [
+      ['powershell', "@'\nbash <<'EOF'\nrm -- notas.txt\nEOF\n'@ | bash"],
+      ['powershell', "'Remove-Item notas.txt' | iex"],
+      ['powershell', "'rm notas.txt' | wsl bash"],
+      ['powershell', "'del notas.txt' | cmd"],
+      ['bash', "echo 'rm notas.txt' | bash"]
+    ]) {
+      const h = harness(root, command, 'bash', { shell, review: { decision: 'allow', reason: 'lo pidió' } })
+      expect(await h.approver.considerOne(root, false, 'request'), command).toEqual({ auto: false })
+      expect(h.reviews, command).toEqual([])
+      expect(h.replies, command).toEqual([])
+    }
+  })
+
   it.each([
     'rm notas.txt',
     'Remove-Item -LiteralPath notas.txt',

@@ -1413,11 +1413,15 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
     for (const command of [
       'rm notas.txt',
       'Remove-Item -LiteralPath notas.txt',
+      "@'\nbash <<'EOF'\nrm -- notas.txt\nEOF\n'@ | bash",
+      "'Remove-Item notas.txt' | iex",
+      "'rm notas.txt' | wsl bash",
+      "'del notas.txt' | cmd",
       'find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +',
       'cp index.html /Users/ana/Desktop/index.html',
       "Copy-Item index.html -Destination ([Environment]::GetFolderPath('Desktop'))"
     ]) {
-      const id = run(command, { shell: /Item/.test(command) ? 'powershell' : 'zsh', externalDirectories: [] }, api)
+      const id = run(command, { shell: /Item|^@'|^'/.test(command) ? 'powershell' : 'zsh', externalDirectories: [] }, api)
       expect(st().permissions[id], command).toBeDefined()
       expect(answersFor(reply, id), command).toEqual([])
     }

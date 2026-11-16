@@ -4729,3 +4729,11 @@ El resumen de permisos conserva cada heredoc con su receptor: el cuerpo de Pytho
 Los roles de ayudantes se presentan en español e inglés como «Ayudante (solo lectura)», «Ayudante» o «Ayudante que ejecuta». Los permisos de sesiones reutilizadas buscan el encargo más reciente, incluido `task_id` sin metadata todavía, y limpian el sufijo interno del título. El tablero de Code recupera las sesiones hijas y su historial guardado al reabrir, solo con la carpeta enfocada, confiable y verificada; una respuesta tardía tras cambiar de carpeta se descarta y los eventos nuevos tienen prioridad. Overdrive oculta nombres de salida `tool_…` en las lecturas y el detalle redundante de `cambiar_modelo`.
 
 Pruebas: `auto-command.heredoc.test.ts`, `HelpersBoard.render.test.tsx`, `HelpersBoardConnector.render.test.tsx`, `PermissionCard.subagent.render.test.tsx`, `child-sessions.test.ts`, `tasks/impl/util.test.ts`; en el motor, `permission-heredoc.test.ts` y la instrucción ampliada comprobada en `cambiar-modelo.test.ts`. La batería y sus limitaciones de entorno constan en `V31-DETALLES-R2-INFORME.md`. Sin abrir la app.
+
+## F8-B330 — V31 R3: código literal por tubería y patrones PowerShell
+
+El clasificador compartido analiza el texto literal que entra por tubería a un intérprete con las reglas de ese receptor: here-strings PowerShell, cadenas, `echo`, formatos acotados de `printf`, `Write-Output` y `cat` con heredoc. Incluye `iex`, `cmd` y `wsl` con o sin `bash`. Borrar o escribir fuera sigue siendo `hard` y muestra tarjeta sin consultar a la revisora. Las entradas variables, sustituciones y archivos siguen como duda; no se ejecutan ni se leen para clasificarlos.
+
+El analizador del motor distingue las cadenas de comparación de PowerShell de los argumentos de archivos: los patrones de `-notmatch`, `-like`, `-replace`, `-split` y comparaciones no inventan carpetas exteriores. Las rutas de cmdlets, redirecciones y comandos o lecturas .NET dentro de una comparación siguen contando. Requiere incorporar el cambio del árbol del motor.
+
+Pruebas: `auto-command.pipe.test.ts`, `store.permisos.test.ts` (v1/v2), `auto-approver.commands.test.ts` (macOS/Windows), fixtures previas; motor `permission-powershell-data.test.ts`, permisos y shell. Resultados y restricciones del entorno en `V31-SEGURIDAD-R3-INFORME.md`.
