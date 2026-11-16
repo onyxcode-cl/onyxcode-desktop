@@ -9,6 +9,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Arreglos importantes
 
 - **En Windows, la primera apertura prepara todo antes de entrar:** aparece «Preparando Lazunox» con el espacio de Overdrive y ArtCraft, y muestra el avance de cada uno, igual que en Mac. Antes pasaba directo a la pantalla de la clave.
+- **La IA ya tiene Node.js y uv listos:** la app los instala en la primera apertura, ahora también en Windows, y Code (y Overdrive en Mac) los usa si tu equipo no tiene los suyos. Antes la IA no encontraba `node` para correr pruebas.
 - **El selector de IA ya no queda tapado** cuando tienes muchas IA conectadas: se abre hacia donde hay espacio, la lista se achica si la ventana es baja y el buscador siempre se puede usar. En Chat, Code, Overdrive y Comparar.
 
 ## [1.8.29] - 2026-11-15
