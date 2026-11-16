@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.31] - 2026-11-16
+
+### Novedades
+
+- **Pide partes del trabajo a otra IA con palabras normales:** por ejemplo «hazme un plan con Fable y ejecútalo con Haiku». El chat sigue con la IA que elegiste; las partes las hacen ayudantes con la IA que nombraste, y al final te dice cuál usó cada uno. Si pides «cámbiate a Sonnet», ahí sí cambia la IA del chat, y el selector se mueve solo. En Code y Overdrive.
+- **El esfuerzo de la IA, a la vista:** un botón junto al modelo en Chat, Code y Overdrive para elegir cuánto piensa la IA (de Bajo a Máximo). También con Ctrl+E (Cmd+E en Mac). En Code el nombre del modelo ya no se corta.
+
 ## [1.8.30] - 2026-11-16
 
 ### Arreglos importantes
