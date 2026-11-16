@@ -90,6 +90,7 @@ describe.skipIf(!macOnly)('extraEngineEnv del gestor de Tareas', () => {
       await m.start(docs, true)
     } else expect(await m.restartSandbox(docs)).toBe(true)
     const path = started[1].extraEnv!.PATH.split(delimiter)
+    expect(started[1].extraEnv!.npm_config_update_notifier).toBe('false')
     expect(path.slice(-2)).toEqual([join(state.node, '..'), join(state.uv, '..')])
     const original = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
     expect(path.indexOf(original[0])).toBeLessThan(path.length - 2)

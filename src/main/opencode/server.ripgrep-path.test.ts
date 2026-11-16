@@ -140,6 +140,7 @@ describe('sidecar principal (Chat/Code): el rg incluido va al principio del PATH
     state.uv = join(app, 'runtimes', 'uv-1', 'bin', 'uv')
     const after = await pathFor(app)
     expect(after).toEqual([...before, join(state.node, '..'), join(state.uv, '..')])
+    expect(state.spawnEnv?.npm_config_update_notifier).toBe('false')
     state.node = null
     state.uv = null
     expect(await pathFor(app)).toEqual(before)

@@ -106,19 +106,22 @@ export function startAutoInstall(ids: readonly PreflightId[], deps: AutoDeps): P
       set({ phase: 'running', pct: null })
       const outcomes = await runInstall(pending, api, {
         onRuntime: (id, rt) => {
+          // En las piezas automáticas, null confirma el éxito: la fila y el contador se actualizan juntos,
+          // sin esperar al resultado de las demás piezas ni a una nueva revisión.
+          if (rt === null) completed.add(id)
           useAutoInstall.setState((s) => {
             const runtime = { ...s.runtime }
             if (rt) runtime[id] = rt
             else delete runtime[id]
-            return { runtime }
+            return {
+              runtime,
+              ...(rt === null ? { done: s.done.includes(id) ? s.done : [...s.done, id], pct: null } : {})
+            }
           })
-          if (rt === null) {
-            useAutoInstall.setState((s) => ({ done: s.done.includes(id) ? s.done : [...s.done, id], pct: null }))
-          } else if (rt.state === 'downloading') set({ pct: rt.pct ?? null })
+          if (rt?.state === 'downloading') set({ pct: rt.pct ?? null })
         },
         onDetail: () => undefined
       })
-      for (const outcome of outcomes) if (outcome.ok) completed.add(outcome.id)
       const bad = outcomes.filter((o) => !o.ok && o.code !== 'cancelled')
       pending = bad.filter((o) => retryableCode(o.code)).map((o) => o.id)
       for (const o of bad) if (!retryableCode(o.code)) finalFailed[o.id] = o.code ?? 'generic'

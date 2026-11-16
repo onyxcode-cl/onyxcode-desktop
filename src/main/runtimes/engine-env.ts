@@ -14,7 +14,11 @@ export function runtimePathEnv(
   const dirs = [bins.node, bins.uv].filter((p): p is string => !!p).map((p) => paths.dirname(p))
   if (!dirs.length) return {}
   const key = Object.keys(env).find((k) => (platform === 'win32' ? k.toUpperCase() === 'PATH' : k === 'PATH')) ?? 'PATH'
-  return { [key]: augmentedPath(env[key] ?? '', dirs, platform) }
+  return {
+    [key]: augmentedPath(env[key] ?? '', dirs, platform),
+    // npm test y otros comandos locales no deben consultar el registro solo para anunciar actualizaciones.
+    ...(bins.node ? { npm_config_update_notifier: 'false' } : {})
+  }
 }
 
 /** Sin runtimes o si se están instalando: el motor arranca igual. Se vuelve a consultar en cada arranque. */

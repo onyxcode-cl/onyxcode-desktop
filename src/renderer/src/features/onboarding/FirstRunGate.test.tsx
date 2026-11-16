@@ -369,6 +369,35 @@ describe('instalación automática en segundo plano', () => {
 })
 
 describe('V30: preparación visible y no bloqueante', () => {
+  it.each(['darwin', 'win32'] as const)('%s: ArtCraft dice Listo en cuanto termina, mientras Node y uv siguen', async (os) => {
+    let finishCraft!: (result: typeof craftResult) => void
+    let finishRuntimes!: (result: { ok: boolean }) => void
+    craftRun = () => new Promise((resolve) => (finishCraft = resolve))
+    runtimesInstall.mockImplementationOnce(() => new Promise((resolve) => (finishRuntimes = resolve)))
+    await mount(false, os)
+    await act(async () => btn('Empezar')!.click())
+    await flush()
+    try {
+      expect(q('preflight-row-craft')?.getAttribute('data-state')).toBe('downloading')
+      expect(q('preflight-row-runtimes')?.getAttribute('data-state')).toBe('pending')
+      await act(async () => finishCraft({ ok: true }))
+      await flush()
+      expect(q('preflight-row-craft')?.getAttribute('data-state')).toBe('ready')
+      expect(q('preflight-row-craft')?.textContent).toContain('Listo')
+      expect(q('preflight-row-craft')?.textContent).not.toContain('Pendiente')
+      expect(q('preflight-row-runtimes')?.getAttribute('data-state')).toBe('downloading')
+      expect(btn('Continuar mientras termina')?.disabled).toBe(false)
+      // El informe inicial sigue atrasado: no hace falta otra revisión para mostrar el éxito.
+      expect(calls.filter((channel) => channel === 'preflight:run')).toHaveLength(1)
+    } finally {
+      await act(async () => {
+        finishCraft({ ok: true })
+        finishRuntimes({ ok: true })
+      })
+      await flush()
+    }
+  })
+
   it('Windows: avance de cada pieza y continuar mientras termina; el final no vuelve a abrir la pantalla', async () => {
     let finish!: (result: typeof craftResult) => void
     craftRun = () => new Promise((resolve) => (finish = resolve))
