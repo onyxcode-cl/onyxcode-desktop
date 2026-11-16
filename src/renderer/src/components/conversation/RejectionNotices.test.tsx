@@ -37,12 +37,14 @@ const question = { id: 'q1', sessionID: 'kid', questions: [{ header: 'Destino', 
 const reply = vi.fn()
 const reject = vi.fn()
 const promptAsync = vi.fn()
+const abort = vi.fn()
 const command = vi.fn()
 const client = {
   permission: { reply },
   question: { reject },
   session: {
     promptAsync,
+    abort,
     command,
     update: vi.fn(async (args: { sessionID: string; permission?: unknown }) => ({
       data: { ...makeSession(args.sessionID, directory), permission: args.permission }
@@ -69,6 +71,10 @@ beforeEach(() => {
   reply.mockResolvedValue({ data: true })
   reject.mockResolvedValue({ data: true })
   promptAsync.mockReset().mockResolvedValue({ data: {} })
+  abort.mockReset().mockImplementation(async () => {
+    useSessions.getState().setStatus('root', 'idle')
+    return { data: true }
+  })
   command.mockResolvedValue({ data: {} })
   useRejectionNotices.setState({ notices: [] })
   const sessions = { root: makeSession('root', directory), kid: makeSession('kid', directory, { parentID: 'root' }) }
@@ -84,14 +90,17 @@ beforeEach(() => {
     messages: { root: [{ info: userMessage('u1', 'root'), parts: [textPart('txt', 'u1', 'root', 'Revisa el proyecto')] }] }
   })
   useServer.setState({ client: client as never })
-  useSessions.setState({ sessions })
+  // Cada caso empieza sin un turno previo: sendToTask deja busy hasta el evento idle del motor.
+  useSessions.setState({ sessions, status: {}, errors: {} })
   useTasks.setState({
     folder: directory,
     client: client as never,
     conn: null,
+    phase: 'ready',
     activeTaskId: 'root',
     taskModel: { providerID: 'opencode', modelID: 'test' },
     sending: false,
+    controlStoppedAt: null,
     attachments: [],
     elements: [],
     permissions: { [permission.id]: permission },
@@ -223,6 +232,35 @@ describe.each(['code', 'tasks'] as const)('cierre de tarjeta en %s', (mode) => {
     expect(html(mode)).toBe('')
   })
 })
+
+it.each(['busy', 'retry'] as const)(
+  'el envío de Tareas durante %s cierra el aviso solo al mandar y conserva un rechazo nuevo',
+  async (run) => {
+    await replyPermission(permission.id, 'reject')
+    useSessions.getState().setStatus('root', run)
+    promptAsync.mockImplementationOnce(async () => {
+      useRejectionNotices
+        .getState()
+        .add({ mode: 'tasks', directory, sessionID: 'root', requestID: 'nuevo', kind: 'permission', detail: 'nuevo' })
+      return { data: {} }
+    })
+
+    await sendToTask('Otra instrucción', { providerID: 'opencode', modelID: 'test' })
+    if (run === 'busy') {
+      expect(promptAsync).not.toHaveBeenCalled()
+      expect(abort).not.toHaveBeenCalled()
+      expect(html('tasks')).toContain('npm run build')
+      useSessions.getState().setStatus('root', 'idle')
+      expect(promptAsync).not.toHaveBeenCalled()
+      await sendToTask('Otra instrucción', { providerID: 'opencode', modelID: 'test' })
+    } else {
+      expect(abort).toHaveBeenCalledTimes(1)
+      expect(abort.mock.invocationCallOrder[0]).toBeLessThan(promptAsync.mock.invocationCallOrder[0])
+    }
+    expect(promptAsync).toHaveBeenCalledTimes(1)
+    expect(useRejectionNotices.getState().notices.map((notice) => notice.requestID)).toEqual(['nuevo'])
+  }
+)
 
 it('un comando de Código también cierra el aviso; un envío vacío lo conserva', async () => {
   await useCode.getState().replyPermission(permission, 'reject')

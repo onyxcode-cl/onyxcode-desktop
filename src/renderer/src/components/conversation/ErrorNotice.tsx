@@ -34,7 +34,9 @@ export function ErrorNotice({
     return friendlyError(error, { providerNames })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` fuerza el recálculo al cambiar de idioma
   }, [error, providers, lang])
-  const [open, setOpen] = useState(false)
+  // La cuota debe explicar el rechazo del proveedor sin exigir abrir «Ver detalle».
+  const [detailState, setDetailState] = useState<{ error: unknown; open: boolean } | null>(null)
+  const open = detailState && detailState.error === error ? detailState.open : f.kind === 'quota'
   const [copied, setCopied] = useState(false)
   const chat = variant === 'chat'
   const [pending, setPending] = useState(false)
@@ -107,7 +109,7 @@ export function ErrorNotice({
               className={`cursor-pointer text-subtle select-none hover:text-fg ${isRemoteSurface() ? 'inline-flex min-h-11 items-center' : ''}`}
               onClick={(e) => {
                 e.preventDefault()
-                setOpen((o) => !o)
+                setDetailState({ error, open: !open })
               }}
             >
               {open ? t('chat.error.hideDetail') : t('chat.error.showDetail')}

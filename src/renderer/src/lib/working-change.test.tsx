@@ -700,3 +700,24 @@ it('la aplicación de un cambio anterior no libera el aviso de otro cambio poste
   expect(second).toHaveBeenCalledOnce()
   expect(third).not.toHaveBeenCalled()
 })
+
+it.each([
+  { name: 'Código', change: (model: typeof first) => useCode.getState().setModel(model), read: () => useCode.getState().model },
+  { name: 'Overdrive', change: setTaskModel, read: () => useTasks.getState().taskModel }
+])('$name: elegir otro modelo en retry sustituye una elección pendiente', async ({ change, read }) => {
+  act(() => change(next))
+  await click('Esperar a que termine')
+  const last = { providerID: 'test', modelID: 'last' }
+  act(() => {
+    useCode.setState({ runState: { code: 'retry' } })
+    useSessions.setState({ status: { task: 'retry' } })
+    change(last)
+  })
+  await flush()
+  expect(dialog()).toBeNull()
+  expect(read()).toEqual(last)
+  act(idle)
+  await flush()
+  expect(read()).toEqual(last)
+  expect(abort).not.toHaveBeenCalled()
+})

@@ -230,6 +230,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const [attachError, setAttachError] = useState<string | null>(null)
   const directory = useCode((s) => s.directory)
   const activeSessionID = useCode((s) => s.activeSessionID)
+  const retrying = useCode((s) => !!s.activeSessionID && s.runState[s.activeSessionID] === 'retry')
   const shells = useCode((s) => (s.activeSessionID ? liveShellCount(s.messages[s.activeSessionID]) : 0))
   // F8-B32: texto y menciones se guardan por proyecto y sesión (sobreviven a cambiar de modo y de sesión).
   const draftKey = `code:${directory ?? ''}:${activeSessionID ?? 'new'}`
@@ -278,8 +279,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const setAgent = useCode((s) => s.setAgent)
   const model = useCode((s) => s.model)
   const setModel = useCode((s) => s.setModel)
-  const send = useCode((s) => s.send)
-  const enqueue = useCode((s) => s.enqueue)
+  const send = useCode((s) => s.submit)
   const sendNow = useCode((s) => s.sendNow)
   const runCommand = useCode((s) => s.runCommand)
   const abort = useCode((s) => s.abort)
@@ -289,7 +289,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   const compareArmed = useCompareArmed('code', directory ?? null)
   const sendTitle = compareArmed.armed
     ? tg('compare.send', { count: compareArmed.count })
-    : busy
+    : busy && !retrying
       ? t('code.composer.queueTitle', { mod: MOD })
       : t('code.composer.sendTitle', { mod: MOD })
   const serverCommands = useServerCommands(directory)
@@ -492,12 +492,6 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
     }
     if (force) {
       void sendNow(outgoing, used, atts).then(settle, () => settle(false))
-      return
-    }
-    if (busy) {
-      const sid = activeSessionID
-      if (sid) settle(enqueue(sid, outgoing, used, atts))
-      else void send(outgoing, used, atts).then(settle, () => settle(false))
       return
     }
     void send(outgoing, used, atts).then(settle, () => settle(false))
@@ -833,8 +827,8 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
                     onMouseDown={keepFocus}
                     onClick={() => submit(false)}
                     disabled={(!text.trim() && attachments.length === 0 && !termOut) || disabled}
-                    aria-label={busy ? t('code.m.queue') : t('code.m.send')}
-                    title={busy ? t('code.m.queue') : t('code.m.send')}
+                    aria-label={busy && !retrying ? t('code.m.queue') : t('code.m.send')}
+                    title={busy && !retrying ? t('code.m.queue') : t('code.m.send')}
                     className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-fg disabled:opacity-30 active:opacity-90"
                   >
                     {busy ? <Send size={17} /> : <ArrowUp size={20} />}

@@ -68,6 +68,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   const elements = useTasks((s) => s.elements)
   const folder = useTasks((s) => s.folder)
   const activeTaskId = useTasks((s) => s.activeTaskId)
+  const retrying = useSessions((s) => !!activeTaskId && s.status[activeTaskId] === 'retry')
   const saving = useTasks((s) => s.restoreSaving)
   const sending = useTasks((s) => s.sending)
   const linked = useTasks((s) => s.folderSet?.linked)
@@ -114,7 +115,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
   useAutosizeTextarea(ref, text, { max: hero ? 320 : 240 })
 
   const blocked = aiGate.gate.blocked
-  const canSend = !disabled && !blocked && !busy && !saving && !sending && text.trim().length > 0
+  const canSend = !disabled && !blocked && (!busy || retrying) && !saving && !sending && text.trim().length > 0
 
   const submit = (): void => {
     if (!canSend) return
@@ -291,7 +292,7 @@ export const TasksComposer = forwardRef<TasksComposerHandle, Props>(function Tas
             >
               <Loader2 size={17} className="animate-spin" />
             </button>
-          ) : busy ? (
+          ) : busy && !retrying ? (
             <button
               type="button"
               onClick={onAbort}
