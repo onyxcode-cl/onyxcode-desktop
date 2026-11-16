@@ -10,6 +10,7 @@ import { ErrorNotice } from '../../components/conversation/ErrorNotice'
 import { LogoMark } from '../../components/Logo'
 import { ChatMessageList } from './ChatMessageList'
 import { ModelPicker } from '../../components/ModelPicker'
+import { EffortPicker } from '../../components/EffortPicker'
 import { NoAiBanner } from '../../components/NoAiBanner'
 import { TranscriptLoader } from '../../components/TranscriptLoader'
 import { UsageMeter } from '../../components/UsageMeter'
@@ -37,6 +38,8 @@ import {
 import {
   abortChat,
   setChatModel,
+  setChatVariant,
+  reconcileChatVariant,
   compactChat,
   loadChatSessions,
   openChatSession,
@@ -46,6 +49,7 @@ import {
   sendChatMessage
 } from './actions'
 import { useChat } from './store'
+import { useProviders } from '../../stores/providers'
 import { ReadingModeSwitch } from '../../components/ReadingModeSwitch'
 import { MemoryProposalCard } from '../memory/MemoryProposalCard'
 import { PersonalizeButton } from '../memory/PersonalizeButton'
@@ -131,6 +135,11 @@ export function ChatView(): React.JSX.Element {
   const [rootRef, narrowRoot] = useNarrowRoot()
   // Cada modo recuerda su propio modelo (`modelsByMode.chat`); sin elección propia vale el predeterminado global.
   const model = useModeModel('chat')
+  const variant = useChat((s) => (s.activeSessionId ? (s.variants[s.activeSessionId] ?? null) : s.lastVariant))
+  const providers = useProviders((s) => s.providers)
+  useEffect(() => {
+    reconcileChatVariant(model)
+  }, [model, activeId, providers])
   const { effective, gate, free, unavailable } = useAiGate(model, { strict: true })
   const [sendError, setSendError] = useState<unknown>(null)
   const [insert, setInsert] = useState<{ text: string; key: number; attachments?: ChatAttachment[] } | null>(null)
@@ -203,6 +212,7 @@ export function ChatView(): React.JSX.Element {
       <ProjectChip />
       <CompareControls mode="chat" directory={null} current={effective ?? model} />
       <ModelPicker value={effective ?? model} unavailable={unavailable} onChange={setChatModel} />
+      <EffortPicker model={effective ?? model} variant={variant} onChange={setChatVariant} />
       <span className="ml-auto" />
       <UsageMeter messages={entries} model={effective ?? model} />
     </div>

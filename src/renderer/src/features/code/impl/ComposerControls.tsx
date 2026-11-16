@@ -1,6 +1,6 @@
 /**
  * Controles de la barra inferior del compositor de Code (estilo de los clientes de escritorio de referencia):
- * carpeta del proyecto, modo de permisos, selector de modelo (con el esfuerzo como submenú) y medidor de uso.
+ * carpeta del proyecto, modo de permisos, selectores de modelo y esfuerzo y medidor de uso.
  * Los menús se abren hacia arriba porque el compositor vive al fondo de la ventana.
  */
 import { useDismiss } from '../../../lib/use-dismiss'
@@ -25,6 +25,7 @@ import { isRemoteSurface, isWindowsPlatform, platformCaps } from '../../../lib/p
 import { baseName, tildify } from '../../../lib/paths'
 import { ChipMenu, type ChipMenuOption } from '../../../components/ChipMenu'
 import { ModelPicker } from '../../../components/ModelPicker'
+import { EffortPicker } from '../../../components/EffortPicker'
 import { UsageMeter } from '../../../components/UsageMeter'
 import { useAiGate, type AiGate } from '../../../lib/ai-gate'
 import { useModeModel } from '../../settings/impl/extras'
@@ -65,7 +66,7 @@ export function useCodeAiGate(): AiGate {
   return useAiGate(model ?? modeModel)
 }
 
-/** Modo de permisos de la sesión activa: chip siempre visible; si no cabe la etiqueta completa queda la corta («Preguntar», «Auto»…); `aria-label`/`title` llevan siempre «ajuste: valor». */
+/** Permisos cede el texto antes que Hacer/Planear y esfuerzo; `aria-label`/`title` conservan siempre «ajuste: valor». */
 export function PermissionChip(): React.JSX.Element {
   const t = useT()
   const mode = useCode((s) => s.permissionMode)
@@ -80,8 +81,9 @@ export function PermissionChip(): React.JSX.Element {
       icon={current.icon}
       value={mode}
       tone={mode === 'bypass' ? 'danger' : undefined}
-      collapseClass="inline desk:@max-[40rem]:sr-only"
-      shortClass="hidden desk:@max-[40rem]:inline desk:@max-[28rem]:sr-only"
+      collapseClass="inline desk:@max-[56rem]:sr-only"
+      shortClass="hidden desk:@max-[56rem]:inline desk:@max-[48rem]:sr-only"
+      chevronClass="block desk:@max-[48rem]:hidden"
       testId="permission-chip"
       allowReselect
       note={t('code.mode.note')}
@@ -108,8 +110,8 @@ export function AgentChip({ agent, onChange }: { agent: 'build' | 'plan'; onChan
       icon={agent === 'plan' ? <ListChecks size={14} /> : <Hammer size={14} />}
       value={agent}
       tone={agent === 'plan' ? 'accent' : undefined}
-      collapseClass="inline desk:@max-[30rem]:sr-only"
-      chevronClass="block desk:@max-[30rem]:hidden"
+      collapseClass="inline desk:@max-[36rem]:sr-only"
+      chevronClass="block desk:@max-[36rem]:hidden"
       chipShortcut={isWindowsPlatform() ? 'Shift+Tab' : '⇧Tab'}
       testId="agent-chip"
       options={[
@@ -196,7 +198,7 @@ export function ProjectChip(): React.JSX.Element | null {
   )
 }
 
-/** Grupo derecho de la barra: modelo (con su esfuerzo en el submenú) · uso. */
+/** Grupo derecho de la barra: modelo · esfuerzo · uso. */
 export function ModelControls(): React.JSX.Element {
   const model = useCode((s) => s.model)
   const setModel = useCode((s) => s.setModel)
@@ -222,7 +224,7 @@ export function ModelControls(): React.JSX.Element {
       <div className="block desk:@max-[40rem]:hidden">
         <CompareControls mode="code" directory={directory} current={effective} variant={variant} align="right" iconOnly />
       </div>
-      {/* El nombre largo se acorta con «…» (nunca se sale ni se pisa con lo de al lado); el menú se alinea a la derecha. */}
+      {/* El nombre largo se acorta con «…» solo cuando ya cedieron permisos y Hacer/Planear; el esfuerzo va pegado a su derecha. */}
       <div
         title={
           roleModel
@@ -240,6 +242,15 @@ export function ModelControls(): React.JSX.Element {
           effort={roleModel ? undefined : { variant, onChange: setVariant }}
         />
       </div>
+      {!roleModel && (
+        <EffortPicker
+          model={effective}
+          variant={variant}
+          onChange={setVariant}
+          collapseClass="inline desk:@max-[24rem]:sr-only"
+          chevronClass="block desk:@max-[24rem]:hidden"
+        />
+      )}
       <div className="block desk:@max-[34rem]:hidden">
         <UsageMeter messages={messages ?? []} model={effective} />
       </div>

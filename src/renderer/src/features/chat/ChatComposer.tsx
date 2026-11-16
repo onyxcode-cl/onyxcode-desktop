@@ -273,6 +273,7 @@ export function ChatComposer({
 
   return (
     <div
+      data-effort-scope=""
       className={
         mobile
           ? 'relative mx-auto w-full max-w-3xl px-3 pb-2'

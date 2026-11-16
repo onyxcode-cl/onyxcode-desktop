@@ -269,6 +269,28 @@ function textNote(text: string): string {
   return `data:text/plain;base64,${btoa(unescape(encodeURIComponent(text)))}`
 }
 
+/** Nivel de esta conversación, o el último elegido si aún no se creó. */
+export function currentChatVariant(): string | null {
+  const s = useChat.getState()
+  return s.activeSessionId ? (s.variants[s.activeSessionId] ?? null) : s.lastVariant
+}
+
+export function setChatVariant(variant: string | null): void {
+  useChat.getState().setVariant(variant)
+}
+
+/** Un nivel incompatible vuelve a estándar; antes de cargar el catálogo no se descarta la elección. */
+export function reconcileChatVariant(model: ModelRef): string | null {
+  const variant = currentChatVariant()
+  const { providers, loaded } = useProviders.getState()
+  const info = providers.find((p) => p.id === model.providerID)?.models[model.modelID]
+  if (variant && (info || loaded) && !Object.hasOwn(info?.variants ?? {}, variant)) {
+    setChatVariant(null)
+    return null
+  }
+  return variant
+}
+
 /** Devuelve `true` si el motor aceptó el mensaje; `false` si lo rechazó (el error queda en la sesión). Lanza si no pudo ni intentarlo. */
 export async function sendChatMessage(text: string, files: ResendFile[] = []): Promise<boolean> {
   // Seguridad: el agente `chat` no tiene acceso al disco, pero el motor LEE cualquier parte `file` con URL `file://`
@@ -283,6 +305,7 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
   if (gate.reason === 'model-unavailable') throw new Error(t('chat.modelUnavailable.send', { model: wanted.modelID }))
   if (gate.blocked || !effective) throw NO_AI_ERROR
   const model = effective
+  const variant = reconcileChatVariant(model)
   files = await adaptFilesForModel(files, model.providerID, model.modelID)
   let sessionID = useChat.getState().activeSessionId
   // «Primeros pasos»: desde aquí hay actividad real de esta persona (no se la trata de usuaria antigua por la conversación que va a crear).
@@ -297,6 +320,7 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       messages: { ...s.messages, [res.data.id]: s.messages[res.data.id] ?? [] },
       loaded: { ...s.loaded, [res.data.id]: true } // sesión nueva: no hay historial que cargar
     }))
+    useChat.getState().setVariant(variant, sessionID)
     useChat.getState().setActive(sessionID)
     // La conversación nueva nace en el proyecto elegido en el chip (si hay): se anota ANTES de armar el `system`.
     const pending = useProjects.getState().pendingId
@@ -329,6 +353,8 @@ export async function sendChatMessage(text: string, files: ResendFile[] = []): P
       directory,
       agent: CHAT_AGENT,
       model: { providerID: model.providerID, modelID: model.modelID },
+      // El esfuerzo va al nivel del pedido (como en Code y Overdrive): dentro de `model` el motor lo ignora.
+      ...(variant ? { variant } : {}),
       // Instrucciones personalizadas + memoria aprobada (relevada justo ahora, para que lo aprobado hace un momento ya valga).
       // Nunca desde el celular: ver el comentario equivalente en `code/impl/store.ts`.
       system: await chatSystemPrompt(sessionID, text),
@@ -586,5 +612,6 @@ export function setChatModel(model: ModelRef, free = false): void {
   )
     return
   setModeModel('chat', model)
+  reconcileChatVariant(model)
   if (free) adoptFreeModel(model)
 }

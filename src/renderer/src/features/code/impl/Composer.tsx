@@ -564,7 +564,7 @@ export function Composer({ busy, disabled }: { busy: boolean; disabled?: boolean
   }
 
   return (
-    <div className={`group/cc ${mobile ? 'pb-2' : 'pb-4'}`}>
+    <div data-effort-scope="" className={`group/cc ${mobile ? 'pb-2' : 'pb-4'}`}>
       {mobile && <MobileCodeBackgroundJobs />}
       <CodeHelpersBoard />
       {activeSessionID && <QueueList sessionID={activeSessionID} />}

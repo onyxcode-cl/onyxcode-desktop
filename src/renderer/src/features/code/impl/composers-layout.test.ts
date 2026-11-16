@@ -18,13 +18,19 @@ const meter = read('components/UsageMeter.tsx')
 
 describe('cuadro de escribir de Code (E6)', () => {
   it('el modo de permisos pasa a la etiqueta corta y luego al icono antes de pisar al modelo', () => {
-    expect(controls).toContain('collapseClass="inline desk:@max-[40rem]:sr-only"')
-    expect(controls).toContain('shortClass="hidden desk:@max-[40rem]:inline desk:@max-[28rem]:sr-only"')
+    expect(controls).toContain('collapseClass="inline desk:@max-[56rem]:sr-only"')
+    expect(controls).toContain('shortClass="hidden desk:@max-[56rem]:inline desk:@max-[48rem]:sr-only"')
+    expect(controls).toContain('chevronClass="block desk:@max-[48rem]:hidden"')
+  })
+  it('con esfuerzo se cede primero permisos, luego Hacer/Planear y al final el nivel de esfuerzo', () => {
+    expect(controls).toContain('collapseClass="inline desk:@max-[36rem]:sr-only"')
+    expect(controls).toContain('collapseClass="inline desk:@max-[24rem]:sr-only"')
+    expect(controls).toContain('chevronClass="block desk:@max-[24rem]:hidden"')
   })
   it('«Comparar» y el medidor de uso se esconden antes de que falte sitio; el modelo conserva un mínimo legible', () => {
     expect(controls).toContain('desk:@max-[40rem]:hidden">\n        <CompareControls')
     expect(controls).toContain('desk:@max-[34rem]:hidden">\n        <UsageMeter')
-    expect(controls).toContain('desk:min-w-[4.5rem]')
+    expect(controls).toContain('desk:min-w-[4.5rem] desk:shrink')
   })
   it('«Mencionar» y «Adjuntar» pasan al «⋯» con la misma anchura con la que éste aparece', () => {
     expect(controls).toContain('relative hidden desk:@max-[34rem]:block')

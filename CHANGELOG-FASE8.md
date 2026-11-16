@@ -4704,3 +4704,10 @@ Pruebas: `model-change.test.ts`, `store.model-change.test.ts` y `MessageStream.m
 Overdrive valida `session.modelo.cambiado` con el contrato compartido y guarda el modelo y el aviso por tarea, acotados al servidor y carpeta actuales. El selector y el siguiente envío usan el modelo nuevo, sin heredar el esfuerzo anterior ni cambiar preferencias. Código y Overdrive comparten la línea de texto plano «Cambié a <nombre visible> porque lo pediste.». Al reabrir se recupera el último mensaje de usuario, también sintético; una elección o evento durante la carga no se pisa con el snapshot anterior. El flujo remoto ya admite este evento por el prefijo `session.` y conserva `properties`, por lo que no requiere cambios.
 
 Pruebas: `features/tasks/impl/store.model-change.test.ts` y `TaskConversation.model-change.test.tsx`, más el validador y las regresiones de Código y Overdrive (aislamiento por tarea/carpeta/motor, siguiente envío, duplicados, reapertura, cargas concurrentes, rutas Windows, selector real, aviso, traducción y texto plano).
+
+
+## F8-B327 — V30: espacio para el modelo y el esfuerzo en Code
+
+En la fila del compositor de Code, permisos pasa primero a etiqueta corta y luego a ícono (56/48 rem); Hacer/Planear cede su texto a 36 rem y esfuerzo a 24 rem. Así el nombre del modelo se lee completo con el botón de esfuerzo pegado a su derecha. «Comparar» y el medidor de uso conservan sus anchos de siempre (40 y 34 rem). Los controles que quedan como ícono conservan su `aria-label` y su tooltip.
+
+Chat y Overdrive conservan su presentación: las clases opcionales del selector de esfuerzo se aplican únicamente desde Code.

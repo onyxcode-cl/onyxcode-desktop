@@ -18,11 +18,7 @@ interface Props {
   placement?: 'top' | 'bottom'
   /** El modelo elegido no está en la lista: se muestra su id marcado como «no disponible» (no se sustituye por otro). */
   unavailable?: boolean
-  /**
-   * Esfuerzo del modelo (variantes de razonamiento) como submenú «Esfuerzo» dentro de este mismo menú. Las variantes se leen del
-   * proveedor del modelo mostrado; si no tiene, no aparece nada. `null`/`undefined` = estándar (el predeterminado): en el chip
-   * solo se ve el valor cuando es distinto de él. Atajo: ⌘E / Ctrl+E abre el submenú con el menú abierto.
-   */
+  /** Esfuerzo dentro de la hoja del celular; en escritorio lo muestra EffortPicker. */
   effort?: { variant: string | null | undefined; onChange: (variant: string | null) => void }
 }
 
@@ -86,7 +82,7 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
     const info = providers.find((x) => x.id === value.providerID)?.models[value.modelID]
     return effort && info?.variants ? Object.keys(info.variants) : []
   }, [providers, value, effort])
-  const hasEffort = effortVariants.length > 0
+  const hasEffort = sheet && effortVariants.length > 0
   const effortValue = effort?.variant ?? null
   const effortOptions: Array<{ id: string | null; label: string }> = [
     { id: null, label: t('common.effort.standard') },
@@ -174,8 +170,18 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
     setQuery('')
   }
 
+  const openDesktopEffort = (e: React.KeyboardEvent): boolean => {
+    const mod = isMacPlatform() ? e.metaKey : e.ctrlKey
+    if (sheet || !mod || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'e') return false
+    if (triggerRef.current?.dispatchEvent(new Event('model-effort-open', { bubbles: true, cancelable: true })) !== false) return false
+    e.preventDefault()
+    setOpen(false)
+    return true
+  }
+
   const onKeyDown = (e: React.KeyboardEvent): void => {
     const mod = isMacPlatform() ? e.metaKey : e.ctrlKey
+    if (openDesktopEffort(e)) return
     if (hasEffort && mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'e') {
       // ⌘E / Ctrl+E: abre (o cierra) el submenú «Esfuerzo».
       e.preventDefault()
@@ -418,6 +424,8 @@ export function ModelPicker({ value, onChange, placement = 'top', unavailable = 
           setSub(false)
           setOpen((o) => !o)
         }}
+        onKeyDown={openDesktopEffort}
+        data-model-picker=""
         aria-haspopup="listbox"
         aria-expanded={open}
         className={`no-drag flex max-w-[280px] items-center desk:max-w-[min(280px,100%)] desk:min-w-0 gap-1.5 rounded-full px-2.5 text-[13px] transition-colors ${sheet ? 'min-h-11 min-w-0 px-3' : 'py-1'} ${open ? 'bg-hover text-fg' : 'text-muted hover:bg-hover hover:text-fg'}`}

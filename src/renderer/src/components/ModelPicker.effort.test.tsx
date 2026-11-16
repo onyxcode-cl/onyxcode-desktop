@@ -76,93 +76,38 @@ const press = (k: string, init: KeyboardEventInit = {}): void => {
   })
 }
 
-describe('ModelPicker: esfuerzo como submenú', () => {
-  it('con esfuerzo estándar el chip no muestra el valor, pero el menú ofrece «Esfuerzo» con su valor actual', () => {
-    mount('a', null)
+describe('ModelPicker: esfuerzo solo en la hoja del celular', () => {
+  it.each([null, 'high'])('en escritorio no hay fila, submenú ni etiqueta de esfuerzo (%s)', (variant) => {
+    mount('a', variant)
     expect(document.body.querySelector('[data-testid="model-effort-badge"]')).toBeNull()
     expect(trigger().getAttribute('aria-label')).toBe('Modelo: Modelo A')
     open()
-    expect(effortRow()!.textContent).toContain('Esfuerzo')
-    expect(effortRow()!.textContent).toContain('Estándar')
-    expect(effortRow()!.getAttribute('aria-haspopup')).toBe('menu')
-  })
-
-  it('con un esfuerzo distinto del predeterminado el chip lo muestra y lo dice en su nombre accesible', () => {
-    mount('a', 'high')
-    const badge = document.body.querySelector('[data-testid="model-effort-badge"]')!
-    expect(badge.textContent).toBe('High')
-    expect(badge.querySelector('span')!.className).toContain('desk:@max-[41rem]:sr-only')
-    expect(trigger().getAttribute('aria-label')).toBe('Modelo: Modelo A, Esfuerzo del modelo: High')
-  })
-
-  it('un modelo sin variantes, o sin la propiedad effort, no ofrece el submenú', () => {
-    mount('b', 'high')
-    open()
     expect(effortRow()).toBeNull()
-    expect(document.body.querySelector('[data-testid="model-effort-badge"]')).toBeNull()
-    act(() => trigger().click())
-    mount('a', null, false)
-    open()
-    expect(effortRow()).toBeNull()
+    press('e', { metaKey: true })
+    expect(subItems()).toHaveLength(0)
   })
 
-  it('abrir el submenú lista Estándar y las variantes del proveedor, marca la actual y elegir una cambia el esfuerzo y cierra', () => {
+  it('el celular conserva la fila, el valor original, la marca y el cambio de esfuerzo', () => {
+    ;(window as unknown as { api: unknown }).api = { platform: 'remote' }
     mount('a', 'medium')
+    expect(document.body.querySelector('[data-testid="model-effort-badge"]')?.textContent).toBe('Medium')
     open()
+    expect(effortRow()!.textContent).toContain('Esfuerzo')
+    expect(effortRow()!.textContent).toContain('Medium')
     act(() => effortRow()!.click())
     expect(subItems().map((i) => i.dataset.option)).toEqual(['standard', 'low', 'medium', 'high'])
     expect(subItems().map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false'])
     act(() => subItems()[3]!.click())
     expect(onEffort).toHaveBeenCalledWith('high')
-    expect(document.body.querySelector('[role="listbox"]')).toBeNull()
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('teclado: Ctrl+E abre el submenú, los números eligen, ↑↓ + Enter eligen, Esc vuelve a la lista y el estándar manda null', () => {
-    ;(window as unknown as { api: unknown }).api = { platform: 'win32' }
-    mount('a', 'high')
+  it('sin variantes o sin propiedad effort no ofrece esfuerzo tampoco en el celular', () => {
+    ;(window as unknown as { api: unknown }).api = { platform: 'remote' }
+    mount('b', 'high')
     open()
-    press('e', { ctrlKey: true })
-    expect(subItems().length).toBe(4)
-    expect(document.activeElement).toBe(subItems()[3])
-    press('Escape')
-    expect(document.body.querySelector('[role="listbox"]')).not.toBeNull()
-    expect(subItems().length).toBe(0)
-    press('e', { ctrlKey: true })
-    press('ArrowUp')
-    press('ArrowUp')
-    press('Enter')
-    expect(onEffort).toHaveBeenLastCalledWith('low')
-    open()
-    press('e', { ctrlKey: true })
-    press('1')
-    expect(onEffort).toHaveBeenLastCalledWith(null)
-  })
-
-  it('en Mac el atajo es ⌘E (y se muestra en la fila); en Windows, Ctrl+E', () => {
-    mount('a', null)
-    open()
-    expect(effortRow()!.textContent).toContain('⌘E')
-    press('e', { ctrlKey: true })
-    expect(subItems().length).toBe(0)
-    press('e', { metaKey: true })
-    expect(subItems().length).toBe(4)
-    act(() => root.unmount())
-    root = createRoot(host)
-    ;(window as unknown as { api: unknown }).api = { platform: 'win32' }
-    mount('a', null)
-    open()
-    expect(effortRow()!.textContent).toContain('Ctrl+E')
-  })
-
-  it('teclado en la lista: ↓ hasta la fila «Esfuerzo» y Enter abre el submenú; elegir un modelo no cambia el esfuerzo', () => {
-    mount('a', null)
-    open()
-    press('ArrowDown')
-    press('ArrowDown')
-    expect(effortRow()!.className).toContain('bg-hover')
-    press('Enter')
-    expect(subItems().length).toBe(4)
-    expect(onChange).not.toHaveBeenCalled()
+    expect(effortRow()).toBeNull()
+    mount('a', null, false)
+    expect(effortRow()).toBeNull()
   })
 })
