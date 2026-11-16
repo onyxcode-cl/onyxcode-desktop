@@ -1,3 +1,5 @@
+import { useProviders } from '../../../stores/providers'
+import { helperAgentLabel } from './child-sessions'
 /**
  * Tablero «Ayudantes»: lista de los subagentes de la conversación activa con estado, modelo, tokens, costo y tiempo, y las acciones
  * «Ver» (su conversación, solo lectura), «Detener» y «Detener todos». Es presentación: `CodeHelpersBoard` le da los datos del almacén
@@ -124,6 +126,12 @@ export function HelpersBoard({
   conversationVersion
 }: Props): React.JSX.Element | null {
   const t = useT()
+  const providers = useProviders((s) => s.providers)
+  const modelLabel = (ref: string | null): string => {
+    if (!ref) return t('helpers.noData')
+    const slash = ref.indexOf('/')
+    return providers.find((p) => p.id === ref.slice(0, slash))?.models[ref.slice(slash + 1)]?.name ?? ref
+  }
   const [open, setOpen] = useState(true)
   const [viewing, setViewing] = useState<string | null>(null)
   const [stopping, setStopping] = useState<Record<string, boolean>>({})
@@ -212,12 +220,12 @@ export function HelpersBoard({
                     <StateIcon state={row.state} />
                     <span className={`min-w-0 flex-1 truncate ${row.live ? 'text-fg' : 'text-muted'}`} title={row.title}>
                       {row.title}
-                      {row.agent && <span className="text-subtle"> · {t('helpers.agent', { agent: row.agent })}</span>}
+                      {row.agent && <span className="text-subtle"> · {helperAgentLabel(row.agent, t)}</span>}
                       {row.background && <span className="text-subtle"> · {t('helpers.background')}</span>}
                     </span>
                     <span className="shrink-0 text-xs text-muted">{t(STATE_KEY[row.state])}</span>
                     <span className="shrink-0 text-xs text-subtle" title={row.model ?? undefined}>
-                      {t('helpers.model', { model: row.model ?? t('helpers.noData') })}
+                      {t('helpers.model', { model: modelLabel(row.model) })}
                     </span>
                     <span
                       className="shrink-0 text-xs tabular-nums text-subtle"

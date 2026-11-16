@@ -48,8 +48,8 @@ describe('sesiones hijas: quién pide y cómo se llama', () => {
   it('el nombre sale de la parte task del padre (descripción, luego tipo) y, si no, del título de la hija', () => {
     expect(subagentNameOf(sessions, messages, 'kid')).toBe('Revisar logs')
     const onlyAgent = { root: [{ parts: [taskPart('kid', { agent: 'explore' })] }] }
-    expect(subagentNameOf(sessions, onlyAgent, 'kid')).toBe('explore')
-    expect(subagentNameOf(sessions, { root: [] }, 'kid')).toBe('Revisar logs (@explore subagent)')
+    expect(subagentNameOf(sessions, onlyAgent, 'kid')).toBe('Ayudante (solo lectura)')
+    expect(subagentNameOf(sessions, { root: [] }, 'kid')).toBe('Revisar logs')
     expect(subagentNameOf(sessions, messages, 'root')).toBe('root')
   })
 })
@@ -89,4 +89,13 @@ describe('sesiones hijas: «ocupado» de la raíz', () => {
   it('si la raíz ya trabaja no se vuelve a marcar', () => {
     expect(backgroundBusyRoots({ sessions, status: { root: 'busy', kid: 'busy' }, messages })).toEqual([])
   })
+})
+
+it('V31: un task_id reusado muestra el encargo más reciente aunque aún no tenga metadata', () => {
+  const latest = taskPart('kid', { description: 'Borrar borrador' })
+  if (latest.type !== 'tool') throw new Error('expected tool')
+  latest.state.input = { task_id: 'kid', description: 'Borrar borrador' }
+  if ('metadata' in latest.state) latest.state.metadata = {}
+  const history = { root: [...messages.root, { parts: [latest] }] }
+  expect(subagentNameOf(sessions, history, 'kid')).toBe('Borrar borrador')
 })

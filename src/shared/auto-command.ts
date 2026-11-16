@@ -47,7 +47,7 @@ interface Part {
   redirects: Array<{ op: string; target: Word }>
   /** Separador que sigue a la orden: `|`, `&&`, `||`, `;`, `&`, salto de línea o ''. */
   separator: string
-  heredocs: Array<{ body: string; quoted: boolean }>
+  heredocs: Array<{ body: string; quoted: boolean; start: number; end: number }>
   /** Sustituciones de comando `$(…)`, `` `…` `` y `<(…)`: se clasifican aparte. */
   substs: string[]
   group?: 'open' | 'close'
@@ -205,6 +205,7 @@ function parse(command: string, escapes = true): Part[] | null {
   const heredocBodies = (i: number): number => {
     let pos = i + 1
     for (const h of pending.splice(0)) {
+      const start = pos
       const lines: string[] = []
       let found = false
       while (pos <= command.length) {
@@ -219,7 +220,7 @@ function parse(command: string, escapes = true): Part[] | null {
         if (eol < 0) break
       }
       if (!found) return -2
-      h.owner.heredocs.push({ body: lines.join('\n'), quoted: h.quoted })
+      h.owner.heredocs.push({ body: lines.join('\n'), quoted: h.quoted, start, end: pos - 1 })
     }
     return pos - 1
   }
@@ -424,6 +425,11 @@ function parse(command: string, escapes = true): Part[] | null {
   end('')
   if (!last.words.length && parts.length && ['|', '&&', '||'].includes(parts.at(-1)!.separator)) return null
   return parts.some((p) => !p.group) ? parts : null
+}
+
+/** Rangos de los datos de stdin, incluidos sus delimitadores, para presentar órdenes sin fragmentar scripts. */
+export function shellHeredocRanges(command: string): Array<{ start: number; end: number }> {
+  return (parse(command) ?? []).flatMap((part) => part.heredocs.map(({ start, end }) => ({ start, end })))
 }
 
 // ───────────────────────────── Windows: normalizar antes de clasificar ─────────────────────────────
@@ -3357,9 +3363,15 @@ function pipedFromDownload(parts: Part[], i: number): boolean {
 function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = false): void {
   if (ctx.depth > 6) return doubt(ctx, 'demasiados envoltorios')
   const text = normalizeShellCommand(command, ctx.escapes)
+  // Las comprobaciones léxicas del shell no deben ver HTML, Python u otros datos de stdin.
+  // El receptor se analiza abajo; un intérprete sigue pasando por la revisión de código.
+  const syntax = (parse(text, ctx.escapes) ?? [])
+    .flatMap((p) => p.heredocs)
+    .sort((a, b) => b.start - a.start)
+    .reduce((s, h) => s.slice(0, h.start) + s.slice(h.start, h.end).replace(/[^\r\n]/g, ' ') + s.slice(h.end), text)
   // Credenciales fuertes y datos de Lazunox en cualquier parte del texto (salvo un echo literal o un mensaje de commit).
   // `.env` NO se busca aquí (includeEnv=false): lo trata cada comando, para no marcar `git commit -m "fix .env"`.
-  const literalOutput = text
+  const literalOutput = syntax
     .replace(/\b(?:echo|printf|write-output|write-host)\s+(['"])([^$`\n]*?)\1/gi, 'echo')
     .replace(/(?:^|\s)(?:-m|--message|-am|--reword|-M)(?:=|\s+)(?:"[^"]*"|'[^']*'|\S+)/g, ' ')
   for (const atom of literalOutput.split(/[\s;|&(){}"'`,=<>@]+/)) {
@@ -3370,30 +3382,31 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
   }
   const spaced = secretIn(literalOutput.replace(/["']/g, ''), false, false)
   if (spaced?.includes('Lazunox')) return hard(ctx, `toca ${spaced}`)
-  if (/PasswordVault|CredRead|CredEnumerate|keymgr\.dll|Get-StoredCredential/i.test(text))
+  if (/PasswordVault|CredRead|CredEnumerate|keymgr\.dll|Get-StoredCredential/i.test(syntax))
     return hard(ctx, 'toca el almacén de credenciales de Windows')
   // PowerShell: `iex (iwr …)`, `[scriptblock]::Create((irm …))`, `. ([scriptblock]…)`: descargar y ejecutar en una línea.
-  if (/\b(?:iex|invoke-expression)\b|\[scriptblock\]::create/i.test(text) && downloadIn(text)) hard(ctx, 'descarga y ejecuta código')
+  if (/\b(?:iex|invoke-expression)\b|\[scriptblock\]::create/i.test(syntax) && downloadIn(syntax)) hard(ctx, 'descarga y ejecuta código')
   // Las llamadas a métodos no son nombres de programa. El léxico separa sus paréntesis:
   // decidir antes evita que una redirección o una asignación escondan la expresión (R7).
-  const methods = [...text.matchAll(/\[([^\]]+)\]\s*::\s*(\w+)\s*\(/g)]
+  const methods = [...syntax.matchAll(/\[([^\]]+)\]\s*::\s*(\w+)\s*\(/g)]
   for (const m of methods) {
     const type = m[1].toLowerCase().replace(/^system\./, '')
     if (type === 'math' && /^(?:round|floor|ceiling|abs|min|max|sqrt|pow)$/i.test(m[2])) continue
     if (type === 'datetime' && /^(?:parse|daysinmonth|isleapyear)$/i.test(m[2])) continue
     if (/^io\.(?:path|file)$/.test(type) && /^(?:exists|readalltext|getfilename|getextension|combine)$/i.test(m[2])) {
       const open = m.index! + m[0].length - 1
-      const close = matchClose(text, open, '(', ')')
-      const callArgs = close < 0 ? '' : text.slice(open + 1, close)
+      const close = matchClose(syntax, open, '(', ')')
+      const callArgs = close < 0 ? '' : syntax.slice(open + 1, close)
       if (!callArgs || hasDynamic(callArgs)) doubt(ctx, 'lectura de PowerShell con ruta calculada')
       for (const l of literalsOf(callArgs)) checkProjectInput(l, cwdsIn, ctx)
       continue
     }
     doubt(ctx, 'llamada a un método de PowerShell')
   }
-  if (!ctx.escapes && /\$[\w.]+\s*\.\s*(?:delete|remove|unlink|rmdir)\s*\(/i.test(text)) hard(ctx, 'borra mediante un método de PowerShell')
-  if (!ctx.escapes && /\$[\w.]+\s*\.\s*\w+\s*\(|(?<!&)&\s*\(/.test(text)) doubt(ctx, 'expresión que puede ejecutar código')
-  if (/\.env\{[^}]*\}|\.\?\?\*/.test(text)) doubt(ctx, 'expansión que puede leer credenciales')
+  if (!ctx.escapes && /\$[\w.]+\s*\.\s*(?:delete|remove|unlink|rmdir)\s*\(/i.test(syntax))
+    hard(ctx, 'borra mediante un método de PowerShell')
+  if (!ctx.escapes && /\$[\w.]+\s*\.\s*\w+\s*\(|(?<!&)&\s*\(/.test(syntax)) doubt(ctx, 'expresión que puede ejecutar código')
+  if (/\.env\{[^}]*\}|\.\?\?\*/.test(syntax)) doubt(ctx, 'expansión que puede leer credenciales')
   if (
     /\b(?:kubectl\s+get\s+secrets?|aws\s+ssm\s+get-parameters?|az\s+keyvault\s+secret|gh\s+auth\s+status\b.*(?:-t|--show-token))/i.test(
       text
@@ -3456,6 +3469,22 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
             return critical(t.path, ctx) || (/(?:^|[\\/])\*$/.test(w.text) && critical(globParent(t.path) ?? t.path, ctx))
           })
         )
+    }
+    for (const h of p.heredocs) {
+      if (h.quoted || !/[$`]/.test(h.body)) continue
+      doubt(ctx, 'heredoc con expansiones del shell')
+      for (let j = 0; j < h.body.length; j++) {
+        if (h.body[j] === '\\') {
+          j++
+          continue
+        }
+        const dollar = h.body.startsWith('$(', j)
+        if (!dollar && h.body[j] !== '`') continue
+        const end = dollar ? matchClose(h.body, j + 1, '(', ')') : h.body.indexOf('`', j + 1)
+        if (end < 0) break
+        classifyInto(h.body.slice(j + (dollar ? 2 : 1), end), cwds, { ...ctx, depth: ctx.depth + 1 })
+        j = end
+      }
     }
     for (const s of p.substs) classifyInto(s, cwds, { ...ctx, depth: ctx.depth + 1 }, fromScript)
     // Archivos que esta orden escribe (redirección, `tee` o un cmdlet de contenido): si luego se ejecutan, se revisan. G4/R4.

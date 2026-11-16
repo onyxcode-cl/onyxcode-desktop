@@ -9,7 +9,7 @@
  *  - `unavailable` (o un error, un tope o una respuesta que no se entiende): tarjeta. Nunca `allow` por defecto.
  * Puro salvo `requestReview` (fetch inyectable): lo usan el renderer (Código) y main (Overdrive).
  */
-import { classifyAutoCommand, type AutoCommandResult } from './auto-command'
+import { shellHeredocRanges, classifyAutoCommand, type AutoCommandResult } from './auto-command'
 
 export type ReviewDecision = { decision: 'allow' | 'block' | 'unavailable'; reason: string }
 
@@ -163,6 +163,7 @@ export function subcommandRules(metadata: unknown): string[] | null {
  */
 export function displayCommandParts(command: string): string[] {
   const parts: string[] = []
+  const heredocs = shellHeredocRanges(command)
   let start = 0
   let quote = ''
   const stack: string[] = []
@@ -187,6 +188,16 @@ export function displayCommandParts(command: string): string[] {
     }
     if (')}]'.includes(c)) {
       stack.pop()
+      continue
+    }
+    const heredoc = c === '\n' ? heredocs.find((h) => h.start === i + 1) : undefined
+    if (heredoc) {
+      i = heredoc.end
+      // Varios heredocs en una línea consumen sus cuerpos en el mismo orden.
+      for (const h of heredocs) if (h.start === i + 1) i = h.end
+      const piece = command.slice(start, i + 1).trim()
+      if (piece && !parts.includes(piece)) parts.push(piece)
+      start = i + 1
       continue
     }
     if (stack.length || !';|&\n'.includes(c)) continue

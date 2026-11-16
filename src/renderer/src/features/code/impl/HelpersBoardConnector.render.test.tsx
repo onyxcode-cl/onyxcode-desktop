@@ -23,6 +23,7 @@ const task = (child: string): never =>
     state: { status: 'running', input: { description: `Hace ${child}` }, metadata: { sessionId: child } }
   }) as never
 
+const children = vi.fn(async () => ({ data: [] as never[] }))
 const abort = vi.fn(() => Promise.resolve({ data: true }))
 const messages = vi.fn(() => Promise.resolve({ data: [] }))
 let host: HTMLDivElement
@@ -46,10 +47,12 @@ const seed = (dir: string | null, trusted: string[]): void =>
 
 beforeEach(() => {
   vi.unstubAllGlobals()
+  children.mockReset()
+  children.mockResolvedValue({ data: [] })
   abort.mockClear()
   messages.mockClear()
   unmarkVerified(F)
-  useServer.setState({ client: { session: { abort, messages } } } as never)
+  useServer.setState({ client: { session: { abort, messages, children } } } as never)
   host = document.createElement('div')
   document.body.appendChild(host)
   root = createRoot(host)
@@ -127,4 +130,49 @@ describe('CodeHelpersBoard', () => {
     mount()
     expect(host.innerHTML).toBe('')
   })
+})
+
+it('V31: al reabrir reconstruye el tablero con las hijas y los mensajes guardados', async () => {
+  markVerified(F)
+  seed(F, [F])
+  useCode.setState({ sessions: { root: sess('root') }, sessionProject: { root: F }, runState: { root: 'idle' } })
+  children.mockResolvedValueOnce({ data: [sess('kid', 'root')] })
+  messages.mockResolvedValueOnce({
+    data: [
+      {
+        info: { id: 'saved', role: 'assistant', providerID: 'p', modelID: 'guardado', tokens: { input: 10, output: 5 }, cost: 0.2 },
+        parts: []
+      }
+    ] as never[]
+  })
+  mount()
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+  expect(children).toHaveBeenCalledWith({ sessionID: 'root', directory: F })
+  expect(messages).toHaveBeenCalledWith({ sessionID: 'kid', directory: F })
+  expect(host.textContent).toContain('Hace kid')
+  expect(host.textContent).toContain('p/guardado')
+  expect(host.textContent).toContain('Terminó')
+})
+
+it('V31: descarta la recuperación si se cambia de carpeta durante la consulta', async () => {
+  markVerified(F)
+  seed(F, [F])
+  let finish!: (value: { data: never[] }) => void
+  children.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      })
+  )
+  mount()
+  act(() => useCode.setState({ directory: OTRA }))
+  await act(async () => {
+    finish({ data: [sess('late', 'root')] })
+    await Promise.resolve()
+  })
+  expect(useCode.getState().sessions.late).toBeUndefined()
 })

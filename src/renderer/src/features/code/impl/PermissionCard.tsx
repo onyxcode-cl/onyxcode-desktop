@@ -151,6 +151,7 @@ function MobilePermissionCard({
                 : t('code.perm.subagentWantsAnon', { label })
               : t('code.perm.agentWants', { label })}
           </div>
+          {sub.model && <div className="mt-0.5 text-xs text-muted">{t('helpers.model', { model: sub.model })}</div>}
           {description && <div className={`mt-0.5 ${mobile ? 'text-[14px]' : 'text-xs'} text-muted`}>{description}</div>}
           {file && (
             <div className="mt-1 flex items-center gap-2 font-mono text-xs text-muted">

@@ -1,9 +1,9 @@
 /**
- * Conexión del tablero «Ayudantes» con el almacén de Code. Todo se calcula con lo que ya llegó por los eventos del motor (sin sondeo);
- * solo «Ver» (leer los mensajes de la hija) y «Detener» piden algo al motor, y solo si la carpeta tiene el foco y la confianza vigente
+ * Conexión del tablero «Ayudantes» con el almacén de Code. Se reconstruye con las hijas e historial guardados al abrir y se mantiene con los eventos del motor (sin sondeo).
+ * La recuperación, «Ver» y «Detener» solo consultan el motor si la carpeta tiene el foco y la confianza vigente
  * verificada en esta ejecución (`canQueryFolder`): pedir con `directory=` carga la carpeta en el motor.
  */
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import { useCode, rootSessionID } from './store'
 import { sdkData, useClient } from './client'
@@ -57,6 +57,50 @@ export function CodeHelpersBoard(): React.JSX.Element | null {
 
   const rootDir = rootId ? (sessionProject[rootId] ?? sessions[rootId]?.directory) : undefined
   const canAct = !!client && canQueryFolder(rootDir, { directory, isTrusted }, isFolderVerified)
+
+  // Las listas de proyectos traen solo raíces. Al reabrir, recuperar las hijas y
+  // su historial desde el motor con la misma puerta de foco y confianza que «Ver».
+  useEffect(() => {
+    if (!client || !rootId || !rootDir || !canAct) return
+    let cancelled = false
+    const current = (): boolean => {
+      const s = useCode.getState()
+      return (
+        !cancelled &&
+        s.activeSessionID === activeSessionID &&
+        !!s.sessions[rootId] &&
+        canQueryFolder(rootDir, { directory: s.directory, isTrusted: s.isTrusted }, isFolderVerified)
+      )
+    }
+    void (async () => {
+      if (!current()) return
+      const children = sdkData(await client.session.children({ sessionID: rootId, directory: rootDir }))
+      if (!current()) return
+      const own = children.filter((child) => child.parentID === rootId)
+      useCode.setState((s) => ({
+        sessions: { ...Object.fromEntries(own.map((child) => [child.id, child])), ...s.sessions },
+        sessionProject: { ...s.sessionProject, ...Object.fromEntries(own.map((child) => [child.id, rootDir])) }
+      }))
+      await Promise.allSettled(
+        own.map(async (child) => {
+          if (!current() || useCode.getState().messages[child.id]?.length) return
+          const history = sdkData(await client.session.messages({ sessionID: child.id, directory: rootDir }))
+          if (!current() || !useCode.getState().sessions[child.id]) return
+          // Los eventos recibidos durante la consulta tienen prioridad sobre el snapshot.
+          useCode.setState((s) =>
+            s.messages[child.id]?.length
+              ? {}
+              : {
+                  messages: { ...s.messages, [child.id]: history }
+                }
+          )
+        })
+      )
+    })().catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [client, rootId, rootDir, activeSessionID, canAct])
 
   /** Carpeta de un ayudante, solo si hay permiso de pedirle algo al motor; si no, lanza (nunca se pide). */
   const dirFor = (id: string): string => {

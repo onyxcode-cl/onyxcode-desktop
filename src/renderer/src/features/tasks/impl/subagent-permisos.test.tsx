@@ -168,3 +168,13 @@ describe('«trabajando» de la tarea con ayudantes en segundo plano', () => {
     expect(abort).toHaveBeenCalledTimes(1)
   })
 })
+
+it('V31: el permiso del ayudante en Overdrive incluye su modelo visible', async () => {
+  const { useProviders } = await import('../../../stores/providers')
+  useProviders.setState({ providers: [{ id: 'p', models: { modelo: { name: 'Modelo del ayudante' } } }] as never })
+  S.useSessions.setState((s) => ({
+    messages: { ...s.messages, kid: [{ info: { id: 'a', role: 'assistant', providerID: 'p', modelID: 'modelo' } as never, parts: [] }] }
+  }))
+  act(() => root.render(createElement(PP.PermissionCard, { request: perm('kid') })))
+  expect(host.textContent).toContain('Modelo: Modelo del ayudante')
+})

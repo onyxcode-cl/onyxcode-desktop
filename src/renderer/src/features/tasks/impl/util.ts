@@ -212,7 +212,8 @@ function clip(s: string, n = 60): string {
 }
 
 function fileLabel(p: string): string {
-  return p ? baseName(p) : ''
+  const name = p ? baseName(p) : ''
+  return /^tool_[a-z0-9]+(?:\.[a-z0-9]+)?$/i.test(name) ? '' : name
 }
 
 /** Herramientas de documentos que el agente puede cargar, con nombre llano para quien no es técnico. */
@@ -282,6 +283,8 @@ export function friendlyTool(part: ToolPart, showPath: (path: string) => string 
       return { verb: t('tasks.tool.todowrite'), detail: '' }
     case 'task':
       return { verb: v('task'), detail: clip(str(input, 'description', 'prompt')) }
+    case 'cambiar_modelo':
+      return { verb: toolLabel(part.tool, part.state.status), detail: '' }
     case 'question':
       return { verb: t('tasks.tool.question'), detail: '' }
     default: {

@@ -8,6 +8,8 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PermissionCard, QuestionCard } from './PermissionCard'
 import { useCode } from './store'
+import { useProviders } from '../../../stores/providers'
+import { useLang } from '../../../lib/i18n'
 import type { PendingPermission, PendingQuestion } from './types'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -105,5 +107,47 @@ describe('pregunta de un ayudante', () => {
     expect(host.textContent).toContain('Pregunta del ayudante «Revisar logs»')
     paint(createElement(QuestionCard, { request: q('root') }))
     expect(host.textContent).not.toContain('Pregunta del ayudante')
+  })
+})
+
+it('V31: la tarjeta usa el encargo actual de un ayudante reusado y traduce su rol de reserva', () => {
+  const reused = { ...taskPart, state: { ...taskPart.state, input: { task_id: 'kid', description: 'Borrar borrador' }, metadata: {} } }
+  useCode.setState({ messages: { root: [{ info: { id: 'm1' } as never, parts: [taskPart as never, reused as never] }] } })
+  paint(createElement(PermissionCard, { request: perm('kid'), root: '/proj' }))
+  expect(host.textContent).toContain('El ayudante «Borrar borrador»')
+  expect(host.textContent).not.toContain('Revisar logs')
+  useCode.setState({
+    messages: {
+      root: [
+        {
+          info: { id: 'm1' } as never,
+          parts: [{ ...taskPart, state: { ...taskPart.state, input: { subagent_type: 'explore' } } } as never]
+        }
+      ]
+    }
+  })
+  paint(createElement(PermissionCard, { request: perm('kid'), root: '/proj' }))
+  expect(host.textContent).toContain('Ayudante (solo lectura)')
+  expect(host.textContent).not.toContain('explore')
+})
+
+it('V31: el permiso del ayudante acompaña el nombre con el modelo visible en ambos idiomas', () => {
+  const providers = useProviders.getState().providers
+  useProviders.setState({ providers: [{ id: 'p', models: { modelo: { name: 'Modelo visible' } } }] as never })
+  useCode.setState((s) => ({
+    messages: { ...s.messages, kid: [{ info: { id: 'a', role: 'assistant', providerID: 'p', modelID: 'modelo' } as never, parts: [] }] }
+  }))
+  for (const [lang, label] of [
+    ['es', 'Modelo: Modelo visible'],
+    ['en', 'Model: Modelo visible']
+  ] as const) {
+    act(() => useLang.setState({ lang }))
+    paint(createElement(PermissionCard, { request: perm('kid'), root: '/proj' }))
+    expect(host.textContent).toContain(label)
+    expect(host.textContent).not.toContain('p/modelo')
+  }
+  act(() => {
+    useLang.setState({ lang: 'es' })
+    useProviders.setState({ providers })
   })
 })

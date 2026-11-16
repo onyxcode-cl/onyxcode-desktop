@@ -241,8 +241,9 @@ export function PermissionCardDesk({
           : t('code.perm.agentWants', { label })
       }
       preview={
-        previewNode || suggestionNode || reviewNode || outside.length || rules || policy.notice ? (
+        previewNode || suggestionNode || reviewNode || outside.length || rules || policy.notice || sub.model ? (
           <>
+            {sub.model && <p className="text-xs text-muted">{t('helpers.model', { model: sub.model })}</p>}
             {previewNode}
             <RememberRules metadata={md} rules={newRules} available={canAlways} showLimit={!policy.alwaysAsk} />
             <PermOutside dirs={outside} />

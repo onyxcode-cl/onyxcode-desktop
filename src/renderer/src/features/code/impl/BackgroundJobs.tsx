@@ -1,3 +1,4 @@
+import { helperAgentLabel } from './child-sessions'
 /**
  * Lista de «Trabajos en segundo plano», como tarjeta del resumen o banda sobre el compositor: una fila por subagente que sigue trabajando mientras la
  * conversación continúa (botón «Cancelar») y una por cada comando o ejecución de Code Mode del motor propio (botón «Parar»),
@@ -199,7 +200,7 @@ export function BackgroundJobs({
                     ) : (
                       job.title
                     )}
-                    {job.agent && <span className="text-subtle"> · {t('code.bg.agent', { agent: job.agent })}</span>}
+                    {job.agent && <span className="text-subtle"> · {helperAgentLabel(job.agent, t)}</span>}
                     {job.modelName && <span className="block text-muted">{t('helpers.model', { model: job.modelName })}</span>}
                   </span>
                   <span className="shrink-0 text-xs text-muted">{t(STATE_KEY[job.state])}</span>

@@ -228,7 +228,8 @@ export function useRequestTitle(request: PermissionRequest, title: string): stri
   const t = useT()
   const sub = useTaskSubagentOfRequest(request.sessionID)
   if (!sub.child) return title
-  return sub.name ? t('tasks.perm.subagentTitle', { name: sub.name, title }) : t('tasks.perm.subagentTitleAnon', { title })
+  const label = sub.name ? t('tasks.perm.subagentTitle', { name: sub.name, title }) : t('tasks.perm.subagentTitleAnon', { title })
+  return sub.model ? `${label} · ${t('helpers.model', { model: sub.model })}` : label
 }
 
 /** Nombres de los conectores MCP del usuario (una sola consulta): sirven para separar «servidor_herramienta». */

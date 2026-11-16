@@ -6,6 +6,7 @@
  * ella trabaja, la raíz figura `idle`. Aquí se resuelve: (a) cómo se llama el ayudante, (b) si una petición es de una hija y
  * (c) qué raíces siguen «ocupadas» por sus hijas en segundo plano (el trabajo vivo lo decide `selectBackgroundJobs`, sin duplicar lógica).
  */
+import { t } from '@shared/i18n'
 import type { Part, Session } from '@opencode-ai/sdk/v2/client'
 import { selectBackgroundJobs } from './background-jobs'
 
@@ -40,26 +41,36 @@ export function isChildRequest(sessions: SessionMap, sessionID: string, activeRo
   return !!activeRoot && sessionID !== activeRoot
 }
 
-/**
- * Nombre del ayudante dueño de la sesión hija: la descripción que le dio el agente al lanzarlo (parte `task` del padre), su tipo
- * (`explore`, `general`…) o, si no hay ni eso, el título de la sesión. Cadena vacía si no se puede saber (raíz o hija aún sin datos).
- */
-export function subagentNameOf(sessions: SessionMap, messages: MessageMap, sessionID: string): string {
+/** Nombre del rol para personas; los identificadores del motor nunca son etiquetas de UI. */
+export function helperAgentLabel(agent: string | null | undefined, translate: typeof t = t): string {
+  if (agent === 'explore' || agent === 'lazunox-helper') return translate('helpers.role.readOnly')
+  if (agent === 'lazunox-worker') return translate('helpers.role.worker')
+  return translate('helpers.role.helper')
+}
+
+function helperTitle(value: string, translate: typeof t): string {
+  const title = value.replace(/\s*\(@[^)]*subagent\)\s*$/i, '').trim()
+  return /^(?:explore|general|revisor|lazunox-helper|lazunox-worker)$/.test(title) ? helperAgentLabel(title, translate) : title
+}
+
+/** El encargo más reciente gana cuando se reusa una sesión con task_id. */
+export function subagentNameOf(sessions: SessionMap, messages: MessageMap, sessionID: string, translate: typeof t = t): string {
   const sess = sessions[sessionID]
   const parent = sess?.parentID
   if (parent) {
-    for (const e of messages[parent] ?? []) {
-      for (const p of e.parts) {
+    for (const e of [...(messages[parent] ?? [])].reverse()) {
+      for (const p of [...e.parts].reverse()) {
         if (p.type !== 'tool' || p.tool !== 'task') continue
         const state = rec((p as { state?: unknown }).state)
-        if (str(rec(state.metadata).sessionId) !== sessionID) continue
         const input = rec(state.input)
-        const name = str(input.description) || str(input.subagent_type) || str(state.title)
-        if (name) return name
+        if (str(rec(state.metadata).sessionId) !== sessionID && str(input.task_id) !== sessionID) continue
+        const name = str(input.description) || str(state.title)
+        if (name) return helperTitle(name, translate)
+        if (str(input.subagent_type)) return helperAgentLabel(str(input.subagent_type), translate)
       }
     }
   }
-  return str(sess?.title)
+  return helperTitle(str(sess?.title), translate)
 }
 
 /** Ids de sesiones hijas que trabajan (`busy`/`retry`) y de ahí sus raíces (sin duplicados). */

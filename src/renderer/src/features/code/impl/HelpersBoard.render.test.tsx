@@ -1,3 +1,4 @@
+import { useLang } from '../../../lib/i18n'
 // @vitest-environment jsdom
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -165,4 +166,19 @@ describe('HelpersBoard', () => {
     expect(host.textContent).not.toContain('Revisar pruebas')
     expect(host.textContent).toContain('Ayudantes')
   })
+})
+
+it('V31: roles para personas en español e inglés junto al modelo', () => {
+  for (const [lang, expected] of [
+    ['es', ['Ayudante (solo lectura)', 'Ayudante que ejecuta', 'Ayudante']],
+    ['en', ['Helper (read only)', 'Helper that executes', 'Helper']]
+  ] as const) {
+    act(() => useLang.setState({ lang }))
+    mount(board(['explore', 'lazunox-worker', 'general'].map((agent, index) => row({ id: String(index), agent }))))
+    for (const label of expected) expect(host.textContent).toContain(label)
+    for (const internal of ['explore', 'lazunox-worker', 'general', 'Subagente', 'subagent'])
+      expect(host.textContent).not.toContain(internal)
+    expect(host.textContent).toContain('p/m1')
+  }
+  act(() => useLang.setState({ lang: 'es' }))
 })

@@ -1,3 +1,4 @@
+import { helperAgentLabel } from './child-sessions'
 /**
  * Llamadas a herramientas del agente, en formato compacto:
  *  - pasos consecutivos se agrupan (`StepGroup`) con un resumen ("Leyó 3 archivos · Editó 1…"),
@@ -524,7 +525,7 @@ export const ToolRow = memo(function ToolRow({ part, root }: { part: ToolPart; r
       return (
         <Row
           icon={<Bot size={14} />}
-          verb={`${t('code.tool.subagent')}${str(input.subagent_type) ? ` ${str(input.subagent_type)}` : ''}`}
+          verb={helperAgentLabel(str(input.subagent_type), t)}
           detail={<span className="text-xs">{str(input.description)}</span>}
           status={state.status}
         >
