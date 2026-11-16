@@ -2,6 +2,7 @@ import type { Messages } from '../index'
 import type { code as es } from '../es/code'
 
 export const code = {
+  'code.msg.modelChanged': 'I switched to {model} because you asked.',
   'code.summary.move': 'Move “{title}”',
   'code.summary.moveHelp': 'Drag to move. With the keyboard, use the up and down arrows, Home or End.',
   'code.summary.moved': '“{title}” moved to position {position} of {count}.',

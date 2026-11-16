@@ -1,3 +1,5 @@
+import { ModelChangeNote } from '../../../components/conversation/ModelChangeNote'
+import { useTasks } from './store'
 /**
  * Conversación de una tarea de Tareas: los mensajes del asistente se aplanan y las llamadas a
  * herramientas consecutivas se agrupan en bloques compactos de "Pasos" (expandibles) en lugar
@@ -443,6 +445,7 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
   const t = useT()
   const { scrollRef, stickRef, atBottom, onScroll, scrollToBottom } = useStickToBottom(entries[0]?.info.id)
   const retrySid = taskId ?? entries[0]?.info.sessionID
+  const modelChanges = useTasks((s) => (retrySid ? s.modelChanges?.[retrySid] : undefined))
   const retrying = useIsRetrying(retrySid)
   const allBlocks = useMemo(() => buildBlocks(entries, busy), [entries, busy])
   // Modo de lectura: solo escritorio (el celular conserva siempre el comportamiento de siempre).
@@ -559,6 +562,9 @@ export function TaskConversation({ entries, busy, error, permissions, footer, ta
                 return null
             }
           })}
+          {modelChanges?.map((change, index) => (
+            <ModelChangeNote key={index} change={change} />
+          ))}
           {permissions.map((p) => (
             <PermissionCard key={p.id} request={p} />
           ))}
