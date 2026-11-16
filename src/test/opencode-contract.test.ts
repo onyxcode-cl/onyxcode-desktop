@@ -78,10 +78,13 @@ describe('instantánea api-routes.json', () => {
     ]
     // lazunox.16: confianza de carpetas dentro del motor (dar, quitar y consultar): rutas propias del motor.
     const CONFIANZA = ['GET /lazunox/trust', 'POST /lazunox/trust', 'DELETE /lazunox/trust']
+    // V29 (lazunox.28): revisión por IA de un comando dudoso, rutas propias del motor.
+    const REVISION = ['POST /permission/{requestID}/review', 'POST /api/session/{sessionID}/permission/{requestID}/review']
     const propias = snapshot.routes.filter(
       (r: string) =>
         /\/experimental\/session\/[^\s]*\/trabajos/.test(r) ||
         CONFIANZA.includes(r) ||
+        REVISION.includes(r) ||
         FORMULARIOS.includes(r) ||
         REBOBINAR.includes(r) ||
         OBJETIVO.includes(r) ||
@@ -95,6 +98,7 @@ describe('instantánea api-routes.json', () => {
         ...OBJETIVO,
         ...OLA7,
         ...CONFIANZA,
+        ...REVISION,
         'GET /experimental/session/{sessionID}/trabajos',
         'POST /experimental/session/{sessionID}/trabajos/{id}/terminar',
         'POST /experimental/session/{sessionID}/trabajos/{id}/reanudar'

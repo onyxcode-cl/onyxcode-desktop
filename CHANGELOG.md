@@ -11,8 +11,13 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 - **«Automático» pregunta mucho menos.** Los comandos comunes pasan solos y, cuando un comando es dudoso, una IA revisora lo mira en unos segundos según lo que pediste. Solo sale tarjeta si el comando es riesgoso o la revisión no alcanza a responder.
 - **Una sola tarjeta por comando**, aunque tenga varias partes.
 - **«Permitir siempre» se guarda para el proyecto** con una regla del comando, y la app no deja guardar reglas demasiado amplias.
-- **Rechazar con un comentario:** le dices a la IA qué hacer distinto y sigue trabajando, sin cancelar lo demás.
+- **Borrar o escribir fuera del proyecto siempre pide permiso**, también en «Automático».
+- **Rechazar con un comentario:** le dices a la IA qué hacer distinto y sigue trabajando, sin cancelar lo demás. Si estaba cumpliendo un objetivo, se pausa hasta que respondas.
 - Funciona igual en Mac y en Windows, también con PowerShell y cmd.
+
+### Arreglos importantes
+
+- **Cambiar de IA cuando a una se le acabaron los tokens ya no deja la conversación pegada.** El error de cuota agotada sale al tiro, la app no espera más de un minuto para reintentar, y si mandas un mensaje mientras espera, sigue con la IA que elegiste. En Código y Overdrive.
 
 ## [1.8.28] - 2026-11-15
 

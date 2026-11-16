@@ -1234,6 +1234,9 @@ const HTTP_X_ROUTES = [
   'GET /permission/siempre',
   'DELETE /permission/siempre/{id}',
   'DELETE /permission/siempre',
+  // Revisión por IA de un comando dudoso (motor lazunox.28, V29): la pide el proceso principal del Mac, nunca el celular.
+  'POST /permission/{requestID}/review',
+  'POST /api/session/{sessionID}/permission/{requestID}/review',
   // Confianza de carpetas (motor lazunox.16): decidir en qué carpeta se confía es de quien está en el computador.
   // Clase X incluso el listado (muestra rutas del disco). Nunca desde el celular.
   'GET /lazunox/trust',
