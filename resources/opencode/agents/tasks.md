@@ -31,6 +31,36 @@ permission:
     "unlink *": ask
     "find * -delete*": ask
     "trash *": ask
+    # V31: código que se arma y se ejecuta (tubería a una terminal, eval, variables) pasa por la revisión de la app.
+    "sh": ask
+    "sh *": ask
+    "bash": ask
+    "bash *": ask
+    "zsh": ask
+    "zsh *": ask
+    "dash": ask
+    "dash *": ask
+    "ksh": ask
+    "ksh *": ask
+    "fish": ask
+    "fish *": ask
+    "pwsh": ask
+    "pwsh *": ask
+    "powershell": ask
+    "powershell *": ask
+    "cmd": ask
+    "cmd *": ask
+    "eval": ask
+    "eval *": ask
+    "iex": ask
+    "iex *": ask
+    "Invoke-Expression": ask
+    "Invoke-Expression *": ask
+    "source": ask
+    "source *": ask
+    "xargs": ask
+    "xargs *": ask
+    "$*": ask
     "git push*": deny
     "sudo *": deny
     "shutdown*": deny
