@@ -10,6 +10,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 - **Pide partes del trabajo a otra IA con palabras normales:** por ejemplo «hazme un plan con Fable y ejecútalo con Haiku». El chat sigue con la IA que elegiste; las partes las hacen ayudantes con la IA que nombraste, y al final te dice cuál usó cada uno. Si pides «cámbiate a Sonnet», ahí sí cambia la IA del chat, y el selector se mueve solo. En Code y Overdrive.
 - **Los ayudantes trabajan sin trabas:** en «Automático», lo que un ayudante edita dentro del proyecto pasa sin tarjeta; en Overdrive, el ayudante que ejecuta escribe los archivos directamente y se ve con qué IA trabajó cada uno. Si pides una IA que no existe tal cual, te dice cuál parecida usó.
+- **Borrar siempre te pregunta, también cuando la IA lo esconde:** un borrado escrito dentro de un texto o una variable que después se ejecuta (`eval`, `Invoke-Expression`, `| sh`, `cmd /c`…) ahora saca tarjeta en Code y Overdrive, en Mac y Windows. Y un script de Python que solo revisa archivos ya no saca tarjetas falsas.
 - **El esfuerzo de la IA, a la vista:** un botón junto al modelo en Chat, Code y Overdrive para elegir cuánto piensa la IA (de Bajo a Máximo). También con Ctrl+E (Cmd+E en Mac). En Code el nombre del modelo ya no se corta.
 
 ## [1.8.30] - 2026-11-16
