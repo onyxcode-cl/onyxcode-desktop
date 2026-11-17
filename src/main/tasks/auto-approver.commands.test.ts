@@ -7,6 +7,7 @@ import { round3Commands } from '../../shared/fixtures/auto-command-round3'
 import { round5Commands } from '../../shared/fixtures/auto-command-round5'
 import { round4Commands } from '../../shared/fixtures/auto-command-round4'
 import { NOW_ALLOWED_READS } from '../../shared/fixtures/auto-command-v29'
+import { allVariableDeletes } from '../../shared/fixtures/auto-command-var'
 import { classifyAutoCommand } from '../../shared/auto-command'
 import { AutoApprover, type AutoServer } from './auto-approver'
 import type { RawPerm } from './monitor'
@@ -196,6 +197,18 @@ it.each(['/work/project', 'C:\\work\\project'])(
 )
 
 describe('V29: Overdrive con el revisor por IA', () => {
+  it.each(['/work/project', 'C:/work/project'])(
+    'V31 R4: variables y ejecución dinámica quedan pendientes con cero revisiones (%s)',
+    async (root) => {
+      for (const [shell, command] of allVariableDeletes) {
+        const h = harness(root, command, 'bash', { shell, review: { decision: 'allow', reason: 'el usuario pidió borrarlo' } })
+        expect(await h.approver.considerOne(root, false, 'request'), command).toEqual({ auto: false })
+        await h.approver.considerPermissions(h.server, [h.pending])
+        expect(h.reviews, command).toEqual([])
+        expect(h.replies, command).toEqual([])
+      }
+    }
+  )
   it.each(['/work/project', 'C:/work/project'])('V31: el borrado por tubería nunca llega a la revisora (%s)', async (root) => {
     for (const [shell, command] of [
       ['powershell', "@'\nbash <<'EOF'\nrm -- notas.txt\nEOF\n'@ | bash"],

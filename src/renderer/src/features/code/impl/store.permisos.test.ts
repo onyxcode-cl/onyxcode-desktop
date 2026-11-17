@@ -24,6 +24,7 @@ import { rulesetFor } from './permission-rules'
 import { approvalKindOf, rulesetForMode } from '@shared/permission-rules'
 import { classifyAutoCommand } from '@shared/auto-command'
 import { NOW_ALLOWED_READS, ROUND7_NOW_ALLOWED } from '@shared/fixtures/auto-command-v29'
+import { allVariableDeletes } from '@shared/fixtures/auto-command-var'
 
 vi.mock('../../../lib/notify', () => ({ sendNotification: vi.fn(), setAttentionCount: vi.fn() }))
 
@@ -1343,7 +1344,7 @@ describe('V28 ronda 7: replay de .glb, caf y caf2 del Mac', () => {
 })
 
 describe('V29: Automático en tres salidas con el revisor por IA', () => {
-  const setup = (): { reply: ReturnType<typeof vi.fn> } => {
+  const setup = (root = D): { reply: ReturnType<typeof vi.fn> } => {
     install()
     const reply = vi.fn(() => Promise.resolve({ data: true }))
     const client = useServer.getState().client as unknown as {
@@ -1352,16 +1353,19 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
     }
     client.permission.reply = reply
     client.v2 = { session: { permission: { reply } } }
-    apply(sessionCreated(makeSession('s1', D, { permission: rulesetFor('auto') })))
-    apply(msgUpdated(userMessage('m1', 's1'), D))
+    useCode.setState({ directory: root })
+    apply(sessionCreated(makeSession('s1', root, { permission: rulesetFor('auto') })))
+    apply(msgUpdated(userMessage('m1', 's1'), root))
     return { reply }
   }
   let n = 0
   /** Llamada de terminal real (herramienta + petición) con los metadatos del motor nuevo (contrato §1). */
-  const run = (command: string, metadata: Record<string, unknown> = {}, api: 'v1' | 'v2' = 'v1'): string => {
+  const run = (command: string, metadata: Record<string, unknown> = {}, api: 'v1' | 'v2' = 'v1', root = D): string => {
     const id = `p${++n}`
     const callID = `c${n}`
-    apply(partUpdated(toolPart(`part${n}`, 'm1', 's1', 'bash', { status: 'running', input: { command }, time: { start: 1 } }, callID), D))
+    apply(
+      partUpdated(toolPart(`part${n}`, 'm1', 's1', 'bash', { status: 'running', input: { command }, time: { start: 1 } }, callID), root)
+    )
     const md = { command, shell: 'zsh', externalDirectories: [], subcommands: [], ...metadata }
     st().applyEvent(
       api === 'v1'
@@ -1389,12 +1393,28 @@ describe('V29: Automático en tres salidas con el revisor por IA', () => {
               source: { messageID: 'm1', callID }
             }
           } as never),
-      D
+      root
     )
     return id
   }
   const answersFor = (reply: ReturnType<typeof vi.fn>, id: string): Array<Record<string, unknown>> =>
     (reply.mock.calls as unknown as Array<[Record<string, unknown>]>).map(([a]) => a).filter((a) => a.requestID === id)
+
+  it.each(['v1', 'v2'].flatMap((api) => ['/work/code', 'C:/work/code'].map((root) => ({ api: api as 'v1' | 'v2', root }))))(
+    'V31 R4: variables y ejecución dinámica dejan tarjeta y cero revisiones ($api, $root)',
+    async ({ api, root }) => {
+      const { reply } = setup(root)
+      const reviewed = fakeReviewer(() => 'allow')
+      for (const [shell, command] of allVariableDeletes) {
+        const id = run(command, { shell, externalDirectories: [] }, api, root)
+        expect(st().permissions[id], command).toBeDefined()
+        expect(answersFor(reply, id), command).toEqual([])
+      }
+      await Promise.resolve()
+      expect(reviewed).toEqual([])
+      expect(reply).not.toHaveBeenCalled()
+    }
+  )
 
   it('allow: «una vez» sin revisor; hard: tarjeta sin revisor', async () => {
     const { reply } = setup()

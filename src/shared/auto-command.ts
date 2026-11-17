@@ -229,7 +229,7 @@ function parse(command: string, escapes = true): Part[] | null {
     if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(c)) return null
     // PowerShell: las comillas del cuerpo no cierran un here-string. Es un único valor,
     // que solo se convierte en código si se entrega a un intérprete.
-    if (!escapes && c === '@' && !started && /^(?:@'|@")\r?\n/.test(command.slice(i))) {
+    if (!escapes && c === '@' && (!started || /^\$[A-Za-z_]\w*=$/.test(word)) && /^(?:@'|@")\r?\n/.test(command.slice(i))) {
       const q = command[i + 1]
       const start = command.indexOf('\n', i) + 1
       const end = new RegExp(`^${q}@(?=\\s|[|;&]|$)`, 'm').exec(command.slice(start))
@@ -949,7 +949,23 @@ function checkDelete(raw: string, cwds: Cwds, ctx: Ctx, recursive: boolean): voi
 
 // ───────────────────────────── Programas ─────────────────────────────
 
-const DELETE = new Set(['rm', 'rmdir', 'unlink', 'del', 'erase', 'rd', 'remove-item', 'ri', 'trash', 'rimraf', 'shred', 'srm', 'deltree'])
+const DELETE = new Set([
+  'rm',
+  'rmdir',
+  'unlink',
+  'del',
+  'erase',
+  'rd',
+  'remove-item',
+  'ri',
+  'clear-content',
+  'remove-itemproperty',
+  'trash',
+  'rimraf',
+  'shred',
+  'srm',
+  'deltree'
+])
 const KILL = new Set(['kill', 'pkill', 'killall', 'taskkill', 'stop-process', 'spps', 'tskill', 'skill'])
 const ELEVATE = new Set(['sudo', 'su', 'doas', 'runas', 'pkexec', 'gsudo', 'chroot'])
 const SHELLS = /^(?:bash|sh|zsh|dash|ksh|fish|csh|tcsh|ash)$/
@@ -3371,6 +3387,93 @@ const STDIN_RUNNERS = (prog: string): boolean =>
   CMD.test(prog) ||
   /^(?:iex|invoke-expression|eval|source|sudo|wsl)$/.test(prog)
 
+/** Plantillas de texto de ESTA llamada. No se consultan el entorno, archivos ni otras peticiones. */
+type CommandVariables = Map<string, string>
+
+function variableKey(name: string, ctx: Ctx): string {
+  return ctx.escapes ? name : name.toLowerCase()
+}
+
+function commandVariable(word: Word, variables: CommandVariables, ctx: Ctx): Word {
+  if (!word.dynamic) return word
+  const ref = /^\$(?:([A-Za-z_]\w*)|\{([A-Za-z_]\w*)\})$/.exec(word.text)
+  const text = ref && variables.get(variableKey(ref[1] ?? ref[2], ctx))
+  // Se conserva el texto de las rutas variables: al volver a analizarlo no ocultarán la acción conocida.
+  // dynamic=false solo habilita la lectura de esta plantilla como código, nunca la aprobación del original.
+  return typeof text === 'string' ? { text, quoted: true, dynamic: false } : word
+}
+
+function rememberCommandVariables(part: Part, variables: CommandVariables, ctx: Ctx): void {
+  const words = part.words
+  const save = (name: string, value: Word | undefined): void => {
+    const key = variableKey(name, ctx)
+    variables.delete(key)
+    if (!value || part.substs.length || value.text.includes(SUBST)) return
+    const resolved = commandVariable(value, variables, ctx)
+    if (resolved.quoted || (ctx.escapes && !resolved.dynamic)) variables.set(key, resolved.text)
+  }
+  if (!ctx.escapes && !ctx.cmdShell) {
+    const assignment = /^\$([A-Za-z_]\w*)(\+?=)?(.*)$/s.exec(words[0]?.text ?? '')
+    if (assignment && (assignment[2] || /^[+\-*/]?=$/.test(words[1]?.text ?? ''))) {
+      const op = assignment[2] ?? words[1].text
+      const value = assignment[2]
+        ? words.length === 1
+          ? { ...words[0], text: assignment[3] }
+          : words.length === 2 && !assignment[3]
+            ? words[1]
+            : undefined
+        : words.length === 3
+          ? words[2]
+          : undefined
+      save(assignment[1], op === '=' ? value : undefined)
+    }
+    if (programOf(part).name === 'set-variable') {
+      const args = words.slice(1)
+      const pos = positional(args, /^-(?:name|value|scope|option|description|visibility)$/i)
+      const name = optionValues(args, /^-name$/i)[0] ?? pos[0]
+      const value = optionValues(args, /^-value$/i)[0] ?? pos[optionValues(args, /^-name$/i).length ? 0 : 1]
+      if (name && /^[A-Za-z_]\w*$/.test(name.text)) save(name.text, value)
+    }
+    return
+  }
+  if (!ctx.escapes) return
+  for (const word of words.slice(words[0]?.text === 'export' ? 1 : 0)) {
+    const assignment = /^([A-Za-z_]\w*)(\+?=)(.*)$/s.exec(word.text)
+    if (!assignment) break
+    save(assignment[1], assignment[2] === '=' ? { ...word, text: assignment[3] } : undefined)
+  }
+}
+
+/** Red de seguridad para código calculado: un borrado visible nunca se delega a la revisora. */
+function dynamicDeletion(syntax: string, parts: Part[]): boolean {
+  const deletes =
+    /\b(?:remove-item(?:property)?|rm|del|erase|rd|rmdir|ri|unlink|clear-content|shred)\b|\.\s*delete\s*\(|\[(?:system\.)?io\.(?:file|directory)\]\s*::\s*delete\b|\bfind\b[^\n]*\s-delete\b|\bgit\s+clean\b/i
+  if (!deletes.test(syntax)) return false
+  if (!parts.length)
+    return /\b(?:iex|invoke-expression|eval)\b|\[scriptblock\]\s*::\s*create|\b(?:cmd(?:\.exe)?\s+\/c|(?:ba)?sh\s+-c)\b|\|\s*(?:cmd|pwsh|powershell|bash|sh)\b/i.test(
+      syntax
+    )
+  return parts.some((part, i) => {
+    const { name, index } = programOf(part)
+    const args = part.words.slice(index + 1)
+    if (/\[scriptblock\]\s*::\s*create/i.test(part.words.map((w) => w.text).join(' '))) return true
+    if (/^(?:iex|invoke-expression|eval)$/.test(name)) return true
+    // `$CMD` o `$a notas.txt`: el programa sale de una variable, así que lo que se ejecuta es calculado (no una asignación `$x = …`).
+    const head = part.words[index]?.text ?? ''
+    if (/^\$[\w{]/.test(head) && !head.includes('=') && part.words[index + 1]?.text !== '=') return true
+    if (
+      (SHELLS.test(name) && args.some((w) => /^-[A-Za-z]*c|^--command(?:=|$)/.test(w.text))) ||
+      (CMD.test(name) && args.some((w) => /^\/[ckr]/i.test(w.text))) ||
+      (PS.test(name) && args.some((w) => /^-(?:c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?|e(?:c|n(?:c\w*)?)?)(?:$|[:=])/i.test(w.text)))
+    )
+      return true
+    let up = i - 1
+    while (up >= 0 && parts[up].group) up--
+    // Python/Node reciben su propio lenguaje. Sus heredocs ya están ocultos en syntax.
+    return up >= 0 && parts[up].separator === '|' && STDIN_RUNNERS(name) && !SCRIPTING.test(name) && pipedLiteral(parts[up]) === null
+  })
+}
+
 /** Salida conocida de un productor de texto, sin leer archivos ni evaluar expansiones. */
 function pipedLiteral(part: Part): string | null {
   if (part.substs.length || part.redirects.length) return null
@@ -3450,6 +3553,13 @@ function pipedFromDownload(parts: Part[], i: number): boolean {
 
 function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = false): void {
   if (ctx.depth > 6) return doubt(ctx, 'demasiados envoltorios')
+  const sourceParts = parse(command, ctx.escapes) ?? []
+  const sourceSyntax = sourceParts
+    .flatMap((p) => p.heredocs)
+    .sort((a, b) => b.start - a.start)
+    .reduce((s, h) => s.slice(0, h.start) + s.slice(h.start, h.end).replace(/[^\r\n]/g, ' ') + s.slice(h.end), command)
+  // Antes de desenvolver: `cmd /c $x` puede perder comentarios que contienen el borrado visible.
+  if (dynamicDeletion(sourceSyntax, sourceParts)) hard(ctx, 'borra mediante código dinámico')
   const text = normalizeShellCommand(command, ctx.escapes)
   // Las comprobaciones léxicas del shell no deben ver HTML, Python u otros datos de stdin.
   // El receptor se analiza abajo; un intérprete sigue pasando por la revisión de código.
@@ -3506,10 +3616,11 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
     // Solo se quitan cabeceras con gramática conocida; la orden del cuerpo siempre se clasifica.
     parsedText = parsedText.replace(/(^|[;&|]\s*)@?(?:if\s+(?:not\s+)?exist\s+(?:"[^"]*"|[^\s;&|]+)\s+)/gi, '$1')
     parsedText = parsedText.replace(/(^|[;&|]\s*)@?for\s+(?!\/f\b)%{1,2}\w+\s+in\s*\([^)]*\)\s+do\s+/gi, '$1')
-    parsedText = parsedText.replace(/(^|[;&|]\s*)@/g, '$1')
+    parsedText = parsedText.replace(/(^|[;&|]\s*)@(?!['"]\r?\n)/g, '$1')
   }
   const parts = parse(parsedText, ctx.escapes)
   if (!parts) return doubt(ctx, fromScript ? 'el script ejecuta comandos que no se pueden leer' : 'no se puede leer el comando')
+  if (dynamicDeletion(syntax, parts)) hard(ctx, 'borra mediante código dinámico')
   // Descargas primero, para reconocer luego la ejecución del archivo bajado.
   for (const p of parts) {
     const { name, index } = programOf(p)
@@ -3517,8 +3628,13 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
   }
   let cwds: Cwds = cwdsIn.length ? [...cwdsIn] : [null]
   const stack: Cwds[] = []
+  const variables: CommandVariables = new Map()
+  const codeParts: Part[] = []
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]
+    rememberCommandVariables(p, variables, ctx)
+    const codePart = { ...p, words: p.words.map((w) => commandVariable(w, variables, ctx)) }
+    codeParts[i] = codePart
     if (p.group === 'open') {
       stack.push(cwds)
       continue
@@ -3540,7 +3656,7 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
     if (pipedIn && (STDIN_RUNNERS(prog) || prog === 'xargs')) {
       if (pipedFromDownload(parts, up)) hard(ctx, 'descarga y ejecuta código')
       else if (prog !== 'xargs') {
-        const literal = pipedLiteral(parts[up])
+        const literal = pipedLiteral(codeParts[up])
         const receiver =
           prog === 'wsl'
             ? (p.words
@@ -3590,6 +3706,20 @@ function classifyInto(command: string, cwdsIn: Cwds, ctx: Ctx, fromScript = fals
       }
     }
     for (const s of p.substs) classifyInto(s, cwds, { ...ctx, depth: ctx.depth + 1 }, fromScript)
+    // Solo los consumidores de código reciben las plantillas resueltas; el comando original conserva sus dudas.
+    if (
+      (SHELLS.test(prog) || CMD.test(prog) || PS.test(prog) || /^(?:eval|iex|invoke-expression)$/.test(prog)) &&
+      codePart.words.some((w, j) => w !== p.words[j])
+    )
+      analyzeWords(codePart.words, cwds, { ...ctx, depth: ctx.depth + 1 }, codePart, !!p.call)
+    // El léxico separa los paréntesis de Create: el argumento siguiente sigue siendo texto, no un programa.
+    if (p.words.some((w) => /^\[scriptblock\]::create$/i.test(w.text)) && parts[i + 1]?.group === 'open') {
+      const arg = parts[i + 2]
+      if (arg?.words.length === 1 && parts[i + 3]?.group === 'close') {
+        const code = commandVariable(arg.words[0], variables, ctx)
+        if (!code.dynamic) classifyInto(code.text, cwds, { ...ctx, depth: ctx.depth + 1, escapes: false }, true)
+      }
+    }
     // Archivos que esta orden escribe (redirección, `tee` o un cmdlet de contenido): si luego se ejecutan, se revisan. G4/R4.
     const prog0 = programOf(p).name
     const fromDl = DOWNLOADERS.test(prog0) || p.substs.some(downloadIn) || pipedFromDownload(parts, i)

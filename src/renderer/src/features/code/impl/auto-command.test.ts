@@ -10,6 +10,14 @@ import { classifyAutoCommand } from './auto-command'
 
 // R7: casos explícitos del contrato que antes iban a la revisora.
 const R7_ALWAYS_CARD = new Set([
+  // V31 R4: un programa que sale de una variable con un borrado visible también exige tarjeta.
+  'CMD="sudo rm -rf /"; $CMD',
+  "X='rm -rf ~'; $X",
+  'X=rm; $X -rf ~',
+  '$SHELL -c "rm -rf ~"',
+  "$'rm' -rf ~",
+  // V31 R4: el borrado guardado antes en una variable también exige tarjeta.
+  'X=\'rm -rf ~\'; bash -c "$X"',
   'rm x.txt',
   'rm -rf node_modules dist',
   'rm "$f"',
