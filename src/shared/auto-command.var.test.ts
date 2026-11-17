@@ -74,3 +74,13 @@ describe('V31 R4: el programa sale de una variable', () => {
       expect(classifyAutoCommand(command, '/Users/x/proyecto', { shell: 'bash', externalDirectories: [] }).verdict).not.toBe('hard')
     })
 })
+
+describe('V31 R5: el Python de la app no es un programa calculado', () => {
+  for (const command of [
+    '"$LAZUNOX_PYTHON" .lazunox/trabajo/revisar_html.py index.html',
+    '$LAZUNOX_PYTHON verificar_office.py informe.docx'
+  ])
+    it(command, () => {
+      expect(classifyAutoCommand(command, '/Users/x/proyecto', { shell: 'bash', externalDirectories: [] }).verdict).not.toBe('hard')
+    })
+})

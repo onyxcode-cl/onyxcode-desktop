@@ -3460,7 +3460,8 @@ function dynamicDeletion(syntax: string, parts: Part[]): boolean {
     if (/^(?:iex|invoke-expression|eval)$/.test(name)) return true
     // `$CMD` o `$a notas.txt`: el programa sale de una variable, así que lo que se ejecuta es calculado (no una asignación `$x = …`).
     const head = part.words[index]?.text ?? ''
-    if (/^\$[\w{]/.test(head) && !head.includes('=') && part.words[index + 1]?.text !== '=') return true
+    if (/^\$[\w{]/.test(head) && !/^\$\{?LAZUNOX_PYTHON\}?$/.test(head) && !head.includes('=') && part.words[index + 1]?.text !== '=')
+      return true
     if (
       (SHELLS.test(name) && args.some((w) => /^-[A-Za-z]*c|^--command(?:=|$)/.test(w.text))) ||
       (CMD.test(name) && args.some((w) => /^\/[ckr]/i.test(w.text))) ||

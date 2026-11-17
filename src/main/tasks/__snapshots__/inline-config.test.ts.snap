@@ -152,7 +152,15 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + MCP usuari
       "permission": {
         "*": "allow",
         "bash": {
+          ""$LAZUNOX_PYTHON"": "allow",
+          ""$LAZUNOX_PYTHON" *": "allow",
+          ""\${LAZUNOX_PYTHON}"": "allow",
+          ""\${LAZUNOX_PYTHON}" *": "allow",
           "$*": "ask",
+          "$LAZUNOX_PYTHON": "allow",
+          "$LAZUNOX_PYTHON *": "allow",
+          "\${LAZUNOX_PYTHON}": "allow",
+          "\${LAZUNOX_PYTHON} *": "allow",
           "*": "allow",
           "Invoke-Expression": "ask",
           "Invoke-Expression *": "ask",
@@ -256,7 +264,15 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + extras: sn
       "permission": {
         "*": "allow",
         "bash": {
+          ""$LAZUNOX_PYTHON"": "allow",
+          ""$LAZUNOX_PYTHON" *": "allow",
+          ""\${LAZUNOX_PYTHON}"": "allow",
+          ""\${LAZUNOX_PYTHON}" *": "allow",
           "$*": "ask",
+          "$LAZUNOX_PYTHON": "allow",
+          "$LAZUNOX_PYTHON *": "allow",
+          "\${LAZUNOX_PYTHON}": "allow",
+          "\${LAZUNOX_PYTHON} *": "allow",
           "*": "allow",
           "Invoke-Expression": "ask",
           "Invoke-Expression *": "ask",
@@ -356,7 +372,15 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox + navegador:
       "permission": {
         "*": "allow",
         "bash": {
+          ""$LAZUNOX_PYTHON"": "allow",
+          ""$LAZUNOX_PYTHON" *": "allow",
+          ""\${LAZUNOX_PYTHON}"": "allow",
+          ""\${LAZUNOX_PYTHON}" *": "allow",
           "$*": "ask",
+          "$LAZUNOX_PYTHON": "allow",
+          "$LAZUNOX_PYTHON *": "allow",
+          "\${LAZUNOX_PYTHON}": "allow",
+          "\${LAZUNOX_PYTHON} *": "allow",
           "*": "allow",
           "Invoke-Expression": "ask",
           "Invoke-Expression *": "ask",
@@ -449,7 +473,15 @@ exports[`buildInlineConfig: permisos del agente de tareas > sandbox vacío: snap
       "permission": {
         "*": "allow",
         "bash": {
+          ""$LAZUNOX_PYTHON"": "allow",
+          ""$LAZUNOX_PYTHON" *": "allow",
+          ""\${LAZUNOX_PYTHON}"": "allow",
+          ""\${LAZUNOX_PYTHON}" *": "allow",
           "$*": "ask",
+          "$LAZUNOX_PYTHON": "allow",
+          "$LAZUNOX_PYTHON *": "allow",
+          "\${LAZUNOX_PYTHON}": "allow",
+          "\${LAZUNOX_PYTHON} *": "allow",
           "*": "allow",
           "Invoke-Expression": "ask",
           "Invoke-Expression *": "ask",

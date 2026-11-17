@@ -61,6 +61,15 @@ permission:
     "xargs": ask
     "xargs *": ask
     "$*": ask
+    # El Python de la app es un programa conocido (como python3), no código calculado.
+    "$LAZUNOX_PYTHON": allow
+    "$LAZUNOX_PYTHON *": allow
+    '"$LAZUNOX_PYTHON"': allow
+    '"$LAZUNOX_PYTHON" *': allow
+    "${LAZUNOX_PYTHON}": allow
+    "${LAZUNOX_PYTHON} *": allow
+    '"${LAZUNOX_PYTHON}"': allow
+    '"${LAZUNOX_PYTHON}" *': allow
     "git push*": deny
     "sudo *": deny
     "shutdown*": deny

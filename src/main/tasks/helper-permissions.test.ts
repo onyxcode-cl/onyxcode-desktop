@@ -31,9 +31,10 @@ describe('permisos de ayudantes aislados', () => {
     const permission: Record<string, unknown> = {}
     let parent = ''
     for (const line of text.split('permission:')[1].split('\n')) {
-      const m = /^( +)("[^"]*"|[^:]+):\s*(allow|ask|deny)?\s*$/.exec(line)
+      const m = /^( +)("[^"]*"|'[^']*'|[^:]+):\s*(allow|ask|deny)?\s*$/.exec(line)
       if (!m) continue
-      const key = m[2].trim().replace(/^"|"$/g, '')
+      const raw = m[2].trim()
+      const key = raw.startsWith("'") ? raw.slice(1, -1) : raw.replace(/^"|"$/g, '')
       if (m[1].length === 2) {
         parent = key
         permission[key] = m[3] ?? {}
