@@ -88,7 +88,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         type: 'array',
         maxItems: 24,
         description:
-          'Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
+          'Usa fotos genéricas del tema; nunca presentes lugares, locales ni personas reconocibles como propios, salvo fotos aportadas o identidad solicitada. Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
         items: {
           type: 'object',
           additionalProperties: false,
@@ -122,7 +122,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'musica_buscar',
         description:
-          'Busca música en un catálogo público sin clave; devuelve título, segundos, etiquetas, licencia y origen HTTPS para audio.',
+          'Busca música con 1 o 2 palabras en inglés de género o ánimo (acoustic, calm). Reintenta consultas cortas si no hay pistas; informa si no encuentra. Catálogo público sin clave; devuelve título, segundos, etiquetas, licencia y origen HTTPS para audio.',
         inputSchema: {
           type: 'object',
           additionalProperties: false,
@@ -467,7 +467,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         result,
         name === 'render' ? (args.nombre as string) : 'cuadro',
         binding,
-        initial && request && request === finalRequest ? JSON.stringify([initial, request]) : null,
+        initial && request && request === finalRequest ? JSON.stringify([initial]) : null,
         String(composition),
         ac.signal
       )
@@ -481,6 +481,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
               audio: result.audio,
               fuentes: sources,
               revision: result.revision,
+              movimiento: result.movimiento,
               ...output.info,
               avisos: result.avisos ?? [],
               cobertura: result.cobertura ?? [],
@@ -546,7 +547,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     let outputs = this.outputs.get(binding)
     if (!outputs) this.outputs.set(binding, (outputs = new Map()))
     const write = async (name: string, ext: string, bytes: Buffer, maxBytes: number, subfolder?: string) => {
-      const key = JSON.stringify([root, request, cleanName(name), ext, subfolder])
+      const key = JSON.stringify([root, request, composition, cleanName(name), ext, subfolder])
       const previous = request ? outputs!.get(key) : undefined
       const written =
         (previous && rewriteCreated(root, previous, bytes, maxBytes)) ||

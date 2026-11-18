@@ -309,7 +309,7 @@ La forma más simple, en los tres modos, es la lista `audio` de `video_render` (
 
 ## 13. Lo que ve la revisión automática
 
-`video_cuadros` y `video_render` revisan los segundos que pides, 8 instantes repartidos en todo el video (D/9 … 8D/9) y, con escenas en `compositions/`, cada escena 0,2 s antes y después de empezar y en su mitad. Devuelven `avisos` (con segundo y texto) y `cobertura` (cuánto del lienzo ocupa el contenido en cada instante). `video_cuadros` devuelve además una **hoja de contactos** con hasta 24 de esos instantes: úsala para ver el movimiento entre tus cuadros.
+`video_cuadros` y `video_render` revisan los segundos que pides, 8 instantes repartidos en todo el video (D/9 … 8D/9) y cada escena o `.clip` 0,2 s antes y después de empezar, en su mitad y a mitad de las transiciones. Además comparan miniaturas cada 0,25 s: `movimiento` informa porcentaje y tramos casi quietos de al menos 1 s; avisa por encima del 35 % o con un tramo mayor de 2,5 s. Devuelven `avisos` (con segundo y texto) y `cobertura` (cuánto del lienzo ocupa el contenido en cada instante). `video_cuadros` devuelve además una **hoja de contactos** con hasta 24 de esos instantes: úsala para ver el movimiento entre tus cuadros.
 
 Hay dos clases de avisos:
 - los de la app, en español (texto que se sale, tapado, recortado, cobertura, cuadro casi vacío);

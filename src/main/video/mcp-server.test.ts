@@ -93,7 +93,7 @@ describe('video: atadura, copia y resultados', () => {
     expect((await server.invoke(binding, 'cuadros', args)).isError).toBe(true)
     expect(await readdir(outside)).toEqual([])
   })
-  it('reemplaza MP4 propio intacto del mismo pedido y conserva el de otro pedido en la misma conversación', async () => {
+  it('reemplaza MP4 propio intacto de la misma composición entre pedidos y protege ediciones', async () => {
     let request = 'msg_1'
     binding.session = async () => 'ses_1'
     binding.request = async () => request
@@ -103,16 +103,31 @@ describe('video: atadura, copia y resultados', () => {
     expect(b.ruta).toBe(a.ruta)
     request = 'msg_2'
     const c = JSON.parse(text(await server.invoke(binding, 'render', render)))
-    expect(c.ruta).toBe(join(root, 'Promo (2).mp4'))
+    expect(c.ruta).toBe(a.ruta)
     const d = JSON.parse(text(await server.invoke(binding, 'render', render)))
     expect(d.ruta).toBe(c.ruta)
     await writeFile(c.ruta, 'edición de la persona')
     const e = JSON.parse(text(await server.invoke(binding, 'render', render)))
-    expect(e.ruta).toBe(join(root, 'Promo (3).mp4'))
+    expect(e.ruta).toBe(join(root, 'Promo (2).mp4'))
     expect(await readFile(c.ruta, 'utf8')).toBe('edición de la persona')
     binding.request = async () => null
     const f = JSON.parse(text(await server.invoke(binding, 'render', render)))
-    expect(f.ruta).toBe(join(root, 'Promo (4).mp4'))
+    expect(f.ruta).toBe(join(root, 'Promo (3).mp4'))
+  })
+  it('no reemplaza salidas de otra composición o sesión aunque se repita el nombre', async () => {
+    let session = 'ses_1'
+    binding.session = async () => session
+    binding.request = async () => 'msg_1'
+    const render = { composicion: args.composicion, formato: 'vertical', duracion: 15, fps: 30, nombre: 'Promo' }
+    const first = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    await mkdir(join(root, 'otra'))
+    await writeFile(join(root, 'otra/index.html'), '<html>otra composición</html>')
+    const other = JSON.parse(text(await server.invoke(binding, 'render', { ...render, composicion: 'otra/index.html' })))
+    expect(other.ruta).toBe(join(root, 'Promo (2).mp4'))
+    session = 'ses_2'
+    const next = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(next.ruta).toBe(join(root, 'Promo (3).mp4'))
+    expect(first.ruta).toBe(join(root, 'Promo.mp4'))
   })
   it.skipIf(!posixOnly)('no reemplaza un MP4 cambiado por enlace simbólico o duro', async () => {
     binding.session = async () => 'ses_1'

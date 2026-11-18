@@ -89,3 +89,19 @@ it.each(['__proto__', 'constructor', 'toString', 'diagonal'])(
     expect(normalizeOrientation(value)).toBeUndefined()
   }
 )
+
+it('video acorta el sujeto en inglés/español sin perder requisitos', async () => {
+  const { videoSubjectQueries } = await import('./free-images-search')
+  expect(videoSubjectQueries(req('pan amasado recién horneado chileno cesta pan dorado'), ['consulta larga'])).toEqual(['bread', 'pan'])
+  expect(videoSubjectQueries(req('cafetería interior moderna café acogedor'), ['consulta larga'])).toEqual(['coffee', 'café'])
+  expect(videoSubjectQueries(req('Fortnite batalla de videojuegos'), ['consulta larga'])).toEqual(['Fortnite batalla', 'Fortnite'])
+  expect(videoSubjectQueries(req('panadería', { place: 'Chile', required: ['horno'] }), [])).toEqual([
+    'bread Chile horno',
+    'pan Chile horno'
+  ])
+})
+
+it('un concepto local prevalece sobre una etiqueta ambigua del catálogo', async () => {
+  const { videoSubjectQueries } = await import('./free-images-search')
+  expect(videoSubjectQueries(req('pan amasado'), [], 'Panama')).toEqual(['bread', 'pan'])
+})

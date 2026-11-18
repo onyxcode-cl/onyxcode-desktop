@@ -264,7 +264,7 @@ def cmd_aplicar(a):
         tr = json.load(f)
     if isinstance(tr, dict) and "segmentos" in tr:
         tr = {s["id"]: s.get("traduccion", "") for s in tr["segmentos"] if s.get("traduccion")}
-    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "formato_simplificado": [], "posible_recorte": [], "avisos": list(limpio.avisos)}
+    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "formato_simplificado": [], "posible_recorte": [], "avisos": []}
     cambios = {}  # nombre de parte → xml nuevo
     usados = set()
     with zipfile.ZipFile(limpio.ruta) as z:
@@ -335,7 +335,7 @@ def cmd_aplicar(a):
             print("SI FALLA: " + r)
         error("ESTRUCTURA: CAMBIÓ: no se creó la copia; revisa la traducción y repite con otro nombre.")
     via, ruta, extra_av, avisos, resumen = elegido
-    informe["avisos"] += extra_av + avisos
+    informe["avisos"] = (list(limpio.avisos) if via != "preservado" else []) + extra_av + avisos
     informe["via"] = via
     try:
         normalizar_paquete.escribir_nuevo(ruta, a.salida)

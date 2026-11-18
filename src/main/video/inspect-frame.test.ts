@@ -6,9 +6,14 @@ import { qualityComposition } from './fixtures/quality'
 
 // Executes the exact browser function shipped with the worker, without a separate copy of its algorithm.
 const source = readFileSync(join(__dirname, '../../../resources/video/inspect-frame.mjs'), 'utf8').replace(/export function /g, 'function ')
-const { inspectFrame, colorVariation, needsSmallerFrames } = new Function(
-  source + ';return {inspectFrame,colorVariation,needsSmallerFrames}'
+const { inspectFrame, colorVariation, needsSmallerFrames, measureMotion, transitionSamples } = new Function(
+  source + ';return {inspectFrame,colorVariation,needsSmallerFrames,measureMotion,transitionSamples}'
 )() as {
+  measureMotion: (
+    bytes: Uint8Array,
+    duration: number
+  ) => { porcentajeQuieto: number; tramos: { inicio: number; fin: number }[]; aviso: string | null }
+  transitionSamples: () => number[]
   inspectFrame: (size: { width: number; height: number }) => { issues: string[]; visibleText: number; coverage: number }
   needsSmallerFrames: (sizes: number[]) => boolean
   colorVariation: (rgb: Uint8Array) => number
@@ -16,6 +21,7 @@ const { inspectFrame, colorVariation, needsSmallerFrames } = new Function(
 beforeEach(() => {
   const dom = new Window()
   vi.stubGlobal('document', dom.document)
+  vi.stubGlobal('window', dom)
   vi.stubGlobal('Element', dom.Element)
   vi.stubGlobal('DOMRect', dom.DOMRect)
   vi.stubGlobal('getComputedStyle', dom.getComputedStyle.bind(dom))
@@ -61,6 +67,14 @@ describe('revisión automática de composiciones', () => {
     expect(review().issues.join(' ')).toContain('se sale de su caja')
     expect(review().issues.join(' ')).toContain('área segura')
   })
+  it('detecta texto recortado por un contenedor durante una transición', () => {
+    const review = scene('clean')
+    const section = document.querySelector('section') as HTMLElement
+    section.style.overflowX = 'hidden'
+    section.style.overflowY = 'hidden'
+    section.style.height = '40px'
+    expect(review().issues.join(' ')).toContain('queda recortado por su contenedor')
+  })
   it('detecta textos tapándose y un adorno encima con pointer-events:none', () => {
     const review = scene('overlap')()
     expect(review.issues.join(' ')).toContain('"HORARIO" queda tapado')
@@ -91,4 +105,24 @@ it('prefiere mitad para tres cuadros normales y reduce seis cuadros ruidosos o u
   expect(needsSmallerFrames([300000, 240000, 200000])).toBe(false)
   expect(needsSmallerFrames(Array(6).fill(600000))).toBe(true)
   expect(needsSmallerFrames([2100000])).toBe(true)
+})
+
+it('mide tiempo quieto, ignora pausas breves y avisa con sus tramos', () => {
+  const frames = (values: number[]) => Uint8Array.from(values.flatMap((v) => Array(4096).fill(v)))
+  expect(measureMotion(frames(Array(17).fill(42)), 4)).toMatchObject({ porcentajeQuieto: 100, tramos: [{ inicio: 0, fin: 4 }] })
+  expect(measureMotion(frames(Array(17).fill(42)), 4).aviso).toContain('movimiento continuo')
+  expect(measureMotion(frames(Array.from({ length: 17 }, (_, i) => (i % 2 ? 255 : 0))), 4).aviso).toBeNull()
+  expect(measureMotion(frames([0, 0, 0, 255, 255, 255, 0, 0, 0]), 2).porcentajeQuieto).toBe(0)
+  // A single long hold warns even below the percentage threshold.
+  const values = Array.from({ length: 41 }, (_, i) => (i < 13 ? 0 : i % 2 ? 255 : 0))
+  expect(measureMotion(frames(values), 10).aviso).toContain('0–3 s')
+})
+it('muestrea .clip, solapamientos y la mitad de tweens cortos', () => {
+  document.write('<div class="clip" data-start="0" data-duration="4.4"></div><div class="clip" data-start="3.8" data-duration="4.2"></div>')
+  Object.assign(window, {
+    __timelines: { main: { globalTime: () => 0.04, getChildren: () => [{ duration: () => 0.6, globalTime: (t: number) => 3.84 + t }] } }
+  })
+  const times = transitionSamples()
+  expect(times.some((t) => Math.abs(t - 4.1) < 0.001)).toBe(true)
+  expect(times).toContain(2.2)
 })

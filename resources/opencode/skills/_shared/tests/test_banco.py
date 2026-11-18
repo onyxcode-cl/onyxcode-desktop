@@ -164,6 +164,22 @@ class TestWord(unittest.TestCase):
         cls.d = tempfile.mkdtemp(prefix="banco-docx-")
         cls.banco = banco.banco_docx(cls.d)
 
+    def test_copia_limpia_avisa_solo_lo_que_descarta(self):
+        origen = self.banco["trash"]
+        p, salida, inf = traducir("docx", "translate_docx.py", origen, "docx", self.d, "aviso_preservado")
+        self.assertEqual(inf["via"], "preservado")
+        self.assertIn("[trash]/0000.dat", zipfile.ZipFile(salida).namelist())
+        self.assertFalse(any("se descartaron" in a for a in inf["avisos"]))
+        salida = os.path.join(self.d, "aviso_limpio.docx")
+        informe = os.path.join(self.d, "aviso_limpio.json")
+        p = correr("docx", "translate_docx.py", "aplicar", origen, "-t", os.path.join(self.d, "aviso_preservado-tr.json"), "-o", salida, "--informe", informe, "--modo", "limpio")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertNotIn("[trash]/0000.dat", zipfile.ZipFile(salida).namelist())
+        with open(informe, encoding="utf-8") as f:
+            inf = json.load(f)
+        self.assertTrue(any("se descartaron" in a for a in inf["avisos"]))
+        self.assertIn("se descartaron", p.stdout)
+
     def test_traducir_todo_el_banco(self):
         for nombre, ruta in self.banco.items():
             with self.subTest(nombre):
@@ -179,6 +195,8 @@ class TestWord(unittest.TestCase):
                     self.assertEqual(inf.get("via"), "copia limpia", nombre)
                 elif nombre != "macros":
                     self.assertEqual(inf.get("via"), "preservado", nombre)
+                    self.assertFalse(any("se descartaron" in a for a in inf.get("avisos", [])), inf)
+                    self.assertNotIn("se descartaron", p.stdout)
                     sal = zipfile.ZipFile(salida)
                     self.assertEqual(sorted(i.filename for i in orig.infolist()), sorted(i.filename for i in sal.infolist()), "mismas entradas que el original")
                     for i in orig.infolist():   # lo que no es texto pasa byte a byte
@@ -254,6 +272,8 @@ class TestExcel(unittest.TestCase):
                     self.assertEqual(inf.get("via"), "copia limpia", nombre)
                 elif nombre != "macros":
                     self.assertEqual(inf.get("via"), "preservado", nombre)
+                    self.assertFalse(any("se descartaron" in a for a in inf.get("avisos", [])), inf)
+                    self.assertNotIn("se descartaron", p.stdout)
                 if nombre not in ESTRUCTURALES:
                         self.assertEqual(sorted(i.filename for i in zipfile.ZipFile(ruta).infolist()), sorted(i.filename for i in z_salida.infolist()), "mismas entradas")
                 self.assertIn("<f>B2*C2</f>", z.read("xl/worksheets/sheet1.xml").decode())

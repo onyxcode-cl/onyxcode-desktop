@@ -138,3 +138,45 @@ export function matchesOrientation(width: number, height: number, orientation?: 
   const value = normalizeOrientation(orientation)
   return value === 'landscape' ? width > height : value === 'portrait' ? height > width : value === 'square' ? width === height : true
 }
+
+/** Short bilingual discovery queries for video; mandatory identity/place constraints remain intact. */
+export function videoSubjectQueries(r: FreeImageRequirements, originals: readonly string[], english?: string): string[] {
+  const subject = fold(r.subject)
+  const dictionary: Array<[RegExp, string, string]> = [
+    [/\b(?:pan|panaderia|bread|bakery)\b/, 'bread', 'pan'],
+    [/\b(?:cafeteria|cafe|coffee)\b/, 'coffee', 'café'],
+    [/\b(?:empanadas?|pastry)\b/, 'pastry', 'empanada'],
+    [/\b(?:perros?|dogs?)\b/, 'dog', 'perro'],
+    [/\b(?:gatos?|cats?)\b/, 'cat', 'gato'],
+    [/\b(?:playa|beach)\b/, 'beach', 'playa'],
+    [/\b(?:montana|mountain)\b/, 'mountain', 'montaña'],
+    [/\b(?:flores?|flowers?)\b/, 'flowers', 'flores'],
+    [/\b(?:colibri|hummingbird)\b/, 'hummingbird', 'colibrí'],
+    [/\b(?:pinguinos?|penguins?)\b/, 'penguin', 'pingüino'],
+    [/\b(?:fosiles?|fossils?)\b/, 'fossil', 'fósil'],
+    [/\b(?:frutas?|fruits?)\b/, 'fruit', 'fruta'],
+    [/\b(?:aula|classroom)\b/, 'classroom', 'aula'],
+    [/\b(?:comida|food)\b/, 'food', 'comida']
+  ]
+  const concept = dictionary.find(([pattern]) => pattern.test(subject))
+  const words = r.subject.match(/[\p{L}\p{N}-]+/gu) ?? []
+  const meaningful = words.filter(
+    (w) => !/^(?:un[ao]?s?|el|la|los|las|de|del|en|con|para|y|a|the|of|with|for|and|photo|fotos?|imagen(?:es)?)$/i.test(w)
+  )
+  const constraints = [...new Set([r.action, r.place, ...r.required].filter((s): s is string => !!s?.trim()))]
+  const seen = new Set(originals.map(fold))
+  return (
+    concept
+      ? [concept[1], concept[2]]
+      : english
+        ? [english, meaningful.slice(0, 2).join(' '), meaningful[0] ?? '']
+        : [meaningful.slice(0, 2).join(' '), meaningful[0] ?? '']
+  )
+    .filter(Boolean)
+    .map((q) => [q, ...constraints.filter((c) => !fold(q).includes(fold(c)))].join(' '))
+    .filter((q) => {
+      if (q.length > 200 || seen.has(fold(q))) return false
+      seen.add(fold(q))
+      return true
+    })
+}
