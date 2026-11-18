@@ -40,6 +40,9 @@ import banco_documentos as banco  # noqa: E402
 import normalizar_paquete  # noqa: E402
 
 
+ESTRUCTURALES = {"duplicadas", "barras", "mayusculas", "rota"}
+
+
 def correr(skill, script, *args):
     return subprocess.run([PY, os.path.join(SK, skill, "scripts", script)] + [str(a) for a in args], capture_output=True, text=True,
                           encoding="utf-8", errors="replace")
@@ -167,9 +170,19 @@ class TestWord(unittest.TestCase):
                 p, salida, inf = traducir("docx", "translate_docx.py", ruta, "docx", self.d, nombre.replace("+", "_"))
                 self.assertEqual(p.returncode, 0, "%s\n%s\n%s" % (nombre, p.stdout, p.stderr))
                 self.assertEqual(huella(ruta), antes, "el original cambió")
-                texto = " ".join(t.text or "" for t in docx.Document(salida).element.body.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"))
+                # la salida CONSERVA el archivo original (papelera, huérfanas…); se lee como cualquier documento: con su copia limpia
+                texto = " ".join(t.text or "" for t in docx.Document(normalizar_paquete.preparar(salida).ruta).element.body.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"))
                 self.assertTrue("HOLA MUNDO" in texto or "SEGUNDO PÁRRAFO" in texto, texto[:200])
-                self.assertNotIn("[trash]/0000.dat", zipfile.ZipFile(salida).namelist())
+                orig = zipfile.ZipFile(ruta)
+                if nombre in ESTRUCTURALES:   # el ZIP trae rarezas que las bibliotecas no leen: se entrega la copia limpia
+                    self.assertEqual(inf.get("via"), "copia limpia", nombre)
+                elif nombre != "macros":
+                    self.assertEqual(inf.get("via"), "preservado", nombre)
+                    sal = zipfile.ZipFile(salida)
+                    self.assertEqual(sorted(i.filename for i in orig.infolist()), sorted(i.filename for i in sal.infolist()), "mismas entradas que el original")
+                    for i in orig.infolist():   # lo que no es texto pasa byte a byte
+                        if not re.search(r"word[/\\](document|header\d*|footer\d*)\.xml$", i.filename, re.I) and not i.filename.endswith("/"):
+                            self.assertEqual(orig.read(i.filename), sal.read(i.filename), i.filename)
                 self.assertNotIn("error", inf)
 
     def test_editar_todo_el_banco(self):
@@ -183,6 +196,8 @@ class TestWord(unittest.TestCase):
                 self.assertEqual(huella(ruta), antes)
                 texto = " ".join(t.text or "" for t in docx.Document(salida).element.body.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t"))
                 self.assertIn("CAMBIADO", texto)
+                if nombre in ("trash", "comentarios+trash"):
+                    self.assertIn("[trash]/0000.dat", zipfile.ZipFile(salida).namelist())   # lo que no se editó pasa intacto
 
     def test_niveles_grave_y_aviso(self):
         """Metadatos, miniaturas y partes no usadas son AVISO (se entrega); estilos, imágenes y texto perdido son GRAVE (se detiene)."""
@@ -231,9 +246,15 @@ class TestExcel(unittest.TestCase):
                 p, salida, inf = traducir("xlsx", "translate_xlsx.py", ruta, "xlsx", self.d, nombre.replace("+", "_"))
                 self.assertEqual(p.returncode, 0, "%s\n%s\n%s" % (nombre, p.stdout, p.stderr))
                 self.assertEqual(huella(ruta), antes)
-                z = zipfile.ZipFile(salida)
+                z = zipfile.ZipFile(normalizar_paquete.preparar(salida).ruta)
+                z_salida = zipfile.ZipFile(salida)
                 self.assertIn("PRODUCTO", "".join(z.read(n).decode("utf-8", "replace") for n in z.namelist() if re.match(r"xl/(sharedStrings|worksheets/sheet\d+)\.xml$", n)))
-                self.assertNotIn("[trash]/0000.dat", z.namelist())
+                if nombre in ESTRUCTURALES:
+                    self.assertEqual(inf.get("via"), "copia limpia", nombre)
+                elif nombre != "macros":
+                    self.assertEqual(inf.get("via"), "preservado", nombre)
+                if nombre not in ESTRUCTURALES:
+                        self.assertEqual(sorted(i.filename for i in zipfile.ZipFile(ruta).infolist()), sorted(i.filename for i in z_salida.infolist()), "mismas entradas")
                 self.assertIn("<f>B2*C2</f>", z.read("xl/worksheets/sheet1.xml").decode())
                 if nombre.startswith("pivot"):
                     self.assertIn("xl/pivotTables/pivotTable1.xml", z.namelist())
@@ -275,7 +296,8 @@ class TestPowerPoint(unittest.TestCase):
                 textos = " ".join(sh.text_frame.text for s in prs.slides for sh in s.shapes if sh.has_text_frame)
                 self.assertIn("CAMBIADO", textos)
                 z = zipfile.ZipFile(salida)
-                self.assertNotIn("[trash]/0000.dat", z.namelist())
+                if nombre in ("trash", "medios+trash"):
+                    self.assertIn("[trash]/0000.dat", z.namelist())
                 if nombre.startswith("medios"):
                     self.assertIn("ppt/media/audio1.mp3", z.namelist())   # los medios alcanzables se conservan
 

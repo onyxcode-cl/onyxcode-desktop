@@ -15,6 +15,7 @@ import {
   cancelTranslateJob,
   dismissTranslateJob,
   markJobSaved,
+  retryApplyJob,
   retryTranslateJob,
   useTranslateJobs,
   type TranslateJob
@@ -76,12 +77,19 @@ function JobCard({ job }: { job: TranslateJob }): React.JSX.Element {
           {state.kind === 'running' && <Running state={state} />}
           {state.kind === 'done' && <Done job={job} state={state} btn={btn} />}
           {state.kind === 'error' && (
-            <p role="alert" className="mt-1 break-words text-ui text-danger">
-              {t(
-                (KNOWN_ERRORS.includes(state.reason) ? `translate.pdf.err.${state.reason}` : 'translate.pdf.err.failed') as 'translate.pdf.err.failed',
-                { detail: state.detail ?? '' }
-              )}
-            </p>
+            <>
+              <p role="alert" className="mt-1 break-words text-ui text-danger">
+                {state.apply
+                  ? t('translate.pdf.err.apply', { detail: state.detail ?? '' })
+                  : t(
+                      (KNOWN_ERRORS.includes(state.reason)
+                        ? `translate.pdf.err.${state.reason}`
+                        : 'translate.pdf.err.failed') as 'translate.pdf.err.failed',
+                      { detail: state.detail ?? '' }
+                    )}
+              </p>
+              {state.apply && <p className="mt-0.5 text-[12.5px] text-muted">{t('translate.pdf.err.applyHint')}</p>}
+            </>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -90,8 +98,13 @@ function JobCard({ job }: { job: TranslateJob }): React.JSX.Element {
               {t('translate.pdf.cancel')}
             </button>
           )}
+          {state.kind === 'error' && state.apply?.canDeliver && (
+            <button type="button" onClick={() => void retryApplyJob(job.id, true)} className={btn}>
+              {t('translate.pdf.deliverAnyway')}
+            </button>
+          )}
           {state.kind === 'error' && state.reason !== 'aborted' && (
-            <button type="button" onClick={() => retryTranslateJob(job.id)} className={btn}>
+            <button type="button" onClick={() => (state.apply ? void retryApplyJob(job.id) : retryTranslateJob(job.id))} className={btn}>
               {t('translate.pdf.retry')}
             </button>
           )}
@@ -130,10 +143,7 @@ function Running({ state }: { state: Extract<TranslateJob['state'], { kind: 'run
         {text}
       </p>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-hover" aria-hidden="true">
-        <div
-          className="h-full bg-accent transition-[width]"
-          style={{ width: `${p.total ? Math.round((p.done / p.total) * 100) : 4}%` }}
-        />
+        <div className="h-full bg-accent transition-[width]" style={{ width: `${p.total ? Math.round((p.done / p.total) * 100) : 4}%` }} />
       </div>
     </>
   )
@@ -183,6 +193,7 @@ function Done({
   if ((r.formatLost ?? 0) > 0) notes.push(t('translate.pdf.doneFormat', { n: r.formatLost ?? 0 }))
   if ((r.cutOff ?? 0) > 0) notes.push(t('translate.pdf.doneCutOff', { n: r.cutOff ?? 0 }))
   if (r.linksDropped > 0) notes.push(t('translate.pdf.doneLinks', { n: r.linksDropped }))
+  if ((r.warnings?.length ?? 0) > 0) notes.push(t('translate.pdf.doneWarnings', { list: (r.warnings ?? []).join(' ') }))
   const save = (clean: boolean): void => {
     void call('translate:pdfSave', { jobId: outcome.jobId, ...(clean ? { clean: true } : {}) }).then((s) => s.saved && markJobSaved(job.id))
   }

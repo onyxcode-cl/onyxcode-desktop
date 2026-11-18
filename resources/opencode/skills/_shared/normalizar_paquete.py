@@ -42,6 +42,15 @@ CT_PRINCIPAL = {
 }
 
 
+AVISO_MACROS = "el documento era una plantilla o traía macros: la copia es un documento normal y las macros no se conservan"
+
+
+class Avisos(list):
+    """Lista de avisos que además dice si el ZIP trae rarezas de ESTRUCTURA (nombres con `\\`, repetidos, mayúsculas distintas, relaciones rotas):
+    esas las bibliotecas no las leen, así que el resultado no se puede entregar conservando el archivo original tal cual."""
+    estructural = False
+
+
 class PaqueteIlegible(Exception):
     """El archivo no se puede abrir como documento (el mensaje va en español simple para la persona)."""
 
@@ -51,6 +60,10 @@ class Resultado:
         self.ruta = ruta
         self.avisos = avisos
         self.cambios = cambios
+        # el tipo del documento cambió (macros/plantilla → normal): no se puede preservar el ZIP original tal cual
+        self.cambia_tipo = AVISO_MACROS in avisos
+        # rarezas de estructura del ZIP que las bibliotecas no leen: se entrega la copia limpia en vez de conservar el archivo tal cual
+        self.estructural = bool(getattr(avisos, "estructural", False))
 
 
 _temporales = []
@@ -127,7 +140,7 @@ def _dueno_de_rels(rels):
 # ------------------------------------------------------------------ OOXML
 def normalizar_ooxml(origen, destino, quitar_macros=False):
     """Escribe en `destino` la copia limpia de `origen`. Devuelve la lista de avisos (español simple). Lanza PaqueteIlegible."""
-    avisos = []
+    avisos = Avisos()
     try:
         z = zipfile.ZipFile(origen)
     except (zipfile.BadZipFile, OSError) as e:
@@ -150,6 +163,7 @@ def normalizar_ooxml(origen, destino, quitar_macros=False):
                 raise PaqueteIlegible("el documento está protegido con contraseña: ábrelo y guárdalo sin protección.")
             grupos.setdefault(n.lower(), []).append((n, i))
         if raros:
+            avisos.estructural = True
             avisos.append("se descartaron %d entradas del archivo con nombres no válidos" % raros)
         indice = {k: v[-1][0] for k, v in grupos.items()}
 
@@ -179,7 +193,7 @@ def normalizar_ooxml(origen, destino, quitar_macros=False):
             if ct1 != ct0:
                 cache["[content_types].xml"] = ct1.encode("utf-8")
                 modificados["[content_types].xml"] = cache["[content_types].xml"]
-                avisos.append("el documento era una plantilla o traía macros: la copia es un documento normal y las macros no se conservan")
+                avisos.append(AVISO_MACROS)
                 for rk in [x for x in grupos if x.endswith(".rels")]:
                     t = datos_xml(rk).decode("utf-8", "replace")
                     t2 = re.sub(r'<(?:\w+:)?Relationship\b[^>]*\bType="[^"]*/vbaProject(?:Signature)?"[^>]*?/>', "", t)
@@ -246,6 +260,7 @@ def normalizar_ooxml(origen, destino, quitar_macros=False):
             nombre = ref or elegida[0]
             finales.append((nombre, elegida[1], k))
         if repetidas:
+            avisos.estructural = True
             avisos.append("el archivo traía %d entradas repetidas (o con otras mayúsculas): se dejó una de cada" % repetidas)
         if huerfanas:
             todas = sorted(huerfanas)
@@ -260,6 +275,7 @@ def normalizar_ooxml(origen, destino, quitar_macros=False):
             for rid in ids:
                 txt = re.sub(r'<(?:\w+:)?Relationship\b(?=[^>]*\bId="%s")[^>]*?/>' % re.escape(rid or ""), "", txt)
             modificados[rk] = txt.encode("utf-8")
+            avisos.estructural = True
             avisos.append("se quitaron %d relaciones que apuntaban a partes que no existen (%s)" % (len(ids), indice[rk]))
         ct = datos_xml("[content_types].xml").decode("utf-8", "replace")
 
@@ -270,6 +286,8 @@ def normalizar_ooxml(origen, destino, quitar_macros=False):
         if ct2 != ct:
             modificados["[content_types].xml"] = ct2.encode("utf-8")
 
+        if any(nombre != i.filename for nombre, i, _k in finales):
+            avisos.estructural = True   # el nombre que se escribe no es el que traía el ZIP (barras, mayúsculas)
         # 5) escribir: tipos de contenido y relaciones del paquete primero
         finales.sort(key=lambda x: (0 if x[2] == "[content_types].xml" else 1 if x[2] == "_rels/.rels" else 2))
         try:
@@ -334,6 +352,81 @@ def normalizar_pdf(origen, destino):
     finally:
         doc.close()
     return avisos
+
+
+# ------------------------------------------------------------------ guardado que PRESERVA el archivo original
+def _clave(nombre):
+    n = _nombre_limpio(nombre)
+    return None if n is None else n.lower()
+
+
+def fusionar_preservando(original, limpio, guardado, salida):
+    """Escribe en `salida` el ZIP ORIGINAL entrada por entrada (con todo lo que traiga, la basura incluida) cambiando solo las partes que el
+    guardado de la biblioteca modificó respecto de la copia limpia (`limpio`): lo que nadie tocó pasa intacto, byte a byte. Las partes nuevas
+    se agregan y las que la biblioteca quitó, se quitan. Devuelve cuántas partes se reemplazaron o agregaron."""
+    import comparar_estructura as ce
+    with zipfile.ZipFile(original) as zo, zipfile.ZipFile(limpio) as zl, zipfile.ZipFile(guardado) as zg:
+        nl = {n.lower(): n for n in zl.namelist() if not n.endswith("/")}
+        ng = {n.lower(): n for n in zg.namelist() if not n.endswith("/")}
+        cambiadas = {}
+        for k, n in ng.items():
+            if k == "[content_types].xml":
+                if ce._tipos(zl) != ce._tipos(zg):
+                    cambiadas[k] = zg.read(n)
+            elif k not in nl or ce._canon(zl, nl[k]) != ce._canon(zg, n):
+                cambiadas[k] = zg.read(n)
+        quitadas = {k for k in nl if k not in ng}
+        infos = zo.infolist()
+        escritas = set()
+        with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as out:
+            for i, info in enumerate(infos):
+                k = _clave(info.filename)
+                if k is not None and k in quitadas:
+                    continue
+                if k is not None and k in cambiadas:
+                    out.writestr(info, cambiadas[k], compress_type=info.compress_type)
+                    escritas.add(k)
+                else:
+                    out.writestr(info, zo.read(info), compress_type=info.compress_type)
+            for k, datos in cambiadas.items():
+                if k not in escritas:
+                    out.writestr(ng[k], datos)
+                    escritas.add(k)
+    return len(cambiadas)
+
+
+def vias_de_entrega(original, limpio, guardado, abrir=None):
+    """Genera, en orden, las formas de entregar el resultado como (vía, ruta temporal, avisos): primero la que PRESERVA el archivo original
+    (`fusionar_preservando`) y, si no se pudo armar o no abre con la biblioteca, la alternativa: el guardado de la biblioteca sobre la
+    copia limpia. Quien llama revisa cada una (`comparar_estructura`) y se queda con la primera sin diferencias graves."""
+    if not getattr(limpio, "cambia_tipo", False) and not getattr(limpio, "estructural", False):
+        paso = os.path.join(_carpeta_temporal(), "preservado" + os.path.splitext(guardado)[1])
+        try:
+            fusionar_preservando(original, limpio.ruta, guardado, paso)
+            comprobada = preparar(paso)   # el resultado debe poder normalizarse (y abrirse) como cualquier documento
+            if abrir is not None:
+                abrir(comprobada.ruta)
+            yield "preservado", paso, []
+        except Exception as e:  # noqa: BLE001 — la vía alternativa existe justo para esto
+            yield "copia limpia", guardado, ["no se pudo conservar el archivo original tal cual (%s: %s); se entregó la copia limpia" % (type(e).__name__, e)]
+            return
+        yield "copia limpia", guardado, ["la revisión rechazó el archivo que conserva el original; se entregó la copia limpia"]
+        return
+    yield "copia limpia", guardado, []
+
+
+def entregar_edicion(original, limpio, guardado, salida, abrir=None):
+    """Para ediciones: deja en `salida` (archivo NUEVO) la primera vía que sirva —el original conservado con solo lo editado cambiado, o la copia
+    limpia—. Devuelve los avisos de la vía alternativa (vacío si se conservó el original)."""
+    via, ruta, avisos = next(vias_de_entrega(original, limpio, guardado, abrir))
+    escribir_nuevo(ruta, salida)
+    return avisos
+
+
+def escribir_nuevo(origen, destino):
+    """Copia `origen` a un archivo NUEVO (nunca pisa uno existente; no borra ni renombra: el aislamiento de Tareas puede negarlo)."""
+    with open(origen, "rb") as f, open(destino, "xb") as out:
+        shutil.copyfileobj(f, out)
 
 
 # ------------------------------------------------------------------ interfaz

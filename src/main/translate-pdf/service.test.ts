@@ -85,7 +85,8 @@ describe('Excel', () => {
     nombres_de_hoja_no_traducidos: ['Ventas'],
     omitidos: {}
   }
-  const run2 = (applyCode = 0, extractCode = 0, stderr = ''): ServiceDeps['run'] =>
+  const run2 =
+    (applyCode = 0, extractCode = 0, stderr = ''): ServiceDeps['run'] =>
     async (_p, args, cwd) => {
       if (args[1] === 'extraer') {
         writeFileSync(join(cwd, 'segmentos.json'), JSON.stringify(xlsxSegs))
@@ -94,7 +95,13 @@ describe('Excel', () => {
       writeFileSync(join(cwd, 'salida.xlsx'), 'PK-out')
       writeFileSync(
         join(cwd, 'informe.json'),
-        JSON.stringify({ traducidos: 4, sin_traduccion: ['i1-1'], iguales: 0, formato_simplificado: ['s3'], posible_recorte: ['Ventas!B1', 'Ventas!C1'] })
+        JSON.stringify({
+          traducidos: 4,
+          sin_traduccion: ['i1-1'],
+          iguales: 0,
+          formato_simplificado: ['s3'],
+          posible_recorte: ['Ventas!B1', 'Ventas!C1']
+        })
       )
       return ok({ code: applyCode })
     }
@@ -137,7 +144,14 @@ describe('Excel', () => {
     if (!ex.ok) throw new Error('extract falló')
     const r = await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'Product', 'i1-7': 'Report', 'g1-0': 'Sales' } })
     expect(run.mock.calls.at(-1)![1].slice(1)).toEqual([
-      'aplicar', 'input.xlsx', '-t', 'traduccion.json', '-o', 'salida.xlsx', '--informe', 'informe.json'
+      'aplicar',
+      'input.xlsx',
+      '-t',
+      'traduccion.json',
+      '-o',
+      'salida.xlsx',
+      '--informe',
+      'informe.json'
     ])
     expect(r).toEqual({
       ok: true,
@@ -153,7 +167,71 @@ describe('Excel', () => {
     const svc = new PdfTranslateService(deps(run2(1)))
     const ex = await svc.extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
     if (!ex.ok) throw new Error('extract falló')
-    expect(await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })).toEqual({ ok: false, reason: 'failed' })
+    const r = await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })
+    expect(r).toMatchObject({ ok: false, reason: 'failed', level: 'grave', canDeliver: false })
+    // el trabajo NO se borra (se puede reintentar) pero la salida mala sí
+    expect(existsSync(join(root, 'jobs', ex.jobId, 'input.xlsx'))).toBe(true)
+    expect(existsSync(join(root, 'jobs', ex.jobId, 'salida.xlsx'))).toBe(false)
+  })
+  it('un fallo que no es grave (código 4) deja el archivo y se puede «entregar igual» sin volver a escribir', async () => {
+    const run = vi.fn(async (...a: Parameters<ServiceDeps['run']>) => {
+      const [, args, cwd] = a
+      if (args[1] === 'extraer') {
+        writeFileSync(join(cwd, 'segmentos.json'), JSON.stringify(xlsxSegs))
+        return ok({})
+      }
+      writeFileSync(join(cwd, 'salida.xlsx'), 'PK-out')
+      writeFileSync(
+        join(cwd, 'informe.json'),
+        JSON.stringify({
+          traducidos: 4,
+          sin_traduccion: [],
+          avisos: ['se descartaron 1 partes que el documento no usaba ([trash]/0000.dat)'],
+          error: { nivel: 'aviso', motivos: ['no se pudo revisar la estructura del resultado (x)'] }
+        })
+      )
+      return ok({ code: 4 })
+    })
+    const svc = new PdfTranslateService(deps(run))
+    const ex = await svc.extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    if (!ex.ok) throw new Error('extract falló')
+    const r1 = await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })
+    expect(r1).toMatchObject({ ok: false, level: 'aviso', canDeliver: true })
+    const llamadas = run.mock.calls.length
+    const r2 = await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' }, deliver: true })
+    expect(r2).toMatchObject({ ok: true, outName: 'v (en).xlsx' })
+    if (r2.ok) expect(r2.report.warnings).toHaveLength(1)
+    expect(run.mock.calls.length).toBe(llamadas) // entregar igual no vuelve a correr el script
+    expect(await svc.open(ex.jobId)).toEqual({ opened: true })
+  })
+  it('si el script falla por algo inesperado, se reintenta UNA vez con la copia limpia (--modo limpio) sin volver al modelo', async () => {
+    const calls: string[][] = []
+    const run: ServiceDeps['run'] = async (_p, args, cwd) => {
+      calls.push(args)
+      if (args[1] === 'extraer') {
+        writeFileSync(join(cwd, 'segmentos.json'), JSON.stringify(xlsxSegs))
+        return ok({})
+      }
+      if (!args.includes('--modo')) return ok({ code: 1, stderr: 'ERROR: no se pudo procesar el Excel (KeyError: x)' })
+      writeFileSync(join(cwd, 'salida.xlsx'), 'PK-out')
+      writeFileSync(join(cwd, 'informe.json'), JSON.stringify({ traducidos: 1, sin_traduccion: [] }))
+      return ok({})
+    }
+    const svc = new PdfTranslateService(deps(run))
+    const ex = await svc.extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    if (!ex.ok) throw new Error('extract falló')
+    expect(await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })).toMatchObject({ ok: true })
+    expect(calls.filter((a) => a[1] === 'aplicar').map((a) => a.includes('limpio'))).toEqual([false, true])
+  })
+  it('«entregar igual» no sirve tras un fallo grave', async () => {
+    const svc = new PdfTranslateService(deps(run2(1)))
+    const ex = await svc.extract({ name: 'v.xlsx', base64: XLSX_B64, kind: 'xlsx' })
+    if (!ex.ok) throw new Error('extract falló')
+    await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' } })
+    expect(await svc.apply({ jobId: ex.jobId, target: 'en', translations: { s3: 'x' }, deliver: true })).toEqual({
+      ok: false,
+      reason: 'failed'
+    })
   })
   it('guardar usa el filtro «Excel»', async () => {
     const svc = new PdfTranslateService(deps(run2()))

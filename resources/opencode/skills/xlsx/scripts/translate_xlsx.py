@@ -297,27 +297,50 @@ def cmd_aplicar(a):
     extra = sorted(set(tr) - usados - set(informe["sin_traduccion"]))
     if extra:
         informe["ids_desconocidos"] = extra
-    # Armar y verificar ANTES de crear la salida: no podemos borrar una copia
-    # inválida en una carpeta de Tareas sin permiso de borrado.
+    # Armar y verificar ANTES de crear la salida: no podemos borrar una copia inválida en una carpeta de Tareas sin permiso de borrado.
+    # Primero el ZIP ORIGINAL con solo los textos cambiados (todo lo demás pasa intacto); si la revisión lo rechaza, la copia limpia.
     import comparar_estructura  # noqa: E402
-    with BytesIO() as result:
-        with zipfile.ZipFile(limpio.ruta) as zi, zipfile.ZipFile(result, "w", compression=zipfile.ZIP_DEFLATED) as zo:
-            for info in zi.infolist():
-                datos = cambios[info.filename].encode("utf-8") if info.filename in cambios else zi.read(info.filename)
-                zo.writestr(info, datos, compress_type=info.compress_type)
-        result.seek(0)
-        dif, avisos, resumen = comparar_estructura.comparar_xlsx(limpio.ruta, result)
-        informe["avisos"] += avisos
-        for d in dif:
-            print("DIFERENCIA: " + d)
-        if dif:
-            informe["error"] = {"nivel": "grave", "motivos": dif[:12]}
-            _guardar_informe(a, informe)
-            error("ESTRUCTURA: CAMBIÓ: no se creó la copia; revisa la traducción y repite con otro nombre.")
+    guardado = os.path.join(normalizar_paquete._carpeta_temporal(), "guardado.xlsx")
+    with zipfile.ZipFile(limpio.ruta) as zi, zipfile.ZipFile(guardado, "w", compression=zipfile.ZIP_DEFLATED) as zo:
+        for info in zi.infolist():
+            datos = cambios[info.filename].encode("utf-8") if info.filename in cambios else zi.read(info.filename)
+            zo.writestr(info, datos, compress_type=info.compress_type)
+    if a.modo == "limpio":
+        vias = iter([("copia limpia", guardado, [])])
+    else:
+        vias = normalizar_paquete.vias_de_entrega(a.xlsx, limpio, guardado)
+    elegido, ultimo_dif = None, []
+    for via, ruta, extra_av in vias:
         try:
-            write_output(a.salida, result.getvalue())
-        except OSError as e:
-            error(str(e))
+            probado = normalizar_paquete.preparar(ruta).ruta if via == "preservado" else ruta
+            dif, avisos, resumen = comparar_estructura.comparar_xlsx(limpio.ruta, probado)
+        except Exception as e:  # noqa: BLE001
+            ultimo_dif = ["no se pudo revisar el resultado (%s)" % e]
+            continue
+        if dif:
+            ultimo_dif = dif
+            print("AVISO: la vía «%s» dejó diferencias graves; se prueba la otra: %s" % (via, "; ".join(dif[:2])))
+            continue
+        elegido = (via, ruta, extra_av, avisos, resumen)
+        break
+    if elegido is None:
+        informe["error"] = {"nivel": "grave", "motivos": ultimo_dif[:12], "recuperacion": [
+            "Repite `aplicar` con --modo limpio (guarda sobre la copia limpia en vez de conservar el archivo original).",
+            "Si el motivo habla de celdas o textos, revisa que la traducción conserve las etiquetas <rN> y no toque fórmulas; vuelve a aplicar con otro nombre.",
+            "Crea la copia limpia a mano: python _shared/normalizar_paquete.py %s limpio.xlsx y traduce esa copia." % a.xlsx]}
+        _guardar_informe(a, informe)
+        for d in ultimo_dif:
+            print("DIFERENCIA: " + d)
+        for r in informe["error"]["recuperacion"]:
+            print("SI FALLA: " + r)
+        error("ESTRUCTURA: CAMBIÓ: no se creó la copia; revisa la traducción y repite con otro nombre.")
+    via, ruta, extra_av, avisos, resumen = elegido
+    informe["avisos"] += extra_av + avisos
+    informe["via"] = via
+    try:
+        normalizar_paquete.escribir_nuevo(ruta, a.salida)
+    except OSError as e:
+        error(str(e))
     _guardar_informe(a, informe)
     print("OK: %d textos traducidos -> %s" % (informe["traducidos"], a.salida))
     if informe["sin_traduccion"]:
@@ -387,6 +410,8 @@ def main():
     p.add_argument("-t", "--traduccion", required=True)
     p.add_argument("-o", "--salida", required=True)
     p.add_argument("--informe")
+    p.add_argument("--modo", choices=["auto", "limpio"], default="auto",
+                   help="auto: conserva el archivo original y solo cambia los textos (si falla, la copia limpia); limpio: solo la copia limpia")
     p.set_defaults(fn=cmd_aplicar)
     a = ap.parse_args()
     try:

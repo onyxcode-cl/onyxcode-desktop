@@ -459,7 +459,8 @@ def cmd_aplicar(a):
     extra = sorted(set(tr) - usados)
     if extra:
         informe["ids_desconocidos"] = extra
-    d.save(a.salida)
+    guardado = os.path.join(normalizar_paquete._carpeta_temporal(), "guardado.docx")
+    d.save(guardado)
     print("OK: %d textos traducidos -> %s" % (informe["traducidos"], a.salida))
     if informe["sin_traduccion"]:
         print("AVISO: %d textos sin traducir (quedan en el idioma original): %s" % (len(informe["sin_traduccion"]), ", ".join(informe["sin_traduccion"][:12])))
@@ -471,27 +472,60 @@ def cmd_aplicar(a):
         print("AVISO: %d enlaces no se conservaron (faltó la etiqueta <l=N> en la traducción)." % informe["enlaces_quitados"])
     for x in limpio.avisos:
         print("AVISO: " + x)
-    # verificación: la salida debe tener la MISMA estructura que la copia limpia (solo cambia el texto). GRAVE detiene; AVISO se entrega igual.
+    # Entrega: primero el ZIP ORIGINAL con solo el texto cambiado (todo lo demás pasa intacto); si la revisión lo rechaza, la copia limpia.
+    # La salida debe tener la MISMA estructura que la copia limpia (solo cambia el texto). GRAVE detiene; AVISO se entrega igual.
     import comparar_estructura
-    try:
-        dif, avisos, resumen = comparar_estructura.comparar(limpio.ruta, a.salida)
-    except (SystemExit, Exception) as e:  # noqa: BLE001 — si la revisión misma falla, la traducción existe: se avisa en vez de perderla
-        informe["error"] = {"nivel": "aviso", "motivos": ["no se pudo revisar la estructura del resultado (%s)" % (e if not isinstance(e, SystemExit) else "archivo ilegible")]}
+    if a.modo == "limpio":
+        vias = iter([("copia limpia", guardado, [])])
+    else:
+        vias = normalizar_paquete.vias_de_entrega(a.docx, limpio, guardado, abrir=docx.Document)
+    elegido, sin_revisar, ultimo_dif = None, None, []
+    for via, ruta, extra_av in vias:
+        try:
+            probado = normalizar_paquete.preparar(ruta).ruta if via == "preservado" else ruta
+            dif, avisos, resumen = comparar_estructura.comparar(limpio.ruta, probado)
+        except (SystemExit, Exception) as e:  # noqa: BLE001 — si la revisión misma falla, la traducción existe: se avisa en vez de perderla
+            sin_revisar = sin_revisar or (via, ruta, extra_av, "no se pudo revisar la estructura del resultado (%s)" % (e if not isinstance(e, SystemExit) else "archivo ilegible"))
+            continue
+        if dif:
+            ultimo_dif = dif
+            print("AVISO: la vía «%s» dejó diferencias graves; se prueba la otra: %s" % (via, "; ".join(dif[:2])))
+            continue
+        elegido = (via, ruta, extra_av, avisos, resumen)
+        break
+    if elegido is None and sin_revisar is not None:
+        via, ruta, extra_av, motivo = sin_revisar
+        normalizar_paquete.escribir_nuevo(ruta, a.salida)
+        informe["error"] = {"nivel": "aviso", "motivos": [motivo]}
         _guardar_informe(a, informe)
-        print("AVISO: " + informe["error"]["motivos"][0])
+        print("AVISO: " + motivo)
         sys.exit(4)
-    informe["avisos"] += avisos
-    for x in dif:
-        print("DIFERENCIA: " + x)
-    for x in avisos:
-        print("AVISO: " + x)
-    if dif:
-        informe["error"] = {"nivel": "grave", "motivos": dif[:12]}
+    if elegido is None:
+        informe["error"] = {"nivel": "grave", "motivos": ultimo_dif[:12], "recuperacion": _recuperacion(a)}
         _guardar_informe(a, informe)
-        print("ESTRUCTURA: CAMBIÓ: no entregues %s; revisa la traducción (¿se rompió una etiqueta?) y repite con otro nombre." % a.salida)
+        for x in ultimo_dif:
+            print("DIFERENCIA: " + x)
+        print("ESTRUCTURA: CAMBIÓ: no se creó %s; revisa la traducción (¿se rompió una etiqueta?)." % a.salida)
+        for r in informe["error"]["recuperacion"]:
+            print("SI FALLA: " + r)
         sys.exit(1)
+    via, ruta, extra_av, avisos, resumen = elegido
+    normalizar_paquete.escribir_nuevo(ruta, a.salida)
+    informe["avisos"] += extra_av + avisos
+    informe["via"] = via
+    for x in extra_av + avisos:
+        print("AVISO: " + x)
     _guardar_informe(a, informe)
-    print("ESTRUCTURA: idéntica al original (%s)%s" % (resumen, " con %d aviso(s)" % len(informe["avisos"]) if informe["avisos"] else ""))
+    print("ESTRUCTURA: idéntica al original (%s)%s [%s]" % (resumen, " con %d aviso(s)" % len(informe["avisos"]) if informe["avisos"] else "", via))
+
+
+def _recuperacion(a):
+    """Qué puede probar quien lo ejecuta (persona o IA) cuando la revisión detiene la entrega."""
+    return [
+        "Repite `aplicar` con --modo limpio (guarda sobre la copia limpia en vez de conservar el archivo original).",
+        "Si el motivo habla de una etiqueta o de párrafos, corrige esa traducción en el JSON (conserva <b> <i> <u> <c=#…> <l=N>) y vuelve a aplicar con otro nombre de salida.",
+        "Crea la copia limpia a mano: python _shared/normalizar_paquete.py %s limpio.docx y traduce esa copia." % a.docx,
+    ]
 
 
 def _guardar_informe(a, informe):
@@ -512,6 +546,8 @@ def main():
     p.add_argument("-t", "--traduccion", required=True)
     p.add_argument("-o", "--salida", required=True)
     p.add_argument("--informe")
+    p.add_argument("--modo", choices=["auto", "limpio"], default="auto",
+                   help="auto: conserva el archivo original y solo cambia el texto (si falla, la copia limpia); limpio: solo la copia limpia")
     p.set_defaults(fn=cmd_aplicar)
     a = ap.parse_args()
     try:

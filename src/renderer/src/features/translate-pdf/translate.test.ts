@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { PdfExtractResult, PdfSegment } from '@shared/translate-pdf'
-import { TranslateError, cardSample, planBatches, translatePdf, type TranslateDeps, type TranslateProgress } from './translate'
+import {
+  TranslateError,
+  applyTranslations,
+  cardSample,
+  planBatches,
+  translatePdf,
+  type TranslateDeps,
+  type TranslateProgress
+} from './translate'
 
 const seg = (n: number): PdfSegment => ({ id: `p1-${n}`, pagina: 1, texto: `texto ${n} ` + 'x'.repeat(200) })
 const segs = (n: number): PdfSegment[] => Array.from({ length: n }, (_, i) => seg(i))
@@ -151,9 +159,43 @@ describe('translatePdf', () => {
     }
   )
 
-  it('si apply falla, lo dice y borra el trabajo', async () => {
-    const deps = makeDeps({ apply: vi.fn(async () => ({ ok: false as const, reason: 'timeout' as const })) })
-    await expect(translatePdf(deps, opts())).rejects.toMatchObject({ reason: 'timeout' })
+  it('si apply falla, lo dice con el motivo y CONSERVA el trabajo para reintentar sin volver a llamar al modelo', async () => {
+    const deps = makeDeps({
+      apply: vi.fn(async () => ({
+        ok: false as const,
+        reason: 'failed' as const,
+        detail: 'Se perdió una parte (word/media/a.png).',
+        level: 'grave' as const,
+        canDeliver: false
+      }))
+    })
+    const err = (await translatePdf(deps, opts()).catch((e: unknown) => e)) as TranslateError
+    expect(err).toBeInstanceOf(TranslateError)
+    expect(err.apply).toMatchObject({ detail: 'Se perdió una parte (word/media/a.png).', level: 'grave', canDeliver: false })
+    expect(deps.discard).not.toHaveBeenCalled()
+    const asked = vi.mocked(deps.ask).mock.calls.length
+    // reintento: las traducciones ya hechas se reutilizan; el modelo no se vuelve a llamar
+    const retry = vi.fn(async (_req: Parameters<TranslateDeps['apply']>[0]) => ({
+      ok: true as const,
+      outName: 'x (en).pdf',
+      report: { translated: 30, untranslated: 0, shrunk: 0, overflow: [], linksDropped: 0 }
+    }))
+    const out = await applyTranslations({ ...deps, apply: retry }, err.apply!.pending)
+    expect(out).toMatchObject({ jobId: 'aaaaaaaaaaaaaaaa', outName: 'x (en).pdf', pages: 2, pagesWithoutText: [2] })
+    expect(Object.keys(retry.mock.calls[0][0].translations)).toHaveLength(30)
+    expect(vi.mocked(deps.ask).mock.calls.length).toBe(asked)
+    // «Entregar igual con avisos» manda deliver: true
+    await applyTranslations({ ...deps, apply: retry }, err.apply!.pending, true)
+    expect(retry.mock.calls[1][0]).toMatchObject({ deliver: true })
+  })
+
+  it('un fallo antes de escribir (modelo, cancelación) sigue borrando el trabajo', async () => {
+    const deps = makeDeps({
+      ask: vi.fn(async () => {
+        throw new Error('sin red')
+      })
+    })
+    await expect(translatePdf(deps, opts())).rejects.toMatchObject({ reason: 'model' })
     expect(deps.discard).toHaveBeenCalled()
   })
 })
@@ -185,7 +227,12 @@ describe('hojas escaneadas y ficha del documento', () => {
     const calls: { prompt: string; images: number }[] = []
     const pageImage = vi.fn(async ({ page }: { page: number }) => ({ ok: true as const, mime: 'image/png' as const, base64: `IMG${page}` }))
     const deps = makeDeps(
-      { ask: vi.fn(async (p: string, _s: AbortSignal, images?: unknown[]) => (calls.push({ prompt: p, images: images?.length ?? 0 }), answerAll(p))), pageImage },
+      {
+        ask: vi.fn(
+          async (p: string, _s: AbortSignal, images?: unknown[]) => (calls.push({ prompt: p, images: images?.length ?? 0 }), answerAll(p))
+        ),
+        pageImage
+      },
       twoPages()
     )
     await translatePdf(deps, { ...opts(), vision: true })

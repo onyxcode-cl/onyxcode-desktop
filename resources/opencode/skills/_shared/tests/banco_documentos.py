@@ -131,15 +131,23 @@ def r_libreoffice(e, c):
     e.append(ct)
 
 
+def _sin(e, *nombres):
+    """Quita entradas que ya existan (la plantilla de python-docx ya trae algunas) para no fabricar repetidas sin querer."""
+    e[:] = [x for x in e if x[0] not in nombres]
+
+
 def r_wps(e, c):
     """WPS: miniatura, propiedades personalizadas, `customXml` con sus propiedades y fuentes incrustadas."""
-    e.append(["docProps/thumbnail.jpeg", BASURA[:400]])
-    ct_default(e, "jpeg", "image/jpeg")
-    rel_agregar(e, "", "rId91", "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail", "docProps/thumbnail.jpeg")
+    if not any(x[0] == "docProps/thumbnail.jpeg" for x in e):
+        e.append(["docProps/thumbnail.jpeg", BASURA[:400]])
+        ct_default(e, "jpeg", "image/jpeg")
+        rel_agregar(e, "", "rId91", "http://schemas.openxmlformats.org/package/2006/relationships/metadata/thumbnail", "docProps/thumbnail.jpeg")
+    _sin(e, "docProps/custom.xml")
     e.append(["docProps/custom.xml", b'<?xml version="1.0" encoding="UTF-8"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" '
               b'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="KSOProductBuildVer"><vt:lpwstr>2052-11.1.0</vt:lpwstr></property></Properties>'])
     ct_override(e, "docProps/custom.xml", "application/vnd.openxmlformats-officedocument.custom-properties+xml")
     rel_agregar(e, "", "rId92", NS_REL + "/custom-properties", "docProps/custom.xml")
+    _sin(e, "customXml/item1.xml", "customXml/itemProps1.xml", "customXml/_rels/item1.xml.rels")
     e.append(["customXml/item1.xml", b'<?xml version="1.0" encoding="UTF-8"?><wps:meta xmlns:wps="urn:wps"><wps:v>1</wps:v></wps:meta>'])
     e.append(["customXml/itemProps1.xml", b'<?xml version="1.0" encoding="UTF-8"?><ds:datastoreItem xmlns:ds="http://schemas.openxmlformats.org/officeDocument/2006/customXml" ds:itemID="{11111111-2222-3333-4444-555555555555}"/>'])
     e.append(["customXml/_rels/item1.xml.rels", ('<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="%s"><Relationship Id="rId1" '

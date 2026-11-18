@@ -13,7 +13,15 @@ import { announce } from '../../lib/announce'
 import { useServer } from '../../stores/server'
 import { askModel } from '../code/impl/pr/pr-ai'
 import { chatModelSeesImages } from './model-info'
-import { TranslateError, translatePdf, type TranslateDeps, type TranslateOutcome, type TranslateProgress } from './translate'
+import {
+  TranslateError,
+  applyTranslations,
+  translatePdf,
+  type PendingApply,
+  type TranslateDeps,
+  type TranslateOutcome,
+  type TranslateProgress
+} from './translate'
 
 /** Traducción ya decidida: qué archivo y a qué idioma. */
 export interface TranslatePreset {
@@ -26,7 +34,13 @@ export interface TranslatePreset {
 export type JobState =
   | { kind: 'running'; progress: TranslateProgress }
   | { kind: 'done'; outcome: TranslateOutcome; saved: boolean }
-  | { kind: 'error'; reason: PdfFailReason | 'model' | 'aborted' | 'tooManyFailures'; detail?: string }
+  | {
+      kind: 'error'
+      reason: PdfFailReason | 'model' | 'aborted' | 'tooManyFailures'
+      detail?: string
+      /** Falló al escribir el documento: el trabajo sigue en main y las traducciones están aquí (Reintentar sin volver a llamar al modelo). */
+      apply?: { level?: 'grave' | 'aviso'; canDeliver: boolean; pending: PendingApply }
+    }
 
 export interface TranslateJob {
   id: string
@@ -101,13 +115,43 @@ export function startTranslateJob(preset: TranslatePreset, deps: TranslateDeps =
       patch(id, { kind: 'done', outcome, saved: false })
       announce(tr('translate.pdf.doneTitle', { name: outcome.outName }), 'polite')
     } catch (e) {
-      if (e instanceof TranslateError) patch(id, { kind: 'error', reason: e.reason, detail: e.reason === 'model' ? e.message : undefined })
-      else patch(id, { kind: 'error', reason: 'failed' })
+      patch(id, errorState(e))
     } finally {
       controllers.delete(id)
     }
   })()
   return id
+}
+
+function errorState(e: unknown): JobState {
+  if (!(e instanceof TranslateError)) return { kind: 'error', reason: 'failed' }
+  if (e.apply) {
+    return {
+      kind: 'error',
+      reason: e.reason,
+      detail: e.apply.detail,
+      apply: { level: e.apply.level, canDeliver: e.apply.canDeliver, pending: e.apply.pending }
+    }
+  }
+  return { kind: 'error', reason: e.reason, detail: e.reason === 'model' ? e.message : undefined }
+}
+
+/**
+ * «Reintentar» (o «Entregar igual con avisos» con `deliver`) tras un fallo al escribir: vuelve a escribir con las traducciones que ya
+ * están hechas, sin llamar otra vez al modelo. Nunca lanza: el resultado queda en el estado de la tarjeta.
+ */
+export async function retryApplyJob(id: string, deliver = false, deps: TranslateDeps = realDeps()): Promise<void> {
+  const job = useTranslateJobs.getState().jobs.find((j) => j.id === id)
+  if (!job || job.state.kind !== 'error' || !job.state.apply) return
+  const pending = job.state.apply.pending
+  patch(id, { kind: 'running', progress: { phase: 'writing', done: 0, total: 0 } })
+  try {
+    const outcome = await applyTranslations(deps, pending, deliver)
+    patch(id, { kind: 'done', outcome, saved: false })
+    announce(tr('translate.pdf.doneTitle', { name: outcome.outName }), 'polite')
+  } catch (e) {
+    patch(id, errorState(e))
+  }
 }
 
 /** Cancela un trabajo en curso (`translatePdf` borra lo que haya empezado). */
@@ -117,6 +161,10 @@ export function cancelTranslateJob(id: string): void {
 
 /** Quita la tarjeta; si seguía en curso, lo cancela. El archivo ya hecho queda hasta el limpiado diario de main. */
 export function dismissTranslateJob(id: string): void {
+  const job = useTranslateJobs.getState().jobs.find((j) => j.id === id)
+  // un fallo al escribir conserva el trabajo en main para poder reintentar: al quitar la tarjeta ya no hace falta
+  if (job?.state.kind === 'error' && job.state.apply)
+    void call('translate:pdfDiscard', { jobId: job.state.apply.pending.jobId }).catch(() => undefined)
   controllers.get(id)?.abort()
   useTranslateJobs.setState((s) => ({ jobs: s.jobs.filter((j) => j.id !== id) }))
 }

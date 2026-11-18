@@ -206,4 +206,45 @@ describe('TranslateJobs', () => {
     expect(card.textContent).toContain('contraseña')
     expect(card.textContent).toContain('Reintentar')
   })
+
+  it('si no se pudo escribir el documento: muestra el motivo real, «Reintentar» y, si no es grave, «Entregar igual con avisos»', () => {
+    const pending = {
+      jobId: 'aaaaaaaaaaaaaaaa',
+      translations: { 'p1-0': 'hello' },
+      target: 'en' as const,
+      pages: 1,
+      pagesWithoutText: [],
+      failedSegments: 0
+    }
+    useTranslateJobs.setState({
+      jobs: [
+        {
+          id: 'j1',
+          preset,
+          state: {
+            kind: 'error',
+            reason: 'failed',
+            detail: 'Se perdió una parte del documento (word/media/a.png).',
+            apply: { level: 'grave', canDeliver: false, pending }
+          }
+        },
+        {
+          id: 'j2',
+          preset,
+          state: {
+            kind: 'error',
+            reason: 'failed',
+            detail: 'No se pudo revisar el resultado.',
+            apply: { level: 'aviso', canDeliver: true, pending }
+          }
+        }
+      ]
+    })
+    m = mount(createElement(TranslateJobs))
+    const [grave, aviso] = m.qa('[data-testid="translate-job"]')
+    expect(grave.textContent).toContain('Se perdió una parte del documento (word/media/a.png).')
+    expect(grave.textContent).toContain('Reintentar')
+    expect(grave.textContent).not.toContain('Entregar igual con avisos')
+    expect(aviso.textContent).toContain('Entregar igual con avisos')
+  })
 })

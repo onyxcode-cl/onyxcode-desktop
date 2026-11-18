@@ -337,7 +337,9 @@ def main(argv=None):
             if a.op == "add-image" and not a.image:
                 raise EditError("falta --image")
             msgs.append(apply_op(prs, op))
-        prs.save(a.salida)
+        guardado = os.path.join(normalizar_paquete._carpeta_temporal(), "guardado.pptx")
+        prs.save(guardado)
+        msgs += ["AVISO: " + v for v in normalizar_paquete.entregar_edicion(a.entrada, limpio, guardado, a.salida, abrir=Presentation)]
     except (EditError, KeyError) as e:
         print("Error: %s" % e)
         return 1

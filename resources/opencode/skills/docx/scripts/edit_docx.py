@@ -272,7 +272,10 @@ def main():
     if fallos:
         print("No se guardó la copia porque %d operación(es) fallaron." % fallos, file=sys.stderr)
         sys.exit(1)
-    doc.save(a.salida)
+    guardado = os.path.join(normalizar_paquete._carpeta_temporal(), "guardado.docx")
+    doc.save(guardado)
+    for v in normalizar_paquete.entregar_edicion(a.entrada, limpio, guardado, a.salida, abrir=Document):
+        print("AVISO: " + v)
     print("Copia guardada: " + a.salida)
 
 

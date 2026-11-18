@@ -12,6 +12,7 @@ import {
   dismissTranslateJob,
   markJobSaved,
   retryTranslateJob,
+  retryApplyJob,
   fileKind,
   startTranslateJob,
   useTranslateJobs
@@ -105,5 +106,42 @@ describe('trabajos de traducción dentro de la conversación', () => {
     expect(s.kind === 'done' && s.saved).toBe(true)
     dismissTranslateJob(id)
     expect(state()).toHaveLength(0)
+  })
+
+  it('si falla al escribir: la tarjeta lleva el motivo, el trabajo se conserva y «Reintentar» no llama al modelo', async () => {
+    let n = 0
+    const d = deps({
+      apply: vi.fn(async () =>
+        n++ === 0
+          ? { ok: false as const, reason: 'failed' as const, detail: 'Cambió una celda (B2).', level: 'aviso' as const, canDeliver: true }
+          : {
+              ok: true as const,
+              outName: 'x (en).pdf',
+              report: { translated: 1, untranslated: 0, shrunk: 0, overflow: [], linksDropped: 0 }
+            }
+      )
+    })
+    const id = startTranslateJob(preset, d, false)
+    await settle()
+    const s = state()[0].state
+    expect(s.kind === 'error' && s.detail).toBe('Cambió una celda (B2).')
+    expect(s.kind === 'error' && s.apply?.canDeliver).toBe(true)
+    expect(d.discard).not.toHaveBeenCalled()
+    const asked = vi.mocked(d.ask).mock.calls.length
+    await retryApplyJob(id, false, d)
+    expect(state()[0].state.kind).toBe('done')
+    expect(vi.mocked(d.ask).mock.calls.length).toBe(asked)
+    expect(vi.mocked(d.apply).mock.calls[1][0].translations).toEqual({ 'p1-0': 'hello' })
+  })
+
+  it('«Entregar igual con avisos» manda deliver; si vuelve a fallar queda el error', async () => {
+    const d = deps({
+      apply: vi.fn(async () => ({ ok: false as const, reason: 'failed' as const, detail: 'x', level: 'aviso' as const, canDeliver: true }))
+    })
+    const id = startTranslateJob(preset, d, false)
+    await settle()
+    await retryApplyJob(id, true, d)
+    expect(vi.mocked(d.apply).mock.calls[1][0]).toMatchObject({ deliver: true })
+    expect(state()[0].state.kind).toBe('error')
   })
 })

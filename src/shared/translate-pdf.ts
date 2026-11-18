@@ -53,7 +53,14 @@ export type PdfExtractRequest = { name: string; base64: string; kind?: Translate
 /** Cómo es cada página según el script: texto de verdad, foto con texto OCR invisible, o solo imagen. */
 export type PdfPageClass = 'digital' | 'escaneada_ocr' | 'escaneada_sin_texto'
 export type PdfExtractResult =
-  | { ok: true; jobId: string; pages: number; segments: PdfSegment[]; pagesWithoutText: number[]; pageClasses?: Record<number, PdfPageClass> }
+  | {
+      ok: true
+      jobId: string
+      pages: number
+      segments: PdfSegment[]
+      pagesWithoutText: number[]
+      pageClasses?: Record<number, PdfPageClass>
+    }
   | { ok: false; reason: PdfFailReason }
 
 /** Una página dibujada como imagen para que el modelo la vea (solo hojas escaneadas). */
@@ -62,7 +69,8 @@ export type PdfPageImageResult = { ok: true; mime: 'image/png'; base64: string }
 /** Tope de bytes de una imagen de página que se manda al renderer. */
 export const TRANSLATE_PAGE_IMAGE_MAX_BYTES = 4 * 1024 * 1024
 
-export type PdfApplyRequest = { jobId: string; translations: Record<string, string>; target: TranslateLangCode }
+/** `deliver`: «Entregar igual con avisos»: no vuelve a escribir; entrega el resultado que ya quedó (solo si el fallo no fue grave). */
+export type PdfApplyRequest = { jobId: string; translations: Record<string, string>; target: TranslateLangCode; deliver?: boolean }
 export interface PdfApplyReport {
   translated: number
   untranslated: number
@@ -76,8 +84,16 @@ export interface PdfApplyReport {
   formatLost?: number
   /** Excel: celdas cuyo texto traducido es más largo que el ancho de su columna (no se cambian los anchos para no alterar el diseño). */
   cutOff?: number
+  /** Avisos de la revisión del documento (metadatos, partes que no se usaban…): se entrega igual. */
+  warnings?: string[]
 }
-export type PdfApplyResult = { ok: true; report: PdfApplyReport; outName: string; viewPath?: string } | { ok: false; reason: PdfFailReason }
+/**
+ * Si falla al escribir: `detail` es el motivo real en español simple; `level` dice si fue grave (se perdió contenido: no se entrega) o
+ * un aviso; `canDeliver` es que el archivo quedó hecho y se puede entregar igual. El trabajo NO se borra: se puede reintentar.
+ */
+export type PdfApplyResult =
+  | { ok: true; report: PdfApplyReport; outName: string; viewPath?: string }
+  | { ok: false; reason: PdfFailReason; detail?: string; level?: 'grave' | 'aviso'; canDeliver?: boolean }
 
 /** Versión LIMPIA: un PDF nuevo armado desde cero (HTML) con el texto traducido, para hojas escaneadas. */
 export type PdfCleanRequest = { jobId: string; html: string }
@@ -257,7 +273,9 @@ export function buildCleanPagePrompt(opts: {
   return [
     `You are rebuilding page ${opts.page} of ${opts.pages} of the scanned document "${opts.docName}" as clean HTML in ${lang}.`,
     opts.pageImage
-      ? 'The attached image is the original page. Below are the texts of that page, already translated into ' + lang + ', in reading order (they were read by OCR, so a few words of the page may be missing from the list).'
+      ? 'The attached image is the original page. Below are the texts of that page, already translated into ' +
+        lang +
+        ', in reading order (they were read by OCR, so a few words of the page may be missing from the list).'
       : 'Below are the texts of that page, already translated into ' + lang + ', in reading order.',
     '',
     'Rules:',
@@ -273,7 +291,35 @@ export function buildCleanPagePrompt(opts: {
   ].join('\n')
 }
 
-const SAFE_TAGS = new Set(['section', 'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'strong', 'b', 'em', 'i', 'u', 'br', 'hr', 'sup', 'sub'])
+const SAFE_TAGS = new Set([
+  'section',
+  'div',
+  'span',
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'ul',
+  'ol',
+  'li',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'th',
+  'td',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'u',
+  'br',
+  'hr',
+  'sup',
+  'sub'
+])
 
 /**
  * Deja solo etiquetas sencillas del HTML que devolvió el modelo (es DATO, no se confía en él): sin scripts, estilos, enlaces,

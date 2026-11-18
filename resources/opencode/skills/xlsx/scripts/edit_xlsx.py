@@ -310,7 +310,9 @@ def main(argv=None):
                 OPS[name](wb, op)
             except KeyError as e:
                 raise SpecError("operación %d (%s): falta el campo %s" % (i, name, e))
-        save_workbook(wb, out)
+        guardado = os.path.join(normalizar_paquete._carpeta_temporal(), "guardado" + os.path.splitext(out)[1])
+        save_workbook(wb, guardado)
+        warns += normalizar_paquete.entregar_edicion(a.archivo, limpio, guardado, out, abrir=lambda r: load_workbook(r, keep_vba=keep_vba))
     except SpecError as e:
         print("Error: %s" % e, file=sys.stderr)
         return 2

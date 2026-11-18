@@ -41,7 +41,12 @@ export interface TranslateProgress {
 
 export interface TranslateDeps {
   extract: (req: PdfExtractRequest) => Promise<PdfExtractResult>
-  apply: (req: { jobId: string; translations: Record<string, string>; target: TranslateLangCode }) => Promise<PdfApplyResult>
+  apply: (req: {
+    jobId: string
+    translations: Record<string, string>
+    target: TranslateLangCode
+    deliver?: boolean
+  }) => Promise<PdfApplyResult>
   discard: (jobId: string) => Promise<void>
   /** Pregunta al modelo y devuelve su texto (lanza si falla). Con `images` el modelo además VE esas imágenes. */
   ask: (prompt: string, signal: AbortSignal, images?: { mime: string; filename: string; url: string }[]) => Promise<string>
@@ -66,12 +71,51 @@ export interface TranslateOutcome {
   cleanOutName?: string
 }
 
+/**
+ * Lo necesario para volver a escribir el documento sin llamar otra vez al modelo: el trabajo sigue en main y las traducciones ya hechas
+ * se guardan aquí. Lo lleva el error de «no se pudo escribir» para ofrecer «Reintentar» y «Entregar igual con avisos».
+ */
+export interface PendingApply {
+  jobId: string
+  translations: Record<string, string>
+  target: TranslateLangCode
+  kind?: TranslateKind
+  pages: number
+  pagesWithoutText: number[]
+  failedSegments: number
+}
+
 export class TranslateError extends Error {
   constructor(
     readonly reason: PdfFailReason | 'model' | 'aborted' | 'tooManyFailures',
-    detail?: string
+    detail?: string,
+    /** Si falló al escribir: motivo real, si se puede entregar igual y lo necesario para reintentar. */
+    readonly apply?: { detail?: string; level?: 'grave' | 'aviso'; canDeliver: boolean; pending: PendingApply }
   ) {
     super(detail ?? reason)
+  }
+}
+
+/** Escribe el documento (o lo entrega igual con avisos) con las traducciones ya hechas. Si falla, el trabajo NO se borra. */
+export async function applyTranslations(deps: TranslateDeps, pending: PendingApply, deliver = false): Promise<TranslateOutcome> {
+  const res = await deps.apply({
+    jobId: pending.jobId,
+    translations: pending.translations,
+    target: pending.target,
+    ...(deliver ? { deliver: true } : {})
+  })
+  if (!res.ok) {
+    throw new TranslateError(res.reason, res.detail, { detail: res.detail, level: res.level, canDeliver: res.canDeliver === true, pending })
+  }
+  return {
+    jobId: pending.jobId,
+    outName: res.outName,
+    ...(res.viewPath ? { viewPath: res.viewPath } : {}),
+    report: res.report,
+    pages: pending.pages,
+    kind: pending.kind,
+    pagesWithoutText: pending.pagesWithoutText,
+    failedSegments: pending.failedSegments
   }
 }
 
@@ -142,7 +186,11 @@ export interface PlannedBatch {
  * Lotes por orden de lectura. Con visión, cada hoja escaneada con texto OCR va en lotes propios de esa página (para adjuntar su
  * imagen); el resto se agrupa como siempre. Sin visión, igual que antes.
  */
-export function planBatches(segments: PdfSegment[], pageClasses: Record<number, PdfPageClass> | undefined, vision: boolean): PlannedBatch[] {
+export function planBatches(
+  segments: PdfSegment[],
+  pageClasses: Record<number, PdfPageClass> | undefined,
+  vision: boolean
+): PlannedBatch[] {
   if (!vision || !pageClasses) return batchSegments(segments).map((b) => ({ segments: b }))
   const out: PlannedBatch[] = []
   let digital: PdfSegment[] = []
@@ -217,7 +265,12 @@ export async function translatePdf(
       opts.onProgress({ phase: 'reading', done: 0, total: 0 })
       try {
         const answer = await deps.ask(
-          buildCardPrompt({ target: opts.target, docName: opts.name, kind: opts.kind, sample: cardSample(ex.segments, undefined, opts.kind === 'xlsx' ? 15 : 2) }),
+          buildCardPrompt({
+            target: opts.target,
+            docName: opts.name,
+            kind: opts.kind,
+            sample: cardSample(ex.segments, undefined, opts.kind === 'xlsx' ? 15 : 2)
+          }),
           opts.signal
         )
         docCard = parseCardAnswer(answer) ?? undefined
@@ -247,9 +300,7 @@ export async function translatePdf(
       for (let i = 0; i < pages.length; i++) {
         if (opts.signal.aborted) throw new TranslateError('aborted')
         opts.onProgress({ phase: 'cleaning', done: i, total: pages.length })
-        const paragraphs = ex.segments
-          .filter((s) => s.pagina === pages[i])
-          .map((s) => ({ id: s.id, texto: translations[s.id] ?? s.texto }))
+        const paragraphs = ex.segments.filter((s) => s.pagina === pages[i]).map((s) => ({ id: s.id, texto: translations[s.id] ?? s.texto }))
         const image = await imageOf(pages[i])
         let html = ''
         try {
@@ -306,25 +357,25 @@ export async function translatePdf(
     opts.onProgress({ phase: 'translating', done: batches.length, total: batches.length })
     if (opts.signal.aborted) throw new TranslateError('aborted')
     opts.onProgress({ phase: 'writing', done: batches.length, total: batches.length })
-    const res = await deps.apply({ jobId, translations, target: opts.target })
-    if (!res.ok) throw new TranslateError(res.reason)
+    const pending: PendingApply = {
+      jobId,
+      translations,
+      target: opts.target,
+      kind: opts.kind,
+      pages: ex.pages,
+      pagesWithoutText: ex.pagesWithoutText,
+      failedSegments: failed
+    }
+    // Si no se puede escribir, el error lleva el motivo real y lo necesario para reintentar sin volver a llamar al modelo; el trabajo se conserva.
+    const res = await applyTranslations(deps, pending)
     let cleanOutName: string | undefined
     if (opts.clean === true && useVision && deps.clean && cleanEligible(ex.segments, ex.pageClasses)) {
       cleanOutName = await buildClean()
     }
-    return {
-      jobId,
-      outName: res.outName,
-      ...(res.viewPath ? { viewPath: res.viewPath } : {}),
-      report: res.report,
-      pages: ex.pages,
-      kind: opts.kind,
-      pagesWithoutText: ex.pagesWithoutText,
-      failedSegments: failed,
-      ...(cleanOutName ? { cleanOutName } : {})
-    }
+    return { ...res, ...(cleanOutName ? { cleanOutName } : {}) }
   } catch (e) {
-    await deps.discard(jobId).catch(() => undefined)
+    // Un fallo al escribir conserva el trabajo: la tarjeta ofrece «Reintentar» y, si no es grave, «Entregar igual con avisos».
+    if (!(e instanceof TranslateError && e.apply)) await deps.discard(jobId).catch(() => undefined)
     throw e
   }
 }

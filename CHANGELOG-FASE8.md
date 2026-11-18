@@ -1,5 +1,13 @@
 # Fase 8 — Onboarding y distribución
 
+## F8-B340 — Documentos robustos: copia limpia, niveles grave/aviso, motivo real y «Reintentar» (V32)
+
+Traducir y editar Word, Excel, PowerPoint y PDF ya no falla por rarezas internas del archivo (papelera `[trash]` de Word, partes huérfanas, ZIP con entradas repetidas o con otras mayúsculas, nombres con `\`, entradas vacías, relaciones rotas, JavaScript en un PDF). Antes de trabajar, `_shared/normalizar_paquete.py` arma una copia limpia (solo partes alcanzables por relaciones y ZIP reescrito; PDF reabierto y guardado con PyMuPDF sin objetos huérfanos ni JavaScript; plantillas y macros pasan a documento normal en Word/PowerPoint) y `translate_docx/xlsx/pdf.py` y `edit_docx/xlsx/pptx.py` trabajan y comparan sobre ella; el original no se toca. `comparar_estructura.py` revisa por niveles: grave (texto, tablas, imágenes, estilos usados, fórmulas, celdas → no se entrega) y aviso (metadatos, miniaturas, partes no usadas → se entrega igual); los tipos de contenido y las relaciones se comparan por su significado, no por cómo se escribieron.
+
+En la app, un fallo al escribir ya no borra el trabajo ni calla el motivo: la tarjeta muestra la causa en español simple (`motivos.ts`), «Reintentar» vuelve a escribir con las traducciones ya hechas (sin llamar al modelo) y, si el fallo no es grave, «Entregar igual con avisos» (`deliver` en `translate:pdfApply`). Los avisos del documento aparecen en el resultado.
+
+Pruebas: `skills/_shared/tests/test_banco.py` (banco fabricado con código en `banco_documentos.py`: Word de Mac, Google, LibreOffice, WPS, comentarios, cambios, OLE, macros, ZIP raros, tablas dinámicas, medios y PDF dañados; corre traducir y editar sobre todo el banco) vía `src/main/translate-pdf/banco.python.test.ts` (Mac y Windows), `motivos.test.ts`, `service.test.ts`, `translate.test.ts`, `jobs.test.ts` y `TranslateJobs.render.test.tsx`.
+
 ## F8-B338 — Imágenes web y música para video (V32, paso 7)
 
 `fotos` y `audio` de cuadros/render aceptan HTTPS público desde main, también en Chat. Resuelve y comprueba todas las IP; fija la IP autorizada en el socket TLS, conserva Host/certificado, revalida hasta tres redirecciones, limita tiempo y bytes (20 MiB foto, 50 MiB audio) y verifica firmas JPG/PNG/WebP/GIF o MP3/M4A/AAC/WAV/OGG. Rechaza HTML, SVG, red local y credenciales. Copia los recursos web a `assets/` con procedencia JSON y SHA256; la composición permanece sin red. OGG se incluye en los demuxers cerrados del worker.

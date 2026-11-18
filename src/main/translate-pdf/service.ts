@@ -39,6 +39,7 @@ import { renderHtmlToPdf } from '../extras/artifact-window'
 import { chatDocsRoot } from '../extras/chat-docs'
 import { bundledPythonEnv } from '../tasks/python-runtime'
 import { unpacked } from '../util/asar'
+import { describeApplyFailure, reportWarnings } from './motivos'
 
 const JOB_TTL_MS = 24 * 60 * 60 * 1000
 const RUN_TIMEOUT_MS = 4 * 60 * 1000
@@ -120,6 +121,8 @@ interface JobMeta {
   outName?: string
   /** Versión limpia (PDF nuevo desde HTML), si se creó. */
   cleanOutName?: string
+  /** Último intento de escribir que falló sin ser grave: el archivo quedó hecho y se puede entregar igual con avisos. */
+  deliverable?: boolean
 }
 
 export class PdfTranslateService {
@@ -244,21 +247,62 @@ export class PdfTranslateService {
       if (SEGMENT_ID_RE.test(k) && typeof v === 'string' && v.trim() && v.length <= MAX_TRANSLATION_CHARS) clean[k] = v
     }
     if (Object.keys(clean).length === 0) return { ok: false, reason: 'failed' }
-    await writeFile(join(dir, 'traduccion.json'), JSON.stringify(clean), { mode: 0o600 })
     const kind: TranslateKind = meta.kind === 'docx' || meta.kind === 'xlsx' ? meta.kind : 'pdf'
-    await rm(join(dir, `salida.${kind}`), { force: true })
-    const r = await this.d.run(
-      python,
-      [this.d.script(kind), 'aplicar', `input.${kind}`, '-t', 'traduccion.json', '-o', `salida.${kind}`, '--informe', 'informe.json'],
-      dir
-    )
-    if (r.timedOut) return { ok: false, reason: 'timeout' }
-    // 3 = algún texto no cabe aunque se redujo la letra: el PDF se genera igual y se avisa.
-    if (r.code !== 0 && r.code !== 3) {
-      // Sin esto el motivo real (p. ej. «DIFERENCIA: falta la parte …») se perdía al descartar el trabajo.
-      console.warn(`[translate] aplicar ${kind} falló (código ${r.code}):`, `${r.stdout ?? ''}\n${r.stderr ?? ''}`.trim().slice(-1500))
-      return { ok: false, reason: 'failed' }
+    // «Entregar igual con avisos»: no se vuelve a escribir; solo si el último intento dejó el archivo hecho y el fallo no fue grave.
+    if (req.deliver === true) {
+      if (!meta.deliverable || !existsSync(join(dir, `salida.${kind}`))) return { ok: false, reason: 'failed' }
+      return this.finish(dir, meta, kind, req)
     }
+    await writeFile(join(dir, 'traduccion.json'), JSON.stringify(clean), { mode: 0o600 })
+    await rm(join(dir, `salida.${kind}`), { force: true })
+    await rm(join(dir, 'informe.json'), { force: true })
+    await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, deliverable: false } satisfies JobMeta), { mode: 0o600 })
+    const args = [
+      this.d.script(kind),
+      'aplicar',
+      `input.${kind}`,
+      '-t',
+      'traduccion.json',
+      '-o',
+      `salida.${kind}`,
+      '--informe',
+      'informe.json'
+    ]
+    let r = await this.d.run(python, args, dir)
+    // Vía alternativa automática: si el script falló por algo inesperado (no por una diferencia de contenido que ya revisó con las dos
+    // vías), se repite una vez guardando solo sobre la copia limpia, sin volver a llamar al modelo.
+    if (!r.timedOut && r.code !== 0 && r.code !== 3 && r.code !== 4 && kind !== 'pdf' && !/DIFERENCIA:/.test(`${r.stdout}\n${r.stderr}`)) {
+      console.warn(
+        `[translate] aplicar ${kind} falló (código ${r.code}); se reintenta con la copia limpia:`,
+        `${r.stdout}\n${r.stderr}`.trim().slice(-600)
+      )
+      await rm(join(dir, `salida.${kind}`), { force: true })
+      await rm(join(dir, 'informe.json'), { force: true })
+      r = await this.d.run(python, [...args, '--modo', 'limpio'], dir)
+    }
+    if (r.timedOut) return { ok: false, reason: 'timeout' }
+    // 3 = algún texto no cabe aunque se redujo la letra: el PDF se genera igual y se avisa. 4 = escrito pero sin poder revisarlo.
+    if (r.code !== 0 && r.code !== 3) {
+      const informe = await readFile(join(dir, 'informe.json'), 'utf8').then(
+        (t) => JSON.parse(t) as unknown,
+        () => null
+      )
+      const out = `${r.stdout ?? ''}\n${r.stderr ?? ''}`
+      const failure = describeApplyFailure(informe, out, r.code)
+      // Sin esto el motivo real (p. ej. «DIFERENCIA: falta la parte …») se perdía al descartar el trabajo.
+      console.warn(`[translate] aplicar ${kind} falló (código ${r.code}, ${failure.level}):`, out.trim().slice(-1500))
+      const made = existsSync(join(dir, `salida.${kind}`))
+      const canDeliver = failure.level === 'aviso' && made
+      // Un fallo grave no deja un archivo entregable: se borra la salida mala. El trabajo (y las traducciones) NO se borran: se puede reintentar.
+      if (!canDeliver) await rm(join(dir, `salida.${kind}`), { force: true })
+      else await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, deliverable: true } satisfies JobMeta), { mode: 0o600 })
+      return { ok: false, reason: 'failed', detail: failure.detail, level: failure.level, canDeliver }
+    }
+    return this.finish(dir, meta, kind, req)
+  }
+
+  /** Con `salida.<tipo>` ya escrito: arma el informe, copia el archivo con su nombre final y la vista previa (PDF). */
+  private async finish(dir: string, meta: JobMeta, kind: TranslateKind, req: PdfApplyRequest): Promise<PdfApplyResult> {
     try {
       await stat(join(dir, `salida.${kind}`))
       const inf = JSON.parse(await readFile(join(dir, 'informe.json'), 'utf8')) as {
@@ -270,7 +314,9 @@ export class PdfTranslateService {
         formato_perdido?: number
         formato_simplificado?: string[]
         posible_recorte?: string[]
+        avisos?: string[]
       }
+      const warnings = reportWarnings(inf)
       const report: PdfApplyReport = {
         translated: inf.traducidos ?? 0,
         untranslated: inf.sin_traduccion?.length ?? 0,
@@ -279,11 +325,12 @@ export class PdfTranslateService {
         // Excel: `formato_simplificado` (ids) y `posible_recorte` (celdas); el de Word/PDF trae `formato_perdido`.
         formatLost: inf.formato_perdido ?? inf.formato_simplificado?.length ?? 0,
         ...(kind === 'xlsx' ? { cutOff: inf.posible_recorte?.length ?? 0 } : {}),
-        linksDropped: Array.isArray(inf.enlaces_quitados) ? inf.enlaces_quitados.length : (inf.enlaces_quitados ?? 0)
+        linksDropped: Array.isArray(inf.enlaces_quitados) ? inf.enlaces_quitados.length : (inf.enlaces_quitados ?? 0),
+        ...(warnings.length > 0 ? { warnings } : {})
       }
       const outName = translatedName(meta.name, req.target, kind)
       await copyFile(join(dir, `salida.${kind}`), join(dir, outName))
-      await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, outName } satisfies JobMeta), { mode: 0o600 })
+      await writeFile(join(dir, 'meta.json'), JSON.stringify({ ...meta, outName, deliverable: false } satisfies JobMeta), { mode: 0o600 })
       let viewPath: string | undefined
       if (kind === 'pdf') {
         try {

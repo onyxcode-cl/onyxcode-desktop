@@ -726,7 +726,8 @@ const APP_SCHEMAS: { [C in IpcInvokeChannel]: Validator<IpcRequest<C>> } = {
   'translate:pdfApply': obj({
     jobId: str({ max: 16, min: 16 }),
     translations: record(str({ max: 20_000 }), TRANSLATE_PDF_MAX_SEGMENTS),
-    target: literal(...TRANSLATE_LANGS.map((l) => l.code))
+    target: literal(...TRANSLATE_LANGS.map((l) => l.code)),
+    deliver: optional(bool)
   }),
   'translate:pdfPageImage': obj({ jobId: str({ max: 16, min: 16 }), page: num({ int: true, min: 1, max: 5000 }) }),
   'translate:pdfClean': obj({ jobId: str({ max: 16, min: 16 }), html: str({ max: TRANSLATE_CLEAN_HTML_MAX, min: 1 }) }),
