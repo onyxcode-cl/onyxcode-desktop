@@ -417,3 +417,22 @@ test('el script con la función activa, imágenes en regla y SIN cu-helper.exe s
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('el motor de Linux para WSL trae solo «opencode» (sin ._opencode de macOS)', async () => {
+  const { checkOpencodeTgzMembers } = await import('./check-win-bundle.mjs')
+  const dir = mkdtempSync(join(tmpdir(), 'lzx-tgz-'))
+  try {
+    const src = join(dir, 'src')
+    fsMod.mkdirSync(src)
+    writeFileSync(join(src, 'opencode'), 'bin')
+    writeFileSync(join(src, '._opencode'), 'meta')
+    const malo = join(dir, 'malo.tar.gz')
+    const bueno = join(dir, 'bueno.tar.gz')
+    execFileSync('tar', ['-czf', malo, '-C', src, '._opencode', 'opencode'], { env: { ...process.env, COPYFILE_DISABLE: '1' } })
+    execFileSync('tar', ['-czf', bueno, '-C', src, 'opencode'], { env: { ...process.env, COPYFILE_DISABLE: '1' } })
+    assert.equal(checkOpencodeTgzMembers(malo).length, 1)
+    assert.deepEqual(checkOpencodeTgzMembers(bueno), [])
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

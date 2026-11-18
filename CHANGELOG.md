@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.33] - 2026-11-18
+
+### Arreglos importantes
+
+- **Overdrive vuelve a funcionar en Windows:** en la 1.8.32 el espacio de Overdrive no se podía preparar («No se pudo preparar Overdrive / La instalación falló») porque el motor de Linux venía con un archivo de más. Ahora viene limpio, y el armado de la app revisa que no vuelva a pasar.
+
 ## [1.8.32] - 2026-11-18
 
 ### Novedades

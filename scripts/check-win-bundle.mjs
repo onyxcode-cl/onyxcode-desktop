@@ -18,6 +18,7 @@
 //     (falla el empaquetado si no: `npm run stage:wsl-bundle`). Opcional `--asar <app.asar>`: comprueba el .asar ya construido.
 //   npm run build && node scripts/check-win-bundle.mjs          (todas las comprobaciones)
 //   node scripts/check-win-bundle.mjs --config-only             (configuración e imágenes; no necesita `out/`)
+import { gunzipSync } from 'node:zlib'
 import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
@@ -143,6 +144,33 @@ export function expectedWslBlocks(pin) {
  * @param {boolean} expectActive
  * @param {any} pin   contenido de pin.json (solo hace falta con la función activa, para el nombre de la imagen)
  */
+/** Nombres de los miembros de un .tar.gz (cabeceras ustar; sin dependencias). */
+export function tgzMemberNames(buf) {
+  const tar = gunzipSync(buf)
+  const names = []
+  for (let off = 0; off + 512 <= tar.length; ) {
+    const h = tar.subarray(off, off + 512)
+    if (h.every((b) => b === 0)) break
+    const name = h.subarray(0, 100).toString('utf8').replace(/\0.*$/s, '')
+    const prefix = h.subarray(345, 500).toString('utf8').replace(/\0.*$/s, '')
+    const size = parseInt(h.subarray(124, 136).toString('utf8').replace(/\0.*$/s, '').trim() || '0', 8)
+    const type = String.fromCharCode(h[156] || 48)
+    if (type !== 'x' && type !== 'g') names.push(prefix ? `${prefix}/${name}` : name)
+    off += 512 + Math.ceil(size / 512) * 512
+  }
+  return names
+}
+
+/** El instalador de la distro (`resources/wsl/rootfs/lazunox-install`) exige UN solo miembro «opencode»: un `._opencode` de macOS
+ *  (tar sin COPYFILE_DISABLE) dejaba Overdrive sin instalar en Windows (1.8.32). */
+export function checkOpencodeTgzMembers(path) {
+  if (!existsSync(path)) return []
+  const names = tgzMemberNames(readFileSync(path))
+  return names.length === 1 && names[0] === 'opencode'
+    ? []
+    : [`${path}: el motor de Linux debe traer solo «opencode» y trae ${JSON.stringify(names)} (empaquétalo con COPYFILE_DISABLE=1)`]
+}
+
 export function checkWslBundlePackaging(config, expectActive, pin) {
   const problems = []
   const files = (config.files ?? []).map(String)
@@ -276,6 +304,7 @@ async function main() {
   const pin = JSON.parse(readFileSync(join(root, 'resources', 'opencode-bin', 'pin.json'), 'utf8'))
   const wslBad = checkWslBundlePackaging(config, wslActive, pin)
   if (wslActive) wslBad.push(...(await checkBundleDir(join(root, STAGING_DIR), pin)))
+  if (wslActive) wslBad.push(...checkOpencodeTgzMembers(join(root, STAGING_DIR, 'opencode-linux-x64.tar.gz')))
   if (wslBad.length) {
     console.error(
       `paquete de WSL (Tareas en Windows) incorrecto (${wslBad.length}):\n- ${wslBad.join('\n- ')}\n(imágenes: npm run stage:wsl-bundle)`
