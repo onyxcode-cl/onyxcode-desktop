@@ -1150,6 +1150,8 @@ const TASKS_SCHEMAS: { [C in TasksInvokeChannel]: Validator<TasksRequest<C>> } =
   'runtimes:install': none,
   'runtimes:cancel': none,
   'runtimes:remove': none,
+  'video:imageSearchStatus': none,
+  'video:imageSearchSave': obj({ provider: literal('serper', 'brave'), key: optional(str({ max: 512, pattern: /^[\x21-\x7e]*$/ })) }),
   'video:status': none,
   'video:install': none,
   'video:cancel': none,

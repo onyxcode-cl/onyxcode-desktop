@@ -45,7 +45,10 @@ export async function copyComposition(root: string, input: unknown, dest: string
         continue
       }
       if (!st.isFile() || st.nlink !== 1 || !allowed.test(name)) throw invalid()
-      if (st.size > MAX_ASSET_BYTES || total + st.size > MAX_COMPOSITION_BYTES)
+      if (
+        st.size > (/\.(mp3|m4a|wav|aac|ogg)$/i.test(name) ? 50 * 1024 * 1024 : MAX_ASSET_BYTES) ||
+        total + st.size > MAX_COMPOSITION_BYTES
+      )
         throw new Error('La composición supera el límite de tamaño.')
       const fh = await open(file, constants.O_RDONLY | noFollow | (constants.O_NONBLOCK ?? 0))
       try {

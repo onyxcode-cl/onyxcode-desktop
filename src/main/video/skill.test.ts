@@ -13,14 +13,20 @@ it('la skill enseña el ciclo con las herramientas reales y reglas de calidad', 
   expect(skill).toContain('Nunca un cuadro vacío')
   expect(skill).toContain('Cada escena lleva un elemento visual')
   expect(skill).toContain('No entregues con avisos pendientes sin corregirlos o explicarlos')
-  expect(skill).toContain('Usa solo el audio que entregue la persona')
+  expect(skill).toContain('El audio de la persona tiene prioridad')
+  expect(skill).toContain('video_musica_buscar')
+  expect(skill).toContain('Una promo lleva música por defecto')
+  expect(skill).toContain('URL HTTPS pública')
   expect(skill).toContain('No pongas créditos ni pies de foto')
 })
 
 it('la skill no manda a la CLI, Studio, servicios en línea ni telemetría', () => {
-  const all = [skill, ...['movimiento', 'estilo', 'historia', 'especificacion', 'cine', 'formato', 'revision', 'sonido', 'overlays'].map((f) =>
-    readFileSync(join(dir, 'references', `${f}.md`), 'utf8')
-  )].join('\n')
+  const all = [
+    skill,
+    ...['movimiento', 'estilo', 'historia', 'especificacion', 'cine', 'formato', 'revision', 'sonido', 'overlays'].map((f) =>
+      readFileSync(join(dir, 'references', `${f}.md`), 'utf8')
+    )
+  ].join('\n')
   for (const banned of ['npx hyperframes', 'HeyGen', 'Framey', 'hyperframes-registry', 'telemetr']) expect(all).not.toContain(banned)
 })
 

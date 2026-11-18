@@ -7,6 +7,7 @@ import { useT } from '../../../lib/i18n'
 import { openExternalUrl } from '../../../lib/open-external'
 import { cw } from '../../tasks/impl/bridge'
 import { runtimesErrorKey } from './runtimes-view'
+import { VideoImageSearch } from './VideoImageSearch'
 import { Card, Row, SubTitle } from './ui'
 
 const PHASES = {
@@ -163,14 +164,21 @@ export function VideoCard(): React.JSX.Element | null {
     void refresh()
   }
   return (
-    <VideoCardView
-      t={t}
-      snapshot={snapshot}
-      busy={busy}
-      error={error}
-      onInstall={() => void install()}
-      onRemove={() => void remove()}
-      onCancel={() => void cw('video:cancel').then(refresh, refresh)}
-    />
+    <>
+      <VideoCardView
+        t={t}
+        snapshot={snapshot}
+        busy={busy}
+        error={error}
+        onInstall={() => void install()}
+        onRemove={() => void remove()}
+        onCancel={() => void cw('video:cancel').then(refresh, refresh)}
+      />
+      {snapshot?.offered && (
+        <Card>
+          <VideoImageSearch />
+        </Card>
+      )}
+    </>
   )
 }

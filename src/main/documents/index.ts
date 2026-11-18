@@ -10,6 +10,8 @@ import { DocumentsMcpServer } from './mcp-server'
 import { FreeImageRegistry } from './free-image-registry'
 import { exportDocumentPdf } from './export-pdf'
 import { hasPreparedPhotoReferences } from './html-photos'
+import { VideoImagesService } from '../video/image-search'
+import { videoImageSearchStore } from '../video/image-search-settings'
 import { ChatPhotosMcpServer } from './chat-photos'
 
 export { DOCUMENTS_ROUTE_NAME, RESERVED_MCP_NAMES } from './names'
@@ -24,6 +26,7 @@ export const documentPhotoRegistry = new FreeImageRegistry(join(app.getPath('use
 
 export const documentsMcp = new DocumentsMcpServer({
   photoRegistry: documentPhotoRegistry,
+  freeImages: () => new VideoImagesService({ config: () => videoImageSearchStore().read() }),
   exportPdf: async (tipo, bytes) => {
     await ensureCraft()
     return exportDocumentPdf(tipo, bytes, { wordcraft: craftBinary('wordcraft'), deckcraft: craftBinary('deckcraft') })

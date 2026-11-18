@@ -25,13 +25,13 @@ Una carpeta por video dentro de `./.lazunox/trabajo/`. La entrada es siempre `in
   assets/
     fotos/huerta.jpg       ← solo fotos aprobadas con documentos_imagenes_usar
     fonts/Marca-700.woff2  ← solo fuentes que ya están en la carpeta del proyecto o que entregó la persona
-    audio/cancion.mp3      ← solo audio que entregó la persona
+    audio/cancion.mp3      ← audio de la persona o música buscada
 ```
 
 Límites (la herramienta copia la carpeta antes de dibujar y rechaza lo que no cumpla):
 - hasta 256 entradas, 8 niveles de carpetas, 32 MB por archivo y 128 MB en total;
 - sin enlaces simbólicos;
-- solo estos tipos: `.html .js .mjs .css .json .png .jpg .jpeg .webp .gif .svg .woff .woff2 .ttf .otf .mp3 .wav .aac .ogg .m4a .mp4 .webm`. El audio que se mezcla en el MP4 solo puede ser `.mp3`, `.m4a`, `.wav` o `.aac` (un `.ogg` hace fallar el render).
+- solo estos tipos: `.html .js .mjs .css .json .png .jpg .jpeg .webp .gif .svg .woff .woff2 .ttf .otf .mp3 .wav .aac .ogg .m4a .mp4 .webm`. El audio que se mezcla en el MP4 solo puede ser `.mp3`, `.m4a`, `.wav` o `.aac` o `.ogg`.
 
 Rutas: relativas y sin `/` al inicio (`assets/fotos/huerta.jpg`), también dentro de `compositions/`: se escriben como si estuvieras en `index.html`.
 
@@ -270,8 +270,8 @@ Para partículas, texturas, gráficos dibujados o cualquier cosa generativa: esc
 
 ### Fotos
 
-- Solo fotos aprobadas con `documentos_imagenes_buscar` → `documentos_imagenes_ver` → `documentos_imagenes_usar` (de cualquier licencia) o que entregó la persona.
-- Entran con `fotos` de `video_cuadros`, igual en los tres modos: `fotos: [{"origen": "<id de documentos_imagenes_usar, o nombre/id del adjunto en Chat, o ruta relativa en el proyecto>", "destino": "assets/fotos/huerta.jpg"}]`. `destino` va dentro de `assets/` y termina en `.jpg`, `.jpeg`, `.png`, `.webp` o `.gif`; hasta 24 fotos, 32 MB cada una. La app las copia junto a la composición y las conserva para las llamadas siguientes.
+- Fotos desde URL HTTPS del archivo original, o preparadas con `documentos_imagenes_buscar` → `documentos_imagenes_ver` → `documentos_imagenes_usar` (de cualquier licencia) o que entregó la persona.
+- Entran con `fotos` de `video_cuadros`, igual en los tres modos: `fotos: [{"origen": "<id de documentos_imagenes_usar, o nombre/id del adjunto en Chat, o ruta relativa en el proyecto>", "destino": "assets/fotos/huerta.jpg"}]`. `destino` va dentro de `assets/` y termina en `.jpg`, `.jpeg`, `.png`, `.webp` o `.gif`; hasta 24 fotos, 20 MiB por descarga web y 32 MiB por archivo local. La app las copia junto a la composición y las conserva para las llamadas siguientes.
 - `<img src="assets/fotos/huerta.jpg" alt="descripción de lo que se ve">`, con `object-fit: cover`, dentro de un envoltorio que define el recorte (`overflow: hidden`) y otro interior que se mueve. Nunca deformes la proporción.
 - Para que la revisión automática "vea" la foto, su caja debe medir lo que se ve: un panel de foto a la derecha es un elemento de ese tamaño, no una foto de pantalla completa recortada con `clip-path`.
 - Sin créditos ni pies de foto en el video, salvo que la persona los pida.
@@ -292,7 +292,7 @@ Para partículas, texturas, gráficos dibujados o cualquier cosa generativa: esc
 
 ### Audio
 
-Solo el archivo que entregó la persona. Nunca música inventada o bajada, ni voces generadas.
+Prioriza el archivo de la persona. Si no hay, busca música adecuada con `video_musica_buscar` y pasa el origen HTTPS en `audio` de `video_render`. No generes voces ni descargues de plataformas que lo impiden.
 
 La forma más simple, en los tres modos, es la lista `audio` de `video_render` (`origen`, `inicio`, `desde`, `hasta`, `volumen`, `fundidoEntrada`, `fundidoSalida`; ver `SKILL.md` y `sonido.md`). En Code y Overdrive también puedes dejar el archivo en `assets/audio/` y escribir un `<audio>` en la composición:
 

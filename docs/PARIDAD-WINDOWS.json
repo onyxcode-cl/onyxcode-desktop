@@ -1215,6 +1215,23 @@
       ],
       "nota": "Mismo servicio host y registro por uso en Mac/Windows; sin cambios de WSL. Regresión con proveedor/worker dobles para Chat, Code y Tareas: buscar/ver/usar, persistir y pasar fotos a cuadros/render sin créditos. Documentos rechaza uso de video por id, ruta y hash. Búsqueda de red real desde Node Mac documentada en el informe del paso 6; Windows real y la interacción de los tres modos en la app siguen pendientes. N26 describe el estado previo de licencias, ampliado aquí.",
       "comprobacion": null
+    },
+    {
+      "id": "N28",
+      "funcion": "Imágenes web y música HTTPS para video con buscadores configurables (F8-B338)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/util/public-https.ts:1",
+        "src/main/video/web-media.ts:1",
+        "src/main/video/music-search.ts:1",
+        "src/main/video/image-search.ts:1",
+        "src/main/video/web-media-mcp.test.ts:1",
+        "src/shared/video-permissions.ts:1",
+        "src/main/video/image-search-settings.ts:1",
+        "src/renderer/src/features/settings/impl/VideoImageSearch.tsx:1"
+      ],
+      "nota": "Descargas desde main también en Windows, sin WSL. Dobles de Chat, Code y Overdrive comprueban fotos/audio, assets, procedencia y AAC. Búsqueda y MP4 de 15 s reales en Mac como diagnóstico Node sin Seatbelt; sandbox-exec bloqueado por el entorno. Serper/Brave requieren clave y no se probaron con una real; Windows nativo e interacción en Electron pendientes.",
+      "comprobacion": null
     }
   ]
 }

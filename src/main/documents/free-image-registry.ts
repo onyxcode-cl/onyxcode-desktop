@@ -36,7 +36,9 @@ function validProvenance(value: unknown, sha: string, uso: ImageUse = 'documento
   const bounded = (v: unknown, max = 2000): v is string => typeof v === 'string' && v.length > 0 && v.length <= max
   if (
     (uso === 'video'
-      ? p.uso !== 'video' || p.status !== 'licencia-registrada' || !['Wikimedia Commons', 'Wikipedia'].includes(String(p.provider))
+      ? p.uso !== 'video' ||
+        p.status !== 'licencia-registrada' ||
+        !['Wikimedia Commons', 'Wikipedia', 'Serper', 'Brave'].includes(String(p.provider))
       : (p.uso !== undefined && p.uso !== 'documento') || p.status !== 'licencia-comprobada' || p.provider !== 'Wikimedia Commons') ||
     p.sha256 !== sha ||
     !bounded(p.author) ||
@@ -67,11 +69,13 @@ function validProvenance(value: unknown, sha: string, uso: ImageUse = 'documento
     const url = new URL(p.source)
     if (
       url.protocol !== 'https:' ||
-      (url.hostname !== 'commons.wikimedia.org' && !(uso === 'video' && url.hostname === 'en.wikipedia.org')) ||
+      (!(uso === 'video' && ['Serper', 'Brave'].includes(String(p.provider))) &&
+        url.hostname !== 'commons.wikimedia.org' &&
+        !(uso === 'video' && url.hostname === 'en.wikipedia.org')) ||
       url.username ||
       url.password ||
       url.port ||
-      !url.pathname.startsWith('/wiki/File:')
+      (!(uso === 'video' && ['Serper', 'Brave'].includes(String(p.provider))) && !url.pathname.startsWith('/wiki/File:'))
     )
       return false
   } catch {

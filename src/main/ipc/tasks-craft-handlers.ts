@@ -5,6 +5,7 @@
 import { runRealDoctor } from '../doctor/service'
 import { craftService } from '../office/craft/service'
 import { runtimesService } from '../runtimes/service'
+import { videoImageSearchStore } from '../video/image-search-settings'
 import { videoService } from '../video/service'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
@@ -25,6 +26,15 @@ export function registerTasksCraftHandlers(ctx: TasksIpcContext): TasksSubmodule
     runtimesService().cancel()
   })
   handle('runtimes:remove', () => runtimesService().remove())
+  handle('video:imageSearchStatus', () => videoImageSearchStore().status())
+  handle('video:imageSearchSave', ({ provider, key }) => {
+    try {
+      videoImageSearchStore().save(provider, key)
+      return { ok: true }
+    } catch {
+      return { ok: false }
+    }
+  })
   handle('video:status', () => videoService().estado())
   handle('video:install', () => videoService().instalar())
   handle('video:cancel', () => videoService().cancelar())

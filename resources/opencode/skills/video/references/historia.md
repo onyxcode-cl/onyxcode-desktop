@@ -144,7 +144,7 @@ Cuando los cuadros de `video_cuadros` o los de control de `video_render` muestre
 
 ## 9. Sonido en la historia
 
-La app solo usa audio que entregue la persona (música, efectos o una voz grabada), y `video_render` lo mezcla cuando ella pide integrarlo. Nunca inventes, generes ni descargues música, efectos ni voces. No ofrezcas buscar música.
+El audio de la persona tiene prioridad. Sin audio aportado, busca música adecuada con `video_musica_buscar` y pásala por HTTPS en `audio` de `video_render`, con recorte y fundidos. Una promo lleva música por defecto salvo que la persona diga que no. No generes voces ni descargues de plataformas que lo impiden.
 
 - **Sin audio de la persona:** el video va sin sonido y tiene que funcionar así. La tipografía, los cortes y las imágenes llevan todo el ritmo. La línea de sonido de cada plano dice «sin sonido». No cuentes con un efecto para marcar un golpe: márcalo con movimiento.
 - **Con música de la persona:** la música es el reloj. Pon el remate y la marca en sus golpes fuertes; los cortes siguen el movimiento, no el bombo. Entra en el compás más fuerte del tema, no en una intro silenciosa, y termina con un fundido corto bajo el cierre. Si no sabes dónde caen los golpes (la persona no te dijo el tempo ni las marcas), no finjas sincronía: corta por el movimiento.

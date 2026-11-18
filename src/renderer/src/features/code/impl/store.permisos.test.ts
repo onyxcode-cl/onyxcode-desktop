@@ -149,11 +149,12 @@ describe('modo de permisos → sesión del motor', () => {
       expect(rules[9]!.action).toBe(rules[5]!.action)
       expect(rules[10]).toEqual({ permission: 'documentos_exportar_pdf', pattern: '*', action: rules[5]!.action })
       // Video (F8-B334): cuadros siempre pasa (vista previa) y render igual que documentos_crear.
-      expect(rules.slice(12, 14)).toEqual([
+      expect(rules.slice(12, 15)).toEqual([
+        { permission: 'video_musica_buscar', pattern: '*', action: 'allow' },
         { permission: 'video_cuadros', pattern: '*', action: 'allow' },
         { permission: 'video_render', pattern: '*', action: rules[5]!.action }
       ])
-      expect(rules.slice(14)).toEqual(rulesetForMode(mode))
+      expect(rules.slice(15)).toEqual(rulesetForMode(mode))
       expect(rules[0]!.action).toBe(mode === 'bypass' ? 'allow' : 'ask')
     }
     expect(approvalKindOf(rulesetFor('auto'))).toBe('auto')

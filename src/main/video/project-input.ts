@@ -52,7 +52,7 @@ export function photoInputs(raw: unknown): PhotoInput[] {
       Object.keys(p).some((k) => !['origen', 'destino'].includes(k)) ||
       typeof p.origen !== 'string' ||
       !p.origen ||
-      p.origen.length > 400
+      p.origen.length > 4000
     )
       throw Error('Cada foto requiere origen y destino.')
     const destino = projectPath(p.destino)
@@ -73,7 +73,7 @@ export interface AudioInput {
 }
 export function audioInputs(raw: unknown): AudioInput[] {
   if (raw === undefined) return []
-  if (!Array.isArray(raw) || raw.length > 16) throw Error('audio admite hasta 16 pistas de la persona.')
+  if (!Array.isArray(raw) || raw.length > 16) throw Error('audio admite hasta 16 pistas.')
   return raw.map((p) => {
     if (
       !p ||
@@ -81,9 +81,9 @@ export function audioInputs(raw: unknown): AudioInput[] {
       Object.keys(p).some((k) => !['origen', 'inicio', 'desde', 'hasta', 'volumen', 'fundidoEntrada', 'fundidoSalida'].includes(k)) ||
       typeof p.origen !== 'string' ||
       !p.origen ||
-      p.origen.length > 400
+      p.origen.length > 4000
     )
-      throw Error('Cada pista requiere un origen de audio local.')
+      throw Error('Cada pista requiere un origen de audio local o HTTPS.')
     const out = {
       origen: p.origen,
       inicio: p.inicio ?? 0,
@@ -124,7 +124,7 @@ export async function readMedia(
 ): Promise<Buffer> {
   const anchor = await realpath(root)
   const parts = relativeInputPath(raw, [root, anchor, ...agentRoots])
-  if (!(kind === 'photo' ? /\.(png|jpe?g|webp|gif)$/i : /\.(mp3|m4a|wav|aac)$/i).test(parts.at(-1)!))
+  if (!(kind === 'photo' ? /\.(png|jpe?g|webp|gif)$/i : /\.(mp3|m4a|wav|aac|ogg)$/i).test(parts.at(-1)!))
     throw Error('Formato de recurso no admitido.')
   const walk = async () => {
     let p = anchor
@@ -196,7 +196,8 @@ export async function checkProjectUpdate(base: string, updates: { path: string; 
         dirs.add(path.toLowerCase())
         await walk(file, path + '/')
       } else {
-        if (!info.isFile() || info.nlink !== 1 || info.size > MAX_MEDIA_FILE) throw Error('La composición tiene un archivo no admitido.')
+        if (!info.isFile() || info.nlink !== 1 || info.size > (/\.(mp3|m4a|wav|aac|ogg)$/i.test(path) ? 50 * 1024 * 1024 : MAX_MEDIA_FILE))
+          throw Error('La composición tiene un archivo no admitido.')
         sizes.set(path.toLowerCase(), { path, size: info.size })
       }
       if (sizes.size + dirs.size > 256) throw Error('La composición supera 256 entradas.')

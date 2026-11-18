@@ -85,7 +85,7 @@ async function main() {
       if (rel === 'node_modules/gsap/dist/gsap.min.js' || rel === 'composition/node_modules/gsap/dist/gsap.min.js' || rel === 'composition/assets/vendor/gsap.min.js') file = join(modules, 'gsap/dist/gsap.min.js')
       const font = rel.startsWith('_lzx/fonts/') ? fonts.files.get(rel.slice('_lzx/fonts/'.length)) : undefined
       const st = font ? { isFile: () => true, isSymbolicLink: () => false, size: font.length } : await lstat(file)
-      if (!st.isFile() || st.isSymbolicLink() || st.size > 32 * 1024 * 1024) throw Error('file')
+      if (!st.isFile() || st.isSymbolicLink() || st.size > (/\.(mp3|m4a|wav|aac|ogg)$/i.test(file) ? 50 : 32) * 1024 * 1024) throw Error('file')
       let data = font ?? await readFile(file)
       // Solo añade las fuentes fijadas al documento raíz; el runtime monta escenas en el mismo DOM.
       if (rel === 'composition/index.html') {
@@ -298,7 +298,7 @@ async function main() {
       const url = new URL(track.src)
       if (url.origin !== origin || !url.pathname.startsWith(prefix + 'composition/')) throw new RenderFailure('audio_invalido', { console: 'El audio de la composición debe ser un archivo local.' })
       const file = resolve(inputRoot, decodeURIComponent(url.pathname.slice(prefix.length)))
-      if (!file.startsWith(resolve(inputRoot, 'composition') + sep) || !/\.(mp3|m4a|wav|aac)$/i.test(file)) throw new RenderFailure('audio_invalido', { console: 'Audio local no admitido.' })
+      if (!file.startsWith(resolve(inputRoot, 'composition') + sep) || !/\.(mp3|m4a|wav|aac|ogg)$/i.test(file)) throw new RenderFailure('audio_invalido', { console: 'Audio local no admitido.' })
       if (track.automation) findings.push({ message: 'El audio usa data-automation: solo se aplican volumen y fundidos lineales.' })
       tracks.push({ ...track, file })
     }
@@ -307,8 +307,8 @@ async function main() {
       const rate = t.rate ?? 1
       if ([t.inicio, t.desde, t.volumen, t.fundidoEntrada, t.fundidoSalida, rate].some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0) || rate < 0.1 || rate > 10 || t.volumen > 3.98 || t.desde > 86400 || t.fundidoEntrada > 120 || t.fundidoSalida > 120 || (t.slot !== undefined && t.slot !== null && (!Number.isFinite(t.slot) || t.slot < 0))) throw new RenderFailure('audio_invalido', { console: 'Tiempos o volumen de audio inválidos.' })
       const st = await lstat(t.file)
-      if (!st.isFile() || st.isSymbolicLink() || st.size > 32 * 1024 * 1024) throw new RenderFailure('audio_invalido', { console: 'Archivo de audio inválido.' })
-      const meta = JSON.parse(await run(paths.ffprobe, ['-v', 'error', '-protocol_whitelist', 'file,pipe', '-format_whitelist', 'mp3,wav,mov,aac', '-show_entries', 'format=duration:stream=codec_type', '-of', 'json', t.file]))
+      if (!st.isFile() || st.isSymbolicLink() || st.size > 50 * 1024 * 1024) throw new RenderFailure('audio_invalido', { console: 'Archivo de audio inválido.' })
+      const meta = JSON.parse(await run(paths.ffprobe, ['-v', 'error', '-protocol_whitelist', 'file,pipe', '-format_whitelist', 'mp3,wav,mov,aac,ogg', '-show_entries', 'format=duration:stream=codec_type', '-of', 'json', t.file]))
       const sourceDuration = Number(meta.format?.duration)
       if (!Number.isFinite(sourceDuration) || !meta.streams?.some((s) => s.codec_type === 'audio')) throw new RenderFailure('audio_invalido', { console: 'El archivo no contiene audio válido.' })
       if (t.desde >= sourceDuration) throw new RenderFailure('audio_invalido', { console: 'El recorte comienza después del audio.' })
@@ -319,7 +319,7 @@ async function main() {
     }
     if (mixed.length) {
       const out = join(work, 'mixed.mp4')
-      const inputs = mixed.flatMap((t) => ['-protocol_whitelist', 'file,pipe', '-format_whitelist', 'mp3,wav,mov,aac', '-i', t.file])
+      const inputs = mixed.flatMap((t) => ['-protocol_whitelist', 'file,pipe', '-format_whitelist', 'mp3,wav,mov,aac,ogg', '-i', t.file])
       await run(paths.ffmpeg, ['-v', 'error', '-y', '-i', mp4, ...inputs, '-filter_complex', audioFilter(mixed, job.seconds), '-map', '0:v:0', '-map', '[mix]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', String(job.seconds), '-movflags', '+faststart', '-threads', '4', '-fs', '268435456', out])
       await rename(out, mp4)
     }

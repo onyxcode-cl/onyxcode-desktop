@@ -2,6 +2,20 @@ import type { Messages } from '../index'
 import type { settings as es } from '../es/settings'
 
 export const settings = {
+  'settings.video.images.title': 'Web images for videos',
+  'settings.video.images.desc':
+    'Find brands, games, products and other subjects on the web. Without a key, use free catalogs and direct URLs found by the AI. Music needs no key.',
+  'settings.video.images.provider': 'Image search service',
+  'settings.video.images.serper': 'Serper · Google Images',
+  'settings.video.images.brave': 'Brave · independent index',
+  'settings.video.images.key': 'Access key',
+  'settings.video.images.configured': 'Key saved; leave empty to keep it',
+  'settings.video.images.save': 'Save',
+  'settings.video.images.remove': 'Remove key',
+  'settings.video.images.getKey': 'Get an access key',
+  'settings.video.images.unavailable': 'Secure storage is unavailable. Keys cannot be saved without encryption.',
+  'settings.video.images.error': 'Could not save the configuration.',
+  'settings.video.images.saved': 'Configuration saved.',
   // Settings structure
   'settings.title': 'Settings',
   'settings.close': 'Close settings (Esc)',

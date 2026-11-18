@@ -166,6 +166,7 @@ export const MIGRATED: string[] = [
   'src/renderer/src/features/settings/impl/ShortcutsSection.tsx',
   'src/renderer/src/features/settings/impl/TasksSection.tsx',
   'src/renderer/src/features/settings/impl/VideoCard.tsx',
+  'src/renderer/src/features/settings/impl/VideoImageSearch.tsx',
   'src/renderer/src/features/settings/impl/UsageSection.tsx',
   'src/renderer/src/features/settings/impl/extras.ts',
   'src/renderer/src/features/settings/impl/providerCatalog.ts',

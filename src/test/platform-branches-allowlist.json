@@ -430,6 +430,9 @@
     "src/main/video/consent.ts": {
       "darwin": 1
     },
+    "src/main/video/image-search-settings.ts": {
+      "darwin": 1
+    },
     "src/main/video/install.ts": {
       "win32": 2
     },

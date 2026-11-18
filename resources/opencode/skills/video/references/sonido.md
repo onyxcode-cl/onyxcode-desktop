@@ -1,19 +1,19 @@
 # Sonido
 
-El sonido es la mitad de cómo se siente un video, y quien lo mira nota un video mudo antes que cualquier cuadro. Pero en esta app hay una regla fija: **el único audio es el que entrega la persona.** No inventes música, no la descargues, no generes voces, no escribas sonido con código (osciladores, tonos, «pitidos»). Nadie puede oír si eso queda bien.
+El audio de la persona tiene prioridad. Si no hay, busca música adecuada con `video_musica_buscar`. Un video promocional lleva música por defecto, salvo que la persona diga que no. No generes voces ni sonido con código (osciladores, tonos, «pitidos»).
 
 ## 1. Cuándo hay sonido
 
 - **La persona entregó audio** (una canción, una locución grabada, efectos) y quiere usarlo en el video: colócalo como dice este archivo.
-- **La persona pidió música pero no entregó ningún archivo:** haz el video igual, sin detenerte, y al entregar pídele en una línea el archivo de audio para añadirlo. No busques música por tu cuenta.
-- **Nadie habló de sonido:** entrega el video mudo y no ofrezcas música como extra. Un video que se ve sin sonido (un fondo en bucle, un reel que arranca silenciado) lo cuentan el texto grande y las imágenes.
+- **Sin archivo de música:** busca con `video_musica_buscar`, por ejemplo `{"consulta":"warm acoustic instrumental","limite":6}`. Devuelve título, duración en segundos, géneros, etiquetas, licencia como dato y `origen` descargable. Elige una pista adecuada y suficientemente larga; pásala por URL en `audio` con recorte y fundidos. Si el enlace ya no funciona, prueba otra pista. No bajes de plataformas que lo impiden.
+- **Nadie habló de sonido:** una promo lleva música por defecto. Si el pedido exige silencio, respétalo. El texto y las imágenes también deben contar el video al verlo silenciado.
 - **Voz:** solo una locución grabada que entregue la persona. Nunca voces generadas.
 
 Si la respuesta de `video_render` no trae `audio`, el MP4 salió mudo: no prometas el sonido, entrega el video, conserva el archivo de la persona tal cual y dilo en una línea.
 
 ## 2. Cómo entra el audio
 
-Formatos: `.mp3`, `.m4a`, `.wav` o `.aac`, hasta 32 MB cada uno y 16 pistas en total. `video_render` mezcla todo en el MP4 (AAC, 48 kHz) con un limitador suave; `video_cuadros` no suena. Hay dos formas, que dan lo mismo:
+Formatos: `.mp3`, `.m4a`, `.wav`, `.aac` o `.ogg`, hasta 32 MiB locales o 50 MiB por descarga HTTPS y 16 pistas en total. `video_render` mezcla todo en el MP4 (AAC, 48 kHz) con un limitador suave; `video_cuadros` no suena; puede preparar `audio`, pero repite la lista en `video_render` para mezclarla. Hay dos formas, que dan lo mismo:
 
 **A. La lista `audio` de `video_render`** (sirve en Chat, Code y Overdrive; en Chat es la única):
 
@@ -23,7 +23,7 @@ Formatos: `.mp3`, `.m4a`, `.wav` o `.aac`, hasta 32 MB cada uno y 16 pistas en t
 
 | Campo | Qué hace | Equivale a |
 | --- | --- | --- |
-| `origen` | En Chat, el nombre o id del archivo que adjuntó la persona. En Code y Overdrive, la ruta relativa del archivo en el proyecto o la tarea | `src` |
+| `origen` | Una URL HTTPS pública de archivo directo (la app la guarda en assets/), o en Chat, el nombre o id del archivo que adjuntó la persona. En Code y Overdrive, la ruta relativa del archivo en el proyecto o la tarea | `src` |
 | `inicio` | Segundo del video en que empieza a sonar (menor que la duración) | `data-start` |
 | `desde` | Desde qué segundo del archivo empieza (el recorte de entrada) | `data-media-start` |
 | `hasta` | Segundo del archivo donde deja de sonar (no es una duración; mayor que `desde`). Sin él, suena hasta el final del archivo o del video | `data-media-start` + `data-duration` |
@@ -69,7 +69,7 @@ Reglas:
 
 ## 4. Música
 
-- Usa el tema de la persona tal como lo dio.
+- Usa el tema de la persona tal como lo dio; si no hay, elige música de la búsqueda. La app guarda URL y hash como procedencia, sin agregar créditos al video.
 - Entra en la parte más fuerte del tema, no en una introducción tranquila, **si la persona te dijo dónde está** (`desde` o `data-media-start`). Si no lo sabes, empieza en el segundo 0 del archivo; no adivines.
 - Fundidos: entrada de 0,4 s y salida de 1,5 s bajo la tarjeta final. El audio termina cuando termina el video (lo que sobra se corta; el fundido de salida se aplica al final del tramo que suena).
 - Si el tema es más corto que el video, no lo estires ni lo aceleres. Puedes poner una segunda pista del mismo archivo que empiece donde termina la primera, con fundidos que se crucen, o decirle a la persona que el tema no alcanza. Avisa siempre en la nota.

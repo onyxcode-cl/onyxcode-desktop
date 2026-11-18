@@ -71,7 +71,7 @@ export interface FreeImageEvaluation {
 }
 export interface FreeImageProvenance {
   uso?: ImageUse
-  provider: 'Wikimedia Commons' | 'Wikipedia'
+  provider: 'Wikimedia Commons' | 'Wikipedia' | 'Serper' | 'Brave'
   id: string
   title: string
   author: string
@@ -291,7 +291,7 @@ export function parseCommonsImages(raw: unknown, uso: ImageUse = 'documento', ap
   }
   return result
 }
-function validateSearch(input: NormalizedSearch): void {
+export function validateSearch(input: NormalizedSearch): void {
   if (input.uso !== undefined && input.uso !== 'video' && input.uso !== 'documento')
     throw new FreeImageInputError('uso', 'usa documento o video.')
   const text = (s: unknown, max = 400): boolean => typeof s === 'string' && s.trim().length > 0 && s.length <= max

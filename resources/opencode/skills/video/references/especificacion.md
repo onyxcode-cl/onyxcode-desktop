@@ -34,7 +34,7 @@ REVISIÓN:   los segundos que pedirás a video_cuadros y qué debe mostrar cada 
 Notas para Lazunox:
 
 - **Cuadros y segundos**: piensa los tiempos en cuadros (a 30 fps, 1 cuadro = 1/30 s), pero GSAP usa **segundos**. Para la timeline divide por 30: 18 cuadros = 0,6 s; 45 cuadros = 1,5 s.
-- **Sonido**: solo el audio que entregó la persona (`sonido.md`). Si no entregó audio, el video va sin sonido y la columna de sonido de PLANOS dice «sin sonido». No inventes música ni voces.
+- **Sonido**: prioriza el audio de la persona; si no hay, busca música con `video_musica_buscar` (`sonido.md`). Una promo lleva música salvo que la persona diga que no. No inventes voces.
 - **REVISIÓN**: elige los segundos que más pueden fallar: la mitad de cada movimiento protagonista, el cuadro de cada relevo entre planos y el último cuadro. `video_cuadros` acepta hasta 6 segundos por llamada; si necesitas más, haz otra llamada.
 
 ## De palabras a números
@@ -48,7 +48,7 @@ Notas para Lazunox:
 | juguetón    | rebotes con amortiguación 0,45–0,6 en posición y escala (nunca en opacidad ni color), poses exageradas un 10–30 %                                     |
 | cinematográfico | un lente y una luz: encuadre de 35 mm, luz principal desde arriba a la izquierda, contraluz desde atrás, 6 % de viñeta                          |
 
-Para los rebotes en GSAP, lo más cercano que trae son `elastic.out(1, 0.5)` y `back.out(1.4)` (ver `movimiento.md`). «Dinámico» con pulsos y compases solo aplica si hay audio de la persona; sin audio, usa un ritmo fijo (por ejemplo, un cambio cada 2 s = 60 cuadros).
+Para los rebotes en GSAP, lo más cercano que trae son `elastic.out(1, 0.5)` y `back.out(1.4)` (ver `movimiento.md`). «Dinámico» con pulsos y compases solo aplica si hay audio; sin audio, usa un ritmo fijo (por ejemplo, un cambio cada 2 s = 60 cuadros).
 
 ## Números de composición
 

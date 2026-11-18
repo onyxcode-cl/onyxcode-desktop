@@ -9,7 +9,7 @@ import type { PasteRejected } from './paste-files'
 import type { DoctorReport } from './doctor'
 import type { CraftInstallResult, CraftUiSnapshot } from './craft'
 import type { RuntimesInstallResult, RuntimesSnapshot } from './runtimes'
-import type { VideoInstallResult, VideoSnapshot } from './video'
+import type { VideoInstallResult, VideoSnapshot, VideoImageProvider, VideoImageSearchStatus } from './video'
 import type { PreflightId, PreflightReport } from './preflight'
 import type { DocKind } from './doc-kind'
 import type { IpcResult } from './ipc'
@@ -1427,6 +1427,8 @@ export interface TasksInvokeContract {
   'runtimes:install': { req: void; res: RuntimesInstallResult }
   'runtimes:cancel': { req: void; res: void }
   'runtimes:remove': { req: void; res: void }
+  'video:imageSearchStatus': { req: void; res: VideoImageSearchStatus }
+  'video:imageSearchSave': { req: { provider: VideoImageProvider; key?: string }; res: { ok: boolean } }
   'video:status': { req: void; res: VideoSnapshot }
   'video:install': { req: void; res: VideoInstallResult }
   'video:cancel': { req: void; res: void }
@@ -1717,6 +1719,8 @@ export const TASKS_INVOKE_CHANNELS = [
   'runtimes:install',
   'runtimes:cancel',
   'runtimes:remove',
+  'video:imageSearchStatus',
+  'video:imageSearchSave',
   'video:status',
   'video:install',
   'video:cancel',

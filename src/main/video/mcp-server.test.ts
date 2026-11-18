@@ -381,7 +381,7 @@ describe('video: Code, Chat y transporte MCP', () => {
     expect((await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(rpc) })).status).toBe(
       401
     )
-    expect(server.tools()).toHaveLength(2)
+    expect(server.tools()).toHaveLength(3)
   })
   it.skipIf(!macOnly)('copia sin seguir enlaces intermedios con O_NOFOLLOW_ANY', async () => {
     // El caso de enlace en un padre ya se rechaza en el recorrido; el flag cierra además la carrera en open.
@@ -402,7 +402,7 @@ it('apagar video cierra también sockets TCP sin cabeceras y espera su limpieza'
 })
 
 it('ambas descripciones enseñan el contrato obligatorio y qué hacer con los avisos', () => {
-  for (const tool of server.tools() as { description: string }[]) {
+  for (const tool of (server.tools() as { name: string; description: string }[]).filter((tool) => tool.name !== 'musica_buscar')) {
     for (const key of [
       'data-composition-id',
       'data-width',

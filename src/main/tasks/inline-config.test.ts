@@ -364,7 +364,11 @@ it('video usa el proxy de Overdrive sin abrirlo al agente de Control total', () 
   const video = { type: 'remote', url: 'http://127.0.0.1:1/video', headers: { Authorization: 'Bearer proxy-video' } }
   const c = buildInlineConfig({ ...empty, videoMcp: video })
   expect((c.mcp as Record<string, unknown>).video).toEqual(video)
-  expect(agentsOf(c)[TASKS_AGENT_ID]?.permission).toMatchObject({ video_cuadros: 'allow', video_render: 'allow' })
+  expect(agentsOf(c)[TASKS_AGENT_ID]?.permission).toMatchObject({
+    video_cuadros: 'allow',
+    video_render: 'allow',
+    video_musica_buscar: 'allow'
+  })
   expect(agentsOf(c)[COMPUTER_AGENT_ID]?.permission?.video_render).toBeUndefined()
   expect(
     (buildInlineConfig({ ...empty, fullAccess: true, videoMcp: video }).mcp as Record<string, unknown> | undefined)?.video

@@ -1,5 +1,13 @@
 # Fase 8 — Onboarding y distribución
 
+## F8-B338 — Imágenes web y música para video (V32, paso 7)
+
+`fotos` y `audio` de cuadros/render aceptan HTTPS público desde main, también en Chat. Resuelve y comprueba todas las IP; fija la IP autorizada en el socket TLS, conserva Host/certificado, revalida hasta tres redirecciones, limita tiempo y bytes (20 MiB foto, 50 MiB audio) y verifica firmas JPG/PNG/WebP/GIF o MP3/M4A/AAC/WAV/OGG. Rechaza HTML, SVG, red local y credenciales. Copia los recursos web a `assets/` con procedencia JSON y SHA256; la composición permanece sin red. OGG se incluye en los demuxers cerrados del worker.
+
+Búsqueda general de fotos para `uso: "video"` mediante Serper (principal, resultados de Google Imágenes) o Brave; selección en Ajustes con clave cifrada usando el almacén seguro existente, nunca devuelta al renderer. Mantiene hoja numerada, ver, evaluación y usar. Sin clave informa y recurre a catálogos y URLs encontradas por herramientas web. Documentos conserva su autoridad estricta. `video_musica_buscar` consulta Openverse Audio sin clave y entrega duración en segundos, etiquetas, licencia y URL directa. Permisos en Chat, Code y Overdrive; las descargas se ejecutan en el host, también Windows, sin modificar WSL. La skill usa fotos reales y música por defecto en promociones, con prioridad al audio de la persona.
+
+Pruebas: `util/public-https*.test.ts`, `video/web-media*.test.ts`, `video/music-search.test.ts`, `video/image-search.test.ts`, regresión de video/documentos, permisos y configuración. Prueba real Mac: búsqueda Openverse, MP3 de Jamendo y foto Unsplash, MP4 de 15 s y ffprobe H.264/AAC 48 kHz. Render real solo como diagnóstico Node sin Seatbelt: el entorno rechaza `sandbox-exec` con EPERM; no certifica aislamiento ni interacción Electron. Proveedores con clave y Windows nativo pendientes en N28. Resultados en `V32-VIDEO-PASO7-INFORME.md` externo.
+
 ## F8-B337 — Fotos de cualquier licencia para video (V32, paso 6)
 
 Las herramientas de fotos admiten `uso: "video"` en búsqueda y preparación/recuperación. Busca en Commons y Wikipedia en inglés sin filtrar por licencia; conserva sus destinos de archivos cerrados y no acepta URLs del modelo. El uso acompaña candidatos, revisión, preparación y registro privado. Licencia, enlace si existe y metadatos originales se guardan como datos con estado `licencia-registrada`, sin afirmar permiso de reutilización ni añadir créditos o comentarios de licencia al video.

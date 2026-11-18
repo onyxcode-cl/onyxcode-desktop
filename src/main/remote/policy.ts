@@ -503,6 +503,8 @@ export const CELULAR_POLICY: Record<string, IpcSpec> = {
   'runtimes:install': 'X',
   'runtimes:cancel': 'X',
   'runtimes:remove': 'X',
+  'video:imageSearchStatus': 'X',
+  'video:imageSearchSave': 'X',
   'video:status': 'X',
   'video:install': 'X',
   'video:cancel': 'X',

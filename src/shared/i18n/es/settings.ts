@@ -1,4 +1,18 @@
 export const settings = {
+  'settings.video.images.title': 'Imágenes de internet para videos',
+  'settings.video.images.desc':
+    'Busca marcas, juegos, productos y otros temas en la web. Sin clave se usan los catálogos libres y las URLs directas que encuentre la IA. Música sin clave.',
+  'settings.video.images.provider': 'Buscador de imágenes',
+  'settings.video.images.serper': 'Serper · Google Imágenes',
+  'settings.video.images.brave': 'Brave · índice propio',
+  'settings.video.images.key': 'Clave de acceso',
+  'settings.video.images.configured': 'Clave guardada; deja vacío para conservarla',
+  'settings.video.images.save': 'Guardar',
+  'settings.video.images.remove': 'Quitar clave',
+  'settings.video.images.getKey': 'Conseguir una clave',
+  'settings.video.images.unavailable': 'El almacén seguro no está disponible. No se guardan claves sin cifrar.',
+  'settings.video.images.error': 'No se pudo guardar la configuración.',
+  'settings.video.images.saved': 'Configuración guardada.',
   // Estructura de Ajustes
   'settings.title': 'Ajustes',
   'settings.close': 'Cerrar ajustes (Esc)',

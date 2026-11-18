@@ -26,3 +26,15 @@ describe('IPC video solo desde la ventana principal', () => {
     }
   })
 })
+
+it('clave solo por ventana principal, esquema cerrado y estado sin payload', () => {
+  expect(CELULAR_POLICY['video:imageSearchSave']).toBe('X')
+  expect(CELULAR_POLICY['video:imageSearchStatus']).toBe('X')
+  expect(IPC_SCHEMAS['video:imageSearchSave']({ provider: 'serper', key: 'placeholder' })).toEqual({
+    provider: 'serper',
+    key: 'placeholder'
+  })
+  for (const value of [{ provider: 'other' }, { provider: 'brave', key: 'bad\nkey' }, { provider: 'serper', path: '/tmp/key' }])
+    expect(() => IPC_SCHEMAS['video:imageSearchSave'](value)).toThrow()
+  expect(() => IPC_SCHEMAS['video:imageSearchStatus']({})).toThrow()
+})

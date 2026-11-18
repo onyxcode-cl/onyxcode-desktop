@@ -20,3 +20,10 @@ export interface VideoPaths {
 }
 export type VideoEnsureResult =
   { state: 'ready'; paths: VideoPaths } | { state: 'missing'; missingBytes: number } | { state: 'unsupported' }
+
+export type VideoImageProvider = 'serper' | 'brave'
+export interface VideoImageSearchStatus {
+  provider: VideoImageProvider
+  configured: Record<VideoImageProvider, boolean>
+  secure: boolean
+}

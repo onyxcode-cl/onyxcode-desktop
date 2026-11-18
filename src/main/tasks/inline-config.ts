@@ -145,7 +145,7 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
                   ...(i.allowDelete === false ? { bash: { 'rm *': 'allow', 'rmdir *': 'allow', 'unlink *': 'allow' } } : {}),
                   ...(i.extras.length || allowDirs.length ? { external_directory: externalDirectory } : {}),
                   ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {}),
-                  ...(i.videoMcp ? { video_cuadros: 'allow', video_render: 'allow' } : {}),
+                  ...(i.videoMcp ? { video_cuadros: 'allow', video_render: 'allow', video_musica_buscar: 'allow' } : {}),
                   // Comandos fuera del aislamiento: la aprobación la pide y decide MAIN (`host-exec/approvals.ts`), con el comando entero, cada vez.
                   // La pregunta del motor no protegía nada (el motor vive en la jaula con los programas de la tarea) y duplicaba la tarjeta.
                   ...(i.hostMcp ? { [`${HOST_ROUTE_NAME}_*`]: 'allow' } : {})

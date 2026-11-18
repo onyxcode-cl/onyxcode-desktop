@@ -1,4 +1,4 @@
-/** Dos herramientas de video; la atadura concede la carpeta, nunca la composición ni su código. */
+/** Herramientas de video; la atadura concede la carpeta, nunca la composición ni su código. */
 import { createHash, randomUUID } from 'node:crypto'
 import { lstat, mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
@@ -19,6 +19,8 @@ import {
   MAX_TEXT_FILE,
   FONT_FAMILIES
 } from './project-input'
+import { downloadVideoMedia } from './web-media'
+import { searchVideoMusic, type MusicSearchDeps } from './music-search'
 import { copyComposition } from './composition'
 import type { RenderOutput, RenderProcess } from './render-process'
 import { VideoRenderError, explainRenderError } from './render-errors'
@@ -39,6 +41,8 @@ export interface VideoRenderDeps {
   install: (signal: AbortSignal) => Promise<void>
   render: RenderProcess
   photo?: (root: string, session: string | null, chat: boolean, origin: string) => Promise<Buffer | null>
+  download?: typeof downloadVideoMedia
+  music?: MusicSearchDeps
   timeoutMs?: number
   pollMs?: number
 }
@@ -84,7 +88,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         type: 'array',
         maxItems: 24,
         description:
-          'Fotos locales de cualquier licencia, sin créditos automáticos: origen es ruta concedida, id de imagenes_usar o nombre/id de adjunto humano de Chat; destino es assets/…',
+          'Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
         items: {
           type: 'object',
           additionalProperties: false,
@@ -92,9 +96,40 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
           required: ['origen', 'destino']
         }
       },
+      audio: {
+        type: 'array',
+        maxItems: 16,
+        description:
+          'Audio local, adjunto o HTTPS público (mp3/m4a/aac/wav/ogg, 50 MiB web). Recorte y fundidos en segundos; volumen 0–3.98.',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            origen: { type: 'string' },
+            inicio: { type: 'number', minimum: 0 },
+            desde: { type: 'number', minimum: 0 },
+            hasta: { type: 'number', minimum: 0 },
+            volumen: { type: 'number', minimum: 0, maximum: 3.98 },
+            fundidoEntrada: { type: 'number', minimum: 0 },
+            fundidoSalida: { type: 'number', minimum: 0 }
+          },
+          required: ['origen']
+        }
+      },
       carpeta: { type: 'string', description: 'Solo Code: ruta absoluta del proyecto abierto. En Chat y Overdrive no se pasa.' }
     }
     return [
+      {
+        name: 'musica_buscar',
+        description:
+          'Busca música en un catálogo público sin clave; devuelve título, segundos, etiquetas, licencia y origen HTTPS para audio.',
+        inputSchema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { consulta: { type: 'string', maxLength: 200 }, limite: { type: 'integer', minimum: 1, maximum: 12 } },
+          required: ['consulta']
+        }
+      },
       {
         name: 'cuadros',
         description:
@@ -124,32 +159,13 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'render',
         description:
-          'Tras mirar y corregir los cuadros, genera un MP4 H.264 a 30 fps; AAC con audio local de la persona o <audio> del proyecto y tres imágenes de control. Máximo 120 s. ' +
+          'Tras mirar y corregir los cuadros, genera un MP4 H.264 a 30 fps; AAC con música HTTPS, audio local o <audio> del proyecto y tres imágenes de control. Máximo 120 s. ' +
           COMPOSITION_CONTRACT,
         inputSchema: {
           type: 'object',
           additionalProperties: false,
           properties: {
             ...common,
-            audio: {
-              type: 'array',
-              maxItems: 16,
-              description: 'Audio de la persona (mp3/m4a/wav/aac), sin descargas ni generación. Tiempos en segundos; volumen 0–3.98.',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  origen: { type: 'string' },
-                  inicio: { type: 'number', minimum: 0 },
-                  desde: { type: 'number', minimum: 0 },
-                  hasta: { type: 'number', minimum: 0 },
-                  volumen: { type: 'number', minimum: 0, maximum: 3.98 },
-                  fundidoEntrada: { type: 'number', minimum: 0 },
-                  fundidoSalida: { type: 'number', minimum: 0 }
-                },
-                required: ['origen']
-              }
-            },
             duracion: { type: 'number', exclusiveMinimum: 0, maximum: 120 },
             fps: { type: 'integer', enum: [30] },
             nombre: { type: 'string', maxLength: 80 }
@@ -165,10 +181,32 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     args: Record<string, unknown>,
     signal?: AbortSignal
   ): Promise<McpToolResult> {
+    if (name === 'musica_buscar') {
+      if (this.running.has(binding) || this.running.size >= 2) return fail('Hay otra operación de video en curso; espera a que termine.')
+      const ac = new AbortController()
+      this.running.set(binding, ac)
+      let complete!: () => void
+      this.completion.set(
+        binding,
+        new Promise<void>((done) => {
+          complete = done
+        })
+      )
+      try {
+        const result = await searchVideoMusic(args, signal ? AbortSignal.any([signal, ac.signal]) : ac.signal, this.deps.music)
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] }
+      } catch {
+        return fail('No se pudo buscar música. Usa consulta y limite válidos; puedes reintentar o pasar una URL HTTPS directa en audio.')
+      } finally {
+        this.running.delete(binding)
+        this.completion.delete(binding)
+        complete()
+      }
+    }
     if (!['cuadros', 'render'].includes(name)) return fail('Herramienta de video desconocida.')
     const permitted =
       name === 'cuadros'
-        ? ['composicion', 'formato', 'carpeta', 'segundos', 'html', 'archivos', 'fotos']
+        ? ['composicion', 'formato', 'carpeta', 'segundos', 'html', 'archivos', 'fotos', 'audio']
         : ['composicion', 'formato', 'carpeta', 'duracion', 'fps', 'nombre', 'fotos', 'audio']
     if (Object.keys(args).some((k) => !permitted.includes(k))) return fail('Hay argumentos de video no admitidos.')
     if (typeof args.formato !== 'string' || !Object.hasOwn(VIDEO_FORMATS, args.formato))
@@ -273,7 +311,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       let composition = args.composicion
       const photos = photoInputs(args.fotos)
       const audio = audioInputs(args.audio)
-      if (audio.some((t) => t.inicio >= (seconds as number))) return fail('El inicio del audio debe ser menor que la duración del video.')
+      if (name === 'render' && audio.some((t) => t.inicio >= (seconds as number)))
+        return fail('El inicio del audio debe ser menor que la duración del video.')
       const texts = args.archivos === undefined ? [] : textFiles(args.archivos)
       if (args.html !== undefined && args.archivos !== undefined) return fail('Usa html o archivos, no ambos a la vez.')
       if (args.html !== undefined) {
@@ -305,7 +344,14 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         composition = `${base}/index.html`
       }
       // Recursos: ids preparados y adjuntos humanos se resuelven por main; ninguna ruta arbitraria de Chat.
+      const remote = new Map<string, Awaited<ReturnType<typeof downloadVideoMedia>>>()
       const resource = async (origin: string, kind: 'photo' | 'audio'): Promise<Buffer> => {
+        if (/^[a-z][a-z0-9+.-]*:/i.test(origin) && !origin.startsWith('imagen:') && !/^[a-z]:[\\/]/i.test(origin)) {
+          const downloaded = await (this.deps.download ?? downloadVideoMedia)(origin, kind, ac.signal)
+          if (kind === 'photo') validatePhoto(downloaded.bytes)
+          remote.set(origin, downloaded)
+          return downloaded.bytes
+        }
         const prepared = kind === 'photo' ? await this.deps.photo?.(root, initial, chat, origin) : null
         if (prepared) {
           validatePhoto(prepared)
@@ -334,16 +380,40 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         audioBytes.push({ track, bytes })
       }
       if (mediaTotal > MAX_MEDIA_TOTAL) throw Error('Los recursos superan 96 MiB en total.')
-      // Las fotos persisten con la composición para las siguientes llamadas, incluido Chat.
+      // Fotos y audio web persisten en assets; procedencia como JSON, nunca código HTML.
       const comp = projectPath(composition)
+      const updates: { path: string; bytes: Buffer }[] = photoBytes.map((p) => ({ path: p.destino, bytes: p.bytes }))
+      const sources: { destino: string; origen: string; urlFinal: string; tipo: string; sha256: string }[] = []
+      for (const p of photoBytes) {
+        const web = remote.get(p.origen)
+        if (web) {
+          const extension = p.destino.split('.').at(-1)!.toLowerCase().replace('jpeg', 'jpg')
+          if (extension !== web.ext) throw Error(`La foto es ${web.ext}; usa esa extensión en destino.`)
+          sources.push({ destino: p.destino, ...web.provenance })
+        }
+      }
+      for (const item of audioBytes) {
+        const web = remote.get(item.track.origen)
+        if (web) {
+          const path = `assets/audio/web-${web.provenance.sha256}.${web.ext}`
+          updates.push({ path, bytes: item.bytes })
+          sources.push({ destino: path, ...web.provenance })
+        }
+      }
+      for (const source of sources) {
+        const id = createHash('sha256').update(source.destino).digest('hex')
+        updates.push({ path: `assets/origenes/${id}.json`, bytes: Buffer.from(JSON.stringify(source, null, 2)) })
+      }
       if (chat)
         await checkProjectUpdate(
           join(root, dirname(comp)),
-          photoBytes.map((p) => ({ path: p.destino, size: p.bytes.length })),
+          updates.map((u) => ({ path: u.path, size: u.bytes.length })),
           ac.signal
         )
-      for (const p of photoBytes)
-        safeWriteFile(root, join(root, dirname(comp), p.destino), p.bytes, { replace: true, refuseLinkTarget: true, mode: 0o600 })
+      for (const u of updates) {
+        ac.signal.throwIfAborted()
+        safeWriteFile(root, join(root, dirname(comp), u.path), u.bytes, { replace: true, refuseLinkTarget: true, mode: 0o600 })
+      }
       // Valida y copia ANTES de pedir permiso para instalar: un input inválido no solicita descargas.
       await mkdir(this.deps.privateDir, { recursive: true, mode: 0o700 })
       if ((await lstat(this.deps.privateDir)).isSymbolicLink()) throw new Error('La carpeta temporal no puede ser un enlace.')
@@ -409,6 +479,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
               composicion: composition,
               duracion: result.duration,
               audio: result.audio,
+              fuentes: sources,
               revision: result.revision,
               ...output.info,
               avisos: result.avisos ?? [],

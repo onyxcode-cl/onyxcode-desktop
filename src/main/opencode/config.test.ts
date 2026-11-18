@@ -138,6 +138,7 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
       'question',
       'read',
       'video_cuadros',
+      'video_musica_buscar',
       'video_render',
       'webfetch',
       'websearch'
@@ -286,9 +287,18 @@ it('video en Chat se abre solo con su servidor; el resto de herramientas de arch
     agent: { chat: { permission: Record<string, unknown>; prompt: string } }
   }
   expect(cfg.mcp.video).toBeDefined()
-  expect(cfg.agent.chat.permission).toMatchObject({ '*': 'deny', video_cuadros: 'allow', video_render: 'allow' })
+  expect(cfg.agent.chat.permission).toMatchObject({
+    '*': 'deny',
+    video_cuadros: 'allow',
+    video_render: 'allow',
+    video_musica_buscar: 'allow'
+  })
   expect(cfg.agent.chat.prompt).toContain('video_cuadros')
-  expect((buildInlineConfig() as typeof cfg).agent.chat.permission).toMatchObject({ video_cuadros: 'deny', video_render: 'deny' })
+  expect((buildInlineConfig() as typeof cfg).agent.chat.permission).toMatchObject({
+    video_cuadros: 'deny',
+    video_render: 'deny',
+    video_musica_buscar: 'deny'
+  })
 })
 
 it('Chat puede cargar únicamente la skill video cuando tiene el MCP', () => {

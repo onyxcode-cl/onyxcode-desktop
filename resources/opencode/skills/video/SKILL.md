@@ -49,7 +49,7 @@ Si piden un video, hazlo. No propongas tres historias ni esperes aprobación: de
    - En medio de una transición de empuje o barrido, es esperable un aviso de «área segura» o de «tapado» sobre lo que está entrando o saliendo. Compruébalo en el cuadro. El mismo aviso con el texto ya quieto sí es un error. Los avisos oficiales esperables (estructura de un solo archivo, recorte de un acercamiento de cámara) están en `references/formato.md` §13; cualquier otro se corrige.
 6. **Render.** Llama a `video_render` solo después de mirar y corregir: `{"composicion":"…/index.html","formato":"vertical","duracion":15,"fps":30,"nombre":"promo"}`.
    - `duracion` es igual a `data-duration` de la raíz y es múltiplo de 1/30.
-   - Si la persona entregó audio, agrégalo aquí en `audio` (sección Audio).
+   - Agrega la música o el audio de la persona aquí en `audio` (sección Audio). Una promo lleva música por defecto, salvo que la persona diga que no.
    - Mira los 3 cuadros de control y los avisos que devuelve. No entregues con avisos pendientes sin corregirlos o explicarlos.
 7. **Entrega** en una línea: el enlace a `ruta` · la duración en segundos · el peso calculado desde `bytes` (KB = 1000 bytes, MB = 1 000 000 bytes). Luego, en palabras simples, di qué supuestos tomaste y qué quedó pendiente. La revisión es por muestreo y no cubre cada cuadro; no lo presentes como si lo fuera.
 
@@ -116,35 +116,32 @@ Sigue el destino que nombren. La duración por defecto es 15 s y la máxima, 120
 
 ## Fotos
 
-Cuando el video las necesite (un local, un producto, un lugar real), usa las que entregó la persona o búscalas en internet con el flujo de la skill `pdf`. Para video sirve una foto de cualquier licencia: la licencia queda registrada, pero no bloquea.
+Cuando el tema las necesita (un local, un producto, un lugar real), usa imágenes reales: primero las de la persona; si faltan, busca en la web. Para video vale cualquier licencia, sin créditos; la responsabilidad del uso es del dueño del video.
 
-1. Prepara requisitos: sujeto, lugar, lo que debe verse, lo que no y la orientación.
-2. Haz 2 o 3 consultas con `documentos_imagenes_buscar`.
-3. Compara la hoja numerada; puedes elegir «ninguna».
-4. Amplía 1 o 2 finalistas con `documentos_imagenes_ver`. Di qué se ve, qué requisitos cumple y qué duda queda.
-5. Llama a `documentos_imagenes_usar` con el `id` y `evaluation:{mode:"visual",observed,meets:[],doubts}`. En Code agrega `carpeta`.
-
-Haz como máximo una segunda búsqueda. Usa solo los ids devueltos.
+1. Define sujeto, lugar, lo que debe verse, lo que no y orientación.
+2. Busca con `documentos_imagenes_buscar`, `uso:"video"`, 2–3 consultas y requisitos (en Code, `carpeta`). Usa el buscador general elegido en Ajustes: Serper (Google Imágenes) o Brave. Compara la hoja numerada, amplía 1–2 finalistas con `documentos_imagenes_ver` y prepara la elegida con `documentos_imagenes_usar` y `evaluation:{mode:"visual",observed,meets:[],doubts}`. Usa su id. Puedes elegir ninguna.
+3. Si falta la clave, dilo en una línea y sigue con los catálogos libres y con `websearch`, `webfetch` o el navegador. Obtén la URL HTTPS del archivo original JPG/PNG/WebP/GIF. No raspes buscadores de imágenes ni eludas restricciones de descarga.
+4. Mira la foto antes de elegirla; no uses miniaturas, marcas de agua ni imágenes que no coinciden. Pasa la URL en `fotos[].origen`; la app descarga desde main (20 MiB, 40 megapíxeles), valida y guarda en `assets/`. La extensión de `destino` debe coincidir con el tipo real. La URL queda como dato de procedencia; el HTML sigue sin red.
 
 **Cómo entra la foto (igual en Chat, Code y Overdrive):** en `video_cuadros` pasa `fotos: [{"origen": "<id de documentos_imagenes_usar>", "destino": "assets/fotos/pan.jpg"}]`.
-- `origen` es el id que aprobó `documentos_imagenes_usar`, el nombre o id de una foto que adjuntó la persona en Chat, o la ruta relativa de una foto que ya está en el proyecto o la tarea.
+- `origen` puede ser la URL HTTPS pública del archivo original, el id que aprobó `documentos_imagenes_usar`, el nombre o id de una foto que adjuntó la persona en Chat, o la ruta relativa de una foto que ya está en el proyecto o la tarea.
 - `destino` va siempre dentro de `assets/` y termina en `.jpg`, `.jpeg`, `.png`, `.webp` o `.gif`. Hasta 24 fotos.
 - La app copia la foto junto a la composición y la conserva para las llamadas siguientes: no hace falta repetir `fotos` si no cambias de foto.
 - En la composición úsala con `<img src="assets/fotos/pan.jpg" alt="…">` y `object-fit: cover`, dentro de un envoltorio que recorta, con un hijo que se mueve.
-- Nunca pongas una URL, una miniatura ni un base64 pegado a mano.
+- En el HTML nunca pongas una URL remota, una miniatura ni un base64 pegado a mano: usa la ruta local de `destino`.
 - Sin visión, sin red o sin una candidata válida, hazlo con formas, color y tipografía, y explica la ausencia. No cambies una foto real por un dibujo sin avisar.
 
 ## Audio
 
-- Usa solo el audio que entregue la persona. No inventes ni descargues música, no generes voces y no hagas sonido con código.
-- Formatos: `.mp3`, `.m4a`, `.wav` o `.aac`, hasta 16 pistas. `video_render` las mezcla en el MP4 (AAC). `video_cuadros` no suena: el audio solo se agrega al render.
+- El audio de la persona tiene prioridad; si no hay, busca música adecuada con `video_musica_buscar` (`{"consulta":"upbeat acoustic instrumental","limite":6}`). Una promo lleva música por defecto, salvo que la persona diga que no. Elige una pista con duración suficiente y pasa su `origen` HTTPS en `audio` con recorte y fundidos. No descargues de plataformas que lo impiden, no generes voces ni hagas sonido con código.
+- Formatos: `.mp3`, `.m4a`, `.wav`, `.aac` o `.ogg`, hasta 16 pistas (50 MiB por descarga web). `video_render` las mezcla en el MP4 (AAC). `video_cuadros` no suena: admite `audio` para preparar los archivos, y debes repetir la lista en `video_render` para mezclarlos.
 - **Forma principal (sirve en los tres modos):** en `video_render` pasa `audio: [{"origen": "…", "inicio": 0, "desde": 8, "hasta": 23, "volumen": 0.8, "fundidoEntrada": 0.4, "fundidoSalida": 1.5}]`.
-  - `origen`: en Chat, el nombre o id del archivo que adjuntó la persona; en Code y Overdrive, la ruta relativa del archivo en el proyecto o la tarea.
+  - `origen`: URL HTTPS pública devuelta por la búsqueda, o en Chat, el nombre o id del archivo que adjuntó la persona; en Code y Overdrive, la ruta relativa del archivo en el proyecto o la tarea.
   - `inicio`: segundo del video en que empieza a sonar (menor que la duración). `desde` y `hasta`: el tramo del archivo que suena (`hasta` es un segundo del archivo, no una duración). `volumen`: de 0 a 3.98, 1 = sin cambio. Fundidos en segundos. Todo es opcional salvo `origen`.
 - **Otra forma (Code y Overdrive):** con el archivo dentro de `assets/audio/` de la composición, un `<audio id="…" class="clip" src="assets/audio/x.mp3">` con `data-start`, `data-duration`, `data-media-start` (el recorte), `data-volume` y `data-fade-in`/`data-fade-out`. Nunca uses `play()` ni `pause()`. No mezcles las dos formas para la misma pista: sonaría dos veces.
 - Detalle, sincronía y niveles: `references/sonido.md`.
 - La respuesta de `video_render` trae `audio` (códec y duración) cuando el MP4 tiene sonido. Si no lo trae, salió mudo: díselo a la persona y conserva su archivo intacto.
-- Si nadie habló de sonido, el video va sin sonido y no ofrezcas extras.
+- Si la persona pide silencio, respétalo. Si falla una descarga, prueba otra pista y explica si finalmente el MP4 quedó mudo.
 
 ## Sin créditos
 
@@ -288,5 +285,5 @@ Explica el motivo con palabras simples y ofrece reintentar desde la app cuando c
 | Tipografía cinética, un lugar real, un sitio web, un cambio de código | `references/cine.md` |
 | Tarjetas sobre un video de una persona hablando | `references/overlays.md` |
 | Escenas en archivos, atributos, fuentes, GSAP, CSS, canvas, medios, errores de la herramienta | `references/formato.md` |
-| Música, voz o efectos que entregó la persona | `references/sonido.md` |
+| Música buscada, audio de la persona, voz o efectos | `references/sonido.md` |
 | Cómo revisar los cuadros y escribir la nota de entrega | `references/revision.md` |

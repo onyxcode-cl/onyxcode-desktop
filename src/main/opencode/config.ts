@@ -339,7 +339,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'valla con ``` en su propia línea; si el documento es muy largo, hazlo más breve en vez de dejarlo sin cerrar. ' +
           'Si piden editar un Word, Excel o PowerPoint adjunto, no lo reconstruyas ni lo sustituyas por uno nuevo: indica que la edición del original se hace en Overdrive. ' +
           (opts.videoMcp
-            ? 'Para videos, carga primero la skill `video`. Luego envía el HTML completo de HyperFrames en video_cuadros (html, formato y segundos); la app lo guarda en esta conversación. Mira todas las imágenes, corrige enviando otro html y usa la ruta composicion devuelta al pedir video_render. Sin recursos de internet; GSAP local en assets/vendor/gsap.min.js.'
+            ? 'Para videos, carga primero la skill `video`. Luego envía el HTML completo de HyperFrames en video_cuadros (html, formato y segundos); la app lo guarda en esta conversación. Mira todas las imágenes, corrige enviando otro html y usa la ruta composicion devuelta al pedir video_render. Fotos y música web mediante fotos/audio de las herramientas; composición sin red. GSAP local en assets/vendor/gsap.min.js.'
             : ''),
         permission: {
           '*': 'deny',
