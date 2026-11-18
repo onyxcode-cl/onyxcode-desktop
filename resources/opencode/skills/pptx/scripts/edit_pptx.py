@@ -308,9 +308,17 @@ def main(argv=None):
     if os.path.abspath(a.entrada) == os.path.abspath(a.salida):
         print("Error: la salida debe ser distinta de la entrada.")
         return 1
+    # se edita una COPIA limpia (solo partes con relaciones, ZIP sin rarezas); el original no se toca
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+    import normalizar_paquete
+
+    def _err(msg, codigo=1):
+        print("Error: " + msg)
+        sys.exit(codigo)
+    limpio = normalizar_paquete.preparar_o_salir(a.entrada, _err, quitar_macros=True)
     try:
-        prs = Presentation(a.entrada)
-        msgs = []
+        prs = Presentation(limpio.ruta)
+        msgs = ["AVISO: " + v for v in limpio.avisos]
         if a.op == "batch":
             if not a.ops or not os.path.isfile(a.ops):
                 raise EditError("falta --ops con un archivo JSON existente")

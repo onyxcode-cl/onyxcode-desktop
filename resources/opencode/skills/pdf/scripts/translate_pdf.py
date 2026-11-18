@@ -21,6 +21,9 @@ import sys
 
 from pdf_util import error, exigir_entrada, exigir_salida_nueva
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+import normalizar_paquete  # noqa: E402  (copia limpia antes de traducir)
+
 try:
     import fitz  # PyMuPDF
 except ImportError:  # pragma: no cover
@@ -508,9 +511,15 @@ def _tapar_original(pag, trabajo):
 
 # ---------------------------------------------------------------- extraer
 
+def _copia_limpia(ruta):
+    """Copia normalizada del PDF (PyMuPDF lo repara y lo guarda sin objetos huérfanos ni JavaScript): se traduce sobre ella; el original no se toca."""
+    return normalizar_paquete.preparar_o_salir(ruta, error)
+
+
 def cmd_extraer(a):
     exigir_entrada(a.pdf)
-    doc = fitz.open(a.pdf)
+    limpio = _copia_limpia(a.pdf)
+    doc = fitz.open(limpio.ruta)
     if doc.needs_pass:
         error("el PDF tiene contraseña; este script no la maneja.")
     salida = []
@@ -621,7 +630,8 @@ def cmd_aplicar(a):
         tr = json.load(f)
     if isinstance(tr, dict) and "segmentos" in tr:   # aceptar también el JSON de extraer con "traduccion" por segmento
         tr = {s["id"]: s.get("traduccion", "") for s in tr["segmentos"] if s.get("traduccion")}
-    doc = fitz.open(a.pdf)
+    limpio = _copia_limpia(a.pdf)
+    doc = fitz.open(limpio.ruta)
     if doc.needs_pass:
         error("el PDF tiene contraseña; este script no la maneja.")
     familias = {}   # se cargan solo las que el documento usa
@@ -630,7 +640,7 @@ def cmd_aplicar(a):
         if k not in familias:
             familias[k] = {"regular": _fuente("italic" if it else "regular", fam), "bold": _fuente("bolditalic" if it else "bold", fam)}
         return familias[k]
-    informe = {"traducidos": 0, "sin_traduccion": [], "letra_reducida": [], "no_cabe": [], "caracteres_sin_fuente": []}
+    informe = {"traducidos": 0, "sin_traduccion": [], "letra_reducida": [], "no_cabe": [], "caracteres_sin_fuente": [], "avisos": list(limpio.avisos)}
     usados = set()
 
     for n, pag in enumerate(doc):
@@ -800,9 +810,8 @@ def cmd_aplicar(a):
     if extra:
         informe["ids_desconocidos"] = extra
     doc.save(a.salida, garbage=3, deflate=True)
-    if a.informe:
-        with open(a.informe, "w", encoding="utf-8") as f:
-            json.dump(informe, f, ensure_ascii=False, indent=1)
+    for x in limpio.avisos:
+        print("AVISO: " + x)
     print("OK: %d textos traducidos -> %s" % (informe["traducidos"], a.salida))
     if informe["sin_traduccion"]:
         print("AVISO: %d textos sin traducir (quedan borrados NO: se dejaron en el idioma original): %s"
@@ -815,12 +824,18 @@ def cmd_aplicar(a):
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
         import comparar_estructura
-        dif, avisos, resumen = comparar_estructura.comparar(a.pdf, a.salida)
+        dif, avisos, resumen = comparar_estructura.comparar(limpio.ruta, a.salida)
+        informe["avisos"] += avisos
         for x in dif + ["(aviso) " + v for v in avisos]:
             print("DIFERENCIA: " + x)
+        if dif:   # en PDF el resultado se entrega igual (el diseño es lo que ve la persona): se avisa, no se pierde
+            informe["avisos"] += ["la estructura del PDF cambió: " + x for x in dif[:6]]
         print("ESTRUCTURA: " + ("CAMBIÓ: revisa las páginas PNG junto al original" if dif else "idéntica al original (%s)" % resumen))
     except SystemExit:
         pass
+    if a.informe:
+        with open(a.informe, "w", encoding="utf-8") as f:
+            json.dump(informe, f, ensure_ascii=False, indent=1)
     sys.exit(0 if not informe["no_cabe"] else 3)
 
 
@@ -871,7 +886,12 @@ def main():
     i.add_argument("-o", "--salida", required=True)
     i.set_defaults(fn=cmd_imagen)
     a = ap.parse_args()
-    a.fn(a)
+    try:
+        a.fn(a)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — nunca un rastro de Python: el motivo real, en una línea
+        error("no se pudo procesar el PDF (%s: %s)" % (type(e).__name__, e))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,10 @@
 """Compara la ESTRUCTURA de un documento antes y después de traducirlo (o editarlo en copia): `comparar_estructura.py original traducido`.
 
 Sirve para .docx, .xlsx/.xlsm y .pdf (por la extensión del original; ambos deben ser del mismo tipo). Solo estándar de Python (PDF: PyMuPDF si está).
-Códigos: 0 estructura idéntica (puede traer AVISOS de formato), 1 la estructura cambió (el texto es lo único que debía cambiar), 2 uso/archivo ilegible.
+Códigos: 0 sin diferencias graves (puede traer AVISOS), 1 hay diferencias GRAVES (el texto es lo único que debía cambiar), 2 uso/archivo ilegible.
+Dos niveles: GRAVE («DIFERENCIA:»: se perdió texto, una tabla, una imagen, un estilo usado, fórmulas o celdas → no se entrega) y AVISO («AVISO:»:
+metadatos, miniaturas, partes no usadas o cambios de formato invisibles → se entrega igual). Conviene comparar contra la copia limpia
+(`normalizar_paquete.py`), no contra el original crudo.
   docx: mismos párrafos con el mismo estilo/alineación/lista/imágenes/enlaces, mismas tablas (filas × columnas), mismas secciones (tamaño y márgenes) y
         todas las partes que no son texto (estilos, numeración, tema, imágenes, configuración) idénticas byte a byte.
   xlsx: mismas hojas, mismas celdas (referencia, estilo, tipo y FÓRMULA idénticos), mismas combinaciones, anchos, filtros, validaciones, estilos y
@@ -24,15 +27,53 @@ def _zip(ruta):
         sys.exit(2)
 
 
+def _destino_rel(nombre_rels, destino):
+    """Parte a la que apunta una relación (minúsculas, ruta absoluta del paquete); da igual si se escribió relativa o con `/` inicial."""
+    base = nombre_rels.replace("_rels/", "").rsplit(".rels", 1)[0]
+    carpeta = base.rsplit("/", 1)[0] + "/" if "/" in base else ""
+    ruta = destino.lstrip("/") if destino.startswith("/") else carpeta + destino
+    partes = []
+    for p in ruta.split("/"):
+        if p == "..":
+            if partes:
+                partes.pop()
+        elif p not in ("", "."):
+            partes.append(p)
+    return "/".join(partes).lower()
+
+
+def _relaciones(z, nombre):
+    """Relaciones de un .rels como conjunto (Id, tipo, modo, destino resuelto)."""
+    return {(e.get("Id"), e.get("Type"), e.get("TargetMode") or "Internal",
+             e.get("Target") if e.get("TargetMode") == "External" else _destino_rel(nombre, e.get("Target") or ""))
+            for e in ET.fromstring(z.read(nombre))}
+
+
+def _tipos(z):
+    """Tipo de contenido efectivo de cada parte (el `Override` manda; si no, el `Default` de su extensión)."""
+    raiz = ET.fromstring(z.read("[Content_Types].xml"))
+    pre = {e.get("Extension", "").lower(): e.get("ContentType") for e in raiz if e.tag.endswith("Default")}
+    ov = {e.get("PartName", "").lstrip("/").lower(): e.get("ContentType") for e in raiz if e.tag.endswith("Override")}
+    out = {}
+    for n in z.namelist():
+        if n.endswith("/") or n == "[Content_Types].xml":
+            continue
+        out[n.lower()] = ov.get(n.lower()) or pre.get(n.rsplit(".", 1)[-1].lower() if "." in n else "")
+    return out
+
+
 def _canon(z, nombre):
     """Huella de una parte: XML canónico (da igual el orden de atributos, los espacios entre etiquetas o cómo la biblioteca reserializó el
-    archivo; las relaciones y tipos de contenido se comparan sin importar el orden); el resto, por bytes."""
+    archivo); las relaciones se comparan por lo que significan (mismo Id, tipo y parte de destino, escrito como se escriba). El resto, por bytes."""
     datos = z.read(nombre)
+    if nombre.endswith(".rels"):
+        try:
+            return hashlib.sha256(repr(sorted(_relaciones(z, nombre), key=repr)).encode()).hexdigest()
+        except ET.ParseError:
+            pass
     if nombre.endswith((".xml", ".rels", ".vml")):
         try:
             raiz = ET.fromstring(datos)
-            if nombre.endswith(".rels") or nombre == "[Content_Types].xml":
-                return hashlib.sha256("\n".join(sorted(ET.canonicalize(ET.tostring(e)) for e in raiz)).encode()).hexdigest()
             return hashlib.sha256(ET.canonicalize(ET.tostring(raiz), strip_text=False).encode()).hexdigest()
         except ET.ParseError:
             pass
@@ -68,21 +109,50 @@ def _partes_referenciadas(z):
     return ref
 
 
+# Partes que no son contenido del documento: si faltan, sobran o cambian es solo un AVISO (se entrega igual). Todo lo demás
+# (estilos, numeración, tema, imágenes, configuración, fórmulas, hojas, objetos incrustados…) es GRAVE y detiene la entrega.
+_PARTE_MENOR = re.compile(
+    r"^(?:docProps/|customXml/|\[trash\]/|__MACOSX/|_xmlsignatures/|[^/]*\.DS_Store$|.*/printerSettings/|.*/(?:thumbnail|Thumbs)[^/]*$|"
+    r"word/(?:webSettings|fontTable)\.xml$|xl/calcChain\.xml$)", re.I)
+
+
+def _parte_menor(n):
+    return bool(_PARTE_MENOR.match(n)) or n.lower().endswith((".ds_store", "thumbs.db")) or n.endswith("/")
+
+
 def _partes_fijas(za, zb, es_texto, dif, avisos):
-    """Misma lista de partes y bytes idénticos en todas las que no son de texto. Una parte huérfana del original (sin ninguna relación
-    que la use) que no llega a la copia es solo un aviso: no cambia el documento."""
+    """Misma lista de partes y bytes idénticos en todas las que no son de texto. Las partes que no son del contenido (metadatos, miniaturas,
+    papelera, partes que ninguna relación usa) solo dan AVISO; una parte del documento que falta, sobra o cambia es GRAVE."""
     na, nb = set(za.namelist()), set(zb.namelist())
     huerfanas = na - _partes_referenciadas(za)
     for n in sorted(na - nb):
-        if n in huerfanas and not n.endswith("/"):
+        if n.endswith("/"):
+            continue
+        if n in huerfanas:
             avisos.append("se descartó la parte %s, que el documento no usaba" % n)
+        elif _parte_menor(n):
+            avisos.append("falta la parte %s (metadatos o miniatura: no cambia el contenido)" % n)
         else:
             dif.append("falta la parte %s" % n)
     for n in sorted(nb - na):
-        dif.append("sobra la parte %s" % n)
+        if n.endswith("/"):
+            continue
+        (avisos if _parte_menor(n) else dif).append(("sobra la parte %s (metadatos o miniatura)" if _parte_menor(n) else "sobra la parte %s") % n)
+    try:   # tipos de contenido: lo que importa es el tipo de cada parte, no cómo se escribió la lista (Default/Override, orden, partes que ya no están)
+        ta, tb = _tipos(za), _tipos(zb)
+        for n in sorted(set(ta) & set(tb)):
+            if ta[n] != tb[n]:
+                dif.append("cambió el tipo de contenido de la parte %s" % n)
+    except (ET.ParseError, KeyError):
+        dif.append("[Content_Types].xml no se puede leer")
     for n in sorted(na & nb):
+        if n == "[Content_Types].xml":
+            continue
         if not es_texto(n) and _canon(za, n) != _canon(zb, n):
-            dif.append("cambió la parte %s (no es de texto)" % n)
+            if _parte_menor(n):
+                avisos.append("cambió la parte %s (metadatos o miniatura: no cambia el contenido)" % n)
+            else:
+                dif.append("cambió la parte %s (no es de texto)" % n)
 
 
 # ------------------------------------------------------------------ docx

@@ -283,9 +283,17 @@ def main(argv=None):
         print("Error: ya existe %s; elige otro nombre con -o." % out, file=sys.stderr)
         return 2
     import zipfile
-    names = zipfile.ZipFile(a.archivo).namelist()
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+    import normalizar_paquete
+    # se edita una COPIA limpia (solo partes con relaciones, ZIP sin rarezas); el original no se toca
+    def _err(msg, codigo=2):
+        print("Error: " + msg, file=sys.stderr)
+        sys.exit(codigo)
+    limpio = normalizar_paquete.preparar_o_salir(a.archivo, _err)
+    origen = limpio.ruta
+    names = zipfile.ZipFile(origen).namelist()
     keep_vba = a.archivo.lower().endswith(".xlsm")
-    warns = []
+    warns = ["la copia de trabajo se limpió antes de editar: " + v for v in limpio.avisos]
     if any("pivotTable" in n for n in names):
         warns.append("el libro tiene tablas dinámicas: openpyxl puede perder su formato/actualización")
     if any("slicer" in n.lower() for n in names):
@@ -293,7 +301,7 @@ def main(argv=None):
     if keep_vba and not out.lower().endswith(".xlsm"):
         warns.append("el original es .xlsm: guarda la copia como .xlsm para conservar macros")
     try:
-        wb = load_workbook(a.archivo, keep_vba=keep_vba)
+        wb = load_workbook(origen, keep_vba=keep_vba)
         for i, op in enumerate(ops, 1):
             name = op.get("op")
             if name not in OPS:

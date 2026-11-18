@@ -22,7 +22,9 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
 import _docxlib as L  # noqa: E402
+import normalizar_paquete  # noqa: E402
 from docx import Document  # noqa: E402
 from docx.oxml.ns import qn  # noqa: E402
 from docx.text.paragraph import Paragraph  # noqa: E402
@@ -246,7 +248,14 @@ def main():
     if not ops:
         print("ERROR: no se indicó ninguna operación (ver --help)", file=sys.stderr)
         sys.exit(2)
-    doc = Document(a.entrada)
+    # se edita una COPIA limpia (solo partes con relaciones, ZIP sin rarezas); el original no se toca
+    def _err(msg, codigo=2):
+        print("ERROR: " + msg, file=sys.stderr)
+        sys.exit(codigo)
+    limpio = normalizar_paquete.preparar_o_salir(a.entrada, _err, quitar_macros=True)
+    for v in limpio.avisos:
+        print("AVISO: " + v)
+    doc = Document(limpio.ruta)
     fallos = 0
     for o in ops:
         fn = OPS.get(o.get("op"))

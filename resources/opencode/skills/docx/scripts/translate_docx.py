@@ -21,11 +21,13 @@ import re
 import sys
 import zipfile
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+import normalizar_paquete  # noqa: E402  (copia limpia antes de traducir)
 
 
-def error(msg):
+def error(msg, codigo=1):
     print("ERROR: %s" % msg, file=sys.stderr)
-    sys.exit(1)
+    sys.exit(codigo)
 
 
 def exigir_entrada(ruta):
@@ -380,11 +382,17 @@ def _revisar_zip(ruta):
             error("el .docx es demasiado grande al descomprimirse (%d archivos, %d MB): no se traduce." % (len(info), total // 1048576))
 
 
+def _copia_limpia(ruta):
+    """Copia normalizada del Word (solo partes con relaciones, ZIP limpio): se traduce y se compara sobre ella; el original no se toca."""
+    return normalizar_paquete.preparar_o_salir(ruta, error, quitar_macros=True)
+
+
 def cmd_extraer(a):
     exigir_entrada(a.docx)
     _revisar_zip(a.docx)
+    limpio = _copia_limpia(a.docx)
     try:
-        d = docx.Document(a.docx)
+        d = docx.Document(limpio.ruta)
     except Exception as e:  # noqa: BLE001
         error("no se pudo abrir %s: %s" % (a.docx, e))
     salida, omitidos = [], {}
@@ -412,12 +420,14 @@ def cmd_aplicar(a):
     exigir_entrada(a.traduccion)
     exigir_salida_nueva(a.salida)
     _revisar_zip(a.docx)
+    limpio = _copia_limpia(a.docx)
     with open(a.traduccion, encoding="utf-8") as f:
         tr = json.load(f)
     if isinstance(tr, dict) and "segmentos" in tr:
         tr = {s["id"]: s.get("traduccion", "") for s in tr["segmentos"] if s.get("traduccion")}
-    d = docx.Document(a.docx)
-    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "omitidos": {}, "enlaces_quitados": 0, "formato_perdido": 0}
+    d = docx.Document(limpio.ruta)
+    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "omitidos": {}, "enlaces_quitados": 0, "formato_perdido": 0,
+               "avisos": list(limpio.avisos)}
     usados = set()
     for sid, _etq, p, txt in _recorrer(d):
         motivo = _motivo_omision(p)
@@ -450,9 +460,6 @@ def cmd_aplicar(a):
     if extra:
         informe["ids_desconocidos"] = extra
     d.save(a.salida)
-    if a.informe:
-        with open(a.informe, "w", encoding="utf-8") as f:
-            json.dump(informe, f, ensure_ascii=False, indent=1)
     print("OK: %d textos traducidos -> %s" % (informe["traducidos"], a.salida))
     if informe["sin_traduccion"]:
         print("AVISO: %d textos sin traducir (quedan en el idioma original): %s" % (len(informe["sin_traduccion"]), ", ".join(informe["sin_traduccion"][:12])))
@@ -462,18 +469,35 @@ def cmd_aplicar(a):
         print("AVISO: %d textos perdieron parte de su formato (negrita, color…) porque la traducción no trajo las etiquetas." % informe["formato_perdido"])
     if informe["enlaces_quitados"]:
         print("AVISO: %d enlaces no se conservaron (faltó la etiqueta <l=N> en la traducción)." % informe["enlaces_quitados"])
-    # verificación: la copia debe tener la MISMA estructura que el original (solo cambia el texto)
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "_shared"))
+    for x in limpio.avisos:
+        print("AVISO: " + x)
+    # verificación: la salida debe tener la MISMA estructura que la copia limpia (solo cambia el texto). GRAVE detiene; AVISO se entrega igual.
     import comparar_estructura
-    dif, avisos, resumen = comparar_estructura.comparar(a.docx, a.salida)
+    try:
+        dif, avisos, resumen = comparar_estructura.comparar(limpio.ruta, a.salida)
+    except (SystemExit, Exception) as e:  # noqa: BLE001 — si la revisión misma falla, la traducción existe: se avisa en vez de perderla
+        informe["error"] = {"nivel": "aviso", "motivos": ["no se pudo revisar la estructura del resultado (%s)" % (e if not isinstance(e, SystemExit) else "archivo ilegible")]}
+        _guardar_informe(a, informe)
+        print("AVISO: " + informe["error"]["motivos"][0])
+        sys.exit(4)
+    informe["avisos"] += avisos
     for x in dif:
         print("DIFERENCIA: " + x)
     for x in avisos:
         print("AVISO: " + x)
     if dif:
+        informe["error"] = {"nivel": "grave", "motivos": dif[:12]}
+        _guardar_informe(a, informe)
         print("ESTRUCTURA: CAMBIÓ: no entregues %s; revisa la traducción (¿se rompió una etiqueta?) y repite con otro nombre." % a.salida)
         sys.exit(1)
-    print("ESTRUCTURA: idéntica al original (%s)" % resumen)
+    _guardar_informe(a, informe)
+    print("ESTRUCTURA: idéntica al original (%s)%s" % (resumen, " con %d aviso(s)" % len(informe["avisos"]) if informe["avisos"] else ""))
+
+
+def _guardar_informe(a, informe):
+    if a.informe:
+        with open(a.informe, "w", encoding="utf-8") as f:
+            json.dump(informe, f, ensure_ascii=False, indent=1)
 
 
 def main():
@@ -490,7 +514,12 @@ def main():
     p.add_argument("--informe")
     p.set_defaults(fn=cmd_aplicar)
     a = ap.parse_args()
-    a.fn(a)
+    try:
+        a.fn(a)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — nunca un rastro de Python: el motivo real, en una línea
+        error("no se pudo procesar el Word (%s: %s)" % (type(e).__name__, e))
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ from xml.sax.saxutils import escape
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(AQUI, "..", "..", "_shared"))
 from output_file import write_output
+import normalizar_paquete
 
 MAX_ENTRADAS = 5000
 MAX_DESCOMPRIMIDO = 300 * 1024 * 1024
@@ -177,6 +178,15 @@ def _revisar_zip(ruta):
             error("el libro está cifrado con contraseña: no se puede traducir.")
 
 
+def _copia_limpia(ruta):
+    """Copia normalizada del libro (solo partes con relaciones, ZIP limpio): se traduce y se compara sobre ella; el original no se toca."""
+    if not zipfile.is_zipfile(ruta):
+        error("no es un .xlsx válido (¿es un .xls antiguo? Guárdalo como .xlsx).")
+    limpio = normalizar_paquete.preparar_o_salir(ruta, error)
+    _revisar_zip(limpio.ruta)
+    return limpio
+
+
 def _ids(parte):
     for (a, b, sp, texto, i) in parte.unidades:
         if sp and texto and _traducible(RUN_TAGS.sub("", texto)):
@@ -186,8 +196,8 @@ def _ids(parte):
 def cmd_extraer(a):
     if not os.path.isfile(a.xlsx):
         error("no existe el archivo %s" % a.xlsx)
-    _revisar_zip(a.xlsx)
-    with zipfile.ZipFile(a.xlsx) as z:
+    limpio = _copia_limpia(a.xlsx)
+    with zipfile.ZipFile(limpio.ruta) as z:
         partes = _partes(z)
         usos, hojas = _celdas_de_cadenas(z)
         omitidos = {}
@@ -249,15 +259,15 @@ def cmd_aplicar(a):
             error("no existe el archivo %s" % r)
     if os.path.lexists(a.salida):
         error("%s ya existe; elige otro nombre (no se sobrescribe)." % a.salida)
-    _revisar_zip(a.xlsx)
+    limpio = _copia_limpia(a.xlsx)
     with open(a.traduccion, encoding="utf-8") as f:
         tr = json.load(f)
     if isinstance(tr, dict) and "segmentos" in tr:
         tr = {s["id"]: s.get("traduccion", "") for s in tr["segmentos"] if s.get("traduccion")}
-    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "formato_simplificado": [], "posible_recorte": []}
+    informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "formato_simplificado": [], "posible_recorte": [], "avisos": list(limpio.avisos)}
     cambios = {}  # nombre de parte → xml nuevo
     usados = set()
-    with zipfile.ZipFile(a.xlsx) as z:
+    with zipfile.ZipFile(limpio.ruta) as z:
         usos, hojas = _celdas_de_cadenas(z)
         originales = {}
         for p in _partes(z):
@@ -291,23 +301,24 @@ def cmd_aplicar(a):
     # inválida en una carpeta de Tareas sin permiso de borrado.
     import comparar_estructura  # noqa: E402
     with BytesIO() as result:
-        with zipfile.ZipFile(a.xlsx) as zi, zipfile.ZipFile(result, "w", compression=zipfile.ZIP_DEFLATED) as zo:
+        with zipfile.ZipFile(limpio.ruta) as zi, zipfile.ZipFile(result, "w", compression=zipfile.ZIP_DEFLATED) as zo:
             for info in zi.infolist():
                 datos = cambios[info.filename].encode("utf-8") if info.filename in cambios else zi.read(info.filename)
                 zo.writestr(info, datos, compress_type=info.compress_type)
         result.seek(0)
-        dif, avisos, resumen = comparar_estructura.comparar_xlsx(a.xlsx, result)
+        dif, avisos, resumen = comparar_estructura.comparar_xlsx(limpio.ruta, result)
+        informe["avisos"] += avisos
         for d in dif:
             print("DIFERENCIA: " + d)
         if dif:
+            informe["error"] = {"nivel": "grave", "motivos": dif[:12]}
+            _guardar_informe(a, informe)
             error("ESTRUCTURA: CAMBIÓ: no se creó la copia; revisa la traducción y repite con otro nombre.")
         try:
             write_output(a.salida, result.getvalue())
         except OSError as e:
             error(str(e))
-    if a.informe:
-        with open(a.informe, "w", encoding="utf-8") as f:
-            json.dump(informe, f, ensure_ascii=False, indent=1)
+    _guardar_informe(a, informe)
     print("OK: %d textos traducidos -> %s" % (informe["traducidos"], a.salida))
     if informe["sin_traduccion"]:
         print("AVISO: %d textos sin traducir (quedan en el idioma original): %s" % (len(informe["sin_traduccion"]), ", ".join(informe["sin_traduccion"][:12])))
@@ -318,7 +329,15 @@ def cmd_aplicar(a):
               "Acórtalas o díselo a la persona." % (len(informe["posible_recorte"]), ", ".join(informe["posible_recorte"][:10])))
     if hojas:
         print("AVISO: los nombres de hoja no se traducen: %s." % ", ".join(hojas[:8]))
+    for x in informe["avisos"]:
+        print("AVISO: " + x)
     print("ESTRUCTURA: idéntica al original (%s)" % resumen)
+
+
+def _guardar_informe(a, informe):
+    if a.informe:
+        with open(a.informe, "w", encoding="utf-8") as f:
+            json.dump(informe, f, ensure_ascii=False, indent=1)
 
 
 def _recortes(z, tr, usos, originales):
@@ -370,7 +389,12 @@ def main():
     p.add_argument("--informe")
     p.set_defaults(fn=cmd_aplicar)
     a = ap.parse_args()
-    a.fn(a)
+    try:
+        a.fn(a)
+    except SystemExit:
+        raise
+    except Exception as e:  # noqa: BLE001 — nunca un rastro de Python: el motivo real, en una línea
+        error("no se pudo procesar el Excel (%s: %s)" % (type(e).__name__, e))
 
 
 if __name__ == "__main__":
