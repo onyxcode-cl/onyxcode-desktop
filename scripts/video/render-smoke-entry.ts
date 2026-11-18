@@ -215,10 +215,14 @@ async function main(): Promise<void> {
       await mkdir(join(folder, kind))
       await writeFile(join(folder, kind, 'index.html'), qualityComposition(kind))
       const review = await call('cuadros', { composicion: `${kind}/index.html`, formato: 'vertical', segundos: [1, 7] })
-      const warnings = (review.text.avisos as string[]).filter((w) => !w.includes('oficial') && !w.includes('Hoja oficial'))
+      const warnings = (review.text.avisos as string[]).filter(
+        (w) => !w.includes('oficial') && !w.includes('Hoja oficial') && !w.includes('La imagen está quieta')
+      )
       const expected = { clean: '', overflow: 'se sale', overlap: 'queda tapado', gap: 'cuadro casi vacío', narrow: 'espacio vacío' }[kind]
       if (kind === 'clean' ? warnings.length !== 0 : !warnings.some((w) => w.includes(expected)))
         throw Error(`Avisos incorrectos ${kind}: ${JSON.stringify(warnings)}`)
+      if (!(review.text.movimiento as { aviso?: string })?.aviso)
+        throw Error('Falta aviso de movimiento en la composición estática de prueba')
       quality[kind] = review
     }
     await mkdir(join(folder, 'wrong-format'))

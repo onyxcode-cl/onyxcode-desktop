@@ -21,6 +21,7 @@ export interface RenderOutput {
   images: string[]
   contactSheet?: string
   revision?: { oficial: boolean; hojaOficial: boolean; fuentesLocales?: number; alcance: string }
+  movimiento?: { porcentajeQuieto: number; tramos: { inicio: number; fin: number }[]; intervalo: number; aviso: string | null }
   audio?: { codec: string; duration: number }
   ownedPids?: number[]
   avisos?: string[]

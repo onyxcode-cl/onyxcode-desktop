@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { randomBytes } from 'node:crypto'
 import { FONT_NAMES, embeddedFonts, groupWarnings, audioFilter } from './offline-tools.mjs'
 import { once } from 'node:events'
-import { inspectFrame, colorVariation, needsSmallerFrames } from './inspect-frame.mjs'
+import { inspectFrame, colorVariation, needsSmallerFrames, measureMotion, transitionSamples } from './inspect-frame.mjs'
 
 const job = JSON.parse(process.argv[2])
 const { work, paths, width, height } = job
@@ -50,10 +50,10 @@ process.on('SIGINT', stop)
 class RenderFailure extends Error {
   constructor(code, data = {}) { super(code); this.code = code; this.data = data }
 }
-async function run(file, args, raw = false) {
+async function run(file, args, raw = false, limit = 65536) {
   const child = childProcess.spawn(file, args, { stdio: ['ignore', 'pipe', 'pipe'] })
   const chunks = []; let size = 0, error = ''
-  child.stdout.on('data', (b) => { size += b.length; if (size > 65536) child.kill('SIGKILL'); else chunks.push(b) })
+  child.stdout.on('data', (b) => { size += b.length; if (size > limit) child.kill('SIGKILL'); else chunks.push(b) })
   child.stderr.on('data', (b) => { error = (error + b).slice(-4096) })
   const code = await new Promise((done, reject) => { child.once('error', reject); child.once('close', done) })
   if (code !== 0) throw Error(error || 'Video process failed')
@@ -185,12 +185,17 @@ async function main() {
     await walkHtml(join(inputRoot, 'composition'))
   } catch { findings.push({ message: 'No se pudo completar el lint oficial sin conexión.' }) }
   const sheetFrames = []
-  const sceneTimes = await page.evaluate(() => [...document.querySelectorAll('[data-composition-src], [data-beat]')].flatMap((el) => {
-    const start = Number(el.getAttribute('data-start') || 0), duration = Number(el.getAttribute('data-duration') || 0)
-    return [start - 0.2, start + 0.2, start + duration / 2]
-  }).filter((t) => Number.isFinite(t) && t >= 0))
-  const candidates = [...new Set([...job.times, ...sceneTimes.filter((t) => t < metadata.duration), ...Array.from({ length: 8 }, (_, i) => metadata.duration * (i + 1) / 9)])].sort((a, b) => a - b)
-  const checkTimes = candidates.length <= 24 ? candidates : [...new Set([...job.times, ...Array.from({ length: 18 }, (_, i) => candidates[Math.round(i * (candidates.length - 1) / 17)])])].sort((a, b) => a - b)
+  const sceneTimes = await page.evaluate(transitionSamples)
+  const checkTimes = [...new Set([...job.times, ...sceneTimes.filter((t) => t < metadata.duration), ...Array.from({ length: 8 }, (_, i) => metadata.duration * (i + 1) / 9)])].sort((a, b) => a - b)
+  const sheetTimes = new Set(checkTimes.length <= 24 ? checkTimes : [...job.times, ...Array.from({ length: 24 - job.times.length }, (_, i) => checkTimes[Math.round(i * (checkTimes.length - 1) / (23 - job.times.length))])])
+  // Uniform thumbnails measure time, independently of the denser geometry checks at transitions.
+  for (let i = 0; i <= Math.ceil(metadata.duration * 4); i++) {
+    await seek(Math.min(i / 4, metadata.duration - 0.0001))
+    await page.screenshot({ path: join(work, `motion-${String(i).padStart(4, '0')}.png`), type: 'png' })
+  }
+  const motionBytes = await run(paths.ffmpeg, ['-v', 'error', '-framerate', '4', '-i', join(work, 'motion-%04d.png'), '-vf', 'scale=64:64', '-pix_fmt', 'gray', '-f', 'rawvideo', '-threads', '1', 'pipe:1'], true, 4 * 1024 * 1024)
+  const movimiento = measureMotion(motionBytes, metadata.duration)
+  if (movimiento.aviso) findings.push({ message: movimiento.aviso })
   for (const time of checkTimes) {
     await seek(time)
     const review = await page.evaluate(inspectFrame, { width, height })
@@ -200,7 +205,7 @@ async function main() {
         findings.push({ time, code: issue.code, selector: issue.selector, message: `Revisión oficial (${issue.code}): ${issue.message}` })
       }
     }
-    if (job.seconds === undefined && sheetFrames.length < 24) {
+    if (job.seconds === undefined && sheetTimes.has(time)) {
       const file = join(work, `at-${Number(time.toFixed(2))}s.png`)
       await page.screenshot({ path: file, type: 'png' })
       sheetFrames.push(file)
@@ -343,7 +348,7 @@ async function main() {
     }
   }
   // Filenames are fixed. Advisory page text is capped by inspectFrame; main never authorizes from these diagnostics.
-  return { duration, mp4, images, contactSheet, ownedPids, avisos: groupWarnings(findings), cobertura, audio: audioInfo, revision: { oficial, hojaOficial, fuentesLocales: fontProof.filter(Boolean).length, alcance: 'Lint y muestreo oficial de geometría y superposiciones, más revisión propia. No ejecuta el pipeline completo de check (movimiento, contraste y craft).' } }
+  return { duration, mp4, images, contactSheet, ownedPids, avisos: groupWarnings(findings), cobertura, movimiento, audio: audioInfo, revision: { oficial, hojaOficial, fuentesLocales: fontProof.filter(Boolean).length, alcance: 'Lint y muestreo oficial de geometría y superposiciones, más revisión propia de movimiento. No ejecuta el pipeline completo de check (contraste y craft).' } }
 }
 try {
   const output = await main()

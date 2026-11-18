@@ -7,6 +7,7 @@ import { jpegOrientation } from './jpeg-orientation'
 import { nativeFreeImageProcessor, type FreeImageProcessor } from './free-images-visual'
 import {
   fallbackImageQueries,
+  videoSubjectQueries,
   hasImageOverlay,
   matchesOrientation,
   normalizeOrientation,
@@ -175,6 +176,7 @@ export function normalizeImageEvaluation(raw: unknown): FreeImageEvaluation {
 }
 const API = 'https://commons.wikimedia.org/w/api.php'
 const VIDEO_API = 'https://en.wikipedia.org/w/api.php'
+const LABEL_API = 'https://www.wikidata.org/w/api.php'
 export const FREE_IMAGE_MAX_BYTES = 6 * 1024 * 1024
 // Tolerate extra suggestions from the model without increasing network work per round.
 export const FREE_IMAGE_MAX_INPUT_QUERIES = 8
@@ -349,7 +351,13 @@ export class FreeImagesService {
     this.sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   }
   private providerKey(url: string): string {
-    return url.startsWith(OPENVERSE_API) ? 'openverse' : url.startsWith(VIDEO_API) ? 'wikipedia' : 'commons'
+    return url.startsWith(LABEL_API)
+      ? 'labels'
+      : url.startsWith(OPENVERSE_API)
+        ? 'openverse'
+        : url.startsWith(VIDEO_API)
+          ? 'wikipedia'
+          : 'commons'
   }
   private async waitForProvider(url: string): Promise<void> {
     const delay = Math.max(0, (this.blockedUntil.get(this.providerKey(url)) ?? 0) - this.now())
@@ -374,7 +382,10 @@ export class FreeImagesService {
   private async request(url: string, limit: number, api = false): Promise<Buffer> {
     if (
       api
-        ? !url.startsWith(`${API}?`) && !url.startsWith(`${OPENVERSE_API}?`) && !url.startsWith(`${VIDEO_API}?`)
+        ? !url.startsWith(`${API}?`) &&
+          !url.startsWith(`${OPENVERSE_API}?`) &&
+          !url.startsWith(`${VIDEO_API}?`) &&
+          !url.startsWith(`${LABEL_API}?`)
         : !allowedCommonsFile(url, 'video')
     )
       throw new FreeImageError('Destino de imagen no permitido.')
@@ -660,11 +671,13 @@ export class FreeImagesService {
         )
       }
       // Wikipedia hosts non-free photographs too; license labels never filter this video pool.
-      if (normalized.uso === 'video') {
+      let wikipediaAvailable = normalized.uso === 'video'
+      if (wikipediaAvailable) {
         for (const query of input.queries) {
           try {
             await searchCommons(query, VIDEO_API)
           } catch {
+            wikipediaAvailable = false
             break
           }
         }
@@ -678,14 +691,68 @@ export class FreeImagesService {
           break
         }
       }
-      const variants = commonsAvailable && files.length < 6 ? fallbackImageQueries(requirements, input.queries) : []
+      let english: string | undefined
+      if (normalized.uso === 'video' && !files.length && (commonsAvailable || wikipediaAvailable)) {
+        // One keyless concept lookup handles subjects outside the small offline vocabulary.
+        // Labels are untrusted query data, never a URL, instruction or proof of identity.
+        const words = requirements.subject.match(/[\p{L}\p{N}-]+/gu) ?? []
+        const head = words.find(
+          (w) => !/^(?:un[ao]?s?|el|la|los|las|de|del|en|con|para|y|a|the|of|with|for|and|photo|fotos?|imagen(?:es)?)$/i.test(w)
+        )
+        if (head)
+          try {
+            const params = new URLSearchParams({
+              action: 'wbsearchentities',
+              format: 'json',
+              search: head,
+              language: 'es',
+              uselang: 'en',
+              type: 'item',
+              limit: '1'
+            })
+            const data = record(JSON.parse((await this.request(`${LABEL_API}?${params}`, 256 * 1024, true)).toString('utf8')))
+            const first = Array.isArray(data?.search) ? record(data.search[0]) : null
+            const label = record(record(first?.display)?.label)
+            const match = record(first?.match)
+            const fold = (s: string) =>
+              s
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+            if (
+              typeof match?.text === 'string' &&
+              fold(match.text) === fold(head) &&
+              label?.language === 'en' &&
+              typeof label.value === 'string' &&
+              /^[a-zA-Z0-9 -]{1,80}$/.test(label.value)
+            )
+              english = label.value
+          } catch {
+            /* Keep the offline expansion and Spanish subject if labels are unavailable. */
+          }
+      }
+      const variants =
+        (commonsAvailable || wikipediaAvailable) && files.length < 6
+          ? normalized.uso === 'video'
+            ? videoSubjectQueries(requirements, input.queries, english)
+            : fallbackImageQueries(requirements, input.queries)
+          : []
       for (const query of variants) {
         if (files.length >= 12) break
         executedQueries.push(query)
-        try {
-          await searchCommons(query)
-        } catch {
-          break
+        if (wikipediaAvailable) {
+          try {
+            await searchCommons(query, VIDEO_API)
+          } catch {
+            wikipediaAvailable = false
+          }
+        }
+        if (commonsAvailable) {
+          try {
+            await searchCommons(query)
+          } catch {
+            commonsAvailable = false
+          }
         }
       }
       // The second index is bounded to one request and at most one batched origin verification.

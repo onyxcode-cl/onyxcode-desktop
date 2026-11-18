@@ -427,7 +427,7 @@ def cmd_aplicar(a):
         tr = {s["id"]: s.get("traduccion", "") for s in tr["segmentos"] if s.get("traduccion")}
     d = docx.Document(limpio.ruta)
     informe = {"traducidos": 0, "sin_traduccion": [], "iguales": 0, "omitidos": {}, "enlaces_quitados": 0, "formato_perdido": 0,
-               "avisos": list(limpio.avisos)}
+               "avisos": []}
     usados = set()
     for sid, _etq, p, txt in _recorrer(d):
         motivo = _motivo_omision(p)
@@ -470,8 +470,6 @@ def cmd_aplicar(a):
         print("AVISO: %d textos perdieron parte de su formato (negrita, color…) porque la traducción no trajo las etiquetas." % informe["formato_perdido"])
     if informe["enlaces_quitados"]:
         print("AVISO: %d enlaces no se conservaron (faltó la etiqueta <l=N> en la traducción)." % informe["enlaces_quitados"])
-    for x in limpio.avisos:
-        print("AVISO: " + x)
     # Entrega: primero el ZIP ORIGINAL con solo el texto cambiado (todo lo demás pasa intacto); si la revisión lo rechaza, la copia limpia.
     # La salida debe tener la MISMA estructura que la copia limpia (solo cambia el texto). GRAVE detiene; AVISO se entrega igual.
     import comparar_estructura
@@ -496,6 +494,7 @@ def cmd_aplicar(a):
     if elegido is None and sin_revisar is not None:
         via, ruta, extra_av, motivo = sin_revisar
         normalizar_paquete.escribir_nuevo(ruta, a.salida)
+        informe["avisos"] = list(limpio.avisos) if via != "preservado" else []
         informe["error"] = {"nivel": "aviso", "motivos": [motivo]}
         _guardar_informe(a, informe)
         print("AVISO: " + motivo)
@@ -511,9 +510,9 @@ def cmd_aplicar(a):
         sys.exit(1)
     via, ruta, extra_av, avisos, resumen = elegido
     normalizar_paquete.escribir_nuevo(ruta, a.salida)
-    informe["avisos"] += extra_av + avisos
+    informe["avisos"] = (list(limpio.avisos) if via != "preservado" else []) + extra_av + avisos
     informe["via"] = via
-    for x in extra_av + avisos:
+    for x in informe["avisos"]:
         print("AVISO: " + x)
     _guardar_informe(a, informe)
     print("ESTRUCTURA: idéntica al original (%s)%s [%s]" % (resumen, " con %d aviso(s)" % len(informe["avisos"]) if informe["avisos"] else "", via))

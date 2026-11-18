@@ -118,3 +118,46 @@ export function colorVariation(rgb) {
 export function needsSmallerFrames(sizes) {
   return sizes.reduce((a, b) => a + b, 0) > 3 * 1024 * 1024 || sizes.some((n) => n > 2 * 1024 * 1024)
 }
+
+/** Uniform 64×64 gray thumbnails, every 250 ms. Ignore pauses shorter than one second. */
+export function measureMotion(bytes, duration, step = 0.25) {
+  const size = 64 * 64, count = Math.floor(bytes.length / size)
+  if (count < 2 || duration <= 0 || bytes.length % size) throw Error('Muestreo de movimiento incompleto')
+  const spans = []
+  let start = null
+  for (let i = 1; i < count; i++) {
+    let delta = 0
+    for (let p = 0; p < size; p++) delta += Math.abs(bytes[(i - 1) * size + p] - bytes[i * size + p])
+    const still = delta / (size * 255) < 0.001
+    if (still && start === null) start = (i - 1) * step
+    if (!still && start !== null) {
+      const end = Math.min(duration, (i - 1) * step)
+      if (end - start >= 1) spans.push({ inicio: start, fin: end })
+      start = null
+    }
+  }
+  if (start !== null && duration - start >= 1) spans.push({ inicio: start, fin: duration })
+  const percentage = spans.reduce((n, s) => n + s.fin - s.inicio, 0) / duration * 100
+  const warning = percentage > 35.00001 || spans.some((s) => s.fin - s.inicio > 2.5)
+  return { porcentajeQuieto: Math.round(percentage * 10) / 10, tramos: spans, intervalo: step, aviso: warning ? `La imagen está quieta el ${Math.round(percentage)} % del tiempo (${spans.map((s) => `${s.inicio}–${s.fin} s`).join(' y ')}): agrega movimiento continuo (fondo, cámara, objetos) en esos tramos.` : null }
+}
+
+/** Scene overlap midpoint and actual short tween midpoints cover transitions between sparse review times. */
+export function transitionSamples() {
+  const elements = [...document.querySelectorAll('[data-composition-src], [data-beat], .clip')]
+  const starts = elements.map((el) => {
+    let start = Number(el.getAttribute('data-start') || 0)
+    for (let p = el.parentElement; p; p = p.parentElement) if (p.hasAttribute('data-composition-src')) start += Number(p.getAttribute('data-start') || 0)
+    return { start, duration: Number(el.getAttribute('data-duration') || 0) }
+  })
+  const times = starts.flatMap(({ start, duration }) => {
+    const previousEnd = starts.filter((s) => s.start < start && s.start + s.duration > start).map((s) => s.start + s.duration)
+    return [start - 0.2, start + 0.2, start + duration / 2, previousEnd.length ? (start + Math.min(...previousEnd)) / 2 : start + 0.3]
+  })
+  const tl = window.__timelines?.main
+  for (const tween of tl?.getChildren?.(true, true, false) ?? []) {
+    const d = tween.duration()
+    if (d > 0 && d <= 1.2) times.push(tween.globalTime(d / 2) - tl.globalTime(0))
+  }
+  return [...new Set(times)].filter((t) => Number.isFinite(t) && t >= 0).sort((a, b) => a - b).slice(0, 64)
+}

@@ -828,3 +828,53 @@ it('segunda ronda de video conserva uso, admite cambios de etiqueta y no bloquea
   label = 'All rights reserved'
   expect((await service.use(id, evaluation)).provenance).toMatchObject({ uso: 'video', license: label, status: 'licencia-registrada' })
 })
+
+it('video sin clave reintenta frases largas con el sujeto en inglés y español en la misma ronda', async () => {
+  const queries: string[] = []
+  const fetch = fakeFetch((u) => {
+    if (u.hostname === 'api.openverse.org') return Response.json({ results: [] })
+    if (u.searchParams.has('gsrsearch')) {
+      const q = u.searchParams.get('gsrsearch')!
+      queries.push(q)
+      return Response.json(response(q === 'bread filetype:bitmap' ? [page()] : []))
+    }
+    return new Response(new Uint8Array(bytes))
+  })
+  const found = await new FreeImagesService({ fetch, processor }).search({
+    uso: 'video',
+    queries: ['pan amasado recién horneado chileno cesta pan dorado', 'panadería artesanal panes calientes'],
+    requirements: { subject: 'pan amasado recién horneado chileno', usage: 'promo' }
+  })
+  expect(found.round).toBe(1)
+  expect(found.candidates).toHaveLength(1)
+  expect(queries).toContain('bread filetype:bitmap')
+  expect(queries).toContain('pan filetype:bitmap')
+})
+
+it('traduce un sujeto fuera del vocabulario local con una etiqueta inglesa pública y acotada', async () => {
+  const queries: string[] = []
+  const fetch = fakeFetch((u) => {
+    if (u.hostname === 'www.wikidata.org') {
+      expect(u.pathname).toBe('/w/api.php')
+      expect(u.searchParams.get('search')).toBe('bicicleta')
+      expect(u.searchParams.get('uselang')).toBe('en')
+      expect(u.searchParams.get('limit')).toBe('1')
+      return Response.json({ search: [{ match: { text: 'bicicleta' }, display: { label: { language: 'en', value: 'bicycle' } } }] })
+    }
+    if (u.hostname === 'api.openverse.org') return Response.json({ results: [] })
+    if (u.searchParams.has('gsrsearch')) {
+      const q = u.searchParams.get('gsrsearch')!
+      queries.push(q)
+      return Response.json(response(q === 'bicycle filetype:bitmap' ? [page()] : []))
+    }
+    return new Response(new Uint8Array(bytes))
+  })
+  const result = await new FreeImagesService({ fetch, processor }).search({
+    uso: 'video',
+    queries: ['bicicleta urbana con canasto rojo', 'bicicletas nuevas para la ciudad'],
+    requirements: { subject: 'bicicleta urbana con canasto rojo', usage: 'promo' }
+  })
+  expect(result.candidates).toHaveLength(1)
+  expect(queries).toContain('bicycle filetype:bitmap')
+  expect(queries).toContain('bicicleta filetype:bitmap')
+})

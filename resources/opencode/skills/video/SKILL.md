@@ -34,7 +34,7 @@ Si piden un video, hazlo. No propongas tres historias ni esperes aprobación: de
 4. **Cuadros.** Llama a `video_cuadros` con 1 a 6 `segundos`, por ejemplo `{"composicion":".lazunox/trabajo/promo/index.html","formato":"vertical","segundos":[0,1.2,3.9,6,9.5,14]}`.
    - Pide siempre el segundo 0, porque es la miniatura y nunca puede estar vacío.
    - Pide también un instante dentro del movimiento principal, uno en medio de cada transición y el final.
-   - La herramienta revisa esos segundos, 8 instantes repartidos por todo el video y, con escenas en `compositions/`, el inicio y la mitad de cada escena. Devuelve tus cuadros, una **hoja de contactos** con todos los instantes revisados (sirve para ver el movimiento, no solo instantes sueltos), `avisos` (segundo y problema, incluidos los de la revisión oficial de HyperFrames) y `cobertura` (cuánto del lienzo ocupa el contenido).
+   - La herramienta revisa esos segundos, 8 instantes repartidos por todo el video y el inicio, la mitad y las transiciones de escenas y `.clip`. Mide también el porcentaje y los tramos casi quietos. Devuelve tus cuadros, una **hoja de contactos** con hasta 24 instantes repartidos (sirve para ver el movimiento, no solo instantes sueltos), `avisos` (segundo y problema, incluidos los de la revisión oficial de HyperFrames) y `cobertura` (cuánto del lienzo ocupa el contenido).
    - Si el video lleva fotos, pásalas aquí en `fotos` (sección Fotos). Quedan guardadas con la composición para las llamadas siguientes.
 5. **Mira de verdad las imágenes.** Corrige todo junto, en este orden:
    1. texto cortado o fuera del lienzo;
@@ -94,7 +94,7 @@ El oficio completo, las 9 transiciones medidas y las fallas comunes están en `r
 
    Nunca «aparece y sube» en todos.
 8. **Un título que ya llegó queda quieto.** El movimiento pasa al siguiente elemento, al fondo o a la cámara. No le pongas una escala lenta encima ni un acercamiento lento al final, ni bucles de «respirar», flotar o latir.
-9. **Siempre se mueve algo con sentido:** la interfaz funcionando, una foto que se recorre despacio, un objeto que gira, una órbita del fondo a 3–5° por segundo. Algo nuevo pasa cada 2–4 s, y un tramo de más de 3 s sin cambios es un tramo muerto.
+9. **Siempre se mueve algo con sentido:** la interfaz funcionando, una foto que se recorre despacio, un objeto que gira, una órbita del fondo a 3–5° por segundo. Algo nuevo pasa cada 2–4 s, y evita tramos de más de 2 s casi quietos. La herramienta devuelve `movimiento` (porcentaje y tramos quietos): corrige sus avisos con movimiento continuo del fondo, cámara u objetos.
 10. **Transiciones con causa.**
     - Usa de 3 a 5 tipos por video: el objeto que crece y se vuelve el mundo (0,65 s), un empuje, un barrido de 0,13–0,3 s, un iris con `clipPath: circle()` o el cambio de color de fondo (~0,4 s).
     - Como máximo un tercio de las costuras son cortes secos.
@@ -116,11 +116,11 @@ Sigue el destino que nombren. La duración por defecto es 15 s y la máxima, 120
 
 ## Fotos
 
-Cuando el tema las necesita (un local, un producto, un lugar real), usa imágenes reales: primero las de la persona; si faltan, busca en la web. Para video vale cualquier licencia, sin créditos; la responsabilidad del uso es del dueño del video.
+Cuando la persona pide fotos o el tema las necesita (un local, un producto, un lugar real), usa imágenes reales: primero las de la persona; si faltan, busca en la web. Para video vale cualquier licencia, sin créditos; la responsabilidad del uso es del dueño del video.
 
-1. Define sujeto, lugar, lo que debe verse, lo que no y orientación.
+1. Define sujeto y orientación. Usa fotos genéricas del tema (café, pan, interior); nunca presentes lugares, locales o personas reconocibles como propios de la persona, salvo fotos aportadas o una identidad solicitada (como Fortnite).
 2. Busca con `documentos_imagenes_buscar`, `uso:"video"`, 2–3 consultas y requisitos (en Code, `carpeta`). Usa el buscador general elegido en Ajustes: Serper (Google Imágenes) o Brave. Compara la hoja numerada, amplía 1–2 finalistas con `documentos_imagenes_ver` y prepara la elegida con `documentos_imagenes_usar` y `evaluation:{mode:"visual",observed,meets:[],doubts}`. Usa su id. Puedes elegir ninguna.
-3. Si falta la clave, dilo en una línea y sigue con los catálogos libres y con `websearch`, `webfetch` o el navegador. Obtén la URL HTTPS del archivo original JPG/PNG/WebP/GIF. No raspes buscadores de imágenes ni eludas restricciones de descarga.
+3. Sin clave, insiste antes de rendirte: la herramienta reintenta consultas cortas del sujeto en inglés y español en catálogos públicos. Si sigue sin fotos, prueba otra búsqueda corta y luego `websearch`, `webfetch` o el navegador en fuentes que respondan sin clave (Wikimedia, Openverse). No uses el buscador de Unsplash: requiere clave y Source fue retirado. Obtén la URL HTTPS del archivo original JPG/PNG/WebP/GIF. No raspes buscadores de imágenes ni eludas restricciones de descarga.
 4. Mira la foto antes de elegirla; no uses miniaturas, marcas de agua ni imágenes que no coinciden. Pasa la URL en `fotos[].origen`; la app descarga desde main (20 MiB, 40 megapíxeles), valida y guarda en `assets/`. La extensión de `destino` debe coincidir con el tipo real. La URL queda como dato de procedencia; el HTML sigue sin red.
 
 **Cómo entra la foto (igual en Chat, Code y Overdrive):** en `video_cuadros` pasa `fotos: [{"origen": "<id de documentos_imagenes_usar>", "destino": "assets/fotos/pan.jpg"}]`.
@@ -133,7 +133,7 @@ Cuando el tema las necesita (un local, un producto, un lugar real), usa imágene
 
 ## Audio
 
-- El audio de la persona tiene prioridad; si no hay, busca música adecuada con `video_musica_buscar` (`{"consulta":"upbeat acoustic instrumental","limite":6}`). Una promo lleva música por defecto, salvo que la persona diga que no. Elige una pista con duración suficiente y pasa su `origen` HTTPS en `audio` con recorte y fundidos. No descargues de plataformas que lo impiden, no generes voces ni hagas sonido con código.
+- El audio de la persona tiene prioridad; si no hay, busca música adecuada con `video_musica_buscar` (1 o 2 palabras en inglés de género o ánimo, por ejemplo `{"consulta":"acoustic","limite":6}`). Una promo lleva música por defecto, salvo que la persona diga que no. Elige una pista con duración suficiente y pasa su `origen` HTTPS en `audio` con recorte y fundidos. No descargues de plataformas que lo impiden, no generes voces ni hagas sonido con código.
 - Formatos: `.mp3`, `.m4a`, `.wav`, `.aac` o `.ogg`, hasta 16 pistas (50 MiB por descarga web). `video_render` las mezcla en el MP4 (AAC). `video_cuadros` no suena: admite `audio` para preparar los archivos, y debes repetir la lista en `video_render` para mezclarlos.
 - **Forma principal (sirve en los tres modos):** en `video_render` pasa `audio: [{"origen": "…", "inicio": 0, "desde": 8, "hasta": 23, "volumen": 0.8, "fundidoEntrada": 0.4, "fundidoSalida": 1.5}]`.
   - `origen`: URL HTTPS pública devuelta por la búsqueda, o en Chat, el nombre o id del archivo que adjuntó la persona; en Code y Overdrive, la ruta relativa del archivo en el proyecto o la tarea.
@@ -141,7 +141,7 @@ Cuando el tema las necesita (un local, un producto, un lugar real), usa imágene
 - **Otra forma (Code y Overdrive):** con el archivo dentro de `assets/audio/` de la composición, un `<audio id="…" class="clip" src="assets/audio/x.mp3">` con `data-start`, `data-duration`, `data-media-start` (el recorte), `data-volume` y `data-fade-in`/`data-fade-out`. Nunca uses `play()` ni `pause()`. No mezcles las dos formas para la misma pista: sonaría dos veces.
 - Detalle, sincronía y niveles: `references/sonido.md`.
 - La respuesta de `video_render` trae `audio` (códec y duración) cuando el MP4 tiene sonido. Si no lo trae, salió mudo: díselo a la persona y conserva su archivo intacto.
-- Si la persona pide silencio, respétalo. Si falla una descarga, prueba otra pista y explica si finalmente el MP4 quedó mudo.
+- Si la persona pide silencio, respétalo. Si falla una descarga, prueba otra pista. Si la búsqueda sigue sin pistas o el MP4 quedó mudo, explícalo.
 
 ## Sin créditos
 

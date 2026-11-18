@@ -59,7 +59,7 @@ export class VideoImagesService {
         uso: 'video',
         ...(previous ? { searchId: undefined, requirements: previous.input.requirements } : {})
       })
-      found.notice = `Sin clave de imágenes web en Ajustes; usa catálogos libres o URLs HTTPS encontradas con websearch/webfetch. ${found.notice ?? ''}`
+      found.notice = `Sin clave de imágenes web en Ajustes; se buscaron fotos en catálogos públicos con reintentos cortos. Si faltan fotos, prueba otro sujeto corto antes de rendirte; usa solo fuentes sin clave. ${found.notice ?? ''}`
       return found
     }
     if (input.searchId !== undefined && !previous) throw new FreeImageError('searchId no pertenece a esta búsqueda.')

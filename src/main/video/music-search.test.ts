@@ -62,3 +62,28 @@ it.each([{ consulta: '' }, { consulta: 'x', limite: 13 }, { consulta: 'x', url: 
     ).rejects.toThrow('consulta')
   }
 )
+
+it('acorta frases largas por género/ánimo, también si los resultados no son descargables', async () => {
+  const queries: string[] = []
+  const found = await searchVideoMusic({ consulta: 'upbeat acoustic cheerful instrumental bakery promo' }, new AbortController().signal, {
+    get: async (url) => {
+      const q = new URL(url).searchParams.get('q')!
+      queries.push(q)
+      return Buffer.from(
+        JSON.stringify({
+          results:
+            q === 'acoustic' ? [{ category: 'music', url: 'https://example.org/track.mp3' }] : [{ url: 'http://example.org/invalid' }]
+        })
+      )
+    }
+  })
+  expect(queries).toEqual(['upbeat acoustic cheerful instrumental bakery promo', 'upbeat', 'acoustic'])
+  expect(found.pistas).toHaveLength(1)
+})
+it('si ningún reintento encuentra pistas, explica el silencio y respeta la cancelación', async () => {
+  const get = async () => Buffer.from('{"results":[]}')
+  expect((await searchVideoMusic({ consulta: 'soft calm soundtrack for a video' }, new AbortController().signal, { get })).aviso).toContain(
+    'sin música'
+  )
+  await expect(searchVideoMusic({ consulta: 'calm music' }, AbortSignal.abort(), { get })).rejects.toThrow()
+})
