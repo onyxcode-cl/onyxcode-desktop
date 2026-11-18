@@ -3,6 +3,7 @@ import { app, BrowserWindow } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { t } from '@shared/i18n'
+import { videoMb } from '@shared/video'
 import { askButtons } from '../util/native-dialog'
 import { unpacked } from '../util/asar'
 import { runtimesService } from '../runtimes/service'
@@ -16,20 +17,22 @@ async function install(signal: AbortSignal): Promise<void> {
   // Otro consentimiento/instalación mantiene la propiedad de su cancelación.
   if (service.estado().installing) throw new Error(t('settings.video.installingElsewhere'))
   const window = new BrowserWindow({
-    width: 440,
-    height: 160,
+    width: 480,
+    height: 200,
+    useContentSize: true,
     resizable: false,
     minimizable: false,
     maximizable: false,
     title: t('settings.video.progressTitle'),
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, devTools: false }
   })
+  window.setMenu(null)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   const escape = (s: string): string =>
     s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
   void window.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><body style="font:16px system-ui;padding:20px"><p>${escape(t('settings.video.progressDetail'))}</p></body>`)}`
+    `data:text/html;charset=utf-8,${encodeURIComponent(`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><body style="box-sizing:border-box;margin:0;padding:24px;font:16px/1.5 system-ui;overflow-wrap:anywhere"><p style="margin:0">${escape(t('settings.video.progressDetail'))}</p></body>`)}`
   )
   const cancel = (): void => service.cancelar()
   signal.addEventListener('abort', cancel, { once: true })
@@ -72,7 +75,7 @@ export function videoMcpServer(): VideoMcpServer {
       (await askButtons({
         message: t('settings.video.consentTitle'),
         detail: `${t('settings.video.desc')}\n\n${t('settings.video.chrome')}\n${t('settings.video.gpl')}`,
-        buttons: [t('settings.video.later'), t('settings.video.consentInstall', { mb: Math.ceil(bytes / 1_000_000) })],
+        buttons: [t('settings.video.later'), t('settings.video.consentInstall', { mb: videoMb(bytes) })],
         defaultIndex: 0,
         cancelIndex: 0,
         signal

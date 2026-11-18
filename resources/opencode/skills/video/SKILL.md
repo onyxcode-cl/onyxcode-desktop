@@ -14,8 +14,8 @@ Elige `vertical` (1080×1920) para reels/historias, `cuadrado` (1080×1080) para
 1. Escribe la composición HTML + GSAP con tamaño y duración coherentes.
 2. Pide **3 cuadros** con `video_cuadros`: `{"composicion":".lazunox/trabajo/promo/index.html","formato":"vertical","segundos":[2.5,7.5,12.5]}`. Para otra duración D, elige los tiempos D/6, D/2 y 5D/6. `composicion` es un archivo HTML relativo a la carpeta, no una carpeta. En Code añade `carpeta` con la ruta absoluta del proyecto abierto a ambas herramientas. En Overdrive omite `carpeta`: la app ya la conoce. En Chat omite `carpeta` y, en la primera llamada, sustituye `composicion` por `html` con el HTML completo (hasta 512 KB); para corregir, envía otro `html`.
 3. **Mira de verdad las tres imágenes** recibidas y corrige todos los defectos juntos. Prioridad: (a) texto cortado o fuera del lienzo; (b) texto/objetos encimados; (c) contraste o letra ilegible; (d) márgenes apretados; (e) encuadre, alineación y tiempos sin contenido; (f) marcadores, cifras inventadas o errores de texto. Máximo **3 rondas de cuadros** en total. Si algo sigue mal o no puedes ver imágenes, dilo; no afirmes revisión visual ni resultado completo.
-4. Solo después de mirar y corregir, llama a `video_render`: `{"composicion":".lazunox/trabajo/promo/index.html","formato":"vertical","duracion":15,"fps":30,"nombre":"promo"}`. En Chat usa exactamente la ruta `composicion` de la respuesta de cuadros. La duración debe coincidir con el HTML y ser múltiplo de 1/30 s.
-5. Mira también **los tres cuadros de control del MP4** que devuelve el render. Declara cualquier defecto pendiente sin comenzar un ciclo ilimitado. La respuesta trae `composicion`, `duracion`, `cuadros` y, al renderizar, `ruta` y `bytes`, más las imágenes. Entrega en una línea: enlace a la ruta MP4 · duración en segundos · peso calculado desde `bytes`.
+4. Nunca dejes un cuadro vacío entre escenas: crúzalas manteniendo contenido visible. Si los cuadros muestran un vacío, corrígelo y vuelve a comprobarlo antes del render; si no se resuelve en las 3 rondas, no renderices. Solo después de mirar y corregir, llama a `video_render`: `{"composicion":".lazunox/trabajo/promo/index.html","formato":"vertical","duracion":15,"fps":30,"nombre":"promo"}`. En Chat usa exactamente la ruta `composicion` de la respuesta de cuadros. La duración debe coincidir con el HTML y ser múltiplo de 1/30 s.
+5. Reporta solo acciones y verificaciones realizadas por las herramientas; no inventes comandos ni comprobaciones. Mira también **los tres cuadros de control del MP4** que devuelve el render. Declara cualquier defecto pendiente sin comenzar un ciclo ilimitado. La respuesta trae `composicion`, `duracion`, `cuadros` y, al renderizar, `ruta` y `bytes`, más las imágenes. Entrega en una línea: enlace a la ruta MP4 · duración en segundos · peso calculado desde `bytes`.
 
 ## Composición mínima (motor fijado 0.9.64)
 
@@ -32,18 +32,20 @@ Ejemplo completo de 15 s vertical (cambia contenido, paleta y movimientos para e
 <script src="../node_modules/gsap/dist/gsap.min.js"></script>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:1080px;height:1920px;overflow:hidden}
-#main{position:relative;width:1080px;height:1920px;background:#18251d;color:#fff3da;font-family:Arial,sans-serif;padding:240px 96px}
+#main{position:relative;width:1080px;height:1920px;background:#18251d;color:#fff3da;font-family:Arial,sans-serif;padding:240px 96px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:56px}
+#pan{width:540px;height:320px;border-radius:50%;background:#dc9b50;border:24px solid #f6c883;transform:rotate(-12deg)}
 h1{font-size:104px;line-height:1.1;margin:0 0 56px}p{font-size:56px;line-height:1.3;margin:0}
 #cierre{position:absolute;left:96px;right:96px;bottom:300px;font-size:64px}
 </style>
 </head>
 <body>
 <div id="main" data-composition-id="main" data-start="0" data-duration="15" data-width="1080" data-height="1920" data-fps="30">
-<h1>Pan recién hecho</h1><p>Cada mañana, cerca de ti.</p><div id="cierre">Ven a conocernos</div>
+<div id="pan" aria-hidden="true"></div><h1>Pan recién hecho</h1><p>Cada mañana, cerca de ti.</p><div id="cierre">Ven a conocernos</div>
 </div>
 <script>
 const tl=gsap.timeline({paused:true});
-tl.from('h1',{opacity:0,y:50,duration:0.8},0);
+tl.from('#pan',{scale:0.8,rotation:0,duration:0.8},0);
+tl.from('h1',{y:50,duration:0.8},0);
 tl.from('p',{opacity:0,y:30,duration:0.8},1);
 tl.from('#cierre',{opacity:0,y:30,duration:0.8},10);
 tl.to({}, {duration:15},0);
@@ -58,13 +60,13 @@ Ejemplo propio contrastado con la composición de prueba y el paquete fijado; no
 
 ## Diseño y recursos
 
-Texto legible en celular: cuerpo desde 48 px y títulos desde 80 px en lienzos de 1080 px; frases cortas y tiempo suficiente para leer. Deja al menos 90 px a los lados y 200 px arriba/abajo en vertical para los controles de redes. Usa contraste fuerte y como máximo 2 familias tipográficas. Nada cortado ni encimado. Comprueba fotos, recorte y proporciones en los cuadros.
+Llena el cuadro con una composición centrada o equilibrada, sin amontonar texto en una esquina; cada escena debe tener un elemento visual (forma, ícono hecho en CSS o foto), además del texto. Tamaños mínimos de cuerpo/título: vertical 1080×1920 y cuadrado 1080×1080, 48/80 px; horizontal 1920×1080, 40/72 px; frases cortas y tiempo suficiente para leer. Deja al menos 90 px a los lados y 200 px arriba/abajo en vertical para los controles de redes. Usa contraste fuerte y como máximo 2 familias tipográficas. Nada cortado ni encimado. Comprueba fotos, recorte y proporciones en los cuadros.
 
 **Sin internet en la composición:** imágenes, fuentes y scripts propios deben estar dentro de su subcarpeta, con rutas relativas (sin enlaces simbólicos); fuentes del sistema también sirven. GSAP lo pone el motor. No cargues URLs, CDN, iframes ni recursos externos.
 
 **Fotos:** si hacen falta y existen `documentos_imagenes_buscar`, `documentos_imagenes_ver` y `documentos_imagenes_usar`, sigue el flujo de `pdf`: prepara requisitos y 2–3 consultas; compara la hoja; amplía 1–2 candidatas con `ver`; describe qué se ve, requisitos cumplidos y dudas; luego `usar` con el id devuelto y `evaluation:{mode:"visual",observed,meets:[],doubts}` (en Code también `carpeta`). Usa solo la ruta aprobada, copiando esa foto dentro de la subcarpeta de composición con las herramientas de archivos autorizadas. Máximo una segunda búsqueda. No copies muestras ni inventes URLs, licencias o procedencia. Sin visión, pide selección manual o un modelo compatible ya configurado; sin herramientas, red o candidata válida, crea sin fotos y explica la ausencia. No sustituyas una fotografía real por un dibujo sin avisar. En Chat, si no puedes incorporar el recurso a la composición, dilo y continúa sin él.
 
-**Audio:** si piden música, ofrece trabajar con audio que entregue la persona. El render actual crea MP4 **sin audio** y todavía no mezcla pistas: si piden incluir una, explica ese límite y conserva el original; no prometas incorporarla. Sin audio aportado, entrega en silencio. No añadas música, subtítulos, créditos ni pies de foto automáticos. No inventes videos generados por modelos (Veo, Sora ni similares).
+**Audio:** si piden música, explica que el render actual crea MP4 **sin audio** y todavía no mezcla pistas. Solo considera audio que entregue la persona, conserva el original y explica cómo añadirlo en su editor; no ofrezcas ni prometas incorporarlo en otra versión con estas herramientas. Entrega el MP4 en silencio. No añadas música, subtítulos, créditos ni pies de foto automáticos. No inventes videos generados por modelos (Veo, Sora ni similares).
 
 ## Si faltan piezas
 

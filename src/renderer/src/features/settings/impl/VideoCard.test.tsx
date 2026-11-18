@@ -29,6 +29,8 @@ const view = (s: VideoSnapshot | null, lang: typeof es | typeof en = es): string
 describe('tarjeta de piezas de video', () => {
   it('ofrece tamaño y avisos de procedencia/licencia en ambos idiomas', () => {
     expect(view(snap())).toContain('Instalar piezas de video (≈ 197 MB)')
+    expect(view(snap({ missingBytes: 274_400_000 }))).toContain('Instalar piezas de video (≈ 274 MB)')
+    expect(view(snap({ missingBytes: 274_500_000 }))).toContain('Instalar piezas de video (≈ 275 MB)')
     for (const lang of [es, en]) {
       const html = view(snap(), lang)
       expect(html).toContain('Chrome for Testing')

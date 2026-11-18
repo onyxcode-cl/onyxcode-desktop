@@ -428,7 +428,7 @@
       "darwin": 1
     },
     "src/main/video/install.ts": {
-      "win32": 1
+      "win32": 2
     },
     "src/main/video/render-process.ts": {
       "darwin": 2,

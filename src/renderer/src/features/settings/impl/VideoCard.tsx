@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { MsgKey, Params } from '@shared/i18n'
-import type { VideoSnapshot } from '@shared/video'
+import { videoMb, type VideoSnapshot } from '@shared/video'
 import { Button } from '../../../components/Button'
 import { confirmDialog } from '../../../components/ConfirmDialog'
 import { useT } from '../../../lib/i18n'
 import { openExternalUrl } from '../../../lib/open-external'
 import { cw } from '../../tasks/impl/bridge'
-import { officeMb } from './component-install'
 import { runtimesErrorKey } from './runtimes-view'
 import { Card, Row, SubTitle } from './ui'
 
@@ -72,7 +71,7 @@ export function VideoCardView({ t, snapshot: s, busy, error, onInstall, onCancel
                     <span className="block h-full bg-accent" style={{ width: total ? `${Math.min(100, (done / total) * 100)}%` : '30%' }} />
                   </span>
                   {total > 0 && (
-                    <span className="block text-xs">{t('settings.craft.progress', { done: officeMb(done), total: officeMb(total) })}</span>
+                    <span className="block text-xs">{t('settings.craft.progress', { done: videoMb(done), total: videoMb(total) })}</span>
                   )}
                 </>
               ) : s.ready ? (
@@ -100,7 +99,7 @@ export function VideoCardView({ t, snapshot: s, busy, error, onInstall, onCancel
               )}
               {!s.ready && (
                 <Button size="sm" onClick={onInstall}>
-                  {t('settings.video.install', { mb: officeMb(s.missingBytes) })}
+                  {t('settings.video.install', { mb: videoMb(s.missingBytes) })}
                 </Button>
               )}
             </span>
@@ -132,7 +131,7 @@ export function VideoCard(): React.JSX.Element | null {
       !snapshot ||
       !(await confirmDialog({
         title: t('settings.video.title'),
-        message: t('settings.video.consent', { mb: officeMb(snapshot.missingBytes) }),
+        message: t('settings.video.consent', { mb: videoMb(snapshot.missingBytes) }),
         confirmLabel: t('settings.video.confirm'),
         focusCancel: true
       }))

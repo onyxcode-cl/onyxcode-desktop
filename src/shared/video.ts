@@ -1,4 +1,7 @@
 /** Piezas opcionales de video, F8-B333. Ninguna operación de render en este paso. */
+/** MB decimales, mismo redondeo en el consentimiento nativo y en Ajustes. */
+export const videoMb = (bytes: number): number => Math.round(Math.max(0, bytes) / 1_000_000)
+
 export interface VideoSnapshot {
   offered: boolean
   ready: boolean

@@ -10,7 +10,7 @@ import { build } from 'esbuild'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 if (!process.argv.includes('--install'))
-  throw new Error('Uso: node scripts/video/smoke.mjs --install --project RUTA_VIDEO_PRUEBA [--report informe.json]')
+  throw new Error('Uso: node scripts/video/smoke.mjs --install --project RUTA_VIDEO_PRUEBA [--work-root CARPETA] [--report informe.json]')
 const work = await mkdtemp(join(tmpdir(), 'lzx-video-smoke-build-'))
 try {
   const outfile = join(work, 'smoke.cjs')

@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { lstatSync, readFileSync } from 'node:fs'
 import { chmod, copyFile, lstat, mkdir, mkdtemp, readdir, rename, rm, statfs, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import type { VideoEnsureResult, VideoPaths, VideoSnapshot } from '@shared/video'
 import { ArchiveError, extractArchive } from '../runtimes/archive'
 import { cleanStaleTemp, RuntimeError, scopedEnv, toRuntimeError } from '../runtimes/runtime-install'
@@ -36,9 +37,16 @@ export interface VideoDeps {
 
 export const realVideoRun: VideoRun = (file, args, options) =>
   new Promise((resolve, reject) => {
-    execFile(file, args, { ...options, timeout: 300_000, maxBuffer: 2 << 20, windowsHide: true }, (error, stdout, stderr) => {
-      if (error) reject(new RuntimeError(options.signal?.aborted ? 'cancelled' : 'broken', `${stdout}${stderr}`.slice(-200)))
-      else resolve(`${stdout}${stderr}`)
+    let output = ''
+    let failure: RuntimeError | undefined
+    const child = execFile(file, args, { ...options, timeout: 300_000, maxBuffer: 2 << 20, windowsHide: true }, (error, stdout, stderr) => {
+      output = `${stdout}${stderr}`
+      if (error) failure = new RuntimeError(options.signal?.aborted ? 'cancelled' : 'broken', `${error.code ?? ''} ${output.slice(-200)}`)
+    })
+    // close llega después de exit y del cierre de stdio: no publicar mientras queden handles del verificador.
+    child.once('close', () => {
+      if (failure) reject(failure)
+      else resolve(output)
     })
   })
 
@@ -160,7 +168,22 @@ async function publish(d: VideoDeps, id: VideoBinaryId | 'hyperframes', stage: s
   await writeFile(join(stage, MARKER), JSON.stringify({ fingerprint: fingerprint(d, id), files }), { mode: 0o600 })
   abort(signal)
   await rm(dirOf(d, id), { force: true, recursive: true })
-  await rename(stage, dirOf(d, id))
+  // Defender puede retener el .exe recién ejecutado. Runtimes también publica por rename,
+  // pero no tiene reintentos; aquí conservamos la publicación atómica y esperamos como máximo 4,5 s.
+  const waits = [100, 200, 400, 800, 1000, 1000, 1000]
+  for (let attempt = 0; ; attempt++) {
+    abort(signal)
+    try {
+      await rename(stage, dirOf(d, id))
+      return
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      console.warn('[video:install] rename', { id, code: code ?? 'unknown', attempt: attempt + 1 })
+      if ((d.platform ?? process.platform) !== 'win32' || !['EPERM', 'EBUSY', 'EACCES'].includes(code ?? '') || attempt >= waits.length)
+        throw new RuntimeError(toRuntimeError(e).code, `rename ${id}: ${code ?? 'unknown'}`)
+      await delay(waits[attempt], undefined, { signal })
+    }
+  }
 }
 
 type Progress = (p: NonNullable<VideoSnapshot['progress']>) => void
