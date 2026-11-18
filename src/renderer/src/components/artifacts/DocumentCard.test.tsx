@@ -42,7 +42,7 @@ describe('DocumentCard: peso', () => {
     const raw = JSON.stringify({ sheets: [{ name: 'A', rows: [['x']] }] })
     const sin = renderToStaticMarkup(<DocumentCard kind="xlsx" rawText={raw} title="Ventas" />)
     expect(sin).not.toMatch(/\bKB\b|\bMB\b/)
-    recordChatDocSize('xlsx', raw, 124 * 1024)
+    recordChatDocSize('xlsx', raw, 124_000) // la app usa KB de 1000 bytes (paso 4 del video: una sola unidad)
     const con = renderToStaticMarkup(<DocumentCard kind="xlsx" rawText={raw} title="Ventas" />)
     expect(con).toContain('124 KB')
     resetChatDocSizes()
