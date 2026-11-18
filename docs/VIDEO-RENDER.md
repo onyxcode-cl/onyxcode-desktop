@@ -32,7 +32,7 @@ Ambas herramientas aceptan `fotos: [{origen, destino: "assets/foto.jpg"}]`, hast
 
 Cada foto debe tener firma PNG/JPEG/WebP/GIF, hasta 32 MiB y 40 megapíxeles. Se rechazan vistas previas marcadas y enlaces. Fotos y audio explícito suman como máximo 96 MiB por llamada; la copia completa conserva 128 MiB. Las fotos persisten en el proyecto para siguientes llamadas. No se insertan créditos automáticamente y una foto local no se rechaza por su licencia.
 
-**Límite del buscador existente:** el flujo de documentos solo busca/prepara licencias libres y revalida esa condición en el registro persistente. No se amplió en este paso: separar un modo de video exige cambiar búsqueda, candidatos, validación y procedencia sin relajar documentos. Para fotos de otras licencias se acepta el archivo local aportado. El video conserva la procedencia que ya tenga la foto preparada, sin convertirla en crédito visible.
+**Uso de las fotos buscadas:** el flujo predeterminado de documentos sigue estricto. Con `uso: "video"`, búsqueda, candidatos, preparación y registro aceptan cualquier licencia (F8-B337; contrato al final). Se conserva la procedencia como dato interno y no se convierte en crédito visible. Video también acepta archivos locales aportados de cualquier licencia.
 
 ## Audio de la persona
 
@@ -77,3 +77,12 @@ El smoke copia las piezas al perfil temporal propio y borra sus copias y piezas 
 Exigir: panadería H.264 1080×1920, 30 fps, 15 s; hoja de contactos con escenas; render con imagen; tono de 10 s recortado/mezclado en un MP4 de 9 s con AAC de 9 s, también desde `<audio>`; `networkProbePixel: 00ff00`, `localCanaryHits: 0`; temporales y procesos propios vacíos tras cancelar. Mirar la hoja y reproducir el MP4; las pruebas automáticas miden audio, no lo escuchan. Repetir fotos/archivos desde Chat y rutas desde Code/Tareas, cancelación y revocación.
 
 **Estado:** diagnóstico real Node en Mac aprobado para escenas, foto, audio, revisión, red y limpieza. Electron termina con SIGABRT y Seatbelt rechaza `sandbox_apply` en este entorno. Ejecución Mac nativa y Windows real pendientes. No se usa el perfil personal ni la app instalada, no se cambia WSL ni se publica nada.
+
+
+### Fotos buscadas para video (F8-B337)
+
+Pasa `uso: "video"` a `imagenes_buscar` y a `imagenes_usar`. `imagenes_ver` conserva el uso del candidato y devuelve el dato para la preparación. También se conserva al buscar otra ronda con `searchId`. En video se aceptan fotos de cualquier licencia: se registra la etiqueta recibida y la fuente, sin créditos automáticos ni comentarios de licencia salvo pregunta de la persona. Commons y Wikipedia en inglés son los orígenes de búsqueda acotados; no se aceptan URLs arbitrarias.
+
+Tras buscar y ampliar, prepara con `{"uso":"video","id":"ID_DEVUELTO","evaluation":{"mode":"visual","observed":"Lo observado en la ampliación","meets":[],"doubts":""}}`. Recuperación persistente sin red: `{"uso":"video","id":"ID_PREPARADO"}`. Para documentos se omite `uso` o se pasa `"documento"`, con licencia estricta y registro separado.
+
+En Chat, `imagenes_usar` devuelve `source: "imagen:ID"`; en Code/Tareas devuelve id y path del ámbito autorizado (Code requiere `carpeta`). Ambas herramientas de video admiten `fotos: [{"origen":"imagen:ID","destino":"assets/foto.jpg"}]`; Code/Tareas también pueden pasar el path devuelto. El HTML usa `assets/foto.jpg`, sin URL remota. Los archivos pasan por los mismos límites y comprobaciones de firma, píxeles, rutas y enlaces del apartado de medios. El registro se comparte desde main; cada foto mantiene la conversación o carpeta que la autorizó.

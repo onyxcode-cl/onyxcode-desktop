@@ -1201,6 +1201,20 @@
       ],
       "nota": "Mismo worker y validadores en Mac/Windows, sin WSL. Diagnóstico Node Mac real con panadería, foto, AAC desde argumento y audio HTML, hoja oficial y prueba hostil sin accesos al canario. Check oficial parcial (lint puro y geometría/superposiciones); CLI completo no se ejecuta. Sharp opcional ausente usa hoja propia sin instalar. Electron SIGABRT y Seatbelt EPERM en este entorno; Windows real pendiente del smoke documentado. Buscador de fotos sigue limitado a licencias libres; video acepta archivos locales de cualquier licencia. Adjuntar audio desde el compositor Chat sigue pendiente.",
       "comprobacion": null
+    },
+    {
+      "id": "N27",
+      "funcion": "Fotos de cualquier licencia para video por uso explícito, documentos estrictos (F8-B337)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/documents/free-images.ts:1",
+        "src/main/documents/free-image-registry.ts:1",
+        "src/main/video/photos.ts:1",
+        "src/main/video/photos.test.ts:1",
+        "docs/SEGURIDAD.md:1"
+      ],
+      "nota": "Mismo servicio host y registro por uso en Mac/Windows; sin cambios de WSL. Regresión con proveedor/worker dobles para Chat, Code y Tareas: buscar/ver/usar, persistir y pasar fotos a cuadros/render sin créditos. Documentos rechaza uso de video por id, ruta y hash. Búsqueda de red real desde Node Mac documentada en el informe del paso 6; Windows real y la interacción de los tres modos en la app siguen pendientes. N26 describe el estado previo de licencias, ampliado aquí.",
+      "comprobacion": null
     }
   ]
 }

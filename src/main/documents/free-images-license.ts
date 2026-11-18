@@ -101,3 +101,25 @@ export function commonsLicense(raw: unknown): FreeImageLicense | null {
     return { name: `Dominio público (${code})`, url: 'https://creativecommons.org/publicdomain/mark/1.0/', shareAlike: false, notices }
   return null
 }
+
+/** Video records the supplied label without interpreting it as permission to reuse. Links are data only. */
+export function videoImageLicense(raw: unknown): FreeImageLicense {
+  const m = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Metadata) : {}
+  const get = (key: string, max = 2000): string => plainMetadata(m[key]?.value, max)
+  let url = ''
+  try {
+    const parsed = new URL(get('LicenseUrl'))
+    if (['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password) url = parsed.href
+  } catch {
+    /* An absent or unusable license link remains absent. */
+  }
+  return {
+    name: get('LicenseShortName', 100) || get('License', 100) || 'No indicada',
+    url,
+    shareAlike: false,
+    notices: ['Attribution', 'Credit', 'Permission', 'Restrictions', 'UsageTerms']
+      .map((key) => get(key))
+      .filter(Boolean)
+      .join(' · ')
+  }
+}

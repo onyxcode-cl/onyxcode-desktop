@@ -1,5 +1,14 @@
 # Fase 8 — Onboarding y distribución
 
+## F8-B337 — Fotos de cualquier licencia para video (V32, paso 6)
+
+Las herramientas de fotos admiten `uso: "video"` en búsqueda y preparación/recuperación. Busca en Commons y Wikipedia en inglés sin filtrar por licencia; conserva sus destinos de archivos cerrados y no acepta URLs del modelo. El uso acompaña candidatos, revisión, preparación y registro privado. Licencia, enlace si existe y metadatos originales se guardan como datos con estado `licencia-registrada`, sin afirmar permiso de reutilización ni añadir créditos o comentarios de licencia al video.
+
+Documentos conserva el valor predeterminado estricto y `licencia-comprobada`. Las entradas persistentes de video tienen un espacio separado por uso, incluso si id/hash coinciden; no autorizan documentos por id, ruta ni copia renombrada con el mismo hash. Video resuelve fotos de ambos usos en el ámbito concedido, también tras reiniciar, y las copia mediante `fotos` en cuadros/render para Chat, Code y Tareas. Se conservan tamaños, firma real, píxeles, normalización a JPEG, hashes, rutas sin enlaces y composición local sin URLs. Sin cambios de skill ni WSL.
+
+Pruebas: `documents/free-images.test.ts`, `documents/free-image-registry.test.ts` y `video/photos.test.ts`; esta última recorre búsqueda → ampliación → preparación → cuadros/render con servicio y registro reales, proveedor y worker dobles, para los tres modos, y comprueba rechazo de reutilización en documentos. Búsqueda real y límites nativos se detallan en el informe externo `V32-VIDEO-PASO6-FOTOS-INFORME.md`. Windows real pendiente en N27.
+
+
 
 ## F8-B336 — Proyectos de video, fotos, fuentes locales y AAC (V32, paso 5)
 

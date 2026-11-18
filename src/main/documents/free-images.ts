@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { INTERNAL_NAME, RELEASES_ORIGIN, RELEASES_REPO } from '@shared/brand'
 import { cleanImageAuthor, shortImageCredit } from './free-image-credit'
-import { commonsLicense, plainMetadata, type FreeImageLicense } from './free-images-license'
+import { commonsLicense, videoImageLicense, plainMetadata, type FreeImageLicense } from './free-images-license'
 import { sniffImage, MAX_IMAGE_PIXELS } from './image-files'
 import { jpegOrientation } from './jpeg-orientation'
 import { nativeFreeImageProcessor, type FreeImageProcessor } from './free-images-visual'
@@ -25,7 +25,9 @@ export interface FreeImageRequirements {
   realPhoto: boolean
   orientation?: FreeImageOrientationInput
 }
+export type ImageUse = 'documento' | 'video'
 export interface FreeImageSearch {
+  uso?: ImageUse
   queries: string[]
   requirements?: Pick<FreeImageRequirements, 'subject' | 'usage'> & Partial<FreeImageRequirements>
   orientation?: FreeImageOrientationInput
@@ -36,6 +38,7 @@ export interface FreeImageSearch {
 type NormalizedSearch = Omit<FreeImageSearch, 'requirements'> & { requirements: FreeImageRequirements }
 
 export interface FreeImageCandidate {
+  uso?: ImageUse
   id: string
   title: string
   author: string
@@ -67,7 +70,8 @@ export interface FreeImageEvaluation {
   doubts: string
 }
 export interface FreeImageProvenance {
-  provider: 'Wikimedia Commons'
+  uso?: ImageUse
+  provider: 'Wikimedia Commons' | 'Wikipedia'
   id: string
   title: string
   author: string
@@ -84,7 +88,7 @@ export interface FreeImageProvenance {
   requirements: FreeImageRequirements
   evaluation: FreeImageEvaluation
   evaluationStatus: 'declarada-por-el-modelo' | 'seleccion-manual-declarada'
-  status: 'licencia-comprobada'
+  status: 'licencia-comprobada' | 'licencia-registrada'
   transformations: string[]
   width: number
   height: number
@@ -104,6 +108,7 @@ export interface FreeImagesDeps {
   sleep?: (ms: number) => Promise<void>
 }
 export interface CommonsImage {
+  api?: string
   rawAuthor?: string
   rawMetadata?: Record<string, string>
   pageId: number
@@ -169,6 +174,7 @@ export function normalizeImageEvaluation(raw: unknown): FreeImageEvaluation {
   return { mode: value.mode, observed: value.observed, meets: [...value.meets] as string[], doubts }
 }
 const API = 'https://commons.wikimedia.org/w/api.php'
+const VIDEO_API = 'https://en.wikipedia.org/w/api.php'
 export const FREE_IMAGE_MAX_BYTES = 6 * 1024 * 1024
 // Tolerate extra suggestions from the model without increasing network work per round.
 export const FREE_IMAGE_MAX_INPUT_QUERIES = 8
@@ -181,7 +187,7 @@ const SEARCH_EXAMPLE =
   'Ejemplo inicial: {"queries":["interior de cafetería","coffee shop interior"],"requirements":{"subject":"cafetería","usage":"portada"}}. Segunda ronda: {"searchId":"id devuelto","queries":["café con mesas","cafe seating interior"]}.'
 
 /** Only provider-owned file endpoints, never user-selected URLs, credentials, ports or redirects. */
-export function allowedCommonsFile(raw: string): boolean {
+export function allowedCommonsFile(raw: string, uso: ImageUse = 'documento'): boolean {
   try {
     if (raw.length > 4000) return false
     const u = new URL(raw)
@@ -192,18 +198,18 @@ export function allowedCommonsFile(raw: string): boolean {
       !u.port &&
       !u.hash &&
       ['upload.wikimedia.org', 'thumb.wikimedia.org'].includes(u.hostname) &&
-      u.pathname.startsWith('/wikipedia/commons/')
+      (u.pathname.startsWith('/wikipedia/commons/') || (uso === 'video' && u.pathname.startsWith('/wikipedia/en/')))
     )
   } catch {
     return false
   }
 }
-function sourceUrl(raw: unknown): string | null {
+function sourceUrl(raw: unknown, uso: ImageUse = 'documento'): string | null {
   if (typeof raw !== 'string' || raw.length > 2000) return null
   try {
     const u = new URL(raw)
     return u.protocol === 'https:' &&
-      u.hostname === 'commons.wikimedia.org' &&
+      (u.hostname === 'commons.wikimedia.org' || (uso === 'video' && u.hostname === 'en.wikipedia.org')) &&
       !u.port &&
       !u.username &&
       !u.password &&
@@ -217,7 +223,7 @@ function sourceUrl(raw: unknown): string | null {
 function record(raw: unknown): Record<string, unknown> | null {
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null
 }
-export function parseCommonsImages(raw: unknown): CommonsImage[] {
+export function parseCommonsImages(raw: unknown, uso: ImageUse = 'documento', api = API): CommonsImage[] {
   const root = record(raw),
     query = record(root?.query)
   const pages = query?.pages
@@ -231,16 +237,16 @@ export function parseCommonsImages(raw: unknown): CommonsImage[] {
     if (!page || !info || !Number.isSafeInteger(page.pageid) || Number(page.pageid) <= 0) continue
     const metadata = record(info.extmetadata)
     const field = (key: string): string => plainMetadata(record(metadata?.[key])?.value)
-    const license = commonsLicense(metadata)
+    const license = uso === 'video' ? videoImageLicense(metadata) : commonsLicense(metadata)
     if (hasImageOverlay(page.title, metadata)) continue
-    const source = sourceUrl(info.descriptionurl)
+    const source = sourceUrl(info.descriptionurl, uso)
     if (
       !license ||
       !source ||
       typeof info.url !== 'string' ||
-      !allowedCommonsFile(info.url) ||
+      !allowedCommonsFile(info.url, uso) ||
       typeof info.thumburl !== 'string' ||
-      !allowedCommonsFile(info.thumburl)
+      !allowedCommonsFile(info.thumburl, uso)
     )
       continue
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(String(info.mime))) continue
@@ -252,18 +258,19 @@ export function parseCommonsImages(raw: unknown): CommonsImage[] {
     // Production requests always ask for sha1. Older fixtures without it can still exercise license parsing.
     if (!sha1) continue
     const rawAuthor = plainMetadata(record(metadata?.Artist)?.value, 20000)
-    const author = cleanImageAuthor(rawAuthor)
+    const author = cleanImageAuthor(rawAuthor) || (uso === 'video' ? 'No indicado' : '')
     if (!author || author.length > 800) continue
     const rawMetadata = Object.fromEntries(
       ['Artist', 'Attribution', 'Credit', 'Permission', 'Restrictions', 'UsageTerms', 'LicenseShortName', 'License', 'LicenseUrl'].flatMap(
         (key) => {
           const value = record(metadata?.[key])?.value
-          return typeof value === 'string' ? [[key, value]] : []
+          return typeof value === 'string' ? [[key, value.slice(0, 20000)]] : []
         }
       )
     )
     if (Number(info.size) > FREE_IMAGE_MAX_BYTES) continue
     result.push({
+      api,
       rawAuthor,
       rawMetadata,
       pageId: Number(page.pageid),
@@ -285,6 +292,8 @@ export function parseCommonsImages(raw: unknown): CommonsImage[] {
   return result
 }
 function validateSearch(input: NormalizedSearch): void {
+  if (input.uso !== undefined && input.uso !== 'video' && input.uso !== 'documento')
+    throw new FreeImageInputError('uso', 'usa documento o video.')
   const text = (s: unknown, max = 400): boolean => typeof s === 'string' && s.trim().length > 0 && s.length <= max
   if (!Array.isArray(input.queries) || input.queries.length < 2 || input.queries.length > FREE_IMAGE_MAX_INPUT_QUERIES)
     throw new FreeImageInputError(
@@ -326,7 +335,7 @@ export class FreeImagesService {
   private readonly sleep: (ms: number) => Promise<void>
   private readonly candidates = new Map<string, StoredCandidate>()
   private readonly searches = new Map<string, { id: string; rounds: number; input: NormalizedSearch }>()
-  private readonly verified = new Map<number, { file: CommonsImage; at: number }>()
+  private readonly verified = new Map<string, { file: CommonsImage; at: number }>()
   private readonly cache = new Map<string, { bytes: Buffer; at: number }>()
   private cacheSize = 0
   private readonly blockedUntil = new Map<string, number>()
@@ -340,7 +349,7 @@ export class FreeImagesService {
     this.sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
   }
   private providerKey(url: string): string {
-    return url.startsWith(OPENVERSE_API) ? 'openverse' : 'commons'
+    return url.startsWith(OPENVERSE_API) ? 'openverse' : url.startsWith(VIDEO_API) ? 'wikipedia' : 'commons'
   }
   private async waitForProvider(url: string): Promise<void> {
     const delay = Math.max(0, (this.blockedUntil.get(this.providerKey(url)) ?? 0) - this.now())
@@ -363,7 +372,11 @@ export class FreeImagesService {
     )
   }
   private async request(url: string, limit: number, api = false): Promise<Buffer> {
-    if (api ? !url.startsWith(`${API}?`) && !url.startsWith(`${OPENVERSE_API}?`) : !allowedCommonsFile(url))
+    if (
+      api
+        ? !url.startsWith(`${API}?`) && !url.startsWith(`${OPENVERSE_API}?`) && !url.startsWith(`${VIDEO_API}?`)
+        : !allowedCommonsFile(url, 'video')
+    )
       throw new FreeImageError('Destino de imagen no permitido.')
     for (let attempt = 0; attempt < 3; attempt++) {
       await this.waitForProvider(url)
@@ -424,7 +437,7 @@ export class FreeImagesService {
     }
     throw new FreeImageError('El banco de fotos no está disponible; continúa sin fotos.')
   }
-  private async metadata(params: Record<string, string>, width = 1280): Promise<CommonsImage[]> {
+  private async metadata(params: Record<string, string>, width = 1280, uso: ImageUse = 'documento', api = API): Promise<CommonsImage[]> {
     const query = new URLSearchParams({
       action: 'query',
       format: 'json',
@@ -436,26 +449,45 @@ export class FreeImagesService {
       iiextmetadatalanguage: 'en',
       ...params
     })
-    return parseCommonsImages(JSON.parse((await this.request(`${API}?${query}`, 1024 * 1024, true)).toString('utf8')))
+    return parseCommonsImages(JSON.parse((await this.request(`${api}?${query}`, 1024 * 1024, true)).toString('utf8')), uso, api)
   }
   /** Fresh license checks are batched for the finalists, then reused briefly by use(). */
-  private async currentFiles(items: StoredCandidate[]): Promise<Map<number, CommonsImage>> {
-    const result = new Map<number, CommonsImage>()
-    const stale: number[] = []
+  private async currentFiles(items: StoredCandidate[]): Promise<Map<string, CommonsImage>> {
+    const result = new Map<string, CommonsImage>()
+    const groups = new Map<string, StoredCandidate[]>()
     for (const item of items) {
-      const hit = this.verified.get(item.file.pageId)
-      if (hit && this.now() - hit.at < METADATA_TTL) result.set(item.file.pageId, hit.file)
-      else stale.push(item.file.pageId)
+      const key = this.fileKey(item)
+      const hit = this.verified.get(key)
+      if (hit && this.now() - hit.at < METADATA_TTL) result.set(key, hit.file)
+      else {
+        const groupKey = `${item.search.uso ?? 'documento'}:${item.file.api ?? API}`
+        const group = groups.get(groupKey) ?? []
+        group.push(item)
+        groups.set(groupKey, group)
+      }
     }
-    if (stale.length) {
-      const found = await this.metadata({ pageids: [...new Set(stale)].join('|') })
-      for (const id of stale) this.verified.delete(id)
-      for (const file of found) {
-        this.verified.set(file.pageId, { file, at: this.now() })
-        result.set(file.pageId, file)
+    for (const group of groups.values()) {
+      const first = group[0]
+      const found = await this.metadata(
+        { pageids: [...new Set(group.map((item) => item.file.pageId))].join('|') },
+        1280,
+        first.search.uso,
+        first.file.api ?? API
+      )
+      for (const item of group) {
+        const key = this.fileKey(item)
+        this.verified.delete(key)
+        const file = found.find((file) => file.pageId === item.file.pageId)
+        if (file) {
+          this.verified.set(key, { file, at: this.now() })
+          result.set(key, file)
+        }
       }
     }
     return result
+  }
+  private fileKey(item: StoredCandidate): string {
+    return `${item.search.uso ?? 'documento'}:${item.file.api ?? API}:${item.file.pageId}`
   }
   private cached(key: string): Buffer | undefined {
     const hit = this.cache.get(key)
@@ -529,6 +561,8 @@ export class FreeImagesService {
     const previous = input.searchId ? [...this.searches.values()].find((s) => s.id === input.searchId) : undefined
     if (input.searchId && !previous)
       throw new FreeImageError(`searchId no pertenece a esta tarea. Omítelo al iniciar una búsqueda. ${SEARCH_EXAMPLE}`)
+    if (previous && input.uso !== undefined && input.uso !== (previous.input.uso ?? 'documento'))
+      throw new FreeImageInputError('uso', 'no se puede cambiar el uso de una búsqueda existente.')
     const raw = input.requirements ?? previous?.input.requirements
     const normalized: NormalizedSearch = {
       ...previous?.input,
@@ -564,6 +598,7 @@ export class FreeImagesService {
     const fingerprint = createHash('sha256')
       .update(
         JSON.stringify([
+          normalized.uso ?? 'documento',
           requirements.subject.trim(),
           requirements.action?.trim() ?? '',
           requirements.place?.trim() ?? '',
@@ -607,17 +642,32 @@ export class FreeImagesService {
           files.push(file)
         }
       }
-      const searchCommons = async (query: string): Promise<void> => {
+      const searchCommons = async (query: string, api = API): Promise<void> => {
         addFiles(
-          await this.metadata({
-            generator: 'search',
-            gsrsearch: `${query} filetype:bitmap`,
-            gsrnamespace: '6',
-            gsrlimit: '12',
-            gsrwhat: 'text',
-            gsrsort: 'relevance'
-          })
+          await this.metadata(
+            {
+              generator: 'search',
+              gsrsearch: `${query} filetype:bitmap`,
+              gsrnamespace: '6',
+              gsrlimit: '12',
+              gsrwhat: 'text',
+              gsrsort: 'relevance'
+            },
+            1280,
+            normalized.uso,
+            api
+          )
         )
+      }
+      // Wikipedia hosts non-free photographs too; license labels never filter this video pool.
+      if (normalized.uso === 'video') {
+        for (const query of input.queries) {
+          try {
+            await searchCommons(query, VIDEO_API)
+          } catch {
+            break
+          }
+        }
       }
       let commonsAvailable = true
       for (const query of input.queries) {
@@ -678,6 +728,7 @@ export class FreeImagesService {
           const thumb = await this.image(file, 380)
           const candidate: FreeImageCandidate = {
             id: randomUUID(),
+            ...(normalized.uso === 'video' ? { uso: 'video' as const } : {}),
             title: file.title,
             author: file.author,
             license: file.license.name,
@@ -727,7 +778,7 @@ export class FreeImagesService {
       result: FreeImageView[] = []
     const currentFiles = await this.currentFiles(selected)
     for (const item of selected) {
-      const current = currentFiles.get(item.file.pageId)
+      const current = currentFiles.get(this.fileKey(item))
       if (!current || current.sha1 !== item.file.sha1 || current.url !== item.file.url)
         throw new FreeImageError('Cambió la foto desde la búsqueda; busca otra candidata.')
       try {
@@ -750,13 +801,12 @@ export class FreeImagesService {
     const item = this.get(id)
     if (!item.viewed) throw new FreeImageError('Primero amplía la finalista con imagenes_ver.')
     const evaluation = normalizeImageEvaluation(rawEvaluation)
-    const current = (await this.currentFiles([item])).get(item.file.pageId)
+    const current = (await this.currentFiles([item])).get(this.fileKey(item))
     if (
       !current ||
       current.sha1 !== item.file.sha1 ||
       current.url !== item.file.url ||
-      current.license.name !== item.file.license.name ||
-      current.license.url !== item.file.license.url
+      (item.search.uso !== 'video' && (current.license.name !== item.file.license.name || current.license.url !== item.file.license.url))
     )
       throw new FreeImageError('Cambió el archivo o no se pudo confirmar su licencia; busca otra foto.')
     const minWidth = item.search.minWidth ?? 1000,
@@ -783,7 +833,7 @@ export class FreeImagesService {
     const credit = shortImageCredit({
       author: current.author,
       license: current.license.name,
-      provider: 'Wikimedia Commons',
+      provider: new URL(current.source).hostname === 'en.wikipedia.org' ? 'Wikipedia' : 'Wikimedia Commons',
       transformations
     })
     return {
@@ -791,7 +841,8 @@ export class FreeImagesService {
       ext: 'jpg',
       credit,
       provenance: {
-        provider: 'Wikimedia Commons',
+        ...(item.search.uso === 'video' ? { uso: 'video' as const } : {}),
+        provider: new URL(current.source).hostname === 'en.wikipedia.org' ? 'Wikipedia' : 'Wikimedia Commons',
         id,
         title: current.title,
         author: current.author,
@@ -803,12 +854,12 @@ export class FreeImagesService {
         rawMetadata: current.rawMetadata,
         sourceSha1: current.sha1,
         sha256: createHash('sha256').update(bytes).digest('hex'),
-        checkedAt: new Date(this.verified.get(current.pageId)!.at).toISOString(),
+        checkedAt: new Date(this.verified.get(this.fileKey(item))!.at).toISOString(),
         queries: [...item.search.queries],
         requirements: structuredClone(item.search.requirements),
         evaluation: structuredClone(evaluation),
         evaluationStatus: evaluation.mode === 'visual' ? 'declarada-por-el-modelo' : 'seleccion-manual-declarada',
-        status: 'licencia-comprobada',
+        status: item.search.uso === 'video' ? 'licencia-registrada' : 'licencia-comprobada',
         transformations,
         width: info.width,
         height: info.height,

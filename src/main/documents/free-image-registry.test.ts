@@ -157,3 +157,26 @@ describe('registro privado de fotos', () => {
     expect((await stat(join(store, `photo-${sha}.json`))).isFile()).toBe(true)
   })
 })
+
+it('separa autoridad de video por uso incluso con bytes e ids iguales y tras reiniciar', async () => {
+  const registry = new FreeImageRegistry(store)
+  const video: FreeImageAsset = {
+    ...asset,
+    provenance: { ...asset.provenance, uso: 'video', status: 'licencia-registrada', license: 'CC BY-NC 4.0', licenseUrl: '' }
+  }
+  await registry.remember(root, 'test-id', rel, video)
+  const restarted = new FreeImageRegistry(store)
+  expect(await restarted.findId(root, 'test-id')).toBeNull()
+  expect(await restarted.findPath(root, rel)).toBeNull()
+  expect(await restarted.get(root, sha)).toBeNull()
+  expect((await restarted.findId(root, 'test-id', 'video'))?.asset).toEqual(video)
+  await registry.remember(root, 'test-id', rel, asset)
+  expect((await restarted.findId(root, 'test-id'))?.asset).toEqual(asset)
+  expect((await restarted.findId(root, 'test-id', 'video'))?.asset).toEqual(video)
+  const other = join(base, 'other')
+  await mkdir(other)
+  expect(await restarted.findId(other, 'test-id', 'video')).toBeNull()
+  await expect(registry.remember(root, 'bad', rel, { ...video, provenance: { ...video.provenance, uso: 'documento' } })).rejects.toThrow(
+    'provenance'
+  )
+})

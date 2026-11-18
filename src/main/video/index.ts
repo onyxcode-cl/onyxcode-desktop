@@ -10,6 +10,7 @@ import { runtimesService } from '../runtimes/service'
 import { videoService } from './service'
 import { VideoMcpServer } from './mcp-server'
 import { createRenderProcess } from './render-process'
+import { resolveVideoPhoto } from './photos'
 
 async function install(signal: AbortSignal): Promise<void> {
   signal.throwIfAborted()
@@ -84,9 +85,7 @@ export function videoMcpServer(): VideoMcpServer {
     photo: async (root, session, chat, origin) => {
       const { documentPhotoRegistry, chatPhotosMcp } = await import('../documents')
       const scope = chat && session ? await chatPhotosMcp.rootFor(session) : root
-      const id = origin.replace(/^imagen:/, '')
-      const photo = (await documentPhotoRegistry.findId(scope, id)) ?? (await documentPhotoRegistry.findPath(scope, origin))
-      return photo?.asset.bytes ?? null
+      return resolveVideoPhoto(documentPhotoRegistry, scope, origin)
     },
     render: createRenderProcess(candidates.find(existsSync) ?? candidates[0]!)
   }))

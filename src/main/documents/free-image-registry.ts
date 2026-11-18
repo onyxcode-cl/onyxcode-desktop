@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { mkdir, open, realpath, rename, rm, lstat, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { FreeImageAsset } from './free-images'
+import type { FreeImageAsset, ImageUse } from './free-images'
 import { OutputPathError, isInside } from './output-path'
 
 const MAX_RECORD_BYTES = 8 * 1024 * 1024
@@ -30,18 +30,19 @@ interface Location {
   rel: string
 }
 
-function validProvenance(value: unknown, sha: string): value is FreeImageAsset['provenance'] {
+function validProvenance(value: unknown, sha: string, uso: ImageUse = 'documento'): value is FreeImageAsset['provenance'] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const p = value as Record<string, unknown>
   const bounded = (v: unknown, max = 2000): v is string => typeof v === 'string' && v.length > 0 && v.length <= max
   if (
-    p.status !== 'licencia-comprobada' ||
-    p.provider !== 'Wikimedia Commons' ||
+    (uso === 'video'
+      ? p.uso !== 'video' || p.status !== 'licencia-registrada' || !['Wikimedia Commons', 'Wikipedia'].includes(String(p.provider))
+      : (p.uso !== undefined && p.uso !== 'documento') || p.status !== 'licencia-comprobada' || p.provider !== 'Wikimedia Commons') ||
     p.sha256 !== sha ||
     !bounded(p.author) ||
     !bounded(p.license, 100) ||
     !bounded(p.source, 20000) ||
-    !bounded(p.licenseUrl) ||
+    (uso === 'video' ? typeof p.licenseUrl !== 'string' || p.licenseUrl.length > 2000 : !bounded(p.licenseUrl)) ||
     !bounded(p.credit, 2000)
   )
     return false
@@ -53,12 +54,20 @@ function validProvenance(value: unknown, sha: string): value is FreeImageAsset['
       : /^Dominio público \(pd-(?:old|old-70|old-100|self|user|author|usgov)\)$/.test(p.license)
         ? 'https://creativecommons.org/publicdomain/mark/1.0/'
         : null
-  if (!expectedLicense || p.licenseUrl !== expectedLicense) return false
+  if (uso !== 'video' && (!expectedLicense || p.licenseUrl !== expectedLicense)) return false
+  if (uso === 'video' && p.licenseUrl) {
+    try {
+      const url = new URL(p.licenseUrl as string)
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return false
+    } catch {
+      return false
+    }
+  }
   try {
     const url = new URL(p.source)
     if (
       url.protocol !== 'https:' ||
-      url.hostname !== 'commons.wikimedia.org' ||
+      (url.hostname !== 'commons.wikimedia.org' && !(uso === 'video' && url.hostname === 'en.wikipedia.org')) ||
       url.username ||
       url.password ||
       url.port ||
@@ -141,38 +150,47 @@ export class FreeImageRegistry {
     }
   }
 
-  private locationName(root: string, key: string): string {
-    return `location-${digest(root)}-${digest(key)}.json`
+  private locationName(root: string, key: string, uso: ImageUse = 'documento'): string {
+    return `location-${uso === 'video' ? 'video-' : ''}${digest(root)}-${digest(key)}.json`
   }
 
   async remember(root: string, id: string, rel: string, asset: FreeImageAsset): Promise<void> {
+    const uso = asset.provenance.uso ?? 'documento'
     const home = await this.home(root)
     const canonical = await realpath(root)
     const sha = digest(asset.bytes)
     const { bytes, ...metadata } = asset
-    if (!validProvenance(asset.provenance, sha)) throw new Error('Invalid verified photo provenance')
+    if (!validProvenance(asset.provenance, sha, uso)) throw new Error('Invalid verified photo provenance')
     const files = await readdir(home)
     if (files.length + 4 > MAX_REGISTRY_FILES)
       throw new OutputPathError('size', 'El registro privado de fotos llegó a su límite; no se preparó una foto nueva.')
     let size = 0
     for (const file of files) {
-      if (file === `photo-${sha}.json`) continue
+      if (file === `photo-${uso === 'video' ? 'video-' : ''}${sha}.json`) continue
       size += (await lstat(join(home, file))).size
       if (size > MAX_REGISTRY_BYTES) break
     }
     if (size + Math.ceil((bytes.length * 4) / 3) + Buffer.byteLength(JSON.stringify(metadata)) + 16384 > MAX_REGISTRY_BYTES)
       throw new OutputPathError('size', 'El registro privado de fotos llegó a su límite; no se preparó una foto nueva.')
     if (bytes.length > 5 * 1024 * 1024) throw new Error('Photo registry image too large')
-    await this.write(home, `photo-${sha}.json`, { version: 1, sha, bytes: bytes.toString('base64'), asset: metadata } satisfies StoredPhoto)
+    await this.write(home, `photo-${uso === 'video' ? 'video-' : ''}${sha}.json`, {
+      version: 1,
+      sha,
+      bytes: bytes.toString('base64'),
+      asset: metadata
+    } satisfies StoredPhoto)
     const location: Location = { version: 1, sha, id, rel }
     for (const key of [`id:${id}`, `id:preparada-${sha}`, `path:${rel.toLowerCase()}`])
-      await this.write(home, this.locationName(canonical, key), location)
+      await this.write(home, this.locationName(canonical, key, uso), location)
   }
 
-  async get(root: string, sha: string): Promise<FreeImageAsset | null> {
+  async get(root: string, sha: string, uso: ImageUse = 'documento'): Promise<FreeImageAsset | null> {
     if (!validSha(sha)) return null
     const home = await this.home(root)
-    const data = (await this.read(join(home, `photo-${sha}.json`), MAX_RECORD_BYTES)) as StoredPhoto | null
+    const data = (await this.read(
+      join(home, `photo-${uso === 'video' ? 'video-' : ''}${sha}.json`),
+      MAX_RECORD_BYTES
+    )) as StoredPhoto | null
     if (
       !data ||
       data.version !== 1 ||
@@ -183,7 +201,7 @@ export class FreeImageRegistry {
       typeof data.asset.credit !== 'string' ||
       !data.asset.credit.trim() ||
       data.asset.credit.length > 2000 ||
-      !validProvenance(data.asset.provenance, sha)
+      !validProvenance(data.asset.provenance, sha, uso)
     )
       return null
     const bytes = Buffer.from(data.bytes, 'base64')
@@ -191,10 +209,10 @@ export class FreeImageRegistry {
     return { ...data.asset, bytes }
   }
 
-  private async find(root: string, key: string): Promise<RegisteredPhoto | null> {
+  private async find(root: string, key: string, uso: ImageUse = 'documento'): Promise<RegisteredPhoto | null> {
     const home = await this.home(root)
     const canonical = await realpath(root)
-    const location = (await this.read(join(home, this.locationName(canonical, key)), 4096)) as Location | null
+    const location = (await this.read(join(home, this.locationName(canonical, key, uso)), 4096)) as Location | null
     if (
       !location ||
       location.version !== 1 ||
@@ -204,17 +222,17 @@ export class FreeImageRegistry {
       !/^img\/free-[a-f0-9]{20}(?: \(\d+\))?\.jpg$/.test(location.rel)
     )
       return null
-    const asset = await this.get(root, location.sha)
+    const asset = await this.get(root, location.sha, uso)
     return asset ? { ...location, asset } : null
   }
 
-  async findId(root: string, id: string): Promise<RegisteredPhoto | null> {
-    const exact = await this.find(root, `id:${id}`)
+  async findId(root: string, id: string, uso: ImageUse = 'documento'): Promise<RegisteredPhoto | null> {
+    const exact = await this.find(root, `id:${id}`, uso)
     if (exact || !/^[0-9a-f-]{8,35}$/i.test(id)) return exact
     // Algunos modelos copian el identificador cortado («imagen:5697d8fe»). Si el trozo identifica una
     // sola foto preparada en este mismo ámbito, se acepta; si es ambiguo o no existe, sigue el error.
     const home = await this.home(root)
-    const prefix = `location-${digest(await realpath(root))}-`
+    const prefix = `location-${uso === 'video' ? 'video-' : ''}${digest(await realpath(root))}-`
     const matches = new Set<string>()
     for (const file of (await readdir(home)).filter((name) => name.startsWith(prefix))) {
       const location = (await this.read(join(home, file), 4096)) as Location | null
@@ -223,9 +241,9 @@ export class FreeImageRegistry {
       if (matches.size > 1) return null
     }
     const [only] = matches
-    return only ? this.find(root, `id:${only}`) : null
+    return only ? this.find(root, `id:${only}`, uso) : null
   }
-  findPath(root: string, path: string): Promise<RegisteredPhoto | null> {
-    return this.find(root, `path:${path.toLowerCase()}`)
+  findPath(root: string, path: string, uso: ImageUse = 'documento'): Promise<RegisteredPhoto | null> {
+    return this.find(root, `path:${path.toLowerCase()}`, uso)
   }
 }

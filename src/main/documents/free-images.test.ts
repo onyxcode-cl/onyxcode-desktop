@@ -731,3 +731,100 @@ describe('miniatura sin escalar y límites por proveedor', () => {
     expect(sleep).not.toHaveBeenCalled()
   })
 })
+
+describe('uso video: licencia como dato, documentos estrictos', () => {
+  it.each(['CC BY-NC 4.0', 'CC BY-ND 4.0', 'Fair use', 'All rights reserved', ''])(
+    'video admite %s sin autorizar documentos',
+    async (name) => {
+      const raw = response([page(1, { ...metadata, LicenseShortName: { value: name } })])
+      expect(parseCommonsImages(raw)).toEqual([])
+      expect(parseCommonsImages(raw, 'video')[0].license.name).toBe(name || 'cc-by-sa-4.0')
+      const service = new FreeImagesService({
+        processor,
+        fetch: fakeFetch((u) => (u.pathname === '/w/api.php' ? Response.json(raw) : new Response(new Uint8Array(bytes))))
+      })
+      const found = await service.search({ ...input, uso: 'video' })
+      expect(found.candidates[0].uso).toBe('video')
+      const id = found.candidates[0].id
+      await service.view([id])
+      const asset = await service.use(id, evaluation)
+      expect(asset.provenance).toMatchObject({ uso: 'video', status: 'licencia-registrada', license: name || 'cc-by-sa-4.0' })
+      expect(asset.provenance.rawMetadata?.LicenseShortName).toBe(name)
+      expect((await service.search(input)).candidates).toEqual([])
+      await expect(service.search({ searchId: found.searchId, queries: input.queries, uso: 'documento' })).rejects.toThrow('uso')
+    }
+  )
+  it('Wikipedia y Commons con el mismo pageid no comparten metadatos; tampoco comparten el uso', async () => {
+    const wikipedia = page()
+    const info = wikipedia.imageinfo[0]
+    info.url = info.url.replace('/commons/', '/en/')
+    info.thumburl = info.thumburl.replace('/commons/', '/en/')
+    info.descriptionurl = info.descriptionurl.replace('commons.wikimedia.org', 'en.wikipedia.org')
+    info.extmetadata = { ...metadata, LicenseShortName: { value: 'Fair use' } }
+    const wikiBytes = Buffer.concat([bytes, Buffer.from('Wikipedia')])
+    info.sha1 = createHash('sha1').update(wikiBytes).digest('hex')
+    const service = new FreeImagesService({
+      processor,
+      fetch: fakeFetch((u) => {
+        if (u.hostname === 'en.wikipedia.org') return Response.json(response([wikipedia]))
+        if (u.hostname === 'commons.wikimedia.org') return Response.json(response())
+        return new Response(new Uint8Array(u.pathname.includes('/en/') ? wikiBytes : bytes))
+      })
+    })
+    const video = await service.search({ ...input, uso: 'video' })
+    const wiki = video.candidates.find((c) => c.source.includes('en.wikipedia.org'))!
+    const document = await service.search(input)
+    await service.view([wiki.id, document.candidates[0].id])
+    expect((await service.use(wiki.id, evaluation)).provenance).toMatchObject({ provider: 'Wikipedia', license: 'Fair use' })
+    expect((await service.use(document.candidates[0].id, evaluation)).provenance).toMatchObject({
+      provider: 'Wikimedia Commons',
+      status: 'licencia-comprobada'
+    })
+    expect(allowedCommonsFile(info.url)).toBe(false)
+    expect(allowedCommonsFile(info.url, 'video')).toBe(true)
+  })
+  it('video conserva filtros de URL, SVG activo, tamaño y bytes reales', async () => {
+    for (const edit of [
+      (p: ReturnType<typeof page>) => {
+        p.imageinfo[0].url = 'http://127.0.0.1/a.jpg'
+      },
+      (p: ReturnType<typeof page>) => {
+        p.imageinfo[0].mime = 'image/svg+xml'
+      },
+      (p: ReturnType<typeof page>) => {
+        p.imageinfo[0].size = FREE_IMAGE_MAX_BYTES + 1
+      }
+    ]) {
+      const p = page()
+      edit(p)
+      expect(parseCommonsImages(response([p]), 'video')).toEqual([])
+    }
+    const service = new FreeImagesService({
+      processor,
+      fetch: fakeFetch((u) => (u.pathname === '/w/api.php' ? Response.json(response()) : new Response('<svg onload="alert(1)"/>')))
+    })
+    expect((await service.search({ ...input, uso: 'video' })).candidates).toEqual([])
+  })
+})
+
+it('segunda ronda de video conserva uso, admite cambios de etiqueta y no bloquea por licencia', async () => {
+  let clock = 0
+  let label = 'CC BY-NC 4.0'
+  const service = new FreeImagesService({
+    processor,
+    now: () => clock,
+    fetch: fakeFetch((u) =>
+      u.pathname === '/w/api.php'
+        ? Response.json(response([page(1, { ...metadata, LicenseShortName: { value: label } })]))
+        : new Response(new Uint8Array(bytes))
+    )
+  })
+  const first = await service.search({ ...input, uso: 'video' })
+  const second = await service.search({ searchId: first.searchId, queries: ['cafe interior mesas', 'coffee shop tables'] })
+  expect(second.candidates[0].uso).toBe('video')
+  const id = second.candidates[0].id
+  await service.view([id])
+  clock += 121000
+  label = 'All rights reserved'
+  expect((await service.use(id, evaluation)).provenance).toMatchObject({ uso: 'video', license: label, status: 'licencia-registrada' })
+})

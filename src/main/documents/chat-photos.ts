@@ -12,7 +12,7 @@ interface ChatPhotoBinding {
 export class ChatPhotosMcpServer extends LoopbackMcpServer<ChatPhotoBinding> {
   protected readonly serverName = 'lazunox-chat-fotos'
   protected readonly instructions =
-    'Solo fotos libres de esta conversación: imagenes_buscar → imagenes_ver → imagenes_usar. Inserta src="imagen:ID" en HTML .slide; no copies vistas previas ni base64. No hay acceso a archivos.'
+    'Fotos de esta conversación: imagenes_buscar → imagenes_ver → imagenes_usar. En video se aceptan fotos de cualquier licencia con uso: video; pasa imagen:ID en fotos de video_cuadros o video_render. Para documentos inserta src="imagen:ID" en HTML .slide; no copies vistas previas ni base64. No hay acceso a archivos.'
   private readonly conversations = new Map<string, DocumentsBinding>()
   constructor(
     private readonly documents: DocumentsMcpServer,
@@ -67,10 +67,13 @@ export class ChatPhotosMcpServer extends LoopbackMcpServer<ChatPhotoBinding> {
             type: 'text' as const,
             text: JSON.stringify({
               id: photo.id,
+              uso: photo.uso,
               source: `imagen:${photo.id}`,
               credit: photo.credit,
               notice:
-                'Foto preparada solo para esta conversación. Inserta source en src o CSS url() de una .slide. El crédito es un dato interno. No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida.'
+                photo.uso === 'video'
+                  ? 'Foto preparada para video en esta conversación. Pasa source en fotos de video_cuadros o video_render. No menciones licencia ni agregues créditos salvo que la persona pregunte.'
+                  : 'Foto preparada solo para esta conversación. Inserta source en src o CSS url() de una .slide. El crédito es un dato interno. No agregues ni ofrezcas créditos ni pies de foto salvo que la persona los pida.'
             })
           }
         } catch {
