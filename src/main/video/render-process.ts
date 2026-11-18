@@ -1,7 +1,6 @@
 /** Proceso y grupo propios: ningún render usa el entorno, PATH ni herramientas de la tarea. */
 import { spawn, spawnSync } from 'node:child_process'
-import { realpathSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import type { VideoPaths } from '@shared/video'
 import { parseRenderError } from './render-errors'
 
@@ -29,32 +28,6 @@ export interface RenderOutput {
 }
 export type RenderProcess = (job: RenderJob, signal: AbortSignal) => Promise<RenderOutput>
 
-const sb = (p: string): string => JSON.stringify(realpathSync(p))
-export function videoSandboxProfile(job: RenderJob, worker: string): string {
-  const reads = [
-    job.work,
-    dirname(job.paths.chrome),
-    dirname(job.paths.ffmpeg),
-    dirname(job.paths.ffprobe),
-    job.paths.hyperframes,
-    dirname(job.node),
-    dirname(worker)
-  ]
-  return `(version 1)
-(deny default)
-(allow process-fork)
-(allow process-exec (literal ${sb(job.node)}) (literal ${sb(job.paths.chrome)}) (literal ${sb(job.paths.ffmpeg)}) (literal ${sb(job.paths.ffprobe)}))
-(allow signal (target same-sandbox))
-(allow sysctl-read)
-(allow mach-lookup)
-(allow file-read-metadata)
-(allow file-read* (literal "/") ${reads.map((p) => `(subpath ${sb(p)})`).join(' ')} (subpath "/System") (subpath "/usr/lib") (subpath "/Library/Fonts") (subpath "/System/Library/Fonts") (literal "/dev/null") (literal "/dev/urandom") (literal "/dev/random") (literal "/usr/share/icu/icudt78l.dat"))
-(allow file-write* (subpath ${sb(job.work)}) (literal "/dev/null"))
-(allow network-bind (local ip "localhost:*"))
-(allow network-inbound (local ip "localhost:*"))
-(allow network-outbound (remote ip "localhost:*"))`
-}
-
 export function renderEnvironment(work: string, paths: VideoPaths): Record<string, string> {
   return {
     ...(process.platform === 'win32'
@@ -79,22 +52,23 @@ export function renderEnvironment(work: string, paths: VideoPaths): Record<strin
   }
 }
 
-export function createRenderProcess(worker: string): RenderProcess {
+export type RenderLauncher = (job: RenderJob, worker: string, args: string[]) => { cmd: string; args: string[] }
+/** Sin aislamiento propio (Windows): el worker corre con su proxy a la nada. En macOS, index.ts pasa el lanzador de Seatbelt
+ *  (`render-seatbelt.ts`, cargado con import() solo en darwin para que Windows no lleve ese código). */
+export const plainLauncher: RenderLauncher = (job, _worker, args) => ({ cmd: job.node, args })
+
+export function createRenderProcess(worker: string, launcher: RenderLauncher = plainLauncher): RenderProcess {
   return (job, signal) =>
     new Promise((resolve, reject) => {
       signal.throwIfAborted()
-      const args = [worker, JSON.stringify(job)]
-      const child = spawn(
-        process.platform === 'darwin' ? '/usr/bin/sandbox-exec' : job.node,
-        process.platform === 'darwin' ? ['-p', videoSandboxProfile(job, worker), job.node, ...args] : args,
-        {
-          cwd: job.work,
-          env: renderEnvironment(job.work, job.paths),
-          windowsHide: true,
-          detached: process.platform !== 'win32',
-          stdio: ['pipe', 'pipe', 'pipe']
-        }
-      )
+      const launch = launcher(job, worker, [worker, JSON.stringify(job)])
+      const child = spawn(launch.cmd, launch.args, {
+        cwd: job.work,
+        env: renderEnvironment(job.work, job.paths),
+        windowsHide: true,
+        detached: process.platform !== 'win32',
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
       let stdout = ''
       let stderr = ''
       let killed = false

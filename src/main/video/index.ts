@@ -87,6 +87,11 @@ export function videoMcpServer(): VideoMcpServer {
       const scope = chat && session ? await chatPhotosMcp.rootFor(session) : root
       return resolveVideoPhoto(documentPhotoRegistry, scope, origin)
     },
-    render: createRenderProcess(candidates.find(existsSync) ?? candidates[0]!)
+    render: async (job, signal) => {
+      const worker = candidates.find(existsSync) ?? candidates[0]!
+      // Seatbelt solo existe en macOS: su módulo se carga aquí con import() para que Windows no lo lleve en index.js.
+      const launcher = process.platform === 'darwin' ? (await import('./render-seatbelt')).seatbeltLaunch : undefined
+      return createRenderProcess(worker, launcher)(job, signal)
+    }
   }))
 }

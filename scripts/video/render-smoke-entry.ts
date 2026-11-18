@@ -146,7 +146,8 @@ async function main(): Promise<void> {
     render: diagnostic
       ? diagnosticRender
       : async (job, signal) => {
-          const out = await createRenderProcess(worker)(job, signal)
+          const launcher = process.platform === 'darwin' ? (await import('../../src/main/video/render-seatbelt')).seatbeltLaunch : undefined
+          const out = await createRenderProcess(worker, launcher)(job, signal)
           ownPids.push(...(out.ownedPids ?? []))
           return out
         }
