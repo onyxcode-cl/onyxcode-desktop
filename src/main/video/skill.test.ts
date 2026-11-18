@@ -1,15 +1,30 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
 
-it('la skill exige composición legible, transiciones con contenido y verificaciones reales sin prometer audio', () => {
-  const skill = readFileSync(join(__dirname, '../../../resources/opencode/skills/video/SKILL.md'), 'utf8')
-  expect(skill).toContain('cada escena debe tener un elemento visual')
-  expect(skill).toContain('48/80 px; horizontal 1920×1080, 40/72 px')
-  expect(skill).toContain('Nunca dejes un cuadro vacío entre escenas')
-  expect(skill).toContain('no renderices')
-  expect(skill).toContain('no entregues con avisos pendientes sin corregirlos o explicarlos')
-  expect(skill).toContain('no inventes comandos ni comprobaciones')
-  expect(skill).toContain('no ofrezcas ni prometas incorporarlo en otra versión')
-  expect(skill).not.toContain('ofrece trabajar con audio')
+const dir = join(__dirname, '../../../resources/opencode/skills/video')
+const skill = readFileSync(join(dir, 'SKILL.md'), 'utf8')
+
+it('la skill enseña el ciclo con las herramientas reales y reglas de calidad', () => {
+  expect(skill).toMatch(/^---\nname: video\n/)
+  expect(skill).toContain('video_cuadros')
+  expect(skill).toContain('video_render')
+  expect(skill).toContain('no inventes comandos')
+  expect(skill).toContain('Nunca un cuadro vacío')
+  expect(skill).toContain('Cada escena lleva un elemento visual')
+  expect(skill).toContain('No entregues con avisos pendientes sin corregirlos o explicarlos')
+  expect(skill).toContain('Usa solo el audio que entregue la persona')
+  expect(skill).toContain('No pongas créditos ni pies de foto')
+})
+
+it('la skill no manda a la CLI, Studio, servicios en línea ni telemetría', () => {
+  const all = [skill, ...['movimiento', 'estilo', 'historia', 'especificacion', 'cine', 'formato', 'revision', 'sonido', 'overlays'].map((f) =>
+    readFileSync(join(dir, 'references', `${f}.md`), 'utf8')
+  )].join('\n')
+  for (const banned of ['npx hyperframes', 'HeyGen', 'Framey', 'hyperframes-registry', 'telemetr']) expect(all).not.toContain(banned)
+})
+
+it('las guías citadas existen y hay aviso de licencia', () => {
+  for (const ref of skill.matchAll(/references\/([a-z/]+\.md)/g)) expect(existsSync(join(dir, 'references', ref[1]!))).toBe(true)
+  expect(readFileSync(join(dir, 'NOTICE.md'), 'utf8')).toContain('Apache')
 })
