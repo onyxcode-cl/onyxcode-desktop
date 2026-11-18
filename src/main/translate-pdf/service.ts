@@ -254,7 +254,11 @@ export class PdfTranslateService {
     )
     if (r.timedOut) return { ok: false, reason: 'timeout' }
     // 3 = algún texto no cabe aunque se redujo la letra: el PDF se genera igual y se avisa.
-    if (r.code !== 0 && r.code !== 3) return { ok: false, reason: 'failed' }
+    if (r.code !== 0 && r.code !== 3) {
+      // Sin esto el motivo real (p. ej. «DIFERENCIA: falta la parte …») se perdía al descartar el trabajo.
+      console.warn(`[translate] aplicar ${kind} falló (código ${r.code}):`, `${r.stdout ?? ''}\n${r.stderr ?? ''}`.trim().slice(-1500))
+      return { ok: false, reason: 'failed' }
+    }
     try {
       await stat(join(dir, `salida.${kind}`))
       const inf = JSON.parse(await readFile(join(dir, 'informe.json'), 'utf8')) as {

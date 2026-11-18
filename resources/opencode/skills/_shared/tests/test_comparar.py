@@ -38,6 +38,26 @@ class TestWord(unittest.TestCase):
         self.doc(b, ["Title", "Hello", "World"])
         self.assertEqual(ce.comparar(a, b)[0], [])
 
+    def test_parte_huerfana_descartada_es_aviso_y_parte_usada_es_diferencia(self):
+        import zipfile
+        d = tempfile.mkdtemp()
+        a, b = os.path.join(d, "a.docx"), os.path.join(d, "b.docx")
+        self.doc(a, ["Título", "Hola", "Mundo"])
+        self.doc(b, ["Title", "Hello", "World"])
+        # Word deja a veces su papelera interna: una parte que ninguna relación usa (caso real «[trash]/0000.dat»).
+        with zipfile.ZipFile(a, "a") as z:
+            z.writestr("[trash]/0000.dat", b"basura")
+        dif, avisos, _ = ce.comparar(a, b)
+        self.assertEqual(dif, [])
+        self.assertTrue(any("[trash]/0000.dat" in x for x in avisos))
+        # En cambio, si falta una parte que el documento sí usa, sigue siendo una diferencia.
+        c = os.path.join(d, "c.docx")
+        with zipfile.ZipFile(b) as zi, zipfile.ZipFile(c, "w") as zo:
+            for i in zi.infolist():
+                if i.filename != "word/styles.xml":
+                    zo.writestr(i, zi.read(i.filename))
+        self.assertTrue(any("word/styles.xml" in x for x in ce.comparar(b, c)[0]))
+
     def test_detecta_parrafo_de_menos_tabla_distinta_y_formato(self):
         d = tempfile.mkdtemp()
         a = os.path.join(d, "a.docx")

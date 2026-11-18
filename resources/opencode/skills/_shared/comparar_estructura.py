@@ -39,11 +39,45 @@ def _canon(z, nombre):
     return hashlib.sha256(datos).hexdigest()
 
 
+def _partes_referenciadas(z):
+    """Partes alcanzables desde alguna relación (.rels) del paquete, más las fijas del formato. Una parte que nadie referencia (por
+    ejemplo `[trash]/0000.dat`, la papelera interna de Word) no forma parte del documento: las bibliotecas no la vuelven a guardar."""
+    nombres = set(z.namelist())
+    ref = {"[Content_Types].xml"}
+    for rels in (n for n in nombres if n.endswith(".rels")):
+        ref.add(rels)
+        base = rels.replace("_rels/", "").rsplit(".rels", 1)[0]
+        carpeta = base.rsplit("/", 1)[0] + "/" if "/" in base else ""
+        try:
+            raiz = ET.fromstring(z.read(rels))
+        except ET.ParseError:
+            continue
+        for e in raiz:
+            if e.get("TargetMode") == "External" or not e.get("Target"):
+                continue
+            t = e.get("Target")
+            ruta = t.lstrip("/") if t.startswith("/") else carpeta + t
+            partes = []
+            for p in ruta.split("/"):
+                if p == "..":
+                    if partes:
+                        partes.pop()
+                elif p not in ("", "."):
+                    partes.append(p)
+            ref.add("/".join(partes))
+    return ref
+
+
 def _partes_fijas(za, zb, es_texto, dif, avisos):
-    """Misma lista de partes y bytes idénticos en todas las que no son de texto."""
+    """Misma lista de partes y bytes idénticos en todas las que no son de texto. Una parte huérfana del original (sin ninguna relación
+    que la use) que no llega a la copia es solo un aviso: no cambia el documento."""
     na, nb = set(za.namelist()), set(zb.namelist())
+    huerfanas = na - _partes_referenciadas(za)
     for n in sorted(na - nb):
-        dif.append("falta la parte %s" % n)
+        if n in huerfanas and not n.endswith("/"):
+            avisos.append("se descartó la parte %s, que el documento no usaba" % n)
+        else:
+            dif.append("falta la parte %s" % n)
     for n in sorted(nb - na):
         dif.append("sobra la parte %s" % n)
     for n in sorted(na & nb):
