@@ -9,7 +9,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 ### Novedades
 
 - **Videos promocionales animados:** pídele a la IA un video, un reel o una promo con palabras normales y te entrega un MP4 con movimiento de verdad, en vertical, cuadrado u horizontal. Funciona en Chat, Code y Overdrive. La IA revisa los cuadros antes de entregar y la app avisa si un texto se corta, queda tapado o hay pantallas vacías. La primera vez, Lazunox te pide permiso para bajar las piezas de video (unos 190 MB en Mac y 275 MB en Windows).
-- **Fotos y música en los videos:** la IA puede usar fotos de internet y buscar música para tus promos, o usar el audio y las fotos que tú le entregues. Para buscar fotos como en Google Imágenes puedes agregar una clave de Serper o Brave en Ajustes (opcional).
+- **Fotos y música en los videos:** la IA puede usar las fotos y el audio que tú le entregues, y buscar fotos y música por su cuenta. Para buscar fotos como en Google Imágenes puedes agregar una clave de Serper o Brave en Ajustes (opcional). La búsqueda automática de fotos y música llega mejorada en la próxima versión.
 - **Mira los videos sin salir de la app:** los MP4 se ven en el visor y en las tarjetas, con miniatura y duración.
 
 ### Arreglos importantes
