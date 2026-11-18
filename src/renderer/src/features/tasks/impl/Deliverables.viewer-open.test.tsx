@@ -74,3 +74,25 @@ it.each([
   expect(useTasks.getState().viewerRequest?.auto).toBeUndefined()
   expect(mounted.host.textContent).toContain('viewer.ready')
 })
+
+it.each([
+  ['darwin', '/proyecto/promo.mp4'],
+  ['win32', String.raw`C:\Trabajo\promo.mp4`]
+])('%s: MP4 abre desde su miniatura con duración', async (platform, path) => {
+  Object.assign(window, { api: { platform } })
+  h.files = [{ path, relPath: 'promo.mp4', size: 1200000, mtime: Date.now() }]
+  h.cw.mockImplementation(async (channel: string) =>
+    channel === 'tasks:previewFile'
+      ? { video: { duration: 15, poster: 'data:image/jpeg;base64,/9j/2Q==' } }
+      : channel === 'tasks:viewer:open'
+        ? { ok: true, mode: 'classic' }
+        : undefined
+  )
+  useTasks.setState({ viewerRequest: null })
+  mounted = mount(<Workspace />)
+  await act(async () => undefined)
+  expect(mounted.host.textContent).toContain('0:15')
+  click(mounted.q('button[aria-label="viewer.video.preview"]'))
+  await act(async () => undefined)
+  expect(h.cw).toHaveBeenCalledWith('tasks:viewer:open', expect.objectContaining({ path, lang: 'es' }))
+})

@@ -11,7 +11,7 @@
     "resources/wsl/vectors.json": "543803a0550e691174584ca24a6822e6c919cb92b3a2dac58435264a65812836",
     "resources/wsl/wsl.conf": "849bedc8babea162419bb16a2fa9b8ae4ef79d0a3334841682b5c34444797539",
     "src/main/remote/remote-win-flag.ts": "be3115fc09c86406dcca0e3e89d4248a7a2878f04e084ad7d35bdc22e14163a3",
-    "src/main/security/app-protocol.ts": "187c1e0a47a8a12825ee080921911e20ae2262e5c5d2c551e647429a48187991",
+    "src/main/security/app-protocol.ts": "6700fc60ebc0bb09bdc76e8eefe6d6a0db53e5f37721f901e1d93abff8b31cc3",
     "src/main/tasks/backends/wsl-bridge-host.ts": "c2e2cd4ec1dd2ebc219daae91ecb7cd81cd63575b4f48e71a8e815d42cfe5963",
     "src/main/tasks/backends/wsl-it-support.ts": "f927528325ffdd51d9f5437fc4750bd18024793be23c3fed4bfdb48db89e1997",
     "src/main/tasks/backends/wsl-paths.ts": "653cf49ce6be0862778d921815217cbae46ee15b18f49d06b73a68ba3b858a00",
@@ -345,6 +345,15 @@
       "motivo": "V27 ronda 2: documentar la atribución de equipo_* a su sesión; revisión independiente del agente raíz",
       "cambiados": [
         "src/main/tasks/opencode-config.ts"
+      ],
+      "nuevos": [],
+      "desaparecidos": []
+    },
+    {
+      "fecha": "2026-11-18",
+      "motivo": "F8-B335: streaming solo en el esquema aislado del visor para MP4; revisión independiente aprobada con pruebas de rangos y terminación del decodificador",
+      "cambiados": [
+        "src/main/security/app-protocol.ts"
       ],
       "nuevos": [],
       "desaparecidos": []

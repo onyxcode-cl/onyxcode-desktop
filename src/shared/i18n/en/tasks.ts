@@ -100,6 +100,7 @@ export const tasks = {
   'tasks.skill.xlsx': 'Excel',
   'tasks.skill.docx': 'Word',
   'tasks.skill.pptx': 'PowerPoint',
+  'tasks.skill.video': 'Video',
   'tasks.skill.pdf': 'PDF',
   'tasks.skill.other': 'a tool',
   'tasks.tool.bash.doing': 'Running',

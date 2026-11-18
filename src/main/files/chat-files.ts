@@ -49,7 +49,7 @@ const CODE_EXTS = new Set([
 ])
 const HTML_EXTS = new Set(['.html', '.htm'])
 /** Se muestran en el visor nativo (que revisa el tipo por bytes mágicos al abrir). */
-const NATIVE_VIEW_EXTS = new Set(['.pdf', '.docx', '.xlsx', '.pptx'])
+const NATIVE_VIEW_EXTS = new Set(['.pdf', '.docx', '.xlsx', '.pptx', '.mp4'])
 const OFFICE_EXTS = new Set([
   '.pdf',
   '.docx',
@@ -128,6 +128,7 @@ export function classifyChatFile(path: string): ChatFileKind {
 
 /** ¿Se puede mostrar dentro de la app? */
 export function canViewChatFile(path: string): boolean {
+  if (isNativeViewable(path)) return true
   const kind = classifyChatFile(path)
   if (kind === 'blocked' || kind === 'other') return false
   if (kind === 'office') return NATIVE_VIEW_EXTS.has(extname(path).toLowerCase())

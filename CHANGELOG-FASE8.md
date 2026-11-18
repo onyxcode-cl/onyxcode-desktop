@@ -1,5 +1,14 @@
 # Fase 8 — Onboarding y distribución
 
+
+## F8-B335 — Skill video y reproductor MP4 (V32, paso 3)
+
+Skill `video` incluida en Chat, Code y Overdrive y en el catálogo es/en: composición HTML + GSAP para el motor fijado, tres cuadros que mirar antes del render y tres controles finales, máximo tres rondas, formatos y límites explícitos (render actual sin mezcla de audio). No instala paquetes por terminal.
+
+MP4 en las tarjetas y el visor aislado, controles nativos sin autoplay y silenciado al abrir. Extensión y `ftyp` comprobados; tope 500 MiB. Streaming por descriptor y rangos simples/sufijo, 206/416, con revalidación del ámbito y token en cada petición. `stream` solo para el esquema del visor; `media-src` exclusivamente `lazunox-viewer://viewer`. Miniatura del primer cuadro con ffmpeg ya instalado, entrada solo por pipe y sin acceso a red/archivos referenciados; sin piezas conserva duración e icono. Acciones existentes de abrir y mostrar carpeta.
+
+Pruebas: detección, rangos, revocación, CSP, miniaturas, carga de skill y tarjetas; script manual `scripts/video/viewer-smoke.mjs` y E2E `video-visor.e2e.ts`. Validación nativa Windows pendiente (N25); resultados y limitaciones en `docs/VIDEO-VISOR.md` e informe externo del paso 3.
+
 ## F8-B334 — Render de video por herramientas propias (V32, paso 2)
 
 MCP `video` en main, con `video_cuadros` (1–6 PNG a un cuarto por dimensión) y `video_render` (H.264, 30 fps, hasta 120 s, duración por ffprobe, bytes y tres cuadros del MP4). Ataduras de Chat por conversación, Code por proyecto abierto y Overdrive por su proxy MCP existente; el render Windows corre en el host, sin cambios de WSL. Chat puede entregar HTML a cuadros para guardarlo en su carpeta privada. Primero mirar cuadros y corregir; sin skill ni reproductor. Solo recursos locales; este adaptador captura video sin mezcla de audio ni bundling automático de subcomposiciones.

@@ -24,7 +24,7 @@ describe('guía de documentos para Code', () => {
     expect(CODE_DOCS_PROMPT).toContain('documentos_crear')
     expect(CODE_DOCS_PROMPT).toContain('documentos_renderizar')
     expect(CODE_DOCS_PROMPT).toContain('carpeta')
-    for (const skill of ['docx', 'xlsx', 'pptx', 'pdf']) {
+    for (const skill of ['docx', 'xlsx', 'pptx', 'pdf', 'video']) {
       expect(CODE_DOCS_PROMPT).toContain(`\`${skill}\``)
     }
     expect(CODE_DOCS_PROMPT).toContain('solo si tienes')
@@ -39,8 +39,8 @@ describe('guía de documentos para Code', () => {
     expect(CODE_DOCS_PROMPT).toContain('Si falla, conserva el original')
   })
 
-  it('no supera 1.200 caracteres', () => {
-    expect(CODE_DOCS_PROMPT.length).toBeLessThanOrEqual(1200)
+  it('no supera 1.300 caracteres', () => {
+    expect(CODE_DOCS_PROMPT.length).toBeLessThanOrEqual(1300)
   })
 
   it('el nombre de archivo es code-documentos.md', () => {

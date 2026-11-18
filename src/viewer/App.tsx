@@ -10,6 +10,7 @@ import { PdfViewer } from './pdf/PdfViewer'
 import { DocxViewer } from './docx/DocxViewer'
 import { XlsxViewer } from './xlsx/XlsxViewer'
 import { PptxViewer } from './pptx/PptxViewer'
+import { VideoViewer } from './video/VideoViewer'
 import { tv } from './i18n'
 
 function readParams(): ViewerParams | null {
@@ -40,6 +41,7 @@ export function App(): React.JSX.Element {
   if (!params) return <ErrorView lang="es" />
 
   const { kind, lang, token, capture } = params
+  if (kind === 'mp4') return <VideoViewer token={token} lang={lang} />
   if (kind === 'pdf') return <PdfViewer token={token} lang={lang} />
   if (kind === 'docx') return <DocxViewer token={token} lang={lang} capture={capture} />
   if (kind === 'xlsx') return <XlsxViewer token={token} lang={lang} />

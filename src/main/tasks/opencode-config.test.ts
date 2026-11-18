@@ -94,3 +94,9 @@ describe('plugin lazunox-session escrito en la carpeta de config', () => {
     expect(readFileSync(join(dir, 'plugins', 'lazunox-plan-gate.js'), 'utf8')).toBe(planGatePluginSource())
   })
 })
+
+it('la config compartida instala video para Chat, Code y Overdrive', async () => {
+  const { prepareOpencodeConfigDir } = await import('./opencode-config')
+  const dir = prepareOpencodeConfigDir()
+  expect(readFileSync(join(dir, 'skills/video/SKILL.md'), 'utf8')).toContain('name: video')
+})

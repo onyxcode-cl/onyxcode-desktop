@@ -52,3 +52,15 @@ describe('MAX_BYTES', () => {
     expect(MAX_BYTES.xlsx).toBe(25 * 1024 * 1024)
   })
 })
+
+describe('MP4', () => {
+  const good = Uint8Array.from([0, 0, 0, 32, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0])
+  it('exige extensión, ftyp en 4 y una caja mínima no truncada', () => {
+    expect(sniffDocKind('promo.MP4', good)).toBe('mp4')
+    expect(sniffDocKind('promo.mp4', PDF_HEADER)).toBeNull()
+    expect(sniffDocKind('promo.mov', good)).toBeNull()
+    expect(sniffDocKind('promo.mp4', good.subarray(0, 8))).toBeNull()
+    expect(sniffDocKind('promo.mp4', new Uint8Array(32))).toBeNull()
+    expect(MAX_BYTES.mp4).toBe(500 * 1024 * 1024)
+  })
+})

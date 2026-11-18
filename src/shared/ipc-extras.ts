@@ -129,7 +129,13 @@ export type ChatDocOpenResult = { ok: true; bytes?: number } | { ok: false; reas
 /** Tipo de archivo: `blocked` = ejecutable o lanzador (solo «Mostrar en la carpeta»). */
 export type ChatFileKind = 'image' | 'pdf' | 'office' | 'html' | 'markdown' | 'text' | 'code' | 'other' | 'blocked'
 
+export interface VideoFilePreview {
+  duration: number
+  poster?: string
+}
+
 export interface ChatFileInfo {
+  video?: VideoFilePreview
   /** Ruta tal como la nombró el renderer (main revalida en cada acción). */
   path: string
   name: string

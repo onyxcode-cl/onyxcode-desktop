@@ -1,3 +1,5 @@
+import { videoPreview } from '../video/preview'
+import { videoService } from '../video/service'
 import { importPptxAttachment, presentPptxFile } from '../viewer/present-pptx'
 import { showExportSaveDialog } from '../extras/export-dialog'
 import { SlidesHtmlError } from '@shared/slides-html'
@@ -318,7 +320,19 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     const path = await importPptxAttachment(chatDocsRoot(), name, base64)
     return chatFilesInfo(allFileRoots(), [path])[0]!
   })
-  handle(ipcMain, 'extras:chatFile:info', ({ paths }) => chatFilesInfo(allFileRoots(), paths))
+  handle(ipcMain, 'extras:chatFile:info', async ({ paths }) => {
+    const files = chatFilesInfo(allFileRoots(), paths)
+    for (const file of files) {
+      if (!file.canView || !/\.mp4$/i.test(file.name)) continue
+      const pieces = videoService().asegurarPiezasVideo()
+      file.video = await videoPreview(
+        file.path,
+        (p) => assertNativeViewable(allFileRoots(), p),
+        pieces.state === 'ready' ? pieces.paths.ffmpeg : undefined
+      )
+    }
+    return files
+  })
   handle(ipcMain, 'extras:chatFile:read', ({ path }) => readChatFile(allFileRoots(), path))
   handle(ipcMain, 'extras:chatFile:viewNative', async ({ path, lang, theme }) => {
     try {
@@ -335,10 +349,10 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
         })
       }
       installViewerScheme()
-      const head = Buffer.alloc(8)
+      let head = Buffer.alloc(32)
       const fd = openSync(real, 'r')
       try {
-        readSync(fd, head, 0, 8, 0)
+        head = head.subarray(0, readSync(fd, head, 0, 32, 0))
       } finally {
         closeSync(fd)
       }

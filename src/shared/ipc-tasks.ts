@@ -433,6 +433,7 @@ export interface TasksFileReview {
 
 /** Vista previa de un archivo de la carpeta (entregables). */
 export interface TasksFilePreview {
+  video?: import('./ipc-extras').VideoFilePreview
   path: string
   size: number
   /** text = contenido UTF-8 (md, csv, txt…); image = data URL; unsupported = sin vista previa. */

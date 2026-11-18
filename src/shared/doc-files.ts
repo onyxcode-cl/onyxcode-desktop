@@ -6,7 +6,7 @@
  */
 import type { Part } from '@opencode-ai/sdk/v2/client'
 
-const EXT = 'xlsx|xlsm|docx|pptx|pdf|html|htm'
+const EXT = 'xlsx|xlsm|docx|pptx|pdf|html|htm|mp4'
 /** Ruta absoluta (posix o con unidad de Windows) que termina en una extensión de documento; admite espacios y acentos. */
 const ABS_RE = new RegExp(`(?:(?<![\\w/.~:-])\\/|(?<![\\w])[A-Za-z]:[\\\\/])[^\\n"'\`<>|*?]{0,300}?\\.(?:${EXT})(?![\\w])`, 'gi')
 /** Palabra suelta (sin espacios) con extensión de documento: sirve para rutas relativas en la salida de un comando. */
@@ -18,7 +18,8 @@ const WRITE_TOOLS = new Set(['write', 'edit', 'multiedit'])
 const PATCH_TOOLS = new Set(['patch', 'apply_patch'])
 
 /** Los nombres MCP pueden llevar el prefijo del servidor. */
-export const isDocumentTool = (name: string): boolean => /(?:^|_)documentos_(?:crear|renderizar|exportar_pdf|preparar_html)$/.test(name)
+export const isDocumentTool = (name: string): boolean =>
+  /(?:^|_)(?:documentos_(?:crear|renderizar|exportar_pdf|preparar_html)|video_render)$/.test(name)
 
 const isAbs = (p: string): boolean => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p)
 /** Un `.html` solo cuenta como documento si su nombre dice que lo es (el `index.html` de una web no merece tarjeta). */
@@ -105,7 +106,19 @@ export function detectDocFiles({ parts, root }: DocScanInput): string[] {
       // MCP también puede terminar con un mensaje de error: exigimos el marcador de éxito de la herramienta.
       // Crear devuelve la ruta efectiva (incluye subcarpeta y nombre sin colisiones), no se reconstruye desde `nombre`.
       const output = str(p.state.output)
-      if (tool.endsWith('documentos_crear') || tool.endsWith('documentos_exportar_pdf') || tool.endsWith('documentos_preparar_html')) {
+      if (tool.endsWith('video_render')) {
+        try {
+          const result = JSON.parse(output)
+          if (typeof result.ruta === 'string' && typeof result.bytes === 'number' && result.bytes > 0)
+            add(result.ruta, str(input.carpeta) || root)
+        } catch {
+          /* salida fallida */
+        }
+      } else if (
+        tool.endsWith('documentos_crear') ||
+        tool.endsWith('documentos_exportar_pdf') ||
+        tool.endsWith('documentos_preparar_html')
+      ) {
         const created = /(?:^|\n)Documento creado:\s*(.+?)\s*\(\d+(?:[.,]\d+)?\s*KB\)/.exec(output)
         if (created) add(created[1])
       } else if (/^Vista previa:\s*\d+\s/.test(output)) {

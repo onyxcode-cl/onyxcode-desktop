@@ -135,3 +135,24 @@ describe('ChatFilePanel', () => {
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('demasiado grande')
   })
 })
+
+it('MP4 muestra cuadro y duración y abre el visor al pulsar la miniatura', async () => {
+  const file: ChatFileInfo = {
+    path: '/c/promo.mp4',
+    name: 'promo.mp4',
+    bytes: 1200000,
+    kind: 'other',
+    canView: true,
+    canOpen: true,
+    video: { duration: 15, poster: 'data:image/jpeg;base64,/9j/2Q==' }
+  }
+  invoke.mockResolvedValue([file])
+  const seen = vi.fn()
+  setChatFileViewHandler(seen)
+  act(() => root.render(createElement(ChatFiles, { parts: [{ type: 'text', text: '/c/promo.mp4' }] as Part[], done: true })))
+  await flush()
+  expect(host.textContent).toContain('0:15')
+  expect(host.querySelector('img')?.getAttribute('src')).toBe(file.video!.poster)
+  act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Ver video"]')!.click())
+  expect(seen).toHaveBeenCalledWith(file, undefined)
+})

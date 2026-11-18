@@ -1,3 +1,4 @@
+import { VideoThumbnail } from '../../../components/artifacts/VideoThumbnail'
 import { hasHtmlSlides, MAX_ARTIFACT_HTML_BYTES } from '@shared/slides-html'
 /**
  * Entregables de la tarea: lista con iconos, vista previa (md / csv / imágenes / texto / docx),
@@ -11,6 +12,7 @@ import {
   Check,
   Eye,
   FileDown,
+  Film,
   ExternalLink,
   File,
   FileCode,
@@ -65,6 +67,7 @@ export function fileIcon(path: string): { icon: LucideIcon; tone: string } {
   const e = extOf(path)
   if (IMAGE.has(e)) return { icon: FileImage, tone: 'text-violet-500' }
   if (TABLE.has(e) || ['xlsx', 'xls', 'numbers', 'ods'].includes(e)) return { icon: FileSpreadsheet, tone: 'text-emerald-600' }
+  if (e === 'mp4') return { icon: Film, tone: 'text-accent' }
   if (['pptx', 'ppt', 'key', 'odp'].includes(e)) return { icon: Presentation, tone: 'text-orange-500' }
   if (['docx', 'doc', 'pages', 'odt', 'rtf', 'pdf', 'md', 'markdown', 'txt'].includes(e)) {
     return { icon: FileText, tone: e === 'pdf' ? 'text-red-500' : 'text-sky-600' }
@@ -404,6 +407,7 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                       </span>
                     </button>
                   </div>
+                  {viewable && extOf(f.path) === 'mp4' && <VideoThumbnail path={f.path} task onOpen={openView} />}
                   {IMAGE.has(extOf(f.path)) && <ImageThumb file={f} />}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 pl-6">
                     {(viewable || previewable) && (

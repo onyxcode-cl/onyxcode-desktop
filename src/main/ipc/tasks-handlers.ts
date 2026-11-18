@@ -1,3 +1,5 @@
+import { videoPreview } from '../video/preview'
+import { videoService } from '../video/service'
 /**
  * Handlers IPC de Tareas (`tasks:*`), Rutinas (`routines:*`) y computer use (`computer:*`).
  * Contrato en src/shared/ipc-tasks.ts; expuesto en `window.api.tasks`.
@@ -242,7 +244,19 @@ export function registerTasksHandlers(ipcMain: IpcMain, getWindow: () => Browser
   })
   handle('tasks:attachDroppedFile', (req) => attachDroppedFile(req, tasks))
   handle('tasks:reviewFile', ({ path }) => reviewFile(tasks.assertInsideApproved(path)))
-  handle('tasks:previewFile', ({ path, maxBytes }) => previewFile(tasks.assertInsideApproved(path), maxBytes))
+  handle('tasks:previewFile', async ({ path, maxBytes }) => {
+    const real = tasks.assertInsideApproved(path)
+    if (/\.mp4$/i.test(real)) {
+      const pieces = videoService().asegurarPiezasVideo()
+      const video = await videoPreview(
+        real,
+        (p) => tasks.assertInsideApproved(p),
+        pieces.state === 'ready' ? pieces.paths.ffmpeg : undefined
+      )
+      return { path, size: 0, kind: 'unsupported' as const, video }
+    }
+    return previewFile(real, maxBytes)
+  })
 
   // ── Proyecto (por carpeta) y memoria ──
   handle('tasks:project:get', ({ folder }) => projects.get(tasks.assertInsideApproved(folder)))

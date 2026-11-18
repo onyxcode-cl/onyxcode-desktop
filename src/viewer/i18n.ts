@@ -6,6 +6,8 @@
 export type ViewerLang = 'es' | 'en'
 
 const ES_STRINGS = {
+  videoLabel: 'Video MP4',
+  videoFailed: 'No se pudo reproducir el video. Ábrelo con el programa del sistema.',
   loading: 'Cargando…',
   slideIncomplete:
     'Esta lámina contiene elementos que el visor simplificado no puede representar. Ábrela con su programa original para revisarla.',
@@ -16,6 +18,8 @@ const ES_STRINGS = {
 const STRINGS: Record<ViewerLang, Record<keyof typeof ES_STRINGS, string>> = {
   es: ES_STRINGS,
   en: {
+    videoLabel: 'MP4 video',
+    videoFailed: 'Could not play the video. Open it with the system app.',
     loading: 'Loading…',
     slideIncomplete: 'This slide contains elements the simplified viewer cannot render. Open it with its original program to review it.',
     errorTitle: 'Couldn’t show the document',

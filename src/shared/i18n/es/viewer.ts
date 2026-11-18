@@ -5,6 +5,9 @@
  * importar el sistema de i18n completo.
  */
 export const viewer = {
+  'viewer.video.ready': 'Video listo. Pulsa reproducir para verlo.',
+  'viewer.video.kind': 'MP4',
+  'viewer.video.preview': 'Ver video',
   'viewer.pptx.present': 'Presentar',
   'viewer.pptx.preview': 'Ver',
   'viewer.pptx.busy': 'Preparando…',

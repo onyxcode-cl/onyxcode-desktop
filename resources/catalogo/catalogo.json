@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "catalogVersion": 3,
-  "updatedAt": "2026-10-17",
+  "updatedAt": "2026-11-18",
   "groups": [
     {
       "id": "correo-calendario",
@@ -135,6 +135,24 @@
       ],
       "verifiedAt": "2026-10-01",
       "verification": "Skill incluida en la app (resources/opencode/skills/soporte-remoto); la prueba del catálogo comprueba que existe y que su SKILL.md es válido.",
+      "reviewed": true
+    },
+    {
+      "id": "video",
+      "title": "Videos cortos",
+      "publisher": "Lazunox",
+      "icon": "presentation",
+      "description": "Crear videos, reels y promos en MP4, revisando sus cuadros antes de entregar.",
+      "permissions": [
+        "Leer la composición y crear MP4 y cuadros en las carpetas que autorices",
+        "Usar las piezas de video de la app; su descarga requiere consentimiento"
+      ],
+      "examples": [
+        "Haz un reel de 15 segundos para mi panadería",
+        "Crea una promo horizontal con estas fotos"
+      ],
+      "verifiedAt": "2026-11-18",
+      "verification": "Skill incluida en resources/opencode/skills/video; pruebas de catálogo, herramientas y carga en Chat, Code y Overdrive. Windows real pendiente.",
       "reviewed": true
     }
   ],

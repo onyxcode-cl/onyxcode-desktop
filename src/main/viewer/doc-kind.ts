@@ -11,6 +11,7 @@ export type { DocKind }
 
 /** Tope de tamaño (bytes) por tipo, según el plan del visor: PDF/PPTX hasta 100 MB, DOCX/XLSX hasta 25 MB. */
 export const MAX_BYTES: Record<DocKind, number> = {
+  mp4: 500 * 1024 * 1024,
   pdf: 100 * 1024 * 1024,
   pptx: 100 * 1024 * 1024,
   docx: 25 * 1024 * 1024,
@@ -37,6 +38,12 @@ function extensionOf(filePath: string): string {
  */
 export function sniffDocKind(filePath: string, header: Uint8Array): DocKind | null {
   const ext = extensionOf(filePath)
+  if (ext === 'mp4')
+    return header.length >= 16 &&
+      startsWith(header.subarray(4), [0x66, 0x74, 0x79, 0x70]) &&
+      new DataView(header.buffer, header.byteOffset, header.byteLength).getUint32(0) >= 16
+      ? 'mp4'
+      : null
   if (ext === 'pdf') return startsWith(header, PDF_MAGIC) ? 'pdf' : null
   if (ext === 'docx') return startsWith(header, ZIP_MAGIC) ? 'docx' : null
   if (ext === 'xlsx') return startsWith(header, ZIP_MAGIC) ? 'xlsx' : null

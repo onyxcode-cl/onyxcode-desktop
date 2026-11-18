@@ -1168,6 +1168,20 @@
       ],
       "nota": "Render del lado host con piezas fijadas, ataduras por token y proxy MCP de Overdrive sin cambios de WSL. Windows usa sandbox Chrome, proxy cerrado salvo puerto propio, bloqueo de solicitudes y CSP; no se afirma probado hasta ejecutar la composición hostil en el PC. Mac: diagnóstico real Node, perfil Seatbelt pendiente por sandbox_apply EPERM; Electron también pendiente. Instrucciones y límites en docs/VIDEO-RENDER.md.",
       "comprobacion": null
+    },
+    {
+      "id": "N25",
+      "funcion": "Skill video y visor MP4 con streaming por rangos (F8-B335)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "resources/opencode/skills/video/SKILL.md:1",
+        "src/main/viewer/scheme.test.ts:1",
+        "src/main/video/preview.test.ts:1",
+        "e2e/specs/video-visor.e2e.ts:1",
+        "docs/VIDEO-VISOR.md:1"
+      ],
+      "nota": "Mismo HTML video y esquema Electron en Mac y Windows. 500 MiB, ftyp, Range y validación de carpeta por petición; miniatura del primer cuadro sin red. Dobles Windows y pasos de prueba preparados; Windows real pendiente. El diagnóstico Node no valida protocolo/sesión Electron.",
+      "comprobacion": null
     }
   ]
 }

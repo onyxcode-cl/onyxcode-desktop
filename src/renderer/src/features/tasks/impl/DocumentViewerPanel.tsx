@@ -6,7 +6,7 @@ import { PptxFileActions } from '../../../components/artifacts/PptxFileActions'
  * posiciona la vista — lo que se VE adentro lo pinta `src/viewer/` (otro proceso).
  */
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, ExternalLink, Loader2, X } from 'lucide-react'
+import { AlertCircle, ExternalLink, FolderOpen, Loader2, X } from 'lucide-react'
 import { getLang } from '@shared/i18n'
 import { useT } from '../../../lib/i18n'
 import { cw, onTasks } from './bridge'
@@ -95,6 +95,17 @@ export function DocumentViewerPanel({
           {baseName(path)}
         </span>
         {/\.pptx$/i.test(path) && <PptxFileActions source={{ kind: 'tasks', path }} />}
+        {/\.mp4$/i.test(path) && (
+          <button
+            type="button"
+            onClick={() => void cw('tasks:reveal', { path })}
+            title={t('tasks.deliv.finder')}
+            aria-label={t('tasks.deliv.finder')}
+            className="no-drag rounded-md p-1 text-muted hover:bg-hover"
+          >
+            <FolderOpen size={14} />
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -110,7 +121,9 @@ export function DocumentViewerPanel({
             ? t('viewer.loading')
             : state.kind === 'error'
               ? t('merr.viewer.openFailed')
-              : t(state.mode === 'classic' ? 'viewer.fallback' : 'viewer.ready')}
+              : /\.mp4$/i.test(path)
+                ? t('viewer.video.ready')
+                : t(state.mode === 'classic' ? 'viewer.fallback' : 'viewer.ready')}
         </span>
         <button
           type="button"

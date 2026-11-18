@@ -7,7 +7,7 @@ import { realpathSync, statSync } from 'node:fs'
 import { basename, extname, isAbsolute, sep } from 'node:path'
 import { assertSafeToOpen } from '../tasks/open-policy'
 
-export const DOC_FILE_EXTS = ['.xlsx', '.xlsm', '.docx', '.pptx', '.pdf', '.html', '.htm'] as const
+export const DOC_FILE_EXTS = ['.xlsx', '.xlsm', '.docx', '.pptx', '.pdf', '.html', '.htm', '.mp4'] as const
 const EXTS = new Set<string>(DOC_FILE_EXTS)
 
 export interface DocFileInfo {

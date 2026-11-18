@@ -15,7 +15,7 @@ export interface ViewerParams {
   capture?: true
 }
 
-const KINDS: DocKind[] = ['pdf', 'docx', 'xlsx', 'pptx']
+const KINDS: DocKind[] = ['pdf', 'docx', 'xlsx', 'pptx', 'mp4']
 
 function isDocKind(v: string | null): v is DocKind {
   return !!v && (KINDS as string[]).includes(v)

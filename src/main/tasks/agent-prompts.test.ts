@@ -300,3 +300,15 @@ describe('instrucción de apps del modo unificado', () => {
     }
   })
 })
+
+it('video está empaquetada y los tres modos la descubren con la config común', () => {
+  const skill = readFileSync(join(__dirname, '../../../resources/opencode/skills/video/SKILL.md'), 'utf8')
+  expect(skill).toContain('name: video')
+  expect(skill).toContain('video_cuadros')
+  expect(skill).toContain('video_render')
+  expect(read('tasks')).toContain('skill `video`')
+  const code = readFileSync(join(__dirname, '../opencode/code-docs-prompt.ts'), 'utf8')
+  const chat = readFileSync(join(__dirname, '../opencode/config.ts'), 'utf8')
+  expect(code).toContain('video_cuadros')
+  expect(chat).toContain('skill `video`')
+})

@@ -33,7 +33,7 @@ export function extOf(p: string): string {
 export function isViewerExt(p: string): boolean {
   return VIEWER_EXTS.has(extOf(p))
 }
-const VIEWER_EXTS = new Set(['pdf', 'docx', 'xlsx', 'pptx'])
+const VIEWER_EXTS = new Set(['pdf', 'docx', 'xlsx', 'pptx', 'mp4'])
 
 /** Archivos de trabajo del agente (spec.json de las skills, la carpeta interna `.lazunox`, temporales de Office): no son «lo que dejé». */
 export function isHelperFile(f: { relPath: string; path: string }): boolean {
@@ -217,7 +217,7 @@ function fileLabel(p: string): string {
 }
 
 /** Herramientas de documentos que el agente puede cargar, con nombre llano para quien no es técnico. */
-const SKILL_NAMES = new Set(['xlsx', 'docx', 'pptx', 'pdf'])
+const SKILL_NAMES = new Set(['xlsx', 'docx', 'pptx', 'pdf', 'video'])
 
 /** Descripción amigable de una llamada a herramienta: "Leyendo informe.md". */
 /** Nombre legible de las herramientas propias de la app, según el estado del paso (el que falló no debe decir «documentos crear»); el resto, sin guiones bajos. */

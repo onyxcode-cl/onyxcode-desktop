@@ -3,6 +3,12 @@ import type { Messages } from '../index'
 import type { personalizacionCatalogo as es } from '../es/personalizacionCatalogo'
 
 export const personalizacionCatalogo = {
+  'pers.cat.skill.video.title': 'Short videos',
+  'pers.cat.skill.video.description': 'Create MP4 videos, reels and promos, reviewing frames before delivery.',
+  'pers.cat.skill.video.perm1': 'Read the composition and create MP4 and frames in folders you allow',
+  'pers.cat.skill.video.perm2': 'Use the app’s video components; downloading them requires consent',
+  'pers.cat.skill.video.ex1': 'Make a 15-second reel for my bakery',
+  'pers.cat.skill.video.ex2': 'Create a horizontal promo with these photos',
   'pers.cat.skill.docx.title': 'Word documents',
   'pers.cat.skill.docx.description': 'Create, read and fix Word documents (.docx): reports, letters, minutes and contracts.',
   'pers.cat.skill.docx.perm1': 'Read and create Word files in the folders you allow',

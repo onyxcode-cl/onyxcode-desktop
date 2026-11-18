@@ -1,3 +1,4 @@
+import { VideoThumbnail } from '../../../components/artifacts/VideoThumbnail'
 /**
  * Tarjetas de archivo del modo Code: un documento (Excel, Word, PowerPoint, PDF, HTML) que el asistente dejó en disco.
  * Reutiliza la miniatura del Chat y su panel para «Ver»; «Abrir» usa el programa del sistema. Solo escritorio.
@@ -5,7 +6,7 @@
  * al completarse, el resto al terminar el turno. El visor vuelve a validar por los canales existentes del Chat.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Eye, FileSpreadsheet, FileText, FolderOpen, Presentation, SquareArrowOutUpRight } from 'lucide-react'
+import { Eye, Film, FileSpreadsheet, FileText, FolderOpen, Presentation, SquareArrowOutUpRight } from 'lucide-react'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import { getLang } from '@shared/i18n'
 import type { CodeApi, DocFileInfo } from '@shared/ipc-code'
@@ -73,7 +74,7 @@ async function viewFile(cwd: string, path: string, isCurrent: () => boolean): Pr
 function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.Element {
   const t = useT()
   const type = fileCardType(file.name)
-  const Icon = ICON[type]
+  const Icon = /\.mp4$/i.test(file.name) ? Film : ICON[type]
   const [error, setError] = useState(false)
   const [viewError, setViewError] = useState(false)
   const viewRequest = useRef(0)
@@ -83,8 +84,8 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
     },
     [cwd, file.path]
   )
-  const canView = platformCaps().docViewer && /\.(pdf|docx|xlsx|pptx|html|htm)$/i.test(file.name)
-  const kind = t(KIND_KEY[type])
+  const canView = platformCaps().docViewer && /\.(pdf|docx|xlsx|pptx|mp4|html|htm)$/i.test(file.name)
+  const kind = t(/\.mp4$/i.test(file.name) ? 'viewer.video.kind' : KIND_KEY[type])
   const meta = [kind, formatFileSize(file.bytes, getLang())].filter(Boolean).join(' · ')
   const actions = fileCardActions(nativeCode('dialogs')?.files, cwd, file.path)
   const btn =
@@ -96,7 +97,23 @@ function FileCard({ cwd, file }: { cwd: string; file: DocFileInfo }): React.JSX.
       data-file-card={type}
       className="my-1 flex w-full max-w-[34rem] items-center gap-3 rounded-card border border-border bg-elevated p-2.5"
     >
-      <DocThumb type={type} />
+      {/\.mp4$/i.test(file.name) ? (
+        <VideoThumbnail
+          path={file.path}
+          onOpen={() => {
+            const request = ++viewRequest.current
+            void viewFile(cwd, file.path, () => viewRequest.current === request)
+              .then((ok) => {
+                if (viewRequest.current === request) setViewError(!ok)
+              })
+              .catch(() => {
+                if (viewRequest.current === request) setViewError(true)
+              })
+          }}
+        />
+      ) : (
+        <DocThumb type={type} />
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="shrink-0" style={{ color: TONE[type] }}>

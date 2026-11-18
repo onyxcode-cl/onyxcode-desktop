@@ -7,7 +7,7 @@
 import type { Part } from '@opencode-ai/sdk/v2/client'
 
 const EXT =
-  'png|jpe?g|gif|webp|bmp|avif|svg|pdf|docx?|xlsx?|xlsm|pptx?|odt|ods|odp|rtf|html?|md|markdown|txt|log|csv|tsv|json|ya?ml|toml|xml|js|mjs|ts|tsx|jsx|css|sql|py|sh|bat|cmd|ps1|command|exe'
+  'mp4|png|jpe?g|gif|webp|bmp|avif|svg|pdf|docx?|xlsx?|xlsm|pptx?|odt|ods|odp|rtf|html?|md|markdown|txt|log|csv|tsv|json|ya?ml|toml|xml|js|mjs|ts|tsx|jsx|css|sql|py|sh|bat|cmd|ps1|command|exe'
 /** Ruta absoluta (posix o con unidad de Windows) que termina en una extensión conocida; admite espacios y acentos. */
 const ABS_RE = new RegExp(`(?:(?<![\\w/.~:-])\\/|(?<![\\w])[A-Za-z]:[\\\\/])[^\\n"'\`<>|*?]{0,300}?\\.(?:${EXT})(?![\\w])`, 'gi')
 const EXT_AT_END = new RegExp(`\\.(?:${EXT})$`, 'i')

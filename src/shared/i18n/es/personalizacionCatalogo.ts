@@ -1,5 +1,11 @@
 /** Textos de las fichas de Personalización (habilidades y conectores): copia en español de resources/catalogo/catalogo.json; una prueba vigila que coincidan. */
 export const personalizacionCatalogo = {
+  'pers.cat.skill.video.title': 'Videos cortos',
+  'pers.cat.skill.video.description': 'Crear videos, reels y promos en MP4, revisando sus cuadros antes de entregar.',
+  'pers.cat.skill.video.perm1': 'Leer la composición y crear MP4 y cuadros en las carpetas que autorices',
+  'pers.cat.skill.video.perm2': 'Usar las piezas de video de la app; su descarga requiere consentimiento',
+  'pers.cat.skill.video.ex1': 'Haz un reel de 15 segundos para mi panadería',
+  'pers.cat.skill.video.ex2': 'Crea una promo horizontal con estas fotos',
   'pers.cat.skill.docx.title': 'Documentos de Word',
   'pers.cat.skill.docx.description': 'Crear, leer y corregir documentos de Word (.docx): informes, cartas, actas y contratos.',
   'pers.cat.skill.docx.perm1': 'Leer y crear archivos de Word en las carpetas que autorices',

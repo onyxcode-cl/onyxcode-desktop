@@ -372,3 +372,5 @@ app lo descarta igual si no pasó por la tarjeta). En vez de eso:
 - Si un comando falla por permisos del sandbox, no insistas: explica la limitación y ofrece
   una alternativa.
 - Si el usuario rechaza un permiso, no lo vuelvas a pedir para lo mismo: adapta el plan.
+
+Para un video, reel, promo o animación corta, carga la skill `video` y usa `video_cuadros` y `video_render` siguiendo su ciclo de revisión.

@@ -17,17 +17,17 @@ import { recordProblem } from '../diagnostics/problem-log'
 import { windowOfSender } from './sender-window'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
-const HEADER_BYTES = 8
+const HEADER_BYTES = 32
 
 function readHeader(path: string): Uint8Array {
   const head = Buffer.alloc(HEADER_BYTES)
   const fd = openSync(path, 'r')
   try {
-    readSync(fd, head, 0, HEADER_BYTES, 0)
+    const n = readSync(fd, head, 0, HEADER_BYTES, 0)
+    return head.subarray(0, n)
   } finally {
     closeSync(fd)
   }
-  return head
 }
 
 let tasksValidatorRegistered = false

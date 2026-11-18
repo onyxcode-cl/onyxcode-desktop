@@ -204,3 +204,9 @@ describe('herramientas de documentos en Código', () => {
     ).toEqual(['/fuera/a.pdf'])
   })
 })
+
+it.each(['/proyecto', 'C:\\Proyecto'])('detecta ruta MP4 de video_render completado en %s', (root) => {
+  const ruta = root.startsWith('C:') ? `${root}\\promo.mp4` : `${root}/promo.mp4`
+  expect(detectDocFiles({ parts: [tool('video_render', {}, JSON.stringify({ ruta, bytes: 12345, duracion: 15 }))], root })).toEqual([ruta])
+  expect(detectDocFiles({ parts: [tool('video_render', {}, 'Faltan piezas de video')], root })).toEqual([])
+})

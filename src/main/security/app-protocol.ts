@@ -78,7 +78,7 @@ export function registerAppSchemePrivileges(): void {
     },
     {
       scheme: VIEWER_SCHEME,
-      privileges: { standard: true, secure: true, supportFetchAPI: true }
+      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
     }
   ])
 }

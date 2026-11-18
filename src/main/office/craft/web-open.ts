@@ -14,7 +14,7 @@ import { WEB_OPEN_TIMEOUT_MS, WEB_RENDER_TIMEOUT_MS, withTimeout } from './web-t
 import { MAX_WEB_FILE_BYTES, attachWeb, closeWeb, isWebActive, openWebDoc } from './web-view'
 
 /** Programa de ArtCraft para los formatos Office; PDF se lee en el visor aislado PDF.js. */
-export const WEB_PROGRAM: Record<Exclude<DocKind, 'pdf'>, string> = { xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft' }
+export const WEB_PROGRAM: Record<Exclude<DocKind, 'pdf' | 'mp4'>, string> = { xlsx: 'gridcraft', pptx: 'deckcraft', docx: 'wordcraft' }
 
 interface Last {
   win: BrowserWindow
@@ -57,7 +57,7 @@ export function useClassicViewer(): void {
  */
 export async function openInCraftWeb(kind: DocKind, file: string, title: string): Promise<boolean> {
   const generation = ++openGeneration
-  if (kind === 'pdf') {
+  if (kind === 'pdf' || kind === 'mp4') {
     // Compartido por Chat, Tareas y Código. Cancela cualquier apertura Craft anterior.
     closeWeb()
     applyPanel()

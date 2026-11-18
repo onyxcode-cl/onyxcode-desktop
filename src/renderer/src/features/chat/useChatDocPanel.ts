@@ -225,7 +225,7 @@ export function useChatDocPanel(sessionId: string | null, entries: MessageEntry[
       if (!extras) return
       const fail = (mode: 'native' | 'inline', error: NonNullable<ChatFileView['error']>): void =>
         setFile({ info, mode, status: 'error', content: null, error })
-      const native = /\.(pdf|docx|xlsx|pptx)$/i.test(info.name)
+      const native = /\.(pdf|docx|xlsx|pptx|mp4)$/i.test(info.name)
       lastRawTextRef.current = null
       setProblem(null)
       setDoc(null)

@@ -9,12 +9,14 @@
  *   bytes (nunca confía en que la validación de apertura siga vigente — la carpeta pudo
  *   desaprobarse entretanto), se aplica el tope de tamaño por tipo y se cierra con CSP estricta.
  */
-import { readFile, realpath, stat } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { open, readFile, realpath, stat } from 'node:fs/promises'
+import { Readable } from 'node:stream'
 import { extname, join, normalize, sep } from 'node:path'
 import { VIEWER_SCHEME } from '../security/app-protocol'
 import { viewerSession } from './session'
 import { resolveToken } from './tokens'
-import { MAX_BYTES, type DocKind } from './doc-kind'
+import { MAX_BYTES, sniffDocKind, type DocKind } from './doc-kind'
 
 const VIEWER_HOST = 'viewer'
 
@@ -27,7 +29,7 @@ export const VIEWER_CSP = [
   "img-src 'self' data: blob:",
   "font-src 'self' data: blob:",
   "connect-src 'self'",
-  "media-src 'none'",
+  'media-src lazunox-viewer://viewer',
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'none'",
@@ -36,6 +38,7 @@ export const VIEWER_CSP = [
 ].join('; ')
 
 const DOC_MIME: Record<DocKind, string> = {
+  mp4: 'video/mp4',
   pdf: 'application/pdf',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -100,7 +103,7 @@ async function serveStatic(pathname: string): Promise<Response> {
  * Sirve el documento de un token: revalida la ruta con `assertPath` (p. ej.
  * `tasks.assertInsideApproved`) justo antes de leer, nunca confía en la validación de apertura.
  */
-async function serveDoc(token: string, assertPath: (path: string) => string): Promise<Response> {
+async function serveDoc(token: string, request: Request, assertPath: (path: string) => string): Promise<Response> {
   const payload = resolveToken(token)
   if (!payload) return notFound()
   let real: string
@@ -112,11 +115,61 @@ async function serveDoc(token: string, assertPath: (path: string) => string): Pr
   try {
     const info = await stat(real)
     if (info.size > MAX_BYTES[payload.kind]) return new Response('Payload too large', { status: 413, headers: baseHeaders() })
+    if (payload.kind === 'mp4') return await serveVideo(real, request)
     const body = await readFile(real)
     return new Response(body, { status: 200, headers: { ...baseHeaders(), 'content-type': DOC_MIME[payload.kind] } })
   } catch {
     return notFound()
   }
+}
+
+/** Un solo rango por petición, acotado por el tamaño real del descriptor abierto. */
+async function serveVideo(path: string, request: Request): Promise<Response> {
+  const file = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
+  let streaming = false
+  try {
+    const info = await file.stat()
+    const current = await stat(path)
+    if (!info.isFile() || (await realpath(path)) !== path || current.dev !== info.dev || current.ino !== info.ino) return notFound()
+    if (info.size > MAX_BYTES.mp4) return new Response('Payload too large', { status: 413, headers: baseHeaders() })
+    const head = Buffer.alloc(Math.min(32, info.size))
+    const { bytesRead } = await file.read(head, 0, head.length, 0)
+    if (sniffDocKind(path, head.subarray(0, bytesRead)) !== 'mp4') return notFound()
+    const range = request.headers.get('range')
+    const bounds = range === null ? { start: 0, end: info.size - 1 } : videoRange(range, info.size)
+    const headers = { ...baseHeaders(), 'content-type': 'video/mp4', 'accept-ranges': 'bytes' }
+    if (!bounds) return new Response(null, { status: 416, headers: { ...headers, 'content-range': `bytes */${info.size}` } })
+    const { start, end } = bounds
+    const stream = file.createReadStream({ start, end, autoClose: true, highWaterMark: 64 * 1024 })
+    const abort = (): void => {
+      stream.destroy()
+    }
+    request.signal.addEventListener('abort', abort, { once: true })
+    stream.once('close', () => request.signal.removeEventListener('abort', abort))
+    if (request.signal.aborted) stream.destroy()
+    streaming = true
+    return new Response(Readable.toWeb(stream) as ReadableStream<Uint8Array>, {
+      status: range === null ? 200 : 206,
+      headers: {
+        ...headers,
+        'content-length': String(end - start + 1),
+        ...(range === null ? {} : { 'content-range': `bytes ${start}-${end}/${info.size}` })
+      }
+    })
+  } finally {
+    if (!streaming) await file.close()
+  }
+}
+
+export function videoRange(value: string, size: number): { start: number; end: number } | null {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(value)
+  if (!match || (!match[1] && !match[2])) return null
+  const a = Number(match[1]),
+    b = Number(match[2])
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) return null
+  const start = match[1] ? a : Math.max(0, size - b)
+  const end = match[1] && match[2] ? Math.min(b, size - 1) : size - 1
+  return start < 0 || start >= size || end < start || (!match[1] && b === 0) ? null : { start, end }
 }
 
 /**
@@ -160,7 +213,7 @@ export function installViewerScheme(): void {
     }
     if (url.host !== VIEWER_HOST || request.method !== 'GET') return notFound()
     const doc = /^\/doc\/([0-9a-f]{64})$/.exec(url.pathname)
-    if (doc) return serveDoc(doc[1], assertPathRegistered)
+    if (doc) return serveDoc(doc[1], request, assertPathRegistered)
     return serveStatic(url.pathname)
   })
 }

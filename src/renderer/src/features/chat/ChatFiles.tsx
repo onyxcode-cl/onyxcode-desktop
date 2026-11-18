@@ -1,3 +1,4 @@
+import { VideoThumbnail } from '../../components/artifacts/VideoThumbnail'
 import { PptxFileActions } from '../../components/artifacts/PptxFileActions'
 /**
  * Tarjetas de los archivos que la IA creó o mencionó en una respuesta del Chat (documentos, hojas, presentaciones, PDF, imágenes,
@@ -44,8 +45,8 @@ export const KIND_KEY = {
 } as const satisfies Record<ChatFileKind, string>
 
 /** Etiqueta del tipo: los PDF se llaman PDF aunque main los clasifique como documento. */
-export function kindLabelKey(info: ChatFileInfo): (typeof KIND_KEY)[ChatFileKind] {
-  return /\.pdf$/i.test(info.name) ? KIND_KEY.pdf : KIND_KEY[info.kind]
+export function kindLabelKey(info: ChatFileInfo): (typeof KIND_KEY)[ChatFileKind] | 'viewer.video.kind' {
+  return /\.mp4$/i.test(info.name) ? 'viewer.video.kind' : /\.pdf$/i.test(info.name) ? KIND_KEY.pdf : KIND_KEY[info.kind]
 }
 
 /** Acciones de un archivo (en main se revalida la ruta cada vez). */
@@ -108,9 +109,13 @@ function FileCard({ file }: { file: ChatFileInfo }): React.JSX.Element {
       data-chat-file={file.kind}
       className="my-1 flex w-full max-w-[34rem] items-start gap-3 rounded-card border border-border bg-elevated p-2.5"
     >
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-code text-accent">
-        <Icon size={18} aria-hidden="true" />
-      </span>
+      {file.canView && /\.mp4$/i.test(file.name) ? (
+        <VideoThumbnail path={file.path} preview={file.video} onOpen={() => viewChatFile(file)} />
+      ) : (
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-code text-accent">
+          <Icon size={18} aria-hidden="true" />
+        </span>
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-sm font-semibold text-fg" title={file.path}>
           {file.name}

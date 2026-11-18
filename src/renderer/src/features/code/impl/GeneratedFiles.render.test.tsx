@@ -297,3 +297,17 @@ describe('tarjeta de documentos de Código y panel compartido', () => {
     expect(host.querySelector('main')?.parentElement?.className).toContain('hidden')
   })
 })
+
+it.each(['darwin', 'win32'])('%s: MP4 aparece al completar video_render y su miniatura abre el visor', async (platform) => {
+  if (platform === 'win32') cwd = String.raw`C:\Proyecto`
+  file = { path: platform === 'win32' ? String.raw`C:\Proyecto\promo.mp4` : '/proyecto/promo.mp4', name: 'promo.mp4', bytes: 1200000 }
+  info = { ...file, kind: 'other', canView: true, canOpen: true, video: { duration: 15, poster: 'data:image/jpeg;base64,/9j/2Q==' } }
+  surface(platform, true)
+  render([tool('video_render', {}, JSON.stringify({ ruta: file.path, duracion: 15, bytes: file.bytes }))])
+  await flush()
+  expect(host.textContent).toContain('0:15')
+  expect(host.querySelector('img')?.getAttribute('src')).toBe(info.video!.poster)
+  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Ver video"]')!.click())
+  await flush()
+  expect(invoke).toHaveBeenCalledWith('extras:chatFile:viewNative', expect.objectContaining({ path: file.path }))
+})

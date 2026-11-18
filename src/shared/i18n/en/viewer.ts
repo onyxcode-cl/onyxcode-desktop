@@ -2,6 +2,9 @@ import type { Messages } from '../index'
 import type { viewer as es } from '../es/viewer'
 
 export const viewer = {
+  'viewer.video.ready': 'Video ready. Press play to watch.',
+  'viewer.video.kind': 'MP4',
+  'viewer.video.preview': 'View video',
   'viewer.pptx.present': 'Present',
   'viewer.pptx.preview': 'View',
   'viewer.pptx.busy': 'Preparing…',
