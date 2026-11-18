@@ -5,6 +5,7 @@
 import { runRealDoctor } from '../doctor/service'
 import { craftService } from '../office/craft/service'
 import { runtimesService } from '../runtimes/service'
+import { videoService } from '../video/service'
 import type { TasksIpcContext, TasksSubmodule } from './tasks-handle'
 
 export function registerTasksCraftHandlers(ctx: TasksIpcContext): TasksSubmodule {
@@ -24,6 +25,10 @@ export function registerTasksCraftHandlers(ctx: TasksIpcContext): TasksSubmodule
     runtimesService().cancel()
   })
   handle('runtimes:remove', () => runtimesService().remove())
+  handle('video:status', () => videoService().estado())
+  handle('video:install', () => videoService().instalar())
+  handle('video:cancel', () => videoService().cancelar())
+  handle('video:remove', () => videoService().quitar())
   handle('doctor:run', () => runRealDoctor(ctx.computer))
   return {}
 }

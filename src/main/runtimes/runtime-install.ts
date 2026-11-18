@@ -287,14 +287,15 @@ async function installOne(
 export async function installRuntimes(
   d: RuntimeDeps,
   onProgress: (p: RuntimeProgress) => void = () => undefined,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  ids: readonly RuntimeId[] = RUNTIME_IDS
 ): Promise<RuntimesStatus> {
   if (!d.pin || RUNTIME_IDS.every((id) => !assetOf(d, id))) throw new RuntimeError('unsupported', keyOf(d))
   await mkdir(d.runtimesDir, { recursive: true, mode: 0o700 }).catch((e: unknown) => {
     throw toRuntimeError(e)
   })
   const before = runtimesStatus(d)
-  const todo = RUNTIME_IDS.filter((id) => {
+  const todo = ids.filter((id) => {
     const s = id === 'node' ? before.node : before.uv
     return s.state === 'missing' || s.state === 'broken'
   })

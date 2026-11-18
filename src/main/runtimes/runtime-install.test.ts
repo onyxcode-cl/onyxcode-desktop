@@ -175,6 +175,18 @@ describe.skipIf(!posixOnly)('instalación de Node.js y uv (con archivos de menti
     expect(seen).toEqual([])
   })
 
+  it('video prepara solo Node; Ajustes todavía puede completar uv después (F8-B333)', async () => {
+    const seen: string[] = []
+    const d = mk({ fetch: fakeFetch({ node: nodeTgz, uv: uvTgz }, seen) })
+    const st = await installRuntimes(d, undefined, undefined, ['node'])
+    expect(st.node.state).toBe('installed')
+    expect(st.uv.state).toBe('missing')
+    expect(seen.every((u) => new URL(u).hostname === 'nodejs.org')).toBe(true)
+    seen.length = 0
+    expect((await installRuntimes(d)).ready).toBe(true)
+    expect(seen.map((u) => new URL(u).hostname)).not.toContain('nodejs.org')
+  })
+
   it('repara una instalación dañada (ejecutable truncado) y no repite lo que está bien', async () => {
     const seen: string[] = []
     const d = mk({ fetch: fakeFetch({ node: nodeTgz, uv: uvTgz }, seen) })

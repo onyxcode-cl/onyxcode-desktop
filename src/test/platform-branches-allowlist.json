@@ -424,6 +424,9 @@
     "src/main/util/paths.ts": {
       "win32": 3
     },
+    "src/main/video/install.ts": {
+      "win32": 1
+    },
     "src/main/window-glass.ts": {
       "darwin": 3,
       "win32": 2

@@ -337,6 +337,24 @@ export const settings = {
   'settings.craft.installed': 'Installed · version {version}',
   'settings.craft.error.generic': 'Could not install. Try again.',
   // Node.js and uv of the app (F8-B195)
+  'settings.video.title': 'Video components',
+  'settings.video.name': 'Chrome, ffmpeg and HyperFrames',
+  'settings.video.desc': 'Optional programs to prepare videos. They stay in the app folder and you can remove them at any time.',
+  'settings.video.chrome': 'Chrome Headless Shell comes from Google Chrome for Testing.',
+  'settings.video.gpl': 'ffmpeg is free software licensed under GPL v3 or later.',
+  'settings.video.source': 'Source code',
+  'settings.video.license': 'License',
+  'settings.video.ready': 'Ready · video components installed',
+  'settings.video.missing': 'Video components are missing.',
+  'settings.video.install': 'Install video components (≈ {mb} MB)',
+  'settings.video.phase.node': 'Preparing Node.js',
+  'settings.video.phase.npm': 'Installing HyperFrames and GSAP',
+  'settings.video.consent':
+    'About {mb} MB will be downloaded: Google Chrome for Testing, ffmpeg and ffprobe (GPL), HyperFrames and GSAP from npm, and Node.js from nodejs.org if missing. Files are verified before use. No administrator password is needed.',
+  'settings.video.confirm': 'Install video components',
+  'settings.video.removeTitle': 'Remove video components?',
+  'settings.video.removeBody':
+    'Chrome, ffmpeg, ffprobe and HyperFrames will be removed from the app folder. Node.js stays because other features use it too. You can reinstall the components at any time.',
   'settings.runtimes.title': 'Node.js and uv (local connectors)',
   'settings.runtimes.name': 'Node.js and uv',
   'settings.runtimes.desc':

@@ -333,6 +333,24 @@ export const settings = {
   'settings.craft.installed': 'Instalado · versión {version}',
   'settings.craft.error.generic': 'No se pudo instalar. Inténtalo de nuevo.',
   // Node.js y uv de la app (F8-B195)
+  'settings.video.title': 'Piezas de video',
+  'settings.video.name': 'Chrome, ffmpeg y HyperFrames',
+  'settings.video.desc': 'Programas opcionales para preparar videos. Se guardan en la carpeta de la app y puedes quitarlos cuando quieras.',
+  'settings.video.chrome': 'Chrome Headless Shell viene de Chrome for Testing de Google.',
+  'settings.video.gpl': 'ffmpeg es software libre con licencia GPL v3 o posterior.',
+  'settings.video.source': 'Código fuente',
+  'settings.video.license': 'Licencia',
+  'settings.video.ready': 'Listo · piezas de video instaladas',
+  'settings.video.missing': 'Faltan piezas de video.',
+  'settings.video.install': 'Instalar piezas de video (≈ {mb} MB)',
+  'settings.video.phase.node': 'Preparando Node.js',
+  'settings.video.phase.npm': 'Instalando HyperFrames y GSAP',
+  'settings.video.consent':
+    'Se descargarán aproximadamente {mb} MB: Chrome for Testing de Google, ffmpeg y ffprobe (GPL), HyperFrames y GSAP desde npm y Node.js desde nodejs.org si falta. Los archivos se verifican antes de usarlos. No se necesita contraseña de administrador.',
+  'settings.video.confirm': 'Instalar piezas de video',
+  'settings.video.removeTitle': '¿Quitar las piezas de video?',
+  'settings.video.removeBody':
+    'Se borran Chrome, ffmpeg, ffprobe y HyperFrames de la carpeta de la app. Node.js se conserva porque también lo usan otras funciones. Puedes reinstalar las piezas cuando quieras.',
   'settings.runtimes.title': 'Node.js y uv (conectores locales)',
   'settings.runtimes.name': 'Node.js y uv',
   'settings.runtimes.desc':

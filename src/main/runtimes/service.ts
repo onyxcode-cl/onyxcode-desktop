@@ -10,7 +10,7 @@ import { runtimesOffered as offeredOnPlatform, type RuntimesInstallResult, type 
 import { describeError, recordProblem } from '../diagnostics/problem-log'
 import { createManualFetch, type NetLike } from '../remote/tunnel/manual-fetch'
 import { unpacked } from '../util/asar'
-import { parseRuntimePin, type RuntimePin } from './runtime-pin'
+import { parseRuntimePin, RUNTIME_IDS, type RuntimeId, type RuntimePin } from './runtime-pin'
 import {
   appRuntimeBins,
   cleanStaleTemp,
@@ -20,6 +20,7 @@ import {
   toRuntimeError,
   type AppRuntimeBins,
   type RuntimeDeps,
+  type RuntimeProgress,
   type RuntimeState
 } from './runtime-install'
 
@@ -41,6 +42,7 @@ const uiState = (s: RuntimeState): 'installed' | 'missing' | 'broken' | 'unsuppo
 class RuntimesService {
   private installing: AbortController | null = null
   private installPromise: Promise<RuntimesInstallResult> | null = null
+  private installIds: readonly RuntimeId[] = []
   private progress: RuntimesSnapshot['progress']
   private error: string | undefined
   private pin: RuntimePin | null | undefined
@@ -88,13 +90,42 @@ class RuntimesService {
   }
 
   installNow(): Promise<RuntimesInstallResult> {
-    if (this.installPromise) return this.installPromise
+    return this.installSelected(RUNTIME_IDS)
+  }
+
+  /** F8-B333: video necesita solo Node, sin descargar uv. Comparte el cerrojo con Ajustes. */
+  installNodeNow(onProgress: (p: RuntimeProgress) => void, signal?: AbortSignal): Promise<RuntimesInstallResult> {
+    return this.installSelected(['node'], onProgress, signal)
+  }
+
+  private installSelected(
+    ids: readonly RuntimeId[],
+    onProgress?: (p: RuntimeProgress) => void,
+    signal?: AbortSignal
+  ): Promise<RuntimesInstallResult> {
+    if (this.installPromise) {
+      if (ids.every((id) => this.installIds.includes(id))) return this.installPromise
+      // Si video está preparando solo Node, el pedido completo de Ajustes instala uv después.
+      return this.installPromise.then((result) => (result.ok ? this.installSelected(ids, onProgress, signal) : result))
+    }
     this.error = undefined
     const ac = new AbortController()
+    const cancel = (): void => ac.abort()
+    signal?.addEventListener('abort', cancel, { once: true })
+    if (signal?.aborted) ac.abort()
     this.installing = ac
+    this.installIds = ids
     const promise = (async (): Promise<RuntimesInstallResult> => {
       try {
-        await installRuntimes(this.deps(), (p) => (this.progress = { phase: p.phase, done: p.done, total: p.total }), ac.signal)
+        await installRuntimes(
+          this.deps(),
+          (p) => {
+            this.progress = { phase: p.phase, done: p.done, total: p.total }
+            onProgress?.(p)
+          },
+          ac.signal,
+          ids
+        )
         return { ok: true }
       } catch (e) {
         const code = toRuntimeError(e).code
@@ -111,8 +142,10 @@ class RuntimesService {
         }
         return { ok: false, error: code, message: e instanceof Error ? e.message : String(e) }
       } finally {
+        signal?.removeEventListener('abort', cancel)
         this.installing = null
         this.installPromise = null
+        this.installIds = []
         this.progress = undefined
       }
     })()

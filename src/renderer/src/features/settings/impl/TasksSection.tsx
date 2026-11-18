@@ -38,6 +38,7 @@ import {
 import { Badge, Card, NOTICE_DESK, Row, Select, SectionHeader, TextInput, Toggle } from './ui'
 import { CraftComponentCard } from './CraftComponentCard'
 import { RuntimesCard } from './RuntimesCard'
+import { VideoCard } from './VideoCard'
 import { errText } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { isMacPlatform, isWindowsPlatform, platformCaps } from '../../../lib/platform'
@@ -932,6 +933,7 @@ export function TasksSection(): React.JSX.Element {
       </Group>
       <CraftComponentCard />
       <RuntimesCard />
+      <VideoCard />
     </div>
   )
 }

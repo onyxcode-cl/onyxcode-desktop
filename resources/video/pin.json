@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "fetchedAt": "2026-11-17",
+  "chrome": {
+    "version": "158.0.8127.36",
+    "channel": "stable",
+    "releasedAt": "2026-11-17",
+    "license": "See LICENSE.headless_shell",
+    "source": "https://googlechromelabs.github.io/chrome-for-testing/",
+    "assets": {
+      "darwin-arm64": {
+        "url": "https://storage.googleapis.com/chrome-for-testing-public/158.0.8127.36/mac-arm64/chrome-headless-shell-mac-arm64.zip",
+        "format": "zip",
+        "size": 105057133,
+        "sha256": "c24d40a3786322ff3a5e3ac6eed162226cbaf07ebe468715407827226b0f8897",
+        "strip": 1,
+        "into": "",
+        "bin": "chrome-headless-shell",
+        "unpackedMax": 250000000,
+        "maxEntries": 500
+      },
+      "win32-x64": {
+        "url": "https://storage.googleapis.com/chrome-for-testing-public/158.0.8127.36/win64/chrome-headless-shell-win64.zip",
+        "format": "zip",
+        "size": 127876264,
+        "sha256": "9655950dfeddf565561cd64cfe8ee716ccd6482fa3798503b632219efc65a71e",
+        "strip": 1,
+        "into": "",
+        "bin": "chrome-headless-shell.exe",
+        "unpackedMax": 350000000,
+        "maxEntries": 500
+      }
+    }
+  },
+  "ffmpeg": {
+    "version": "9.0.2",
+    "channel": "stable",
+    "releasedAt": "2026-09-20",
+    "license": "GPL-3.0-or-later",
+    "source": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+    "assets": {
+      "darwin-arm64": {
+        "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+        "format": "zip",
+        "size": 28395699,
+        "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+        "strip": 0,
+        "into": "",
+        "bin": "ffmpeg",
+        "unpackedMax": 80000000,
+        "maxEntries": 10
+      },
+      "win32-x64": {
+        "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip",
+        "format": "zip",
+        "size": 114768076,
+        "sha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+        "strip": 1,
+        "into": "",
+        "bin": "bin/ffmpeg.exe",
+        "unpackedMax": 400000000,
+        "maxEntries": 100
+      }
+    }
+  },
+  "ffprobe": {
+    "version": "9.0.2",
+    "channel": "stable",
+    "releasedAt": "2026-09-20",
+    "license": "GPL-3.0-or-later",
+    "source": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz",
+    "assets": {
+      "darwin-arm64": {
+        "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
+        "format": "zip",
+        "size": 28317701,
+        "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+        "strip": 0,
+        "into": "",
+        "bin": "ffprobe",
+        "unpackedMax": 80000000,
+        "maxEntries": 10
+      }
+    }
+  },
+  "hyperframes": {
+    "version": "0.9.64",
+    "gsap": "3.15.0",
+    "packageSha256": "d1af5a3e50e0ba8fe7c1cd7bab56ca5c4378f8173aff4599157c0b47d1d75501",
+    "lockSha256": "17f93e99b2e5eb1ca21475d7a992c8233691a558c203e4deae9522fe0738b515",
+    "downloadBytes": {
+      "darwin-arm64": 31054543,
+      "win32-x64": 31572496
+    },
+    "unpackedMax": 250000000,
+    "maxEntries": 15000
+  }
+}

@@ -1,5 +1,11 @@
 # Fase 8 — Onboarding y distribución
 
+## F8-B333 — Piezas de video bajo demanda (V32, paso 1)
+
+Ajustes → Overdrive incorpora una tarjeta junto a runtimes para instalar, cancelar y quitar Chrome Headless Shell 158.0.8127.36, ffmpeg/ffprobe 9.0.2 e HyperFrames 0.9.64 con GSAP 3.15.0. El aviso de tamaño incluye Node si falta y exige consentimiento. Mac arm64 y Windows x64 usan ZIP fijados con tamaño y SHA-256; HyperFrames usa el lock copiado de la prueba, integridad SHA-512 y `npm ci --ignore-scripts`, sin instalaciones globales. Se reutilizan la descarga y la extracción segura de runtimes. Cada pieza se publica completa en `userData/video`; Quitar conserva Node. Se guardan licencias y configuración de ffmpeg y se muestran enlaces a GPL y fuentes.
+
+El servicio entrega estado y rutas absolutas; `asegurarPiezasVideo()` solo informa si falta descargar. IPC sin argumentos, solo ventana principal y clase X para el celular. No se agregan herramientas de IA, render de producto, cambios de WSL ni visor. Pruebas: `main/video/*.test.ts`, `main/runtimes/runtime-install.test.ts`, `main/ipc/video-handlers.test.ts`, `VideoCard.test.tsx` y `e2e/specs/video-piezas.e2e.ts`; verificación real de descargas con `scripts/video/verify-pin.mjs --download`. Render real Mac de 15 s mediante el instalador bajo Node: H.264, 1080×1920, 450 cuadros, decodificación completa. Ejecución desde Electron pendiente porque el binario de desarrollo aborta antes de JavaScript en este aislamiento; Windows solo probado con plataforma inyectada y archivos falsos. Comandos manuales y límites en `docs/VIDEO-PIEZAS.md`.
+
 ## F8-B1 — Detección y validación del binario de OpenCode; ajustes `onboarded` y `opencodeBin`
 
 Canales IPC nuevos (solo ventana principal; esquema en `main/ipc/schemas.ts`, allowlist del preload por `IPC_INVOKE_CHANNELS`):

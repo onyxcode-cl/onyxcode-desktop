@@ -118,6 +118,7 @@ module.exports = {
     'resources/craft/**',
     // Pin de Node.js y uv para los conectores locales (descarga bajo demanda): lo lee `main/runtimes/service.ts` desde app.asar.unpacked.
     'resources/runtimes/**',
+    'resources/video/**',
     // Servidor MCP del shell en segundo plano (`npm run build:shell-bg` → un .cjs autocontenido): lo ejecuta el Node incluido de la app
     // como script suelto, y Node no lee un script de dentro de un .asar. Lo resuelve `main/opencode/shell-bg-bundled.ts`.
     'resources/shell-bg/**',

@@ -1140,6 +1140,19 @@
       ],
       "nota": "F8-B322: Code en Mac/Windows y Overdrive en Mac agregan al final las carpetas verificadas. Seatbelt solo permite leer esas versiones. Overdrive Windows conserva las herramientas Linux de la distro; no recibe rutas del host. Pruebas con plataforma inyectada y procesos dobles; Windows real pendiente.",
       "comprobacion": null
+    },
+    {
+      "id": "N23",
+      "funcion": "Piezas de video bajo demanda (F8-B333)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/video/install.win.test.ts:1",
+        "src/main/video/service.ts:1",
+        "src/renderer/src/features/settings/impl/VideoCard.tsx:1",
+        "scripts/video/smoke.mjs:1"
+      ],
+      "nota": "Mismo consentimiento, pin, verificación y carpeta propia en Mac arm64 y Windows x64. ZIP nativo Windows con ffmpeg y ffprobe; npm-cli.js mediante Node sin shell ni scripts. Mac: instalación y render real con Node y userData temporal; Electron aborta en el aislamiento antes de JavaScript. Windows: solo dobles con plataforma inyectada, pendiente ejecución real según docs/VIDEO-PIEZAS.md. Sin WSL ni herramientas de render para la IA.",
+      "comprobacion": null
     }
   ]
 }
