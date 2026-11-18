@@ -40,7 +40,8 @@ import banco_documentos as banco  # noqa: E402
 import normalizar_paquete  # noqa: E402
 
 
-ESTRUCTURALES = {"duplicadas", "barras", "mayusculas", "rota"}
+# En Windows `zipfile` ya convierte `\\` en `/` al leer los nombres: ahí «barras» no es una rareza de estructura
+ESTRUCTURALES = {"duplicadas", "mayusculas", "rota"} | ({"barras"} if os.sep == "/" else set())
 
 
 def correr(skill, script, *args):
