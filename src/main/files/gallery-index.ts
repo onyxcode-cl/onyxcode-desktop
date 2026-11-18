@@ -29,6 +29,7 @@ export interface GalleryEntry {
 }
 
 const BY_EXT: Record<string, GalleryType> = {
+  '.mp4': 'video',
   '.docx': 'document',
   '.doc': 'document',
   '.odt': 'document',
@@ -75,7 +76,7 @@ export function galleryKey(path: string, win: boolean): string {
   return win ? path.replace(/\//g, '\\').toLowerCase() : path
 }
 
-const TYPES = new Set<string>(['document', 'sheet', 'slides', 'web', 'pdf', 'image', 'text'])
+const TYPES = new Set<string>(['document', 'sheet', 'slides', 'web', 'pdf', 'image', 'text', 'video'])
 
 function cleanEntry(raw: unknown): GalleryEntry | null {
   if (!raw || typeof raw !== 'object') return null

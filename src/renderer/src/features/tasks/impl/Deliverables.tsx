@@ -407,7 +407,9 @@ export function DeliverableList({ files, onChanged }: { files: TasksDeliverable[
                       </span>
                     </button>
                   </div>
-                  {viewable && extOf(f.path) === 'mp4' && <VideoThumbnail path={f.path} task onOpen={openView} />}
+                  {viewable && extOf(f.path) === 'mp4' && (
+                    <VideoThumbnail key={`${f.path}:${f.mtime}`} path={f.path} task onOpen={openView} />
+                  )}
                   {IMAGE.has(extOf(f.path)) && <ImageThumb file={f} />}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 pl-6">
                     {(viewable || previewable) && (

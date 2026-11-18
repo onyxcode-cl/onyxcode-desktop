@@ -4,8 +4,9 @@ import { lstat, mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { VideoEnsureResult } from '@shared/video'
 import { LoopbackMcpServer, type McpToolResult } from '../util/loopback-mcp'
-import { resolveCodeRoot, type DocumentsBinding } from '../documents/mcp-server'
+import { resolveCodeRoot, rewriteCreated, type DocumentsBinding } from '../documents/mcp-server'
 import { cleanName, writeNewFile } from '../documents/output-path'
+import { safeWriteFile } from '../tasks/safe-write'
 import { copyComposition } from './composition'
 import type { RenderOutput, RenderProcess } from './render-process'
 
@@ -13,6 +14,7 @@ export const VIDEO_TIMEOUT_MS = 300_000
 export const VIDEO_RESPONSE_TIMEOUT_MS = 960_000 // consentimiento + instalación + render
 export const VIDEO_FORMATS = { vertical: [1080, 1920], cuadrado: [1080, 1080], horizontal: [1920, 1080] } as const
 export interface VideoBinding extends DocumentsBinding {
+  request?: (root: string, session: string, chat: boolean) => Promise<string | null>
   chat?: { activeSession: () => Promise<string | null>; directory: string }
 }
 export interface VideoRenderDeps {
@@ -32,6 +34,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
   protected readonly instructions =
     'Compón un index.html con una línea de tiempo de HyperFrames y recursos locales. Primero pide cuadros, MIRA todas las imágenes, corrige y recién después pide el MP4. Declara data-width, data-height y data-duration en el elemento data-composition-id. Sin internet. En Chat envía html en cuadros; se guarda solo en esa conversación.'
   private readonly completion = new Map<VideoBinding, Promise<void>>()
+  private readonly outputs = new WeakMap<VideoBinding, Map<string, { abs: string; rel: string; sha: string }>>()
   private readonly running = new Map<VideoBinding, AbortController>()
   constructor(private readonly deps: VideoRenderDeps) {
     super('video-mcp')
@@ -167,7 +170,11 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         if (!id) return fail('No se pudo determinar una única conversación de Chat activa.')
         await mkdir(binding.chat.directory, { recursive: true, mode: 0o700 })
         if ((await lstat(binding.chat.directory)).isSymbolicLink()) return fail('La carpeta de video no puede ser un enlace.')
-        root = join(await realpath(binding.chat.directory), createHash('sha256').update(id).digest('hex'))
+        root = join(await realpath(binding.chat.directory), 'videos', createHash('sha256').update(id).digest('hex'))
+        // Comprueba cada padre antes de crear la carpeta por conversación.
+        const videos = join(await realpath(binding.chat.directory), 'videos')
+        await mkdir(videos, { recursive: true, mode: 0o700 })
+        if ((await lstat(videos)).isSymbolicLink()) return fail('La carpeta de video no puede ser un enlace.')
         await mkdir(root, { mode: 0o700, recursive: true })
         if ((await lstat(root)).isSymbolicLink()) return fail('La carpeta de video no puede ser un enlace.')
         session = async () => binding.chat!.activeSession()
@@ -179,6 +186,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       } else if (args.carpeta !== undefined) return fail('La carpeta la determina la app; no pases carpeta.')
       const initial = session ? await session(root) : null
       if (session && (!initial || (chatId && initial !== chatId))) return fail('La conversación o tarea ya no está activa.')
+      const request = initial ? await binding.request?.(root, initial, chat).catch(() => null) : null
       let polling = false
       if (session)
         timer = setInterval(() => {
@@ -202,7 +210,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         ac.signal.throwIfAborted()
         const written = await writeNewFile(root, {
           name: 'index',
-          subfolder: `composicion-${randomUUID()}`,
+          subfolder: `.lazunox/trabajo/video/composicion-${randomUUID()}`,
           ext: 'html',
           bytes: Buffer.from(args.html),
           maxBytes: 512 * 1024
@@ -237,13 +245,17 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       )
       ac.signal.throwIfAborted()
       if (result.images.length !== times.length || (name === 'render') !== !!result.mp4) throw new Error('El render quedó incompleto.')
+      if (session && (await session(root)) !== initial) return fail('La conversación o tarea ya no está activa.')
+      const finalRequest = initial ? await binding.request?.(root, initial, chat).catch(() => null) : null
+      if (request && finalRequest !== request) return fail('El pedido cambió mientras se preparaba el video.')
       const output = await this.publish(
         root,
         work,
         result,
         name === 'render' ? (args.nombre as string) : 'cuadro',
         binding,
-        chat,
+        initial && request && request === finalRequest ? JSON.stringify([initial, request]) : null,
+        String(composition),
         ac.signal
       )
       return {
@@ -279,7 +291,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     result: RenderOutput,
     name: string,
     binding: VideoBinding,
-    chat: boolean,
+    request: string | null,
+    composition: string,
     signal: AbortSignal
   ): Promise<{ info: Record<string, unknown>; images: Buffer[] }> {
     // El worker solo entrega estos nombres fijos dentro de SU temporal. No se siguen rutas de su JSON.
@@ -292,15 +305,29 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       throw new Error('El render devolvió archivos no admitidos.')
     const paths: string[] = []
     const images: Buffer[] = []
-    const path = (p: string, rel: string): string => (chat ? rel : (binding.toAgentPath?.(p) ?? p))
+    const path = (p: string): string => binding.toAgentPath?.(p) ?? p
+    let outputs = this.outputs.get(binding)
+    if (!outputs) this.outputs.set(binding, (outputs = new Map()))
+    const write = async (name: string, ext: string, bytes: Buffer, maxBytes: number, subfolder?: string) => {
+      const key = JSON.stringify([root, request, cleanName(name), ext, subfolder])
+      const previous = request ? outputs!.get(key) : undefined
+      const written =
+        (previous && rewriteCreated(root, previous, bytes, maxBytes)) ||
+        (await writeNewFile(root, { name, ext, bytes, maxBytes, subfolder }))
+      if (outputs!.size >= 256) outputs!.delete(outputs!.keys().next().value!)
+      outputs!.set(key, { ...written, sha: createHash('sha256').update(bytes).digest('hex') })
+      return written
+    }
+    const frames = `.lazunox/trabajo/video/${createHash('sha256').update(composition).digest('hex').slice(0, 16)}`
     for (const [i, file] of result.images.entries()) {
       signal.throwIfAborted()
       const st = await lstat(file)
       if (!st.isFile() || st.isSymbolicLink() || st.size > 2 * 1024 * 1024) throw new Error('El cuadro supera el límite de tamaño.')
       const bytes = await readFile(file)
       if (bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') throw new Error('El cuadro no es PNG.')
-      const written = await writeNewFile(root, { name: `${cleanName(name)}-cuadro-${i + 1}`, ext: 'png', bytes, maxBytes: 2 * 1024 * 1024 })
-      paths.push(path(written.abs, written.rel))
+      const filePath = join(root, frames, `cuadro-${i + 1}.png`)
+      safeWriteFile(root, filePath, bytes, { replace: true, refuseLinkTarget: true })
+      paths.push(path(filePath))
       images.push(bytes)
     }
     const info: Record<string, unknown> = { cuadros: paths }
@@ -317,8 +344,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       )
         throw new Error('El MP4 supera los límites.')
       const bytes = await readFile(result.mp4)
-      const written = await writeNewFile(root, { name, ext: 'mp4', bytes, maxBytes: 256 * 1024 * 1024 })
-      info.ruta = path(written.abs, written.rel)
+      const written = await write(name, 'mp4', bytes, 256 * 1024 * 1024)
+      info.ruta = path(written.abs)
       info.bytes = written.bytes
     }
     return { info, images }

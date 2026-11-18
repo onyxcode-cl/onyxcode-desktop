@@ -102,6 +102,8 @@ module.exports = {
     '!resources/python-bin/**',
     // El ripgrep propio (scripts/fetch-ripgrep.mjs) va por extraResources, nunca dentro del .asar.
     '!resources/ripgrep-bin/**',
+    // Video viaja completo fuera del asar: el filtro de files excluye package-lock.json.
+    '!resources/video/**',
     // Cachés de bytecode de Python (las genera cualquier ejecución local de las skills): basura, nunca en el paquete.
     '!**/__pycache__/**',
     '!**/*.pyc'
@@ -118,7 +120,6 @@ module.exports = {
     'resources/craft/**',
     // Pin de Node.js y uv para los conectores locales (descarga bajo demanda): lo lee `main/runtimes/service.ts` desde app.asar.unpacked.
     'resources/runtimes/**',
-    'resources/video/**',
     // Servidor MCP del shell en segundo plano (`npm run build:shell-bg` → un .cjs autocontenido): lo ejecuta el Node incluido de la app
     // como script suelto, y Node no lee un script de dentro de un .asar. Lo resuelve `main/opencode/shell-bg-bundled.ts`.
     'resources/shell-bg/**',
@@ -135,6 +136,7 @@ module.exports = {
   // Recursos comunes. Los de macOS (helper, lanzador, actualizador, OpenCode darwin) van en mac.extraResources y
   // el OpenCode de Windows en win.extraResources: cada plataforma empaqueta solo lo suyo.
   extraResources: [
+    { from: 'resources/video', to: 'app.asar.unpacked/resources/video', filter: ['**/*'] },
     // Avisos de terceros: los propios (MIT de OpenCode, Bun/JavaScriptCore, Electron) y los de Electron/Chromium,
     // que electron-builder no deja dentro del .app → Contents/Resources/THIRD_PARTY_NOTICES.md y licenses/electron/
     {
@@ -323,6 +325,15 @@ module.exports = {
     installerLanguages: ['es_ES', 'en_US'],
     multiLanguageInstaller: true,
     artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
+  },
+  afterPack: async (context) => {
+    const { checkVideoBundle } = await import('./scripts/check-video-bundle.mjs')
+    const path = require('node:path')
+    const res =
+      context.electronPlatformName === 'darwin'
+        ? path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, 'Contents', 'Resources')
+        : path.join(context.appOutDir, 'resources')
+    checkVideoBundle(res, context.electronPlatformName)
   },
   afterSign: selfSigned ? 'build/after-sign-self-signed.js' : 'build/notarize.js',
   // Notariza y graba el .dmg (el afterSign solo cubre el .app). No hace nada sin Developer ID + credenciales.

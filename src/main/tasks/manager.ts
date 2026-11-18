@@ -1569,8 +1569,13 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     let realVideoToken: string | null = null
     if (mcpProxy && !fullAccess) {
       try {
+        const { videoRequest } = await import('../video/request')
         const real = await videoMcpServer().configFor({
           folder,
+          request: async (_root, session) => {
+            const handle = this.servers.get(key)?.handle
+            return handle ? videoRequest(handle, handle.paths.directory, session) : null
+          },
           toAgentPath: this.win ? (p: string) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined,
           session: async () => {
             const handle = this.servers.get(key)?.handle

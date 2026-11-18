@@ -49,6 +49,7 @@ describe('tipos', () => {
     expect(galleryTypeOf('/a/b/pres.pptx')).toBe('slides')
     expect(galleryTypeOf('D:\\x\\index.HTML')).toBe('web')
     expect(galleryTypeOf('/a/x.pdf')).toBe('pdf')
+    expect(galleryTypeOf('D:\\Videos\\Promo.MP4')).toBe('video')
     expect(galleryTypeOf('/a/x.png')).toBe('image')
     expect(galleryTypeOf('/a/x.md')).toBe('text')
     for (const bad of ['/a/x.exe', '/a/x.sh', '/a/x.ts', '/a/x.json', '/a/sin-extension', '/a/.docx']) expect(galleryTypeOf(bad)).toBeNull()
@@ -112,6 +113,17 @@ describe('índice', () => {
 })
 
 describe('galería: validación y estados', () => {
+  it('encuentra el MP4 de Chat, persiste su tipo y permite verlo sin indexar cuadros de trabajo', () => {
+    const dir = join(chat, 'videos', 'sesion')
+    mkdirSync(join(dir, '.lazunox', 'trabajo', 'video', 'promo'), { recursive: true })
+    const file = join(dir, 'promo.mp4')
+    writeFileSync(file, 'MP4')
+    writeFileSync(join(dir, '.lazunox/trabajo/video/promo/cuadro-1.png'), 'PNG')
+    const { g } = make()
+    expect(g.list().items).toEqual([expect.objectContaining({ path: file, type: 'video', canView: true })])
+    expect(new GalleryIndex(indexFile, false).get(file)?.type).toBe('video')
+    expect(resolveChatFile([chat], file).canView).toBe(true)
+  })
   it('registra un archivo del Chat y lo lista; el borrado sale como «no encontrado» y se quita', () => {
     const { g } = make()
     const f = join(chat, 'carta.docx')

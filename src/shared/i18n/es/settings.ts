@@ -341,6 +341,8 @@ export const settings = {
   'settings.video.consentInstall': 'Instalar ({mb} MB)',
   'settings.video.consentTitle': '¿Instalar las piezas para crear videos?',
   'settings.video.later': 'Ahora no',
+  'settings.video.error.io':
+    'No se pudo leer o guardar un archivo local de las piezas de video. Reinstala o actualiza Lazunox si falta un archivo incluido.',
   'settings.video.title': 'Piezas de video',
   'settings.video.name': 'Chrome, ffmpeg y HyperFrames',
   'settings.video.desc': 'Programas opcionales para preparar videos. Se guardan en la carpeta de la app y puedes quitarlos cuando quieras.',

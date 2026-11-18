@@ -206,6 +206,13 @@ async function main() {
   } else {
     record('dependencias de node_modules completas dentro de app.asar', false, 'falta Contents/Resources/app.asar')
   }
+  try {
+    const { checkVideoBundle } = await import('./check-video-bundle.mjs')
+    checkVideoBundle(res, 'darwin')
+    record('pin y lockfile de video incluidos y verificados', true, 'presentes')
+  } catch (e) {
+    record('pin y lockfile de video incluidos y verificados', false, String(e.message))
+  }
   // El pin de ArtCraft (descarga bajo demanda) debe viajar dentro del paquete: sin él la bienvenida y Ajustes no sabrían qué descargar.
   const craftPin = join(res, 'app.asar.unpacked/resources/craft/pin.json')
   const craftOk = existsSync(craftPin) && /"deckcraft"/.test(readFileSync(craftPin, 'utf8'))

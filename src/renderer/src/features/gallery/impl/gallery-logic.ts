@@ -15,7 +15,7 @@ export interface GalleryFilters {
 export const NO_FILTERS: GalleryFilters = { type: 'all', date: 'any', origin: 'all', query: '' }
 
 /** Los filtros por tipo que se ofrecen (Imágenes y Texto solo aparecen si hay algo de ese tipo). */
-export const TYPE_ORDER: readonly GalleryType[] = ['document', 'sheet', 'slides', 'web', 'pdf', 'image', 'text']
+export const TYPE_ORDER: readonly GalleryType[] = ['document', 'sheet', 'slides', 'web', 'pdf', 'image', 'text', 'video']
 const ALWAYS: ReadonlySet<GalleryType> = new Set(['document', 'sheet', 'slides', 'web', 'pdf'])
 
 const DAY = 24 * 60 * 60 * 1000

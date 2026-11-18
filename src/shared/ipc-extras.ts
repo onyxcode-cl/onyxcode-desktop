@@ -157,7 +157,7 @@ export type ChatFileViewResult = { ok: true } | { ok: false; reason: 'unsupporte
 // ───────────────── Galería «Lo que has creado» ─────────────────
 
 /** Tipo de creación para filtrar y dibujar la miniatura. */
-export type GalleryType = 'document' | 'sheet' | 'slides' | 'web' | 'pdf' | 'image' | 'text'
+export type GalleryType = 'document' | 'sheet' | 'slides' | 'web' | 'pdf' | 'image' | 'text' | 'video'
 /** De dónde viene: Chat o Overdrive (el modo Tareas). */
 export type GalleryOrigin = 'chat' | 'overdrive'
 

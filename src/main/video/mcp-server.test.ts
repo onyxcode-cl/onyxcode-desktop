@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, mkdir, writeFile, readdir, rm, symlink, link, realpath } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink, link, realpath } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createConnection } from 'node:net'
@@ -7,6 +7,7 @@ import { once } from 'node:events'
 import { VideoMcpServer, type VideoBinding, type VideoRenderDeps } from './mcp-server'
 import { MAX_ASSET_BYTES, MAX_COMPOSITION_FILES } from './composition'
 import type { RenderJob } from './render-process'
+import { chatFilesInfo, assertNativeViewable } from '../files/chat-files'
 import { macOnly, posixOnly } from '../../test/platform'
 
 class Server extends VideoMcpServer {
@@ -74,6 +75,72 @@ describe('video: atadura, copia y resultados', () => {
     expect(await readdir(join(dir, 'private'))).toEqual([])
     expect(await readdir(join(root, 'promo'))).toEqual(['index.html'])
   })
+  it('los cuadros quedan en trabajo, con nombres estables incluso al recrear la atadura', async () => {
+    const first = JSON.parse(text(await server.invoke(binding, 'cuadros', args)))
+    const second = JSON.parse(text(await server.invoke({ folder: root }, 'cuadros', args)))
+    expect(first.cuadros).toEqual(second.cuadros)
+    expect(first.cuadros[0]).toMatch(/\/\.lazunox\/trabajo\/video\/[a-f0-9]{16}\/cuadro-1.png$/)
+    expect((await readdir(root)).sort()).toEqual(['.lazunox', 'promo'])
+  })
+  it.skipIf(!posixOnly)('rechaza enlaces en la carpeta de cuadros y no escribe fuera de la raíz concedida', async () => {
+    const first = JSON.parse(text(await server.invoke(binding, 'cuadros', args)))
+    const frames = first.cuadros[0].slice(0, first.cuadros[0].lastIndexOf('/'))
+    const outside = join(dir, 'fuera')
+    await mkdir(outside)
+    await rm(frames, { recursive: true })
+    await symlink(outside, frames)
+    expect((await server.invoke(binding, 'cuadros', args)).isError).toBe(true)
+    expect(await readdir(outside)).toEqual([])
+  })
+  it('reemplaza MP4 propio intacto del mismo pedido y conserva el de otro pedido en la misma conversación', async () => {
+    let request = 'msg_1'
+    binding.session = async () => 'ses_1'
+    binding.request = async () => request
+    const render = { composicion: args.composicion, formato: 'vertical', duracion: 15, fps: 30, nombre: 'Promo' }
+    const a = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    const b = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(b.ruta).toBe(a.ruta)
+    request = 'msg_2'
+    const c = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(c.ruta).toBe(join(root, 'Promo (2).mp4'))
+    const d = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(d.ruta).toBe(c.ruta)
+    await writeFile(c.ruta, 'edición de la persona')
+    const e = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(e.ruta).toBe(join(root, 'Promo (3).mp4'))
+    expect(await readFile(c.ruta, 'utf8')).toBe('edición de la persona')
+    binding.request = async () => null
+    const f = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(f.ruta).toBe(join(root, 'Promo (4).mp4'))
+  })
+  it.skipIf(!posixOnly)('no reemplaza un MP4 cambiado por enlace simbólico o duro', async () => {
+    binding.session = async () => 'ses_1'
+    binding.request = async () => 'msg_1'
+    const render = { composicion: args.composicion, formato: 'vertical', duracion: 15, fps: 30, nombre: 'Promo' }
+    const a = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    const external = join(dir, 'persona.mp4')
+    await writeFile(external, 'original')
+    await rm(a.ruta)
+    await symlink(external, a.ruta)
+    const b = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(b.ruta).toBe(join(root, 'Promo (2).mp4'))
+    await link(b.ruta, join(dir, 'hard.mp4'))
+    const c = JSON.parse(text(await server.invoke(binding, 'render', render)))
+    expect(c.ruta).toBe(join(root, 'Promo (3).mp4'))
+    expect(await readFile(external, 'utf8')).toBe('original')
+    expect(await readFile(join(dir, 'hard.mp4'), 'utf8')).toBe('fake MP4 from trusted process double')
+  })
+  it('no publica si cambia el pedido durante el render', async () => {
+    let request = 'msg_1'
+    binding.session = async () => 'ses_1'
+    binding.request = async () => request
+    deps.render = async (job) => {
+      request = 'msg_2'
+      return result(job)
+    }
+    expect(text(await server.invoke(binding, 'cuadros', args))).toContain('pedido cambió')
+    expect((await readdir(root)).sort()).toEqual(['promo'])
+  })
   it.each(['../index.html', '/tmp/index.html', 'C:\\index.html', 'promo/../../index.html', 'promo/test.html', 'promo/index.html\0'])(
     'rechaza ruta %s antes de instalar o lanzar',
     async (composicion) => {
@@ -120,7 +187,7 @@ describe('video: atadura, copia y resultados', () => {
   it('devuelve las rutas de WSL solo en el resultado', async () => {
     binding.toAgentPath = (p) => '/win/c/project/' + p.slice(root.length + 1)
     const out = await server.invoke(binding, 'cuadros', args)
-    expect(JSON.parse(text(out)).cuadros[0]).toBe('/win/c/project/cuadro-cuadro-1.png')
+    expect(JSON.parse(text(out)).cuadros[0]).toMatch(/^\/win\/c\/project\/\.lazunox\/trabajo\/video\/[a-f0-9]{16}\/cuadro-1.png$/)
     expect(deps.render).toHaveBeenCalledWith(
       expect.objectContaining({ composition: expect.stringContaining('/private/render-') }),
       expect.any(AbortSignal)
@@ -260,14 +327,34 @@ describe('video: Code, Chat y transporte MCP', () => {
     binding = { folder: '<sidecar>', chat: { directory: join(dir, 'chat'), activeSession: async () => 'ses_abc' } }
     const out = await server.invoke(binding, 'cuadros', { formato: 'vertical', segundos: [1], html: '<html>promo</html>' })
     expect(out.isError).toBeUndefined()
-    expect(JSON.parse(text(out)).composicion).toMatch(/^composicion-.+\/index.html$/)
-    expect(JSON.parse(text(out)).cuadros[0]).not.toContain(dir)
+    expect(JSON.parse(text(out)).composicion).toMatch(/^\.lazunox\/trabajo\/video\/composicion-.+\/index.html$/)
+    expect(JSON.parse(text(out)).cuadros[0]).toContain(join(dir, 'chat', 'videos'))
     expect(
       (await server.invoke(binding, 'cuadros', { formato: 'vertical', segundos: [1], html: 'x'.repeat(512 * 1024 + 1) })).isError
     ).toBe(true)
     binding.chat!.activeSession = async () => null
     expect((await server.invoke(binding, 'cuadros', args)).isError).toBe(true)
     expect((await server.invoke({ folder: root }, 'cuadros', { ...args, html: '<html>' })).isError).toBe(true)
+  })
+  it('Chat devuelve MP4 absoluto dentro del workspace: información y autorización del visor coinciden', async () => {
+    const chat = join(dir, 'chat-workspace')
+    binding = { folder: '<sidecar>', chat: { directory: chat, activeSession: async () => 'ses_chat' } }
+    const preview = JSON.parse(
+      text(await server.invoke(binding, 'cuadros', { formato: 'vertical', segundos: [1], html: '<html>promo</html>' }))
+    )
+    const out = await server.invoke(binding, 'render', {
+      composicion: preview.composicion,
+      formato: 'vertical',
+      duracion: 15,
+      fps: 30,
+      nombre: 'Promo'
+    })
+    expect(out.isError).toBeUndefined()
+    const video = JSON.parse(text(out))
+    expect(video.ruta).toMatch(new RegExp('/chat-workspace/videos/[a-f0-9]{64}/Promo.mp4$'))
+    expect(chatFilesInfo([chat], [video.ruta])).toEqual([expect.objectContaining({ path: video.ruta, canView: true, canOpen: true })])
+    expect(assertNativeViewable([chat], video.ruta)).toBe(video.ruta)
+    expect(chatFilesInfo([chat], [join(dir, 'project/Promo.mp4')])).toEqual([])
   })
   it('MCP autentica token, rechaza Origin y revoca ataduras anteriores', async () => {
     const { token, port } = await server.clientFor(binding)

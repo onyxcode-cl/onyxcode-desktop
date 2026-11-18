@@ -79,7 +79,7 @@ export function VideoCardView({ t, snapshot: s, busy, error, onInstall, onCancel
                 <span className="block text-xs">{t('settings.video.ready')}</span>
               ) : err ? (
                 <span role="alert" className="block text-xs text-danger">
-                  {t(runtimesErrorKey(err))}
+                  {t(err === 'io' ? 'settings.video.error.io' : runtimesErrorKey(err))}
                 </span>
               ) : (
                 <span className="block text-xs">{t('settings.video.missing')}</span>

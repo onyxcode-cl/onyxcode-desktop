@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -28,6 +28,16 @@ describe('servicio de video', () => {
     expect(s.rutas()).not.toBeNull()
     await s.quitar()
     expect(s.rutas()).toBeNull()
+  })
+  it('un lockfile incluido ausente informa io sin pedir red', async () => {
+    const d = await videoFixture(root)
+    cpSync(d.resourcesDir, join(root, 'resources'), { recursive: true })
+    d.resourcesDir = join(root, 'resources')
+    rmSync(join(d.resourcesDir, 'hyperframes', 'package-lock.json'))
+    const s = new VideoService(() => d)
+    expect(await s.instalar()).toEqual({ ok: false, error: 'io' })
+    expect(s.estado().error).toBe('io')
+    expect(d.fetch).not.toHaveBeenCalled()
   })
   it('falla cerrado sin pin o en plataforma no soportada', async () => {
     const d = await videoFixture(root)

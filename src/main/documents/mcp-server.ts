@@ -524,8 +524,13 @@ interface CreatedFile {
  * carreras que la escritura nueva. La lectura final y el commit son síncronos: no se cede el turno entre comprobar y publicar. Un enlace
  * duro, simbólico, archivo cambiado o desaparecido pierde la posibilidad de reemplazo y se vuelve al nombre nuevo sin tocarlo.
  */
-function rewriteCreated(root: string, entry: CreatedFile, bytes: Buffer): WrittenFile | null {
-  if (bytes.length > MAX_OUTPUT_BYTES) throw new OutputPathError('size', 'El documento es demasiado grande.')
+export function rewriteCreated(
+  root: string,
+  entry: Pick<CreatedFile, 'abs' | 'rel' | 'sha'>,
+  bytes: Buffer,
+  maxBytes = MAX_OUTPUT_BYTES
+): WrittenFile | null {
+  if (bytes.length > maxBytes) throw new OutputPathError('size', 'El documento es demasiado grande.')
   let tmp: SafeTempFile | undefined
   let fd: number | undefined
   try {
@@ -533,10 +538,10 @@ function rewriteCreated(root: string, entry: CreatedFile, bytes: Buffer): Writte
     tmp = SafeTempFile.create(realpathSync(root), dirname(entry.abs), { create: false })
     tmp.writeAll(bytes)
     const st = lstatSync(entry.abs)
-    if (!st.isFile() || st.isSymbolicLink() || st.nlink !== 1 || st.size > MAX_OUTPUT_BYTES) return null
+    if (!st.isFile() || st.isSymbolicLink() || st.nlink !== 1 || st.size > maxBytes) return null
     fd = openSync(entry.abs, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
     const opened = fstatSync(fd)
-    if (opened.dev !== st.dev || opened.ino !== st.ino || opened.nlink !== 1 || opened.size > MAX_OUTPUT_BYTES) return null
+    if (opened.dev !== st.dev || opened.ino !== st.ino || opened.nlink !== 1 || opened.size > maxBytes) return null
     const previous = Buffer.alloc(opened.size)
     let offset = 0
     while (offset < previous.length) {

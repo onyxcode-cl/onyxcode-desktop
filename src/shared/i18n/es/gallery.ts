@@ -12,6 +12,7 @@ export const gallery = {
   'gallery.type.web': 'Páginas web',
   'gallery.type.pdf': 'PDF',
   'gallery.type.image': 'Imágenes',
+  'gallery.type.video': 'Videos',
   'gallery.type.text': 'Texto',
   'gallery.kind.document': 'Documento',
   'gallery.kind.sheet': 'Planilla',

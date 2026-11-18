@@ -10,6 +10,7 @@ import {
   Eye,
   File,
   FileImage,
+  Film,
   FileSpreadsheet,
   FileText,
   FolderOpen,
@@ -58,7 +59,8 @@ const ICON: Record<GalleryType, LucideIcon> = {
   web: Globe,
   pdf: FileText,
   image: FileImage,
-  text: File
+  text: File,
+  video: Film
 }
 
 /** Colores de la miniatura dibujada por tipo (los tokens de la interfaz, nada de imágenes externas). */
@@ -69,7 +71,8 @@ const TONE: Record<GalleryType, string> = {
   web: 'text-accent',
   pdf: 'text-danger',
   image: 'text-muted',
-  text: 'text-muted'
+  text: 'text-muted',
+  video: 'text-accent'
 }
 
 const BTN =

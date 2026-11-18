@@ -14,6 +14,21 @@ describe('detectChatFiles', () => {
     })
     expect(r).toEqual(['/Users/ana/Informes/Resumen final.pdf', '/tmp/x/grafico.png', 'C:\\Users\\ana\\hoja.xlsx'])
   })
+  it('detecta el MP4 absoluto devuelto por video_render dentro del workspace de Chat', () => {
+    const ruta = '/data/chat-workspace/videos/abc/Promo.mp4'
+    expect(
+      detectChatFiles({
+        parts: [
+          tool(
+            'video_render',
+            { composicion: '.lazunox/trabajo/video/composicion-1/index.html', nombre: 'Promo' },
+            JSON.stringify({ ruta, bytes: 100, duracion: 15 })
+          )
+        ],
+        root: '/data/chat-workspace'
+      })
+    ).toContain(ruta)
+  })
   it('no confunde URLs con rutas', () => {
     expect(detectChatFiles({ parts: [text('mira https://ejemplo.com/a/b/foto.png y http://x.y/z.pdf')], root: null })).toEqual([])
   })

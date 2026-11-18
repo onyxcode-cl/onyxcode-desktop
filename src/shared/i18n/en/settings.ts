@@ -345,6 +345,8 @@ export const settings = {
   'settings.video.consentInstall': 'Install ({mb} MB)',
   'settings.video.consentTitle': 'Install the components to create videos?',
   'settings.video.later': 'Not now',
+  'settings.video.error.io':
+    'A local video component file could not be read or saved. Reinstall or update Lazunox if a bundled file is missing.',
   'settings.video.title': 'Video components',
   'settings.video.name': 'Chrome, ffmpeg and HyperFrames',
   'settings.video.desc': 'Optional programs to prepare videos. They stay in the app folder and you can remove them at any time.',

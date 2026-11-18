@@ -15,6 +15,7 @@ export const gallery = {
   'gallery.type.web': 'Web pages',
   'gallery.type.pdf': 'PDF',
   'gallery.type.image': 'Images',
+  'gallery.type.video': 'Videos',
   'gallery.type.text': 'Text',
   'gallery.kind.document': 'Document',
   'gallery.kind.sheet': 'Spreadsheet',

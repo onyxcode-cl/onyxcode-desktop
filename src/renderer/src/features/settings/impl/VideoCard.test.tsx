@@ -39,6 +39,13 @@ describe('tarjeta de piezas de video', () => {
     expect(view(null)).toBe('')
     expect(view(snap({ offered: false }))).toBe('')
   })
+  it('distingue un fallo de archivo local de uno de descarga', () => {
+    for (const lang of [es, en]) {
+      expect(view(snap({ error: 'io' }), lang)).toContain(lang['settings.video.error.io'])
+      expect(view(snap({ error: 'io' }), lang)).not.toContain(lang['settings.runtimes.error.download'])
+      expect(view(snap({ error: 'download' }), lang)).toContain(lang['settings.runtimes.error.download'])
+    }
+  })
   it('muestra progreso, fase npm indeterminada, Cancelar y Quitar', () => {
     const html = view(snap({ installing: true, progress: { phase: 'download', done: 50, total: 100 } }))
     expect(html).toContain('width:50%')

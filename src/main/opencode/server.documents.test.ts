@@ -213,7 +213,7 @@ describe('sidecar principal: documentos en Code', () => {
     expect(inline().permission).toMatchObject({ video_cuadros: 'allow', video_render: 'ask' })
     expect(inline().agent.chat.permission).toMatchObject({ video_cuadros: 'allow', video_render: 'allow', '*': 'deny' })
     expect(state.videoBindings[0].code!.roots()).toContain('/tmp/proyecto-a')
-    expect(state.videoBindings[0].chat!.directory).toContain('chat-video')
+    expect(state.videoBindings[0].chat!.directory).toBe('/tmp/lazunox-test/chat')
     await server.stop()
     expect(state.videoRevoked).toEqual(['video-test'])
     expect(await state.videoBindings[0].chat!.activeSession()).toBeNull()

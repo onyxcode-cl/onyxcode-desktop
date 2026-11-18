@@ -164,6 +164,17 @@ describe('GalleryView', () => {
     expect(first.querySelector('button')?.getAttribute('aria-label')).toBe('Ver aquí: Cotización flota.docx')
   })
 
+  it('muestra el MP4 de Chat y el filtro Videos con las acciones habituales', async () => {
+    const video = item({ name: 'Promo.mp4', type: 'video', kind: 'other' })
+    setup(async () => ({ items: [video], truncated: false }))
+    act(() => root.render(createElement(GalleryView)))
+    await flush()
+    expect(text()).toContain('Promo.mp4')
+    expect(text()).toContain('Videos')
+    expect(host.querySelector('button[aria-label="Ver aquí: Promo.mp4"]')).not.toBeNull()
+    expect(typeChips([video])).toContainEqual({ type: 'video', count: 1 })
+  })
+
   it('filtros por tipo, buscador y «Quitar filtros»', async () => {
     setup(async () => ({ items: ITEMS, truncated: false }))
     act(() => root.render(createElement(GalleryView)))
