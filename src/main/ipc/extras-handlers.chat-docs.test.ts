@@ -20,7 +20,11 @@ const mock = vi.hoisted(() => ({
   gallery: vi.fn(),
   photos: vi.fn(),
   allowed: vi.fn(),
-  present: vi.fn()
+  present: vi.fn(),
+  galleryResolve: vi.fn(),
+  thumb: vi.fn(),
+  video: vi.fn(),
+  pieces: vi.fn()
 }))
 vi.mock('../viewer/present-pptx', () => ({ presentPptxFile: mock.present }))
 vi.mock('../documents', () => ({ documentsMcp: {}, resolveChatHtmlPhotos: mock.photos }))
@@ -47,7 +51,8 @@ vi.mock('../security/app-protocol', () => ({ VIEWER_SCHEME: 'lazunox-viewer' }))
 vi.mock('../files/gallery-runtime', () => ({
   galleryRecordChat: mock.gallery,
   configureGalleryChat: vi.fn(),
-  getGallery: () => ({ extraRoots: () => [] })
+  getGallery: () => ({ extraRoots: () => [], resolve: mock.galleryResolve }),
+  galleryThumbFor: mock.thumb
 }))
 vi.mock('../extras', () => ({ initExtras: vi.fn() }))
 vi.mock('../extras/voice-worker-host', () => ({
@@ -80,7 +85,9 @@ vi.mock('./tasks-memory-handlers', () => ({}))
 vi.mock('../tasks/projects', () => ({}))
 vi.mock('../extras/quick-entry', () => ({}))
 vi.mock('../store', () => ({ settingsStore: { get: () => ({ recentFolders: [] }) } }))
-vi.mock('../files/gallery-index', () => ({}))
+vi.mock('../files/gallery-index', () => ({ galleryTypeOf: (p: string) => (p.endsWith('.mp4') ? 'video' : 'image') }))
+vi.mock('../video/preview', () => ({ videoPreview: mock.video }))
+vi.mock('../video/service', () => ({ videoService: () => ({ asegurarPiezasVideo: mock.pieces }) }))
 vi.mock('../files/chat-files', () => ({ assertNativeViewable: mock.allowed }))
 
 const invoke = <C extends keyof IpcExtrasInvokeContract>(channel: C, request: IpcExtrasInvokeContract[C]['req']) =>
@@ -217,4 +224,34 @@ it('Presentar PPTX de Chat revalida rutas antes del motor y no admite un archivo
   })
   await expect(invoke('extras:presentPptx', { path: '/fuera/archivo.pptx' })).rejects.toThrow('fuera de ámbito')
   expect(mock.present).not.toHaveBeenCalled()
+})
+
+it('la galería obtiene el mismo poster por el decodificador autorizado y falla cerrado ante una ruta revocada', async () => {
+  const path = '/permitida/promo.mp4'
+  const poster = 'data:image/jpeg;base64,/9j/2Q=='
+  mock.galleryResolve.mockReturnValue({ path, canView: true })
+  mock.pieces.mockReturnValue({ state: 'ready', paths: { ffmpeg: '/piezas/ffmpeg' } })
+  mock.video.mockResolvedValue({ duration: 15, poster })
+  expect(await invoke('extras:gallery:thumb', { path })).toEqual({ kind: 'image', dataUrl: poster })
+  expect(mock.video).toHaveBeenCalledWith(path, expect.any(Function), '/piezas/ffmpeg')
+  const validate = mock.video.mock.calls[0][1] as (p: string) => string
+  mock.allowed.mockReturnValueOnce(path)
+  expect(validate(path)).toBe(path)
+  mock.allowed.mockImplementationOnce(() => {
+    throw new Error('revocada')
+  })
+  expect(() => validate(path)).toThrow('revocada')
+  mock.video.mockClear()
+  mock.galleryResolve.mockImplementationOnce(() => {
+    throw new Error('fuera')
+  })
+  expect(await invoke('extras:gallery:thumb', { path })).toEqual({ kind: 'none' })
+  expect(mock.video).not.toHaveBeenCalled()
+})
+it('la galería sin poster mantiene el icono y no instala piezas', async () => {
+  mock.galleryResolve.mockReturnValue({ path: '/permitida/promo.mp4', canView: true })
+  mock.pieces.mockReturnValue({ state: 'missing', missingBytes: 193000000 })
+  mock.video.mockResolvedValue({ duration: 15 })
+  expect(await invoke('extras:gallery:thumb', { path: '/permitida/promo.mp4' })).toEqual({ kind: 'none' })
+  expect(mock.video).toHaveBeenCalledWith('/permitida/promo.mp4', expect.any(Function), undefined)
 })

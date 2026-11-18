@@ -1162,12 +1162,14 @@
       "evidencia": [
         "src/main/video/mcp-server.ts:1",
         "src/main/video/render-process.ts:1",
+        "src/main/video/consent.ts:1",
+        "src/main/video/consent.test.ts:1",
         "resources/video/render-worker.mjs:1",
         "src/main/tasks/manager.ts:1",
         "scripts/video/render-smoke.mjs:1",
         "docs/VIDEO-RENDER.md:1"
       ],
-      "nota": "Render del lado host con piezas fijadas, ataduras por token y proxy MCP de Overdrive sin cambios de WSL. Windows usa sandbox Chrome, proxy cerrado salvo puerto propio, bloqueo de solicitudes y CSP; no se afirma probado hasta ejecutar la composición hostil en el PC. Mac: diagnóstico real Node, perfil Seatbelt pendiente por sandbox_apply EPERM; Electron también pendiente. Instrucciones y límites en docs/VIDEO-RENDER.md.",
+      "nota": "Render del lado host con piezas fijadas, ataduras por token y proxy MCP de Overdrive sin cambios de WSL. Windows usa sandbox Chrome, proxy cerrado salvo puerto propio, bloqueo de solicitudes y CSP; no se afirma probado hasta ejecutar la composición hostil en el PC. Mac: diagnóstico real Node, perfil Seatbelt pendiente por sandbox_apply EPERM; Electron también pendiente. Ronda 3: Mac usa hoja nativa de consentimiento con ventana padre restaurada y enfocada; Windows conserva askButtons, probado con plataforma inyectada en video/consent.test.ts. Errores claros, avisos y cuadros a mitad probados en el diagnóstico Node sin Seatbelt; consentimiento nativo y Electron siguen pendientes en este aislamiento. Instrucciones y límites en docs/VIDEO-RENDER.md.",
       "comprobacion": null
     },
     {
@@ -1181,7 +1183,7 @@
         "e2e/specs/video-visor.e2e.ts:1",
         "docs/VIDEO-VISOR.md:1"
       ],
-      "nota": "Mismo HTML video y esquema Electron en Mac y Windows. 500 MiB, ftyp, Range y validación de carpeta por petición; miniatura del primer cuadro sin red. Dobles Windows y pasos de prueba preparados; Windows real pendiente. El diagnóstico Node no valida protocolo/sesión Electron.",
+      "nota": "Mismo HTML video y esquema Electron en Mac y Windows. 500 MiB, ftyp, Range y validación de carpeta por petición; miniatura al 40 % sin red. Dobles Windows y pasos de prueba preparados; Windows real pendiente. El diagnóstico Node no valida protocolo/sesión Electron.",
       "comprobacion": null
     }
   ]

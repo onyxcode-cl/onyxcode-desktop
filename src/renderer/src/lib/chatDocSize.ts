@@ -54,11 +54,11 @@ export function resetChatDocSizes(): void {
   listeners.forEach((cb) => cb())
 }
 
-/** «124 KB», «1,2 MB» (es) / «1.2 MB» (en). Base 1024, un decimal solo en MB. Cadena vacía si el valor no sirve. */
+/** «124 KB», «1,2 MB» (es) / «1.2 MB» (en). Base 1000, un decimal solo en MB. Cadena vacía si el valor no sirve. */
 export function formatFileSize(bytes: number, lang: 'es' | 'en'): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return ''
   const nf = (max: number): Intl.NumberFormat => new Intl.NumberFormat(lang, { maximumFractionDigits: max })
-  if (bytes < 1024) return `${Math.round(bytes)} B`
-  if (bytes < 1024 * 1024) return `${nf(0).format(Math.max(1, Math.round(bytes / 1024)))} KB`
-  return `${nf(1).format(bytes / (1024 * 1024))} MB`
+  if (bytes < 1000) return `${Math.round(bytes)} B`
+  if (bytes < 1000 * 1000) return `${nf(0).format(Math.max(1, Math.round(bytes / 1000)))} KB`
+  return `${nf(1).format(bytes / (1000 * 1000))} MB`
 }

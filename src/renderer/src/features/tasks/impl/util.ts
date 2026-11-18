@@ -1,3 +1,5 @@
+import { formatFileSize } from '../../../lib/chatDocSize'
+import { getLang } from '@shared/i18n'
 /** Utilidades de presentación del modo Tareas (tiempos, tamaños, estado y etiquetas de pasos). */
 import { WIN_CONSENT_MISSING_MARK } from '@shared/unified-bridge'
 import type { Message, Part, PermissionRequest, Session, ToolPart } from '@opencode-ai/sdk/v2/client'
@@ -55,9 +57,7 @@ export function relTime(ts: number, now = Date.now()): string {
 }
 
 export function formatSize(n: number): string {
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / 1024 / 1024).toFixed(1)} MB`
+  return formatFileSize(n, getLang())
 }
 
 export { formatDuration, turnTiming } from '../../../lib/turn-timing'

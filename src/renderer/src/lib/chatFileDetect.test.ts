@@ -77,3 +77,21 @@ describe('normalizeAbs', () => {
     expect(normalizeAbs('C:\\a\\..\\b\\c.txt')).toBe('C:\\b\\c.txt')
   })
 })
+
+it('oculta los PNG internos en texto, entradas y salidas, conserva MP4 y fotos pedidas en Mac y Windows', () => {
+  for (const root of ['/data/chat', 'C:\\data\\chat']) {
+    const scratch = `${root}/videos/abc/.lazunox/trabajo/video/hash/cuadro-1.png`
+    const mp4 = `${root}/videos/abc/Promo.mp4`,
+      photo = `${root}/foto.png`
+    const files = detectChatFiles({
+      root,
+      parts: [
+        tool('video_cuadros', { path: scratch }, JSON.stringify({ cuadros: [scratch] })),
+        text(scratch),
+        tool('video_render', {}, JSON.stringify({ ruta: mp4 })),
+        text(photo)
+      ]
+    })
+    expect(files).toEqual([normalizeAbs(mp4), normalizeAbs(photo)])
+  }
+})

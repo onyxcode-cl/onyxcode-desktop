@@ -382,11 +382,20 @@ export function registerExtrasHandlers(ipcMain: IpcMain, deps: ExtrasDeps): void
     shell.showItemInFolder(assertRevealable(allFileRoots(), path))
   })
   handle(ipcMain, 'extras:gallery:list', () => getGallery().list())
-  handle(ipcMain, 'extras:gallery:thumb', ({ path }) => {
+  handle(ipcMain, 'extras:gallery:thumb', async ({ path }) => {
     try {
       const g = getGallery()
       const info = g.resolve(path)
       const entry = galleryTypeOf(info.path)
+      if (entry === 'video' && info.canView) {
+        const pieces = videoService().asegurarPiezasVideo()
+        const preview = await videoPreview(
+          info.path,
+          (p) => assertNativeViewable(allFileRoots(), p),
+          pieces.state === 'ready' ? pieces.paths.ffmpeg : undefined
+        )
+        return preview?.poster ? { kind: 'image' as const, dataUrl: preview.poster } : { kind: 'none' as const }
+      }
       return entry ? galleryThumbFor(info, entry) : { kind: 'none' as const }
     } catch {
       return { kind: 'none' as const }

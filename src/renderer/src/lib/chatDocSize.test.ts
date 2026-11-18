@@ -4,10 +4,10 @@ import { formatFileSize, getChatDocSize, recordChatDocSize, resetChatDocSizes, s
 describe('formatFileSize', () => {
   it('formatea B, KB y MB según el idioma', () => {
     expect(formatFileSize(512, 'es')).toBe('512 B')
-    expect(formatFileSize(1024, 'es')).toBe('1 KB')
-    expect(formatFileSize(124 * 1024 + 300, 'en')).toBe('124 KB')
-    expect(formatFileSize(1.5 * 1024 * 1024, 'es')).toBe('1,5 MB')
-    expect(formatFileSize(1.5 * 1024 * 1024, 'en')).toBe('1.5 MB')
+    expect(formatFileSize(1000, 'es')).toBe('1 KB')
+    expect(formatFileSize(124 * 1000 + 300, 'en')).toBe('124 KB')
+    expect(formatFileSize(1.5 * 1000 * 1000, 'es')).toBe('1,5 MB')
+    expect(formatFileSize(1.5 * 1000 * 1000, 'en')).toBe('1.5 MB')
   })
   it('valores inválidos dan cadena vacía (nunca «0 KB»)', () => {
     expect(formatFileSize(0, 'es')).toBe('')

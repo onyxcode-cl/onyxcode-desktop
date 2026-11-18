@@ -28,7 +28,7 @@ vi.mock('electron', () => ({
     }
   }
 }))
-vi.mock('../util/native-dialog', () => ({ askButtons: state.ask }))
+vi.mock('./consent', () => ({ askVideoInstall: state.ask }))
 vi.mock('../runtimes/service', () => ({ runtimesService: () => ({ bins: () => ({}) }) }))
 vi.mock('./service', () => ({
   videoService: () => ({ estado: () => ({ installing: false }), instalar: state.install, cancelar: vi.fn() })

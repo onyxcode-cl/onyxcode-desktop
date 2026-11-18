@@ -290,3 +290,13 @@ it('video en Chat se abre solo con su servidor; el resto de herramientas de arch
   expect(cfg.agent.chat.prompt).toContain('video_cuadros')
   expect((buildInlineConfig() as typeof cfg).agent.chat.permission).toMatchObject({ video_cuadros: 'deny', video_render: 'deny' })
 })
+
+it('Chat puede cargar únicamente la skill video cuando tiene el MCP', () => {
+  const cfg = buildInlineConfig({ videoMcp: { type: 'remote', url: 'http://127.0.0.1:1/mcp' } }) as {
+    agent: { chat: { permission: Record<string, unknown> } }
+  }
+  expect(cfg.agent.chat.permission.skill).toEqual({ '*': 'deny', video: 'allow' })
+  const absent = buildInlineConfig() as typeof cfg
+  expect(absent.agent.chat.permission.skill).toBeUndefined()
+  expect(absent.agent.chat.permission['*']).toBe('deny')
+})

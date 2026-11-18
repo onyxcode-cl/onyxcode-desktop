@@ -3,6 +3,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { VideoPaths } from '@shared/video'
+import { parseRenderError } from './render-errors'
 
 export interface RenderJob {
   work: string
@@ -19,6 +20,8 @@ export interface RenderOutput {
   mp4?: string
   images: string[]
   ownedPids?: number[]
+  avisos?: string[]
+  cobertura?: { segundo: number; proporcion: number }[]
 }
 export type RenderProcess = (job: RenderJob, signal: AbortSignal) => Promise<RenderOutput>
 
@@ -124,6 +127,12 @@ export function createRenderProcess(worker: string): RenderProcess {
         if (signal.aborted) return reject(new Error('El video se canceló.'))
         if (code !== 0) {
           console.warn('[video] proceso:', stderr)
+          try {
+            const error = parseRenderError(JSON.parse(stdout))
+            if (error) return reject(error)
+          } catch {
+            /* un rechazo del sandbox no tiene respuesta del worker */
+          }
           return reject(new Error('No se pudo renderizar con el aislamiento de video.'))
         }
         try {

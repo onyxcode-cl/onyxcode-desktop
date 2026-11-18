@@ -8,6 +8,7 @@ it('la skill exige composición legible, transiciones con contenido y verificaci
   expect(skill).toContain('48/80 px; horizontal 1920×1080, 40/72 px')
   expect(skill).toContain('Nunca dejes un cuadro vacío entre escenas')
   expect(skill).toContain('no renderices')
+  expect(skill).toContain('no entregues con avisos pendientes sin corregirlos o explicarlos')
   expect(skill).toContain('no inventes comandos ni comprobaciones')
   expect(skill).toContain('no ofrezcas ni prometas incorporarlo en otra versión')
   expect(skill).not.toContain('ofrece trabajar con audio')

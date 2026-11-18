@@ -20,6 +20,7 @@ vi.mock('./useViewerViewport', () => ({
 import { useSessions } from '../../../stores/sessions'
 import { autoOpenMainDeliverable, clearViewerRequest, useTasks } from './store'
 import { DeliverableList } from './Deliverables'
+import { ResultCard } from './ResultCard'
 import { DocumentViewerPanel } from './DocumentViewerPanel'
 
 function Workspace(): React.JSX.Element {
@@ -104,4 +105,22 @@ it.each([
   mounted.rerender(<Workspace />)
   await act(async () => undefined)
   expect(h.cw.mock.calls.filter(([channel]) => channel === 'tasks:previewFile')).toHaveLength(2)
+})
+
+it('la tarjeta final de Overdrive muestra miniatura, duración y KB decimales; el nombre abre el visor', async () => {
+  Object.assign(window, { api: { platform: 'darwin' } })
+  const path = '/proyecto/final.mp4'
+  h.files = [{ path, relPath: 'final.mp4', size: 646200, mtime: 1 }]
+  h.cw.mockImplementation(async (channel: string) =>
+    channel === 'tasks:previewFile' ? { video: { duration: 15, poster: 'data:image/jpeg;base64,/9j/2Q==' } } : undefined
+  )
+  useTasks.setState({ activeTaskId: 'final', deliverables: { final: h.files }, viewerRequest: null })
+  mounted = mount(<ResultCard taskId="final" />)
+  await act(async () => undefined)
+  expect(mounted.host.textContent).toContain('0:15')
+  expect(mounted.host.textContent).toContain('646 KB')
+  expect(mounted.q('img')!.getAttribute('src')).toContain('data:image/jpeg')
+  click(mounted.qa('button').find((button) => button.textContent === 'final.mp4')!)
+  expect(useTasks.getState().viewerRequest).toMatchObject({ path })
+  expect(h.cw.mock.calls.some(([channel]) => channel === 'tasks:openPath')).toBe(false)
 })

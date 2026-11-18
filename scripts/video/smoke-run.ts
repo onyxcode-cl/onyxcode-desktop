@@ -2,7 +2,7 @@ import { cp, mkdir, readdir, lstat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import type { VideoService } from '../../src/main/video/service'
 import { realVideoRun } from '../../src/main/video/install'
-import { scopedEnv } from '../../src/main/runtimes/runtime-install'
+import { smokeEnvironment } from '../../src/main/video/fixtures/smoke-env'
 export async function runSmoke(
   service: Pick<VideoService, 'asegurarPiezasVideo' | 'instalar' | 'estado' | 'rutas'>,
   getNode: () => string | null,
@@ -29,22 +29,7 @@ export async function runSmoke(
   await mkdir(join(renderProject, '15-vertical'), { recursive: true })
   await cp(resolve(project, 'hyperframes/15-vertical/index.html'), join(renderProject, '15-vertical/index.html'))
   await cp(join(paths.hyperframes, 'node_modules/gsap'), join(renderProject, 'node_modules/gsap'), { recursive: true })
-  const env = {
-    ...scopedEnv(process.platform, [resolve(node, '..')]),
-    HOME: work,
-    USERPROFILE: work,
-    TMPDIR: work,
-    TEMP: work,
-    TMP: work,
-    HYPERFRAMES_BROWSER_PATH: paths.chrome,
-    HYPERFRAMES_FFMPEG_PATH: paths.ffmpeg,
-    HYPERFRAMES_CACHE_DIR: join(work, 'hf-cache'),
-    HYPERFRAMES_CONFIG_DIR: join(work, 'hf-config'),
-    HYPERFRAMES_NO_TELEMETRY: '1',
-    HYPERFRAMES_NO_UPDATE_CHECK: '1',
-    DO_NOT_TRACK: '1',
-    ...(process.env.CODEX_SANDBOX ? { CODEX_SANDBOX: process.env.CODEX_SANDBOX } : {})
-  }
+  const env = smokeEnvironment(work, node, paths)
   const output = join(work, '15-vertical.mp4')
   console.log(
     await realVideoRun(

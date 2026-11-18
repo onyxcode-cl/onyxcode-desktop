@@ -14,6 +14,7 @@ const ROOT = join(process.cwd(), 'src', 'main')
 
 /** Usos revisados a mano: el motivo de cada uno. Ruta relativa a `src/main`. */
 const REVIEWED: Record<string, string> = {
+  'video/consent.ts': 'solo hoja asíncrona con padre vivo; sin ventana cancela, probado en video/consent.test.ts',
   'util/native-dialog.ts': 'es el sitio que decide: usa el diálogo de Electron solo de respaldo',
   'index.ts': 'confirmación de SALIR de la app: la app ya se cierra, no hay nada que congelar',
   'security/web-security.ts': 'cuadro «Acerca de», lo abre el usuario',

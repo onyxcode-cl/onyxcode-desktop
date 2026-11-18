@@ -427,6 +427,9 @@
     "src/main/video/composition.ts": {
       "darwin": 1
     },
+    "src/main/video/consent.ts": {
+      "darwin": 1
+    },
     "src/main/video/install.ts": {
       "win32": 2
     },

@@ -114,7 +114,10 @@ const flush = async (): Promise<void> => {
 function setup(list: () => Promise<unknown>): void {
   invoke = vi.fn(async (channel: string, req?: unknown) => {
     if (channel === 'extras:gallery:list') return list()
-    if (channel === 'extras:gallery:thumb') return { kind: 'none' }
+    if (channel === 'extras:gallery:thumb')
+      return req && /\.mp4$/i.test((req as { path: string }).path)
+        ? { kind: 'image', dataUrl: 'data:image/jpeg;base64,/9j/2Q==' }
+        : { kind: 'none' }
     return req
   })
   ;(window as unknown as { api: unknown }).api = { extras: { invoke } }
@@ -171,6 +174,9 @@ describe('GalleryView', () => {
     await flush()
     expect(text()).toContain('Promo.mp4')
     expect(text()).toContain('Videos')
+    expect(text()).not.toContain('gallery.kind.video')
+    expect(invoke).toHaveBeenCalledWith('extras:gallery:thumb', { path: video.path })
+    expect(host.querySelector('img')?.getAttribute('src')).toContain('data:image/jpeg')
     expect(host.querySelector('button[aria-label="Ver aquí: Promo.mp4"]')).not.toBeNull()
     expect(typeChips([video])).toContainEqual({ type: 'video', count: 1 })
   })

@@ -119,7 +119,7 @@ export function clearThumbCache(): void {
 }
 
 function useThumb(item: GalleryItem): GalleryThumbResult | null {
-  const wants = !item.missing && (item.type === 'image' || item.type === 'text' || item.type === 'web')
+  const wants = !item.missing && (item.type === 'image' || item.type === 'text' || item.type === 'web' || item.type === 'video')
   const key = `${item.path}\0${item.createdAt}\0${item.bytes}`
   const [res, setRes] = useState<GalleryThumbResult | null>(() => (wants ? (thumbCache.get(key) ?? null) : null))
   useEffect(() => {

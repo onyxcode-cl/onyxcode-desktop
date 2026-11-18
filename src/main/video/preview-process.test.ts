@@ -46,6 +46,7 @@ it('mata con SIGKILL al decodificador atascado y libera el cupo', async () => {
   await vi.waitFor(() => expect(state.child).not.toBeNull())
   expect(state.args.slice(0, state.args.indexOf('-i'))).toContain('-threads')
   expect(state.args).toContain('pipe')
+  expect(state.args.slice(state.args.indexOf('-ss'), state.args.indexOf('-ss') + 2)).toEqual(['-ss', '6'])
   expect(state.args).not.toContain(path)
   await vi.advanceTimersByTimeAsync(8000)
   await expect(pending).resolves.toEqual({ duration: 15 })

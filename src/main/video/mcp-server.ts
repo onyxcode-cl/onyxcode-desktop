@@ -9,6 +9,7 @@ import { cleanName, writeNewFile } from '../documents/output-path'
 import { safeWriteFile } from '../tasks/safe-write'
 import { copyComposition } from './composition'
 import type { RenderOutput, RenderProcess } from './render-process'
+import { VideoRenderError, explainRenderError } from './render-errors'
 
 export const VIDEO_TIMEOUT_MS = 300_000
 export const VIDEO_RESPONSE_TIMEOUT_MS = 960_000 // consentimiento + instalación + render
@@ -27,6 +28,8 @@ export interface VideoRenderDeps {
   timeoutMs?: number
   pollMs?: number
 }
+const COMPOSITION_CONTRACT =
+  'HTML obligatorio: elemento con data-composition-id="main", data-width, data-height y data-duration que coincidan con el formato (vertical 1080×1920, cuadrado 1080×1080, horizontal 1920×1080). Timeline GSAP pausada en window.__timelines.main que dure todo el clip; GSAP local en ../node_modules/gsap/dist/gsap.min.js. Corrige los avisos antes de entregar o explícalos a la persona.'
 const fail = (text: string): McpToolResult => ({ isError: true, content: [{ type: 'text', text }] })
 
 export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
@@ -64,7 +67,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'cuadros',
         description:
-          'Saca de 1 a 6 PNG pequeños. Míralos y corrige antes de renderizar. En Chat puedes enviar html para guardar una composición nueva; usa node_modules/gsap/dist/gsap.min.js como biblioteca local.',
+          'Saca de 1 a 6 PNG a mitad de tamaño (reduce si supera el presupuesto). Míralos y corrige antes de renderizar. En Chat envía html. ' +
+          COMPOSITION_CONTRACT,
         inputSchema: {
           type: 'object',
           additionalProperties: false,
@@ -82,7 +86,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'render',
         description:
-          'Tras mirar y corregir los cuadros, genera un MP4 H.264 sin audio a 30 cuadros por segundo y tres imágenes de control. Máximo 120 segundos.',
+          'Tras mirar y corregir los cuadros, genera un MP4 H.264 sin audio a 30 fps y tres imágenes de control. Máximo 120 s. ' +
+          COMPOSITION_CONTRACT,
         inputSchema: {
           type: 'object',
           additionalProperties: false,
@@ -154,7 +159,12 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     const cancel = (): void => ac.abort()
     signal?.addEventListener('abort', cancel, { once: true })
     if (signal?.aborted) ac.abort()
-    const deadline = setTimeout(cancel, VIDEO_RESPONSE_TIMEOUT_MS)
+    let timedOut = false
+    const timeout = (): void => {
+      timedOut = true
+      cancel()
+    }
+    const deadline = setTimeout(timeout, VIDEO_RESPONSE_TIMEOUT_MS)
     let timer: ReturnType<typeof setInterval> | undefined
     let renderTimer: ReturnType<typeof setTimeout> | undefined
     let work: string | undefined
@@ -238,7 +248,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       if (!node) return fail('Falta el Node de la app para renderizar video.')
       ac.signal.throwIfAborted()
       const [width, height] = VIDEO_FORMATS[args.formato as keyof typeof VIDEO_FORMATS]
-      renderTimer = setTimeout(cancel, this.deps.timeoutMs ?? VIDEO_TIMEOUT_MS)
+      renderTimer = setTimeout(timeout, this.deps.timeoutMs ?? VIDEO_TIMEOUT_MS)
       const result = await this.deps.render(
         { work, composition: entry, width, height, seconds: seconds as number | undefined, times, paths: pieces.paths, node },
         ac.signal
@@ -260,19 +270,39 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       )
       return {
         content: [
-          { type: 'text', text: JSON.stringify({ composicion: composition, duracion: result.duration, ...output.info }) },
+          {
+            type: 'text',
+            text: JSON.stringify({
+              composicion: composition,
+              duracion: result.duration,
+              ...output.info,
+              avisos: result.avisos ?? [],
+              cobertura: result.cobertura ?? [],
+              imagenesBytes: output.images.reduce((n, b) => n + 4 * Math.ceil(b.length / 3), 0)
+            })
+          },
           ...output.images.map((b) => ({ type: 'image' as const, data: b.toString('base64'), mimeType: 'image/png' }))
         ]
       }
     } catch (e) {
       return fail(
         ac.signal.aborted
-          ? 'El video se canceló o superó el tiempo máximo.'
-          : e && typeof e === 'object' && 'code' in e
-            ? 'No se pudo leer o guardar la composición; revisa sus archivos y permisos.'
-            : e instanceof Error
-              ? e.message
-              : 'No se pudo preparar el video.'
+          ? timedOut
+            ? 'El video superó el tiempo máximo. Simplifica la composición o acorta el clip y vuelve a pedir cuadros.'
+            : 'El video se canceló.'
+          : e instanceof VideoRenderError
+            ? explainRenderError(
+                e,
+                args.formato as string,
+                VIDEO_FORMATS[args.formato as keyof typeof VIDEO_FORMATS][0],
+                VIDEO_FORMATS[args.formato as keyof typeof VIDEO_FORMATS][1],
+                seconds as number | undefined
+              )
+            : e && typeof e === 'object' && 'code' in e
+              ? 'No se pudo leer o guardar la composición; revisa sus archivos y permisos.'
+              : e instanceof Error
+                ? e.message
+                : 'No se pudo preparar el video.'
       )
     } finally {
       if (timer) clearInterval(timer)

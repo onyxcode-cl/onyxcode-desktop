@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { t } from '@shared/i18n'
 import { videoMb } from '@shared/video'
-import { askButtons } from '../util/native-dialog'
+import { askVideoInstall } from './consent'
 import { unpacked } from '../util/asar'
 import { runtimesService } from '../runtimes/service'
 import { videoService } from './service'
@@ -72,7 +72,7 @@ export function videoMcpServer(): VideoMcpServer {
     pieces: () => videoService().asegurarPiezasVideo(),
     node: () => runtimesService().bins().node ?? null,
     consent: async (bytes, signal) =>
-      (await askButtons({
+      (await askVideoInstall({
         message: t('settings.video.consentTitle'),
         detail: `${t('settings.video.desc')}\n\n${t('settings.video.chrome')}\n${t('settings.video.gpl')}`,
         buttons: [t('settings.video.later'), t('settings.video.consentInstall', { mb: videoMb(bytes) })],

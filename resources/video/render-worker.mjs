@@ -2,11 +2,12 @@
 import childProcess from 'node:child_process'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
-import { readFile, writeFile, lstat } from 'node:fs/promises'
+import { readFile, writeFile, lstat, rename } from 'node:fs/promises'
 import { join, resolve, sep, extname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { randomBytes } from 'node:crypto'
 import { once } from 'node:events'
+import { inspectFrame, colorVariation, needsSmallerFrames } from './inspect-frame.mjs'
 
 const job = JSON.parse(process.argv[2])
 const { work, paths, width, height } = job
@@ -45,14 +46,18 @@ process.stdin.on('end', stop)
 process.on('SIGTERM', stop)
 process.on('SIGINT', stop)
 
-async function run(file, args) {
+class RenderFailure extends Error {
+  constructor(code, data = {}) { super(code); this.code = code; this.data = data }
+}
+async function run(file, args, raw = false) {
   const child = childProcess.spawn(file, args, { stdio: ['ignore', 'pipe', 'pipe'] })
-  let text = '', error = ''
-  child.stdout.on('data', (b) => { text += b; if (text.length > 65536) child.kill('SIGKILL') })
+  const chunks = []; let size = 0, error = ''
+  child.stdout.on('data', (b) => { size += b.length; if (size > 65536) child.kill('SIGKILL'); else chunks.push(b) })
   child.stderr.on('data', (b) => { error = (error + b).slice(-4096) })
   const code = await new Promise((done, reject) => { child.once('error', reject); child.once('close', done) })
   if (code !== 0) throw Error(error || 'Video process failed')
-  return text
+  const bytes = Buffer.concat(chunks)
+  return raw ? bytes : bytes.toString('utf8')
 }
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.gif': 'image/gif', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.webm': 'video/webm' }
 async function main() {
@@ -98,6 +103,10 @@ async function main() {
   if (process.platform === 'darwin') args.push('--single-process', '--no-sandbox', '--disable-gpu-compositing')
   browser = await puppeteer.launch({ executablePath: paths.chrome, headless: true, pipe: true, userDataDir: join(work, 'profile'), args, defaultViewport: { width, height }, protocolTimeout: 30000, timeout: 30000 })
   const page = await browser.newPage()
+  let firstConsoleError = ''
+  const recordError = (text) => { if (!firstConsoleError) firstConsoleError = String(text).replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 240) }
+  page.on('pageerror', (error) => recordError(error.message))
+  page.on('console', (message) => { if (message.type() === 'error') recordError(message.text()) })
   await page.setBypassServiceWorker(true)
   await page.setRequestInterception(true)
   page.on('request', (req) => {
@@ -112,19 +121,41 @@ async function main() {
   // A nesting level preserves the common ../node_modules/gsap URL while all project files remain at the same relative location.
   await page.goto(`${origin}${prefix}composition/index.html`, { waitUntil: 'load', timeout: 15000 })
   await page.evaluate(async () => { await document.fonts.ready; await Promise.all(Array.from(document.images, (img) => img.decode().catch(() => {}))) })
-  await page.waitForFunction(() => window.__renderReady === true || typeof window.__hfStartupError === 'string', { timeout: 15000 })
-  const startupError = await page.evaluate(() => window.__hfStartupError)
-  if (startupError) throw Error('HyperFrames composition did not initialize')
+  // Check the author's contract before waiting on runtime readiness: missing markup is not a sandbox failure.
   const metadata = await page.evaluate(() => {
     const el = document.querySelector('[data-composition-id]')
-    return { width: Number(el?.getAttribute('data-width')), height: Number(el?.getAttribute('data-height')), duration: Number(el?.getAttribute('data-duration')), timeline: !!(window.__player || window.__hf || window.__timelines) }
+    const tl = window.__timelines?.main
+    return { composition: !!el, width: Number(el?.getAttribute('data-width')), height: Number(el?.getAttribute('data-height')), duration: Number(el?.getAttribute('data-duration')), timeline: !!tl && typeof tl.seek === 'function' && typeof tl.paused === 'function' && tl.paused() }
   })
-  if (!metadata.timeline || metadata.width !== width || metadata.height !== height || !Number.isFinite(metadata.duration) || metadata.duration <= 0 || metadata.duration > 120) throw Error('Composition metadata/timeline does not match format (maximum 120 s)')
-  if (job.seconds !== undefined && Math.abs(metadata.duration - job.seconds) > 1 / 30) throw Error('Composition duration does not match requested duration')
-  if (job.times.some((t) => t >= metadata.duration)) throw Error('Snapshot time outside composition')
+  if (!metadata.composition) throw new RenderFailure('falta_composicion')
+  if (metadata.width !== width || metadata.height !== height) throw new RenderFailure('formato_no_coincide', { width: metadata.width, height: metadata.height })
+  if (!Number.isFinite(metadata.duration) || metadata.duration <= 0 || metadata.duration > 120) throw new RenderFailure('duracion_invalida')
+  if (job.seconds !== undefined && Math.abs(metadata.duration - job.seconds) > 1 / 30) throw new RenderFailure('duracion_no_coincide', { duration: metadata.duration })
+  if (job.times.some((t) => t >= metadata.duration)) throw new RenderFailure('tiempo_fuera', { time: job.times.find((t) => t >= metadata.duration), duration: metadata.duration })
+  if (!metadata.timeline) throw new RenderFailure(firstConsoleError ? 'no_inicializa' : 'falta_timeline', { console: firstConsoleError })
+  try {
+    await page.waitForFunction(() => window.__renderReady === true || typeof window.__hfStartupError === 'string', { timeout: 15000 })
+  } catch { throw new RenderFailure('no_inicializa', { console: firstConsoleError }) }
+  const startupError = await page.evaluate(() => window.__hfStartupError)
+  if (startupError) throw new RenderFailure('no_inicializa', { console: firstConsoleError || String(startupError).slice(0, 240) })
   const seek = (time) => seekCompositionTimeline(page, time, { fallbackToBridgeAndTimelines: true, exactTime: true, animationFrameSettle: 'none', waitForFontsMs: 0 })
   const images = []
-  await page.setViewport({ width, height, deviceScaleFactor: 0.25 })
+  await page.setViewport({ width, height, deviceScaleFactor: 0.5 })
+  const avisos = [], cobertura = []
+  const checkTimes = [...new Set([...job.times, ...Array.from({ length: 8 }, (_, i) => metadata.duration * (i + 1) / 9)])].sort((a, b) => a - b)
+  for (const time of checkTimes) {
+    await seek(time)
+    const review = await page.evaluate(inspectFrame, { width, height })
+    const label = `${Number(time.toFixed(2))} s: `
+    for (const issue of review.issues) if (avisos.length < 80) avisos.push(label + issue)
+    cobertura.push({ segundo: time, proporcion: review.coverage })
+    if (!review.visibleText) {
+      const file = join(work, 'inspect.png')
+      await page.screenshot({ path: file, type: 'png' })
+      const rgb = await run(paths.ffmpeg, ['-v', 'error', '-i', file, '-vf', 'scale=16:16', '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-threads', '1', 'pipe:1'], true)
+      if (colorVariation(rgb) < 8 && avisos.length < 80) avisos.push(label + 'cuadro casi vacío: sin texto visible y con poca variación de color')
+    }
+  }
   for (let i = 0; i < job.times.length; i++) {
     await seek(job.times[i])
     const file = join(work, `control-${i + 1}.png`)
@@ -154,11 +185,20 @@ async function main() {
     duration = Number(info.format.duration)
     const stream = info.streams[0]
     // Control images come from the encoded MP4, including its final colors and compression.
-    for (let i = 0; i < job.times.length; i++) await run(paths.ffmpeg, ['-v', 'error', '-y', '-ss', String(job.times[i]), '-i', mp4, '-frames:v', '1', '-vf', 'scale=iw/4:ih/4', '-threads', '1', images[i]])
+    for (let i = 0; i < job.times.length; i++) await run(paths.ffmpeg, ['-v', 'error', '-y', '-ss', String(job.times[i]), '-i', mp4, '-frames:v', '1', '-vf', 'scale=iw/2:ih/2', '-threads', '1', images[i]])
     if (!Number.isFinite(duration) || Math.abs(duration - job.seconds) > 1 / 30 || stream.codec_name !== 'h264' || stream.width !== width || stream.height !== height || stream.r_frame_rate !== '30/1') throw Error('MP4 verification failed')
   }
-  // Only fixed fields and filenames leave this process, never composition-controlled output.
-  return { duration, mp4, images, ownedPids }
+  // Budget: at most 3 MiB of PNG (~4 MiB base64). Prefer half size; noisy compositions fall back to quarter.
+  const sizes = await Promise.all(images.map(async (p) => (await lstat(p)).size))
+  if (needsSmallerFrames(sizes)) {
+    for (const file of images) {
+      const resized = join(work, 'resized.png')
+      await run(paths.ffmpeg, ['-v', 'error', '-y', '-i', file, '-vf', 'scale=iw/2:ih/2', '-threads', '1', resized])
+      await rename(resized, file)
+    }
+  }
+  // Filenames are fixed. Advisory page text is capped by inspectFrame; main never authorizes from these diagnostics.
+  return { duration, mp4, images, ownedPids, avisos, cobertura }
 }
 try {
   const output = await main()
@@ -167,6 +207,7 @@ try {
   process.stdout.write(JSON.stringify(output))
 } catch (error) {
   console.error(error.stack ?? error)
+  process.stdout.write(JSON.stringify({ error: { code: error instanceof RenderFailure ? error.code : error.name === 'TimeoutError' ? 'tiempo_agotado' : 'fallo_render', data: error instanceof RenderFailure ? error.data : {} } }))
   await cleanup()
   process.exitCode = 1
   process.stdin.pause()

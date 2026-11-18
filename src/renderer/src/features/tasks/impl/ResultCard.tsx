@@ -7,7 +7,8 @@ import { isRemoteSurface } from '../../../lib/platform'
 import { fileIcon } from './Deliverables'
 import { FileReview } from './FileReview'
 import { openPath, reveal } from './actions'
-import { useTasks } from './store'
+import { requestViewerOpen, useTasks } from './store'
+import { VideoThumbnail } from '../../../components/artifacts/VideoThumbnail'
 import { useSessions } from '../../../stores/sessions'
 import { baseName, createdDocuments, extOf, formatSize, isHelperFile, splitVersions } from './util'
 
@@ -19,12 +20,27 @@ export { isHelperFile }
 function ResultRow({ f }: { f: TasksDeliverable }): React.JSX.Element {
   const t = useT()
   const { icon: Icon, tone } = fileIcon(f.path)
+  const video = extOf(f.path) === 'mp4'
+  const view = (): void => {
+    if (video) requestViewerOpen(f.path)
+    else void openPath(f.path)
+  }
   return (
     <li className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 rounded-ctl bg-elevated px-2.5 py-2 ring-1 ring-inset ring-border">
-      <Icon size={18} className={`shrink-0 ${tone}`} aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-sm" title={f.path}>
-        {baseName(f.path)}
-      </span>
+      {video ? (
+        <VideoThumbnail key={`${f.path}:${f.mtime}:${f.size}`} path={f.path} task onOpen={view} />
+      ) : (
+        <Icon size={18} className={`shrink-0 ${tone}`} aria-hidden />
+      )}
+      {video ? (
+        <button type="button" className="min-w-0 flex-1 truncate text-sm text-left hover:text-accent" title={f.path} onClick={view}>
+          {baseName(f.path)}
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-sm" title={f.path}>
+          {baseName(f.path)}
+        </span>
+      )}
       <button
         type="button"
         onClick={() => void reveal(f.path)}

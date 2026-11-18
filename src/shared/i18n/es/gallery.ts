@@ -19,6 +19,7 @@ export const gallery = {
   'gallery.kind.slides': 'Presentación',
   'gallery.kind.web': 'Página web',
   'gallery.kind.pdf': 'PDF',
+  'gallery.kind.video': 'Video',
   'gallery.kind.image': 'Imagen',
   'gallery.kind.text': 'Texto',
   'gallery.date.aria': 'Fecha',

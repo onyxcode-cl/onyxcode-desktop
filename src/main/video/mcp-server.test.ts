@@ -291,7 +291,7 @@ describe('video: límites y cancelación', () => {
   it('el tiempo máximo y una sesión que se detiene cancelan antes de publicar', async () => {
     deps.timeoutMs = 15
     deps.render = blockedRender()
-    expect(text(await server.invoke(binding, 'cuadros', args))).toContain('canceló')
+    expect(text(await server.invoke(binding, 'cuadros', args))).toContain('superó el tiempo máximo')
     deps.timeoutMs = 1000
     let active = 'ses_123'
     binding.session = async () => active
@@ -398,4 +398,43 @@ it('apagar video cierra también sockets TCP sin cabeceras y espera su limpieza'
   await server.stop()
   await closed
   expect(socket.destroyed).toBe(true)
+})
+
+it('ambas descripciones enseñan el contrato obligatorio y qué hacer con los avisos', () => {
+  for (const tool of server.tools() as { description: string }[]) {
+    for (const key of [
+      'data-composition-id',
+      'data-width',
+      'data-height',
+      'data-duration',
+      'window.__timelines.main',
+      'GSAP local',
+      'avisos'
+    ])
+      expect(tool.description).toContain(key)
+  }
+})
+it('devuelve los avisos, su segundo, cobertura y peso de imágenes sin bloquear la salida', async () => {
+  deps.render = async (job) => ({
+    ...(await result(job)),
+    avisos: ['5 s: el texto "HORARIO" queda tapado por otro elemento'],
+    cobertura: [{ segundo: 5, proporcion: 0.3 }]
+  })
+  const response = await server.invoke(binding, 'cuadros', args)
+  expect(response.isError).toBeUndefined()
+  expect(JSON.parse(text(response))).toMatchObject({
+    avisos: [expect.stringContaining('5 s:')],
+    cobertura: [{ segundo: 5, proporcion: 0.3 }],
+    imagenesBytes: 3 * 4 * Math.ceil(png.length / 3)
+  })
+})
+it('el error de formato llega al modelo con esqueleto adaptado', async () => {
+  const { VideoRenderError } = await import('./render-errors')
+  deps.render = async () => {
+    throw new VideoRenderError('formato_no_coincide', { width: 1920, height: 1080 })
+  }
+  const response = await server.invoke(binding, 'cuadros', args)
+  expect(response.isError).toBe(true)
+  expect(text(response)).toContain('1920×1080, pero pediste vertical (1080×1920)')
+  expect(text(response)).toContain('data-composition-id="main"')
 })

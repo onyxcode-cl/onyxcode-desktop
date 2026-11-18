@@ -61,7 +61,7 @@ export function detectChatFiles({ parts, root }: ChatFileScanInput): string[] {
   const add = (raw: string, allowRelative: boolean): void => {
     if (found.length >= MAX_CANDIDATES) return
     const abs = resolveCandidate(raw, allowRelative ? root : null)
-    if (!abs || seen.has(abs)) return
+    if (!abs || /(?:^|[\\/])\.lazunox[\\/]trabajo(?:[\\/]|$)/i.test(abs) || seen.has(abs)) return
     seen.add(abs)
     found.push(abs)
   }

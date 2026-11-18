@@ -98,3 +98,10 @@ describe('procesos del render', () => {
     expect(mocks.spawn).toHaveBeenCalledOnce()
   })
 })
+
+it('preserva el código y los datos del worker en vez de culpar al sandbox', async () => {
+  const p = createRenderProcess(job.node)(job, new AbortController().signal)
+  child.stdout.emit('data', Buffer.from(JSON.stringify({ error: { code: 'formato_no_coincide', data: { width: 1920, height: 1080 } } })))
+  child.emit('close', 1)
+  await expect(p).rejects.toMatchObject({ renderCode: 'formato_no_coincide', data: { width: 1920, height: 1080 } })
+})

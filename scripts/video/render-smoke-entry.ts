@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, readFile, cp, realpath, readdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, cp, realpath, readdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
@@ -9,6 +9,8 @@ import { asegurarPiezasVideo, installVideo, type VideoDeps } from '../../src/mai
 import { appRuntimeBins, installRuntimes, runtimesStatus, type RuntimeDeps } from '../../src/main/runtimes/runtime-install'
 import { parseRuntimePin } from '../../src/main/runtimes/runtime-pin'
 import { parseVideoPin } from '../../src/main/video/video-pin'
+import { qualityComposition } from '../../src/main/video/fixtures/quality'
+import { parseRenderError } from '../../src/main/video/render-errors'
 import { VideoMcpServer } from '../../src/main/video/mcp-server'
 import { createRenderProcess, renderEnvironment, type RenderProcess } from '../../src/main/video/render-process'
 
@@ -110,8 +112,15 @@ async function main(): Promise<void> {
         signal.removeEventListener('abort', abort)
         kill()
         children.delete(child)
-        if (code !== 0) reject(Error(stderr))
-        else {
+        if (code !== 0) {
+          let failure: Error = Error(stderr)
+          try {
+            failure = parseRenderError(JSON.parse(stdout)) ?? failure
+          } catch {
+            /* sandbox error */
+          }
+          reject(failure)
+        } else {
           try {
             const parsed = JSON.parse(stdout)
             ownPids.push(...(parsed.ownedPids ?? []))
@@ -164,7 +173,7 @@ async function main(): Promise<void> {
   </script>`
   )
   const { token, port } = await server.clientFor({ folder })
-  const call = async (name: string, args: Record<string, unknown>) => {
+  const call = async (name: string, args: Record<string, unknown>, expectedError?: string) => {
     const t0 = performance.now()
     const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
       method: 'POST',
@@ -172,10 +181,17 @@ async function main(): Promise<void> {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
       signal: AbortSignal.timeout(360000)
     })
-    const rpc = await response.json()
+    const body = await response.text()
+    const rpc = JSON.parse(body)
+    if (expectedError) {
+      const error = rpc.result?.content?.find((c: { type: string }) => c.type === 'text')?.text
+      if (!rpc.result?.isError || !error?.includes(expectedError)) throw Error(JSON.stringify(rpc))
+      return { error, ms: performance.now() - t0 }
+    }
     if (!response.ok || rpc.error || rpc.result?.isError) throw Error(JSON.stringify(rpc))
     return {
       ms: performance.now() - t0,
+      responseBytes: Buffer.byteLength(body),
       text: JSON.parse(rpc.result.content.find((c: { type: string }) => c.type === 'text').text),
       images: rpc.result.content.filter((c: { type: string }) => c.type === 'image').length
     }
@@ -189,6 +205,37 @@ async function main(): Promise<void> {
     diagnosticOnly: diagnostic
   }
   try {
+    const quality: Record<string, unknown> = {}
+    for (const kind of ['clean', 'overflow', 'overlap', 'gap', 'narrow'] as const) {
+      await mkdir(join(folder, kind))
+      await writeFile(join(folder, kind, 'index.html'), qualityComposition(kind))
+      const review = await call('cuadros', { composicion: `${kind}/index.html`, formato: 'vertical', segundos: [1, 7] })
+      const warnings = review.text.avisos as string[]
+      const expected = { clean: '', overflow: 'se sale', overlap: 'queda tapado', gap: '4 s: cuadro casi vacío', narrow: 'espacio vacío' }[
+        kind
+      ]
+      if (kind === 'clean' ? warnings.length !== 0 : !warnings.some((w) => w.includes(expected)))
+        throw Error(`Avisos incorrectos ${kind}: ${JSON.stringify(warnings)}`)
+      quality[kind] = review
+    }
+    await mkdir(join(folder, 'wrong-format'))
+    await writeFile(
+      join(folder, 'wrong-format/index.html'),
+      qualityComposition('clean').replace(/1080/g, '__W__').replace(/1920/g, '1080').replace(/__W__/g, '1920')
+    )
+    quality.wrongFormat = await call(
+      'cuadros',
+      { composicion: 'wrong-format/index.html', formato: 'vertical', segundos: [1] },
+      '1920×1080, pero pediste vertical (1080×1920)'
+    )
+    await mkdir(join(folder, 'missing-composition'))
+    await writeFile(join(folder, 'missing-composition/index.html'), '<html><body>Falta el contrato</body></html>')
+    quality.missingComposition = await call(
+      'cuadros',
+      { composicion: 'missing-composition/index.html', formato: 'vertical', segundos: [1] },
+      'no tiene un elemento con data-composition-id'
+    )
+    report.quality = quality
     report.cuadros = await call('cuadros', { composicion: 'promo/index.html', formato: 'vertical', segundos: [2.5, 7.5, 12.5] })
     report.cuadrosWarm = await call('cuadros', { composicion: 'promo/index.html', formato: 'vertical', segundos: [2.5, 7.5, 12.5] })
     report.red = await call('cuadros', { composicion: 'hostile/index.html', formato: 'vertical', segundos: [1] })

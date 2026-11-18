@@ -345,6 +345,7 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           '*': 'deny',
           ...chatPhotoPermissions(opts.chatPhotosMcp ? 'allow' : 'deny'),
           ...chatVideoPermissions(!!opts.videoMcp),
+          ...(opts.videoMcp ? { skill: { '*': 'deny', video: 'allow' } } : {}),
           webfetch: 'allow',
           websearch: 'allow',
           question: 'allow', // preguntas con opciones (tarjeta de botones); el resto sigue denegado

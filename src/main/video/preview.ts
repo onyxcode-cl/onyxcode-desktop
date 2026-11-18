@@ -35,7 +35,7 @@ async function durationOf(file: FileHandle, size: number): Promise<number | null
   return walk(0, size)
 }
 
-function firstFrame(file: FileHandle, size: number, ffmpeg: string): Promise<string | undefined> {
+function contentFrame(file: FileHandle, size: number, ffmpeg: string, seconds: number): Promise<string | undefined> {
   return new Promise((resolve) => {
     // Solo pipe: incluso una referencia externa dentro de un MP4 hostil queda fuera de los protocolos admitidos.
     const child = spawn(
@@ -52,6 +52,8 @@ function firstFrame(file: FileHandle, size: number, ffmpeg: string): Promise<str
         'mov',
         '-i',
         'pipe:0',
+        '-ss',
+        String(seconds),
         '-an',
         '-frames:v',
         '1',
@@ -116,7 +118,7 @@ export async function videoPreview(
     if (sniffDocKind(real, head) !== 'mp4') return undefined
     const duration = await durationOf(file, info.size)
     if (duration === null) return undefined
-    const poster = ffmpeg ? await firstFrame(file, info.size, ffmpeg) : undefined
+    const poster = ffmpeg ? await contentFrame(file, info.size, ffmpeg, duration * 0.4) : undefined
     if (assertPath(path) !== real) return undefined
     return { duration, ...(poster ? { poster } : {}) }
   } catch {
