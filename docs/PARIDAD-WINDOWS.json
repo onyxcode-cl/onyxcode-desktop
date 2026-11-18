@@ -1153,6 +1153,21 @@
       ],
       "nota": "Mismo consentimiento, pin, verificación y carpeta propia en Mac arm64 y Windows x64. ZIP nativo Windows con ffmpeg y ffprobe; npm-cli.js mediante Node sin shell ni scripts. Mac: instalación y render real con Node y userData temporal; Electron aborta en el aislamiento antes de JavaScript. Windows: solo dobles con plataforma inyectada, pendiente ejecución real según docs/VIDEO-PIEZAS.md. Sin WSL ni herramientas de render para la IA.",
       "comprobacion": null
+    },
+    {
+      "id": "N24",
+      "funcion": "Render de video desde Chat, Code y Overdrive (F8-B334)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/video/mcp-server.ts:1",
+        "src/main/video/render-process.ts:1",
+        "resources/video/render-worker.mjs:1",
+        "src/main/tasks/manager.ts:1",
+        "scripts/video/render-smoke.mjs:1",
+        "docs/VIDEO-RENDER.md:1"
+      ],
+      "nota": "Render del lado host con piezas fijadas, ataduras por token y proxy MCP de Overdrive sin cambios de WSL. Windows usa sandbox Chrome, proxy cerrado salvo puerto propio, bloqueo de solicitudes y CSP; no se afirma probado hasta ejecutar la composición hostil en el PC. Mac: diagnóstico real Node, perfil Seatbelt pendiente por sandbox_apply EPERM; Electron también pendiente. Instrucciones y límites en docs/VIDEO-RENDER.md.",
+      "comprobacion": null
     }
   ]
 }

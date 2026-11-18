@@ -37,6 +37,7 @@ export interface InlineConfigInput {
    * = igual que siempre. Al ser una herramienta de la propia app que solo crea archivos NUEVOS en la carpeta de la tarea, va en `allow`.
    */
   documentsMcp?: Record<string, unknown> | null
+  videoMcp?: Record<string, unknown> | null
   /**
    * MCP `equipo` (un comando exacto que corre en el equipo fuera del aislamiento, con la aprobación de la persona; solo sandbox, ya apuntando a la
    * ruta del proxy). Siempre con permiso `ask`: la persona ve el comando completo antes de que corra. Ausente o null = igual que siempre.
@@ -124,25 +125,27 @@ export function buildInlineConfig(i: InlineConfigInput): Record<string, unknown>
     base = {
       autoupdate: false,
       share: 'disabled',
-      ...(i.browserMcp || i.bridgeMcp || i.documentsMcp || i.hostMcp
+      ...(i.browserMcp || i.bridgeMcp || i.documentsMcp || i.videoMcp || i.hostMcp
         ? {
             mcp: {
               ...(i.browserMcp ? { browser: i.browserMcp } : {}),
               ...(i.bridgeMcp ? { computer: i.bridgeMcp } : {}),
               ...(i.documentsMcp ? { [DOCUMENTS_ROUTE_NAME]: i.documentsMcp } : {}),
+              ...(i.videoMcp ? { video: i.videoMcp } : {}),
               ...(i.hostMcp ? { [HOST_ROUTE_NAME]: i.hostMcp } : {})
             }
           }
         : {}),
       agent: {
         [COMPUTER_AGENT_ID]: { disable: true },
-        ...(i.extras.length || allowDirs.length || i.documentsMcp || i.hostMcp || i.allowDelete === false
+        ...(i.extras.length || allowDirs.length || i.documentsMcp || i.videoMcp || i.hostMcp || i.allowDelete === false
           ? {
               [TASKS_AGENT_ID]: {
                 permission: {
                   ...(i.allowDelete === false ? { bash: { 'rm *': 'allow', 'rmdir *': 'allow', 'unlink *': 'allow' } } : {}),
                   ...(i.extras.length || allowDirs.length ? { external_directory: externalDirectory } : {}),
                   ...(i.documentsMcp ? { [`${DOCUMENTS_ROUTE_NAME}_*`]: 'allow' } : {}),
+                  ...(i.videoMcp ? { video_cuadros: 'allow', video_render: 'allow' } : {}),
                   // Comandos fuera del aislamiento: la aprobación la pide y decide MAIN (`host-exec/approvals.ts`), con el comando entero, cada vez.
                   // La pregunta del motor no protegía nada (el motor vive en la jaula con los programas de la tarea) y duplicaba la tarjeta.
                   ...(i.hostMcp ? { [`${HOST_ROUTE_NAME}_*`]: 'allow' } : {})

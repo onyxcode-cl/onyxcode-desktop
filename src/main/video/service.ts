@@ -107,5 +107,5 @@ function appDeps(): VideoDeps {
 
 let instance: VideoService | undefined
 export const videoService = (): VideoService => (instance ??= new VideoService(appDeps))
-/** Entrada del futuro render: jamás instala ni descarga. */
+/** Consulta del render MCP: jamás instala ni descarga sin consentimiento. */
 export const asegurarPiezasVideoInstaladas = (): VideoEnsureResult => videoService().asegurarPiezasVideo()

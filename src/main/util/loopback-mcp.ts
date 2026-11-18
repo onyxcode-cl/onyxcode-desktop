@@ -144,6 +144,11 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
     return this.port || null
   }
 
+  /** Cierra conexiones pendientes (incluidas las que aún no enviaron HTTP) al apagar un servidor con cancelación propia. */
+  protected closeConnections(): void {
+    this.server?.closeAllConnections()
+  }
+
   async stop(): Promise<void> {
     const s = this.server
     this.server = null

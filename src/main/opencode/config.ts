@@ -1,3 +1,4 @@
+import { VIDEO_SERVER, chatVideoPermissions } from '@shared/video-permissions'
 /**
  * Configuración inyectada a `opencode serve` vía la variable OPENCODE_CONFIG_CONTENT.
  * Se fusiona con la config global del usuario (~/.config/opencode) y la del proyecto.
@@ -46,6 +47,7 @@ export interface InlineConfigOptions {
    * El agente `chat` conserva `'*': deny`, así que no la puede usar.
    */
   documentsMcp?: Record<string, unknown> | null
+  videoMcp?: Record<string, unknown> | null
   /** MCP propio con solo tres herramientas de fotos, atado a la conversación activa por main. */
   chatPhotosMcp?: Record<string, unknown> | null
   /**
@@ -95,12 +97,13 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
     // Sin `/share`: nada de las conversaciones sube a opencode.ai. La config inline gana sobre la global y la de
     // proyecto (orden de OpenCode: global < proyecto < OPENCODE_CONFIG_CONTENT), así que un `share` del usuario no lo pisa.
     share: 'disabled',
-    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp || opts.chatPhotosMcp
+    ...(opts.browserMcp || opts.bgshellMcp || opts.documentsMcp || opts.chatPhotosMcp || opts.videoMcp
       ? {
           mcp: {
             ...(opts.browserMcp ? { browser: opts.browserMcp } : {}),
             ...(opts.bgshellMcp ? { [SHELL_BG_SERVER]: opts.bgshellMcp } : {}),
             ...(opts.documentsMcp ? { [DOCUMENTS_SERVER]: opts.documentsMcp } : {}),
+            ...(opts.videoMcp ? { [VIDEO_SERVER]: opts.videoMcp } : {}),
             ...(opts.chatPhotosMcp ? { [CHAT_PHOTOS_SERVER]: opts.chatPhotosMcp } : {})
           }
         }
@@ -334,10 +337,14 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           'indicados (viñetas hasta 500 caracteres, notas hasta 140, títulos hasta 200, "eyebrow" hasta 40, valor de KPI ' +
           'hasta 16 caracteres y siempre como texto), no uses campos que no estén descritos acá, y CIERRA SIEMPRE la ' +
           'valla con ``` en su propia línea; si el documento es muy largo, hazlo más breve en vez de dejarlo sin cerrar. ' +
-          'Si piden editar un Word, Excel o PowerPoint adjunto, no lo reconstruyas ni lo sustituyas por uno nuevo: indica que la edición del original se hace en Overdrive.',
+          'Si piden editar un Word, Excel o PowerPoint adjunto, no lo reconstruyas ni lo sustituyas por uno nuevo: indica que la edición del original se hace en Overdrive. ' +
+          (opts.videoMcp
+            ? 'Para videos, envía el HTML completo de HyperFrames en video_cuadros (html, formato y segundos); la app lo guarda en esta conversación. Mira todas las imágenes, corrige enviando otro html y usa la ruta composicion devuelta al pedir video_render. Sin recursos de internet; GSAP local en ../node_modules/gsap/dist/gsap.min.js.'
+            : ''),
         permission: {
           '*': 'deny',
           ...chatPhotoPermissions(opts.chatPhotosMcp ? 'allow' : 'deny'),
+          ...chatVideoPermissions(!!opts.videoMcp),
           webfetch: 'allow',
           websearch: 'allow',
           question: 'allow', // preguntas con opciones (tarjeta de botones); el resto sigue denegado

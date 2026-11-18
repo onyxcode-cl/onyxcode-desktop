@@ -1,3 +1,5 @@
+import { videoMcpServer } from '../video'
+import { VIDEO_RESPONSE_TIMEOUT_MS } from '../video/mcp-server'
 /**
  * Gestor de Tareas: carpetas de Tareas (userData/tasks-folders.json) y un `opencode serve`
  * por carpeta y modo (arranque perezoso, reutilizado, detenido al salir):
@@ -1464,6 +1466,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     mcpProxy: McpProxy | null
     browserToken: string | null
     documentsToken: string | null
+    videoToken: string | null
     hostToken: string | null
   }> {
     // Proxy MCP FUERA del sandbox (F8-B79): el servidor sandboxeado solo recibe URL loopback + token de sesión; los
@@ -1492,6 +1495,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
     mcpProxy: McpProxy | null
     browserToken: string | null
     documentsToken: string | null
+    videoToken: string | null
     hostToken: string | null
   }> {
     let browserMcp: Record<string, unknown> | null = null
@@ -1559,6 +1563,35 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
         documentsCfg = null
         if (realDocumentsToken) documentsMcp.revokeToken(realDocumentsToken)
         realDocumentsToken = null
+      }
+    }
+    let videoCfg: Record<string, unknown> | null = null
+    let realVideoToken: string | null = null
+    if (mcpProxy && !fullAccess) {
+      try {
+        const real = await videoMcpServer().configFor({
+          folder,
+          toAgentPath: this.win ? (p: string) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined,
+          session: async () => {
+            const handle = this.servers.get(key)?.handle
+            return handle ? activeDocumentSession(handle, handle.paths.directory) : null
+          }
+        })
+        realVideoToken = bearerOfMcpConfig(real)
+        if (real && typeof real.url === 'string' && realVideoToken) {
+          const route = mcpProxy.addRoute({
+            name: 'video',
+            url: real.url,
+            exactPath: true,
+            headersTimeoutMs: VIDEO_RESPONSE_TIMEOUT_MS,
+            headers: { Authorization: `Bearer ${realVideoToken}` }
+          })
+          videoCfg = { ...real, url: route.url, headers: route.headers }
+        }
+      } catch (error) {
+        console.warn('[tasks] video no disponible:', error instanceof Error ? error.message : error)
+        if (realVideoToken) videoMcpServer().revokeToken(realVideoToken)
+        realVideoToken = null
       }
     }
     // Herramienta `equipo` (nivel 2: UN comando exacto que corre en el equipo, fuera del aislamiento, tras la aprobación de la persona EN MAIN): una ruta
@@ -1663,6 +1696,7 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       computerMcp,
       bridgeMcp,
       documentsMcp: documentsCfg,
+      videoMcp: videoCfg,
       hostMcp: hostCfg,
       // Con el puente de apps, el agente aislado recibe la instrucción de cómo pedirlas (sin puente: nada, prompt idéntico).
       instructions: bridgeMcp ? [writeUnifiedAppsPrompt(getOpencodeConfigDir())].filter((p): p is string => !!p) : undefined,
@@ -1676,7 +1710,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       // Windows: las carpetas vinculadas se conceden con su ruta DENTRO de la distro (`/win/d/…`), no con la de Windows.
       toSandbox: this.win ? (p) => toSandboxOrNull(WIN_PATH_MAP, p) ?? p : undefined
     })
-    return { config, mcpProxy, browserToken: realBrowserToken, documentsToken: realDocumentsToken, hostToken: realHostToken }
+    return {
+      config,
+      mcpProxy,
+      browserToken: realBrowserToken,
+      documentsToken: realDocumentsToken,
+      videoToken: realVideoToken,
+      hostToken: realHostToken
+    }
   }
 
   /** Agente `computer` de la plataforma (solo cambia algo en Windows con `computerWin`+`tasksWin`; `computer-agent.ts`). */
@@ -1738,13 +1779,14 @@ export class TasksManager extends EventEmitter<ManagerEvents> {
       if (folder !== this.nf(homedir())) migrateFolderScratch(folder, (m, e) => console.warn('[tasks]', m, e ?? ''))
       return Promise.all([this.inlineConfig(key, folder, fullAccess, extras), planGateUrl])
     })
-    const starting = prepared.then(([{ config, mcpProxy, browserToken, documentsToken, hostToken }, gateUrl]) => {
+    const starting = prepared.then(([{ config, mcpProxy, browserToken, documentsToken, videoToken, hostToken }, gateUrl]) => {
       mark('manager.config-and-mcp')
       // El token del MCP del navegador vive en el entorno de `opencode serve` (OPENCODE_CONFIG_CONTENT): se
       // revoca en cuanto ese proceso termina o no llega a arrancar (F8-B69, hallazgos 6 y 10).
       const revokeBrowserToken = (): void => {
         if (browserToken) embeddedBrowserMcp.revokeToken(browserToken)
         if (documentsToken) documentsMcp.revokeToken(documentsToken)
+        if (videoToken) videoMcpServer().revokeToken(videoToken)
         if (hostToken) hostExecMcp.revokeToken(hostToken) // y detiene lo que esa tarea dejó en segundo plano
         // El proxy MCP muere con el servidor: los tokens de sesión dejan de valer y no queda puerto abierto.
         void mcpProxy?.stop().catch(() => undefined)

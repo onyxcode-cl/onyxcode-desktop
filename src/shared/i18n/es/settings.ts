@@ -333,6 +333,14 @@ export const settings = {
   'settings.craft.installed': 'Instalado · versión {version}',
   'settings.craft.error.generic': 'No se pudo instalar. Inténtalo de nuevo.',
   // Node.js y uv de la app (F8-B195)
+  'settings.video.installingElsewhere': 'Ya se están instalando las piezas de video. Espera a que termine y vuelve a pedirlo.',
+  'settings.video.progressTitle': 'Instalando las piezas de video',
+  'settings.video.progressDetail':
+    'Instalando las piezas de video. Puedes cerrar esta ventana para cancelar. Al terminar continuará el video.',
+  'settings.video.installFailed': 'No se pudieron instalar las piezas de video. Revisa el estado en Ajustes y vuelve a intentarlo.',
+  'settings.video.consentInstall': 'Instalar ({mb} MB)',
+  'settings.video.consentTitle': '¿Instalar las piezas para crear videos?',
+  'settings.video.later': 'Ahora no',
   'settings.video.title': 'Piezas de video',
   'settings.video.name': 'Chrome, ffmpeg y HyperFrames',
   'settings.video.desc': 'Programas opcionales para preparar videos. Se guardan en la carpeta de la app y puedes quitarlos cuando quieras.',

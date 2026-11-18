@@ -337,6 +337,14 @@ export const settings = {
   'settings.craft.installed': 'Installed · version {version}',
   'settings.craft.error.generic': 'Could not install. Try again.',
   // Node.js and uv of the app (F8-B195)
+  'settings.video.installingElsewhere': 'Video components are already being installed. Wait for them to finish and try again.',
+  'settings.video.progressTitle': 'Installing video components',
+  'settings.video.progressDetail':
+    'Installing video components. Close this window to cancel. Your video will continue when installation finishes.',
+  'settings.video.installFailed': 'Video components could not be installed. Check their status in Settings and try again.',
+  'settings.video.consentInstall': 'Install ({mb} MB)',
+  'settings.video.consentTitle': 'Install the components to create videos?',
+  'settings.video.later': 'Not now',
   'settings.video.title': 'Video components',
   'settings.video.name': 'Chrome, ffmpeg and HyperFrames',
   'settings.video.desc': 'Optional programs to prepare videos. They stay in the app folder and you can remove them at any time.',

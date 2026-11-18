@@ -424,8 +424,16 @@
     "src/main/util/paths.ts": {
       "win32": 3
     },
+    "src/main/video/composition.ts": {
+      "darwin": 1
+    },
     "src/main/video/install.ts": {
       "win32": 1
+    },
+    "src/main/video/render-process.ts": {
+      "darwin": 2,
+      "win32": 3,
+      "usrBin": 1
     },
     "src/main/window-glass.ts": {
       "darwin": 3,

@@ -97,7 +97,8 @@ export async function askButtons(
     buttons: d.buttons,
     defaultId: defaultIndex,
     cancelId: cancelIndex,
-    noLink: true
+    noLink: true,
+    ...(d.signal ? { signal: d.signal } : {})
   })
   return res.response
 }

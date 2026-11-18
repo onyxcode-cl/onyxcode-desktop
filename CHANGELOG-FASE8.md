@@ -1,5 +1,13 @@
 # Fase 8 — Onboarding y distribución
 
+## F8-B334 — Render de video por herramientas propias (V32, paso 2)
+
+MCP `video` en main, con `video_cuadros` (1–6 PNG a un cuarto por dimensión) y `video_render` (H.264, 30 fps, hasta 120 s, duración por ffprobe, bytes y tres cuadros del MP4). Ataduras de Chat por conversación, Code por proyecto abierto y Overdrive por su proxy MCP existente; el render Windows corre en el host, sin cambios de WSL. Chat puede entregar HTML a cuadros para guardarlo en su carpeta privada. Primero mirar cuadros y corregir; sin skill ni reproductor. Solo recursos locales; este adaptador captura video sin mezcla de audio ni bundling automático de subcomposiciones.
+
+Copia de entrada acotada y sin enlaces; procesos con entorno limpio y ejecutables propios por ruta absoluta; salida nueva mediante `output-path.ts`. Red del navegador restringida a su servidor estático mediante proxy cerrado, interceptación y CSP propia. Seatbelt separado en Mac; conserva sandbox Chrome en Windows. Una operación por atadura/dos globales, límites de tiempo, cancelación por sesión/desconexión/revocación y limpieza de procesos propios. Faltan piezas: consentimiento nativo con tamaño, progreso y cancelar, reutilizando el instalador del paso 1.
+
+Pruebas con dobles: servidor, rutas, enlaces, límites, formatos, consentimiento, concurrencia, cancelación, procesos y permisos. `scripts/video/render-smoke.mjs` llama el MCP real con userData temporal y composición hostil contra internet, otro puerto local y file. En este aislamiento Mac no se puede aplicar Seatbelt; el diagnóstico explícito sin perfil no valida ese aislamiento. Electron y Windows real pendientes. No se da por comprobado el bloqueo Windows. Detalles, comandos y límites en `docs/VIDEO-RENDER.md`, `docs/SEGURIDAD.md` y fila N24 de paridad.
+
 ## F8-B333 — Piezas de video bajo demanda (V32, paso 1)
 
 Ajustes → Overdrive incorpora una tarjeta junto a runtimes para instalar, cancelar y quitar Chrome Headless Shell 158.0.8127.36, ffmpeg/ffprobe 9.0.2 e HyperFrames 0.9.64 con GSAP 3.15.0. El aviso de tamaño incluye Node si falta y exige consentimiento. Mac arm64 y Windows x64 usan ZIP fijados con tamaño y SHA-256; HyperFrames usa el lock copiado de la prueba, integridad SHA-512 y `npm ci --ignore-scripts`, sin instalaciones globales. Se reutilizan la descarga y la extracción segura de runtimes. Cada pieza se publica completa en `userData/video`; Quitar conserva Node. Se guardan licencias y configuración de ffmpeg y se muestran enlaces a GPL y fuentes.

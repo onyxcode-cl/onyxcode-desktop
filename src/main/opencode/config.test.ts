@@ -137,6 +137,8 @@ describe('Chat: elegir formato de la presentación (editable o HTML/CSS)', () =>
       'chat_fotos_imagenes_ver',
       'question',
       'read',
+      'video_cuadros',
+      'video_render',
       'webfetch',
       'websearch'
     ])
@@ -276,4 +278,15 @@ describe('Chat photo capability', () => {
     expect(ready.agent.chat.permission['*']).toBe('deny')
     expect(ready.agent.chat.permission).not.toHaveProperty('documentos_crear')
   })
+})
+
+it('video en Chat se abre solo con su servidor; el resto de herramientas de archivos sigue cerrado', () => {
+  const cfg = buildInlineConfig({ videoMcp: { type: 'remote', url: 'http://127.0.0.1:1/mcp' } }) as {
+    mcp: Record<string, unknown>
+    agent: { chat: { permission: Record<string, unknown>; prompt: string } }
+  }
+  expect(cfg.mcp.video).toBeDefined()
+  expect(cfg.agent.chat.permission).toMatchObject({ '*': 'deny', video_cuadros: 'allow', video_render: 'allow' })
+  expect(cfg.agent.chat.prompt).toContain('video_cuadros')
+  expect((buildInlineConfig() as typeof cfg).agent.chat.permission).toMatchObject({ video_cuadros: 'deny', video_render: 'deny' })
 })

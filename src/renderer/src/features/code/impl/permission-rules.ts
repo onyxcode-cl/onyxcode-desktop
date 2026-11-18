@@ -1,3 +1,4 @@
+import { videoSessionRules } from '@shared/video-permissions'
 import type { PermissionRuleset } from '@opencode-ai/sdk/v2/client'
 import {
   hasModeMark,
@@ -154,7 +155,7 @@ export function rulesetFor(
   linked?: readonly LinkedFolderRule[],
   projectAsk: readonly PermissionRuleLike[] = []
 ): PermissionRuleset {
-  const app = [...bgshellSessionRules(mode), ...documentsSessionRules(mode)]
+  const app = [...bgshellSessionRules(mode), ...documentsSessionRules(mode), ...videoSessionRules(mode)]
   // Si la config NIEGA algo, esos `deny` van tras los `ask` y un patrón amplio (`*_*`, `*start*`, `*`) alcanzaría también a las herramientas propias de la app
   // (`bgshell_*`, `documentos_*`), que antes (1.8.11, y 1.8.12 sin los deny) volvían a abrir sus reglas de sesión. Se repiten tras los `deny` y, donde los `ask`
   // de conector las cubrían (carpeta sin enumerar o que redefine `bgshell`/`documentos`), se repite su `ask`: mismo resultado que antes, sin aflojar nada.

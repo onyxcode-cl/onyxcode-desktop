@@ -1,3 +1,4 @@
+import { VIDEO_SERVER, videoConfigPermission } from '@shared/video-permissions'
 /**
  * Sidecar de OpenCode: lanza `opencode serve` en 127.0.0.1:<puerto libre> con
  * usuario/clave aleatorios (HTTP Basic vía OPENCODE_SERVER_USERNAME/PASSWORD),
@@ -102,6 +103,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     return this.shellBgEventsFile
   }
   /** Token real de la herramienta `documentos` de este arranque: se revoca al parar, al caerse el proceso o al relanzar. */
+  private videoToken: string | null = null
+  private videoApi: { revokeToken(token: string): boolean } | null = null
   private documentsToken: string | null = null
   private chatPhotosToken: string | null = null
   private chatPhotosApi: { revokeToken(token: string): boolean } | null = null
@@ -157,8 +160,8 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       // `bgshell` (F8-B204): `bgshell_start` pregunta como `bash`, el resto pasa; el bloque de modo de cada sesión lo ajusta después.
       // `documentos` (Word/Excel/PowerPoint/PDF): `documentos_crear` pregunta (como escribir un archivo) y `documentos_renderizar` pasa; no es
       // «interno» (eso sería `allow` total). El bloque de modo de cada sesión de Code lo ajusta (`documentsSessionRules`).
-      fixed: { ...bgshellConfigPermission(), ...documentsConfigPermission() },
-      fixedServers: [SHELL_BG_SERVER, DOCUMENTS_SERVER]
+      fixed: { ...bgshellConfigPermission(), ...documentsConfigPermission(), ...videoConfigPermission() },
+      fixedServers: [SHELL_BG_SERVER, DOCUMENTS_SERVER, VIDEO_SERVER]
     })
   }
 
@@ -311,6 +314,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       this.revokeDocumentsToken()
       const documents = await this.documentsBlock()
       const chatPhotos = await this.chatPhotosBlock()
+      const video = await this.videoBlock()
       // Conectores en Code (F8-B203): reglas por servidor en la config inline. Se anota con qué huella arrancó.
       const permission = this.codeMcpPermission()
       const chatSubagents = this.chatSubagents()
@@ -346,6 +350,7 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
             bgshellMcp: shellBg?.block ?? null,
             documentsMcp: documents,
             chatPhotosMcp: chatPhotos,
+            videoMcp: video,
             permission,
             chatSubagents,
             modelFallback: settingsStore.get().modelFallback,
@@ -474,7 +479,33 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
     }
   }
 
+  private async videoBlock(): Promise<Record<string, unknown> | null> {
+    try {
+      const { videoMcpServer } = await import('../video')
+      const { activeChatPhotoSession } = await import('../documents/chat-photos')
+      const { activeDocumentSession } = await import('../documents/mcp-server')
+      const { app } = await import('electron')
+      this.videoApi = videoMcpServer()
+      const block = await videoMcpServer().configFor({
+        folder: '<video-sidecar>',
+        code: { roots: () => openCodeFolders() },
+        session: async (root) => (this.connection ? activeDocumentSession(this.connection, root) : null),
+        chat: {
+          directory: join(app.getPath('userData'), 'chat-video'),
+          activeSession: async () => (this.connection ? activeChatPhotoSession(this.connection, this.options.chatDirectory) : null)
+        }
+      })
+      this.videoToken = bearerOf(block)
+      return block
+    } catch (error) {
+      console.warn('[opencode] video no disponible:', error instanceof Error ? error.message : error)
+      return null
+    }
+  }
+
   private revokeDocumentsToken(): void {
+    if (this.videoToken) this.videoApi?.revokeToken(this.videoToken)
+    this.videoToken = null
     if (this.chatPhotosToken) this.chatPhotosApi?.revokeToken(this.chatPhotosToken)
     this.chatPhotosToken = null
     if (this.documentsToken) this.documentsApi?.revokeToken(this.documentsToken)

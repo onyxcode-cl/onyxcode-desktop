@@ -11,7 +11,10 @@ const state = vi.hoisted(() => ({
   bindings: [] as Array<{ folder: string; code?: { roots: () => readonly string[] }; session?: (root: string) => Promise<string | null> }>,
   revoked: [] as string[],
   tokens: 0,
-  instructions: [] as string[]
+  instructions: [] as string[],
+  video: false,
+  videoBindings: [] as Array<import('../video/mcp-server').VideoBinding>,
+  videoRevoked: [] as string[]
 }))
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => '/tmp/lazunox-test' } }))
@@ -55,6 +58,19 @@ vi.mock('../util/net', () => ({ getFreePort: async () => 4998, waitForHealth: as
 vi.mock('./pids', () => ({ killTree: () => [], killPids: () => {}, trackPid: () => {}, untrackPid: () => {} }))
 vi.mock('./catalog-wait', () => ({ catalogFile: () => '/x', waitForCatalog: async () => 'present' }))
 vi.mock('../process/disclaim', () => ({ withDisclaim: (command: string, args: string[]) => ({ command, args, disclaimed: false }) }))
+vi.mock('../video', () => ({
+  videoMcpServer: () => ({
+    configFor: async (binding: import('../video/mcp-server').VideoBinding) => {
+      if (!state.video) return null
+      state.videoBindings.push(binding)
+      return { type: 'remote', url: 'http://127.0.0.1:3/mcp', headers: { Authorization: 'Bearer video-test' }, timeout: 960000 }
+    },
+    revokeToken: (token: string) => {
+      state.videoRevoked.push(token)
+      return true
+    }
+  })
+}))
 vi.mock('../documents', () => ({
   chatPhotosMcp: { configFor: async () => null, revokeToken: () => true },
   documentsMcp: {
@@ -89,6 +105,9 @@ describe('sidecar principal: documentos en Code', () => {
     state.revoked = []
     state.tokens = 0
     state.instructions = []
+    state.video = false
+    state.videoBindings = []
+    state.videoRevoked = []
   })
   afterEach(() => {
     if (prevBin === undefined) delete process.env.OPENCODE_BIN
@@ -185,5 +204,18 @@ describe('sidecar principal: documentos en Code', () => {
     await server.start()
     expect(server.inlineStale()).toBe(false)
     expect(server.appliedInlineKey()).toBe(before)
+  })
+  it('video del sidecar comparte atadura comprobada para Code y Chat y revoca al cerrar', async () => {
+    state.video = true
+    const server = new OpencodeServer({ chatDirectory: '/tmp/lazunox-test/chat' })
+    await server.start()
+    expect(inline().mcp.video).toMatchObject({ timeout: 960000, headers: { Authorization: 'Bearer video-test' } })
+    expect(inline().permission).toMatchObject({ video_cuadros: 'allow', video_render: 'ask' })
+    expect(inline().agent.chat.permission).toMatchObject({ video_cuadros: 'allow', video_render: 'allow', '*': 'deny' })
+    expect(state.videoBindings[0].code!.roots()).toContain('/tmp/proyecto-a')
+    expect(state.videoBindings[0].chat!.directory).toContain('chat-video')
+    await server.stop()
+    expect(state.videoRevoked).toEqual(['video-test'])
+    expect(await state.videoBindings[0].chat!.activeSession()).toBeNull()
   })
 })

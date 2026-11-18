@@ -10,6 +10,12 @@ const routes = vi.hoisted(() => [] as string[])
 const stops = vi.hoisted(() => [] as string[])
 const starts = vi.hoisted(() => ({ before: null as null | ((folder: string) => Promise<void>) }))
 const nextPaths = vi.hoisted(() => ({ value: null as null | { map: unknown; directory: string } }))
+const videoState = vi.hoisted(() => ({
+  enabled: false,
+  revoked: [] as string[],
+  binding: null as null | import('../video/mcp-server').VideoBinding,
+  timeout: 0
+}))
 const documentState = vi.hoisted(() => ({
   enabled: false,
   binding: null as null | { session: (root: string) => Promise<string | null> },
@@ -28,6 +34,19 @@ vi.mock('./opencode-config', async (orig) => {
   const real = await orig<typeof import('./opencode-config')>()
   return { ...real, getOpencodeConfigDir: () => state.cfgDir || real.getOpencodeConfigDir() }
 })
+vi.mock('../video', () => ({
+  videoMcpServer: () => ({
+    configFor: async (binding: import('../video/mcp-server').VideoBinding) => {
+      if (!videoState.enabled) return null
+      videoState.binding = binding
+      return { type: 'remote', url: 'http://127.0.0.1:2/mcp', headers: { Authorization: 'Bearer real-video-test' } }
+    },
+    revokeToken: (token: string) => {
+      videoState.revoked.push(token)
+      return true
+    }
+  })
+}))
 vi.mock('../documents', () => ({
   documentsMcp: {
     configFor: async (binding: { session: (root: string) => Promise<string | null> }) => {
@@ -50,6 +69,10 @@ vi.mock('./mcp-proxy', () => ({
       if (documentState.enabled && spec?.name === 'documentos') {
         documentState.timeout = spec.headersTimeoutMs ?? 0
         return { url: 'http://127.0.0.1:1/documentos', token: 'proxy-prueba', headers: { Authorization: 'Bearer proxy-prueba' } }
+      }
+      if (videoState.enabled && spec?.name === 'video') {
+        videoState.timeout = spec.headersTimeoutMs ?? 0
+        return { url: 'http://127.0.0.1:1/video', token: 'proxy-video', headers: { Authorization: 'Bearer proxy-video' } }
       }
       throw new Error('sin rutas')
     }
@@ -76,6 +99,7 @@ vi.mock('./sandbox', () => ({
       pid: undefined,
       stop: async () => {
         stops.push(folder)
+        ;(opts.onExit as ((code: number) => void) | undefined)?.(0)
       },
       paths: nextPaths.value ?? { map: { kind: 'identity' }, directory: folder }
     }
@@ -152,6 +176,10 @@ beforeEach(() => {
   starts.before = null
   stops.length = 0
   nextPaths.value = null
+  videoState.enabled = false
+  videoState.revoked = []
+  videoState.binding = null
+  videoState.timeout = 0
   documentState.enabled = false
   documentState.binding = null
   documentState.timeout = 0
@@ -343,4 +371,20 @@ describe('Windows: un solo motor aislado en espera', () => {
     await advanceWarmup()
     expect(started).toHaveLength(0)
   })
+})
+
+it('Overdrive Windows ata video al host y recibe solo URL/token del proxy; al parar revoca', async () => {
+  videoState.enabled = true
+  seed()
+  const m = mk({ tasksWin: true, winBackend })
+  await m.start(A)
+  expect(videoState.binding!.folder).toBe(A)
+  expect(videoState.binding!.toAgentPath!('C:\\lzx\\tareas\\a\\promo.mp4')).toBe('/win/c/lzx/tareas/a/promo.mp4')
+  expect(videoState.timeout).toBe(960000)
+  // La config se entrega inline al servidor, sin el secreto real.
+  expect(JSON.stringify(started[0])).not.toContain('real-video-test')
+  expect(routes).toContain('video')
+  expect(JSON.stringify(started[0])).toContain('proxy-video')
+  await m.stopAll()
+  expect(videoState.revoked).toEqual(['real-video-test'])
 })

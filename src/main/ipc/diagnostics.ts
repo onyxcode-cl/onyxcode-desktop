@@ -1,3 +1,4 @@
+import { videoMcpServer } from '../video'
 import { chatPhotosMcp, documentsMcp } from '../documents'
 import { hostExecMcp } from '../host-exec'
 import { app, BrowserWindow, clipboard, dialog, type IpcMain } from 'electron'
@@ -57,6 +58,7 @@ export function registerDiagnosticsHandlers(ipcMain: IpcMain, server: OpencodeSe
       ...embeddedBrowserMcp.knownTokens(),
       ...documentsMcp.knownTokens(),
       ...chatPhotosMcp.knownTokens(),
+      ...videoMcpServer().knownTokens(),
       ...hostExecMcp.knownTokens(),
       ...knownMcpProxyTokens()
     ],

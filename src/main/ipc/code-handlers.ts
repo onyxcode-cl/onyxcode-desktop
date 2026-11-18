@@ -1,3 +1,4 @@
+import { VIDEO_SERVER } from '@shared/video-permissions'
 /**
  * Handlers IPC del modo Code (pty, git, dialog) según `shared/ipc-code.ts`.
  * Canales propios de Code (ya no comparten nombre con `shared/ipc.ts`).
@@ -191,7 +192,7 @@ export function registerCodeHandlers(ipcMain: IpcMain, getWindow: () => BrowserW
       /* sin config global */
     }
     // Conectores que la app o la persona ya tienen: una carpeta que redefine uno de ellos hereda su permiso, así que se marca.
-    const known = [...appServers, ...globalServers, ...CODE_INTERNAL_MCP, SHELL_BG_SERVER, DOCUMENTS_SERVER]
+    const known = [...appServers, ...globalServers, ...CODE_INTERNAL_MCP, SHELL_BG_SERVER, DOCUMENTS_SERVER, VIDEO_SERVER]
     // Reglas de permiso de la config global del usuario y del archivo de conectores de la app (en ese orden): Code manda tras las reglas `ask` de la sesión
     // lo que niegan (ver `globalConfigRules`). Se leen en CADA llamada: Ajustes puede cambiarlas mientras la app corre.
     const globalRules = readGlobalConfigRules()

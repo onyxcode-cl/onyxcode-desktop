@@ -86,3 +86,13 @@ describe('diálogo de botones que no congela la app', () => {
     expect(again).not.toHaveBeenCalled()
   })
 })
+
+it('Windows cierra también el diálogo al cancelar la operación', async () => {
+  const signal = new AbortController().signal
+  const showMessageBox = vi.fn(async () => ({ response: 0, checkboxChecked: false }))
+  await askButtons(
+    { message: 'Video', buttons: ['Ahora no', 'Instalar (20 MB)'], signal },
+    { platform: 'win32', electronDialog: { showMessageBox } as never }
+  )
+  expect(showMessageBox).toHaveBeenCalledWith(expect.objectContaining({ signal, cancelId: 0, defaultId: 0 }))
+})

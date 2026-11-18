@@ -115,6 +115,7 @@ describe('modo de permisos → sesión del motor', () => {
       'documentos_imagenes_usar',
       'documentos_exportar_pdf',
       'documentos_preparar_html',
+      'video_render',
       'edit',
       'write',
       'bash',
@@ -147,7 +148,12 @@ describe('modo de permisos → sesión del motor', () => {
       expect(rules[8]!.action).toBe(rules[7]!.action)
       expect(rules[9]!.action).toBe(rules[5]!.action)
       expect(rules[10]).toEqual({ permission: 'documentos_exportar_pdf', pattern: '*', action: rules[5]!.action })
-      expect(rules.slice(12)).toEqual(rulesetForMode(mode))
+      // Video (F8-B334): cuadros siempre pasa (vista previa) y render igual que documentos_crear.
+      expect(rules.slice(12, 14)).toEqual([
+        { permission: 'video_cuadros', pattern: '*', action: 'allow' },
+        { permission: 'video_render', pattern: '*', action: rules[5]!.action }
+      ])
+      expect(rules.slice(14)).toEqual(rulesetForMode(mode))
       expect(rules[0]!.action).toBe(mode === 'bypass' ? 'allow' : 'ask')
     }
     expect(approvalKindOf(rulesetFor('auto'))).toBe('auto')
