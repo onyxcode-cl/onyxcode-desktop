@@ -14,6 +14,7 @@ quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.m
 
 ### Arreglos importantes
 
+- **Los chats con herramientas MCP ya no quedan trabados:** con modelos de OpenAI (por ejemplo GPT-6 Luna) y un MCP con muchas herramientas, después de que la IA buscaba una herramienta cada mensaje fallaba con «Missing required parameter» y «Reintentar» no servía. Ahora Lazunox revisa y corrige la conversación antes de enviarla a cualquier IA, y los chats que ya habían quedado trabados se recuperan solos.
 - **Traducir y editar documentos ya no falla por rarezas del archivo:** un Word, Excel o PowerPoint que traía basura interna (por ejemplo, de muchas ediciones en Word) hacía fallar la traducción al final. Ahora se conserva el archivo original y solo se cambia el texto; si algo falla, ves el motivo real y puedes «Reintentar» sin perder lo traducido o «Entregar igual con avisos».
 
 ## [1.8.31] - 2026-11-16
