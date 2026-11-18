@@ -433,6 +433,9 @@
     "src/main/video/install.ts": {
       "win32": 2
     },
+    "src/main/video/project-input.ts": {
+      "darwin": 1
+    },
     "src/main/video/render-process.ts": {
       "darwin": 2,
       "win32": 3,

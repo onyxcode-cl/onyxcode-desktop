@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, cp, realpath, readdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, cp, realpath, readdir, rm } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
@@ -74,7 +74,11 @@ async function main(): Promise<void> {
   }
   const folder = join(work, 'conversation')
   await mkdir(join(folder, 'promo'), { recursive: true })
-  await cp(join(project, 'hyperframes/15-vertical/index.html'), join(folder, 'promo/index.html'))
+  const compositionProject = arg('--composition-project')
+  if (compositionProject) {
+    for (const name of ['index.html', 'compositions', 'assets'])
+      await cp(join(compositionProject, name), join(folder, 'promo', name), { recursive: true })
+  } else await cp(join(project, 'hyperframes/15-vertical/index.html'), join(folder, 'promo/index.html'))
   const worker = join(resources, 'video/render-worker.mjs')
   const children = new Set<ReturnType<typeof spawn>>()
   const ownGroups: number[] = []
@@ -210,10 +214,8 @@ async function main(): Promise<void> {
       await mkdir(join(folder, kind))
       await writeFile(join(folder, kind, 'index.html'), qualityComposition(kind))
       const review = await call('cuadros', { composicion: `${kind}/index.html`, formato: 'vertical', segundos: [1, 7] })
-      const warnings = review.text.avisos as string[]
-      const expected = { clean: '', overflow: 'se sale', overlap: 'queda tapado', gap: '4 s: cuadro casi vacío', narrow: 'espacio vacío' }[
-        kind
-      ]
+      const warnings = (review.text.avisos as string[]).filter((w) => !w.includes('oficial') && !w.includes('Hoja oficial'))
+      const expected = { clean: '', overflow: 'se sale', overlap: 'queda tapado', gap: 'cuadro casi vacío', narrow: 'espacio vacío' }[kind]
       if (kind === 'clean' ? warnings.length !== 0 : !warnings.some((w) => w.includes(expected)))
         throw Error(`Avisos incorrectos ${kind}: ${JSON.stringify(warnings)}`)
       quality[kind] = review
@@ -237,6 +239,8 @@ async function main(): Promise<void> {
     )
     report.quality = quality
     report.cuadros = await call('cuadros', { composicion: 'promo/index.html', formato: 'vertical', segundos: [2.5, 7.5, 12.5] })
+    if ((report.cuadros as { text: { revision?: { fuentesLocales: number } } }).text.revision?.fuentesLocales !== 18)
+      throw Error('No se comprobaron las 18 familias locales')
     report.cuadrosWarm = await call('cuadros', { composicion: 'promo/index.html', formato: 'vertical', segundos: [2.5, 7.5, 12.5] })
     report.red = await call('cuadros', { composicion: 'hostile/index.html', formato: 'vertical', segundos: [1] })
     const proof = (report.red as { text: { cuadros: string[] } }).text.cuadros[0]
@@ -266,6 +270,68 @@ async function main(): Promise<void> {
       fps: 30,
       nombre: 'v32-render-15-vertical'
     })
+    // Foto local: misma copia declarativa que en Chat/Code/Tareas, sin red ni atribución automática.
+    const mediaDir = join(folder, 'media')
+    await mkdir(mediaDir)
+    await writeFile(
+      join(mediaDir, 'index.html'),
+      qualityComposition('clean').replace(
+        '</body>',
+        '<img src="assets/foto.png" style="position:absolute;left:100px;top:300px;width:300px;height:300px"></body>'
+      )
+    )
+    await new Promise<void>((done, reject) => {
+      const child = spawn(
+        ready.paths.ffmpeg,
+        ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=blue:s=320x320', '-frames:v', '1', '-threads', '1', join(folder, 'foto.png')],
+        { stdio: 'ignore' }
+      )
+      child.once('error', reject)
+      child.once('close', (code) => (code === 0 ? done() : reject(Error('foto fixture failed'))))
+    })
+    report.fotoRender = await call('render', {
+      composicion: 'media/index.html',
+      formato: 'vertical',
+      duracion: 9,
+      fps: 30,
+      nombre: 'Con foto',
+      fotos: [{ origen: 'foto.png', destino: 'assets/foto.png' }]
+    })
+    await new Promise<void>((done, reject) => {
+      const child = spawn(
+        ready.paths.ffmpeg,
+        ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=10', join(folder, 'tono.wav')],
+        { stdio: 'ignore' }
+      )
+      child.once('error', reject)
+      child.once('close', (code) => (code === 0 ? done() : reject(Error('tone fixture failed'))))
+    })
+    report.audioRender = await call('render', {
+      composicion: 'media/index.html',
+      formato: 'vertical',
+      duracion: 9,
+      fps: 30,
+      nombre: 'Con audio',
+      audio: [{ origen: 'tono.wav', inicio: 1, desde: 2, hasta: 8, volumen: 0.4, fundidoEntrada: 0.2, fundidoSalida: 0.5 }]
+    })
+    if ((report.audioRender as { text: { audio?: { codec: string; duration: number } } }).text.audio?.codec !== 'aac')
+      throw Error('No AAC track')
+    await cp(join(folder, 'tono.wav'), join(mediaDir, 'tono.wav'))
+    await writeFile(
+      join(mediaDir, 'index.html'),
+      qualityComposition('clean').replace(
+        '<script>',
+        '<audio id="tono" src="tono.wav" data-start="0.5" data-duration="5" data-volume="0.3" data-fade-in="0.2" data-fade-out="0.3"></audio><script>'
+      )
+    )
+    report.audioTagRender = await call('render', {
+      composicion: 'media/index.html',
+      formato: 'vertical',
+      duracion: 9,
+      fps: 30,
+      nombre: 'Audio HTML'
+    })
+    if ((report.audioTagRender as { text: { audio?: { codec: string } } }).text.audio?.codec !== 'aac') throw Error('No AAC from audio tag')
     const cancellationStarted = performance.now()
     const controller = new AbortController()
     const cancelTimer = setTimeout(() => controller.abort(), 1000)
@@ -326,6 +392,7 @@ async function main(): Promise<void> {
     const reportFile = arg('--report') ?? join(work, 'report.json')
     await writeFile(reportFile, JSON.stringify(report, null, 2))
     console.log(JSON.stringify(report, null, 2))
+    await rm(work, { recursive: true, force: true })
     if (!process.argv.includes('--node')) {
       const { app } = await import('electron')
       app.exit(process.exitCode ?? 0)

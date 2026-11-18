@@ -32,12 +32,28 @@ export function inspectFrame({ width, height }) {
     }
     if (texts.length >= 100) break
   }
-  const issues = []
-  const add = (text) => { if (issues.length < 20 && !issues.includes(text)) issues.push(text) }
+  const issues = [], details = []
+  let currentElement = stage
+  const selector = (el) => {
+    const parts = []
+    for (let p = el; p && parts.length < 6; p = p.parentElement) {
+      if (p.id) { parts.unshift('#' + p.id.slice(0, 80)); break }
+      parts.unshift(p.tagName.toLowerCase() + ':nth-child(' + (Array.from(p.parentElement?.children ?? []).indexOf(p) + 1) + ')')
+    }
+    return parts.join(' > ')
+  }
+  const add = (text) => {
+    const where = selector(currentElement)
+    if (details.length < 20 && !details.some((d) => d.message === text && d.selector === where)) {
+      details.push({ message: text, selector: where })
+      if (!issues.includes(text)) issues.push(text)
+    }
+  }
   const outside = (a, b, tolerance = 2) => a.left < b.left - tolerance || a.right > b.right + tolerance || a.top < b.top - tolerance || a.bottom > b.bottom + tolerance
   const safe = width < height ? { left: 90, right: width - 90, top: 200, bottom: height - 200 } : { left: 54, right: width - 54, top: 54, bottom: height - 54 }
   const shapes = shown.filter(painted)
   for (const { el, rects, text } of texts) {
+    currentElement = el
     const box = el.getBoundingClientRect()
     const overflow = (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) || (el.clientHeight > 0 && el.scrollHeight > el.clientHeight + 2)
     if (overflow || rects.some((r) => outside(r, box))) add(`el texto "${text}" se sale de su caja`)
@@ -80,8 +96,9 @@ export function inspectFrame({ width, height }) {
     const t = Math.max(0, Math.min(...content.map((r) => r.top))), b = Math.min(height, Math.max(...content.map((r) => r.bottom)))
     coverage = Math.max(0, (r - l) * (b - t) / (width * height))
   }
+  currentElement = stage
   if (content.length && coverage < 0.6) add(`el contenido ocupa solo el ${Math.round(coverage * 100)} % del lienzo; revisa el espacio vacío`)
-  return { issues, visibleText: texts.length, coverage }
+  return { issues, details, visibleText: texts.length, coverage }
 }
 
 /** RGB thumbnail variation: a solid or nearly solid frame has very little color variation. */

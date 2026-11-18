@@ -31,3 +31,24 @@ it('sin identidad fiable o respuesta acotada no autoriza reemplazos', async () =
   expect(await videoRequest(connection, '/p', '../fuera', fetcher)).toBeNull()
   expect(fetcher).not.toHaveBeenCalled()
 })
+
+it('solo entrega adjuntos humanos de la sesión; nombre ambiguo exige id y nunca sigue URLs o rutas', async () => {
+  const { videoAttachment } = await import('./request')
+  const attachment = (id: string, filename: string, content: string) => ({
+    id,
+    type: 'file',
+    filename,
+    url: `data:image/png;base64,${Buffer.from(content).toString('base64')}`
+  })
+  const messages = [
+    { ...info('msg_1', 1), parts: [attachment('prt_1', 'foto.png', 'uno')] },
+    { ...info('msg_2', 2), parts: [attachment('prt_2', 'foto.png', 'dos')] },
+    { ...info('msg_a', 3, { role: 'assistant' }), parts: [attachment('prt_ai', 'ajena.png', 'no')] },
+    { ...info('msg_o', 4, { sessionID: 'ses_other' }), parts: [attachment('prt_o', 'otra.png', 'no')] }
+  ]
+  const fetcher = (async () => Response.json(messages)) as typeof fetch
+  expect(await videoAttachment(connection, '/chat', 'ses_1', 'prt_1', 'photo', fetcher)).toEqual(Buffer.from('uno'))
+  for (const origin of ['foto.png', 'ajena.png', 'otra.png', '/etc/a.png', 'https://example.com/a.png'])
+    expect(await videoAttachment(connection, '/chat', 'ses_1', origin, 'photo', fetcher)).toBeNull()
+  expect(await videoAttachment(connection, '/chat', 'ses_1', 'prt_1', 'audio', fetcher)).toBeNull()
+})

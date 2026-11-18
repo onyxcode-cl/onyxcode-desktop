@@ -20,8 +20,10 @@ try {
   /* sin Electron (pruebas): se queda en os.tmpdir() */
 }
 
+export const documentPhotoRegistry = new FreeImageRegistry(join(app.getPath('userData'), 'documentos-fotos'))
+
 export const documentsMcp = new DocumentsMcpServer({
-  photoRegistry: new FreeImageRegistry(join(app.getPath('userData'), 'documentos-fotos')),
+  photoRegistry: documentPhotoRegistry,
   exportPdf: async (tipo, bytes) => {
     await ensureCraft()
     return exportDocumentPdf(tipo, bytes, { wordcraft: craftBinary('wordcraft'), deckcraft: craftBinary('deckcraft') })

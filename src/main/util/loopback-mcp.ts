@@ -56,6 +56,9 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
   protected configTimeoutMs(): number {
     return 15_000
   }
+  protected maxBodyBytes(): number {
+    return MAX_BODY
+  }
   /** Se llama al sustituir o revocar un token (un servidor que termina): por si hay que limpiar lo de esa atadura. */
   protected onBindingGone(_binding: B): void {}
 
@@ -202,7 +205,7 @@ export abstract class LoopbackMcpServer<B extends { folder: string }> {
     req.on('data', (c: Buffer) => {
       if (tooBig) return
       size += c.length
-      if (size > MAX_BODY) {
+      if (size > this.maxBodyBytes()) {
         // Se responde 413 y se cierra la conexión, pero sin destruir el socket al instante: en Windows el cliente que aún
         // está enviando recibiría ECONNRESET antes de leer el 413. El resto del cuerpo se descarta y, por si el cliente
         // no para, el socket se corta a los 2 s.

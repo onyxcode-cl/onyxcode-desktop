@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink, link, realpath } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -437,4 +438,114 @@ it('el error de formato llega al modelo con esqueleto adaptado', async () => {
   expect(response.isError).toBe(true)
   expect(text(response)).toContain('1920×1080, pero pediste vertical (1080×1920)')
   expect(text(response)).toContain('data-composition-id="main"')
+})
+
+it('Chat crea escenas con archivos y permite actualizar solo un archivo conservando el resto', async () => {
+  binding = { folder: '<chat>', chat: { directory: join(dir, 'chat'), activeSession: async () => 'ses_files' } }
+  const preview = JSON.parse(
+    text(
+      await server.invoke(binding, 'cuadros', {
+        formato: 'vertical',
+        segundos: [1],
+        archivos: {
+          'index.html': '<html>root</html>',
+          'compositions/uno.html': '<template>antes</template>',
+          'assets/style.css': 'h1{color:red}'
+        }
+      })
+    )
+  )
+  expect(preview.composicion).toContain('/index.html')
+  const out = await server.invoke(binding, 'cuadros', {
+    composicion: preview.composicion,
+    formato: 'vertical',
+    segundos: [1],
+    archivos: { 'compositions/uno.html': '<template>después</template>' }
+  })
+  expect(out.isError).toBeUndefined()
+  const render = vi.mocked(deps.render)
+  expect(render).toHaveBeenCalledTimes(2)
+  const actual = JSON.parse(text(out)).composicion
+  const folder = join(dir, 'chat/videos', createHashForTest('ses_files'), actual, '..')
+  expect(await readFile(join(folder, 'index.html'), 'utf8')).toBe('<html>root</html>')
+  expect(await readFile(join(folder, 'compositions/uno.html'), 'utf8')).toContain('después')
+  expect((await server.invoke(binding, 'cuadros', { formato: 'vertical', segundos: [1], archivos: { '../x.html': 'x' } })).isError).toBe(
+    true
+  )
+  expect((await server.invoke({ folder: root }, 'cuadros', { ...args, archivos: { 'index.html': 'x' } })).isError).toBe(true)
+})
+function createHashForTest(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
+}
+it('fotos por ruta, id preparado o adjunto de Chat se copian a assets sin créditos; audio solo al temporal', async () => {
+  await writeFile(join(root, 'foto.png'), png)
+  const out = await server.invoke(binding, 'cuadros', { ...args, fotos: [{ origen: 'foto.png', destino: 'assets/foto.png' }] })
+  expect(out.isError).toBeUndefined()
+  expect(await readFile(join(root, 'promo/assets/foto.png'))).toEqual(png)
+  expect(text(out)).not.toContain('credit')
+  deps.photo = async (_root, _session, _chat, origin) => (origin === 'imagen:id' ? png : null)
+  expect(
+    (await server.invoke(binding, 'cuadros', { ...args, fotos: [{ origen: 'imagen:id', destino: 'assets/id.png' }] })).isError
+  ).toBeUndefined()
+  binding = {
+    folder: '<chat>',
+    chat: { directory: join(dir, 'chat'), activeSession: async () => 'ses_media' },
+    media: async (_id, origin) => (origin === 'foto-adjunta' ? png : null)
+  }
+  const preview = await server.invoke(binding, 'cuadros', {
+    formato: 'vertical',
+    segundos: [1],
+    archivos: { 'index.html': '<html/>' },
+    fotos: [{ origen: 'foto-adjunta', destino: 'assets/persona.png' }]
+  })
+  expect(preview.isError).toBeUndefined()
+  await writeFile(join(root, 'persona.wav'), 'se comprueba con ffprobe dentro del worker')
+  const render = await server.invoke({ folder: root }, 'render', {
+    composicion: 'promo/index.html',
+    formato: 'vertical',
+    duracion: 9,
+    fps: 30,
+    nombre: 'Audio',
+    audio: [{ origen: 'persona.wav', desde: 1, hasta: 5, fundidoSalida: 0.4 }]
+  })
+  expect(render.isError).toBeUndefined()
+  expect(vi.mocked(deps.render).mock.lastCall![0].audio?.[0]).toMatchObject({ desde: 1, hasta: 5, fundidoSalida: 0.4 })
+  expect(await readdir(join(root, 'promo'))).not.toContain('audio-0')
+})
+it('publica hoja de contactos como imagen y rechaza una ruta de hoja ajena al worker', async () => {
+  deps.render = async (job, signal) => {
+    const output = await result(job)
+    signal.throwIfAborted()
+    const contactSheet = join(job.work, 'contactos.png')
+    await writeFile(contactSheet, png)
+    return { ...output, contactSheet }
+  }
+  const out = await server.invoke(binding, 'cuadros', args)
+  expect(out.content.filter((c) => c.type === 'image')).toHaveLength(4)
+  expect(JSON.parse(text(out)).hojaContactos).toMatch(/contactos.png$/)
+  deps.render = async (job) => ({ ...(await result(job)), contactSheet: '/fuera.png' })
+  expect((await server.invoke(binding, 'cuadros', args)).isError).toBe(true)
+})
+it('el transporte de video acepta archivos de Chat mayores de 1 MiB, con límites propios', async () => {
+  const chatBinding = { folder: '<chat>', chat: { directory: join(dir, 'chat'), activeSession: async () => 'ses_body' } }
+  const { port, token } = await server.clientFor(chatBinding)
+  const response = await fetch(`http://127.0.0.1:${port}/mcp`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'cuadros',
+        arguments: {
+          formato: 'vertical',
+          segundos: [1],
+          archivos: { 'index.html': 'x'.repeat(400000), 'a.css': 'a'.repeat(400000), 'b.css': 'b'.repeat(400000) }
+        }
+      }
+    })
+  })
+  expect(response.status).toBe(200)
+  expect((await response.json()).result.isError).toBeUndefined()
 })

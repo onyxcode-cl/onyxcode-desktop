@@ -9,7 +9,7 @@ export const MAX_COMPOSITION_FILES = 256
 export const MAX_COMPOSITION_BYTES = 128 * 1024 * 1024
 export const MAX_ASSET_BYTES = 32 * 1024 * 1024
 const noFollow = process.platform === 'darwin' ? 0x20000000 : (constants.O_NOFOLLOW ?? 0)
-const allowed = /\.(html|js|mjs|css|json|png|jpe?g|webp|gif|svg|woff2?|ttf|otf|mp3|wav|ogg|m4a|mp4|webm)$/i
+const allowed = /\.(html|js|mjs|css|json|png|jpe?g|webp|gif|svg|woff2?|ttf|otf|mp3|wav|aac|ogg|m4a|mp4|webm)$/i
 const invalid = (): Error => new Error('La composición debe estar dentro de su carpeta, sin enlaces y con archivos normales.')
 
 export async function copyComposition(root: string, input: unknown, dest: string, signal: AbortSignal): Promise<string> {

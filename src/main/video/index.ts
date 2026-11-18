@@ -81,6 +81,13 @@ export function videoMcpServer(): VideoMcpServer {
         signal
       })) === 1 && !signal.aborted,
     install,
+    photo: async (root, session, chat, origin) => {
+      const { documentPhotoRegistry, chatPhotosMcp } = await import('../documents')
+      const scope = chat && session ? await chatPhotosMcp.rootFor(session) : root
+      const id = origin.replace(/^imagen:/, '')
+      const photo = (await documentPhotoRegistry.findId(scope, id)) ?? (await documentPhotoRegistry.findPath(scope, origin))
+      return photo?.asset.bytes ?? null
+    },
     render: createRenderProcess(candidates.find(existsSync) ?? candidates[0]!)
   }))
 }

@@ -1,51 +1,79 @@
-# Video, paso 2 (F8-B334)
+# Video: proyectos, revisión y audio (F8-B334, F8-B336)
 
-`video_cuadros` y `video_render` son herramientas del MCP `video` que corre en main. El transporte anuncia `cuadros` y `render`; el motor antepone el nombre del servidor. La instrucción pide mirar todos los cuadros y corregir antes del MP4. No hay skill ni reproductor en este paso.
+`video_cuadros` y `video_render` pertenecen al MCP de video de main. Chat, Code y Tareas usan el mismo worker y las mismas piezas fijadas. El transporte anuncia `cuadros` y `render`; el motor antepone el nombre del servidor. Primero se miran los cuadros y la hoja de contactos, se corrige y después se pide el MP4.
 
-En Code, `carpeta` se comprueba contra los proyectos abiertos en cada llamada; render tiene los permisos de crear documentos, cuadros los de previsualizar. Overdrive usa el proxy MCP existente, con token real fuera de la tarea y traducción de rutas al devolver resultados Windows. No se cambian montajes ni WSL. Chat comparte el servidor del sidecar, pero determina la sesión activa desde main y guarda cada composición bajo una carpeta privada de esa conversación: como Chat no tiene escritura de archivos, `cuadros` admite `html` exclusivamente allí. El resultado devuelve `composicion` para el render posterior; no concede escritura de archivos generales.
+## Proyecto y archivos de Chat
 
-## Entrada y motor
+El proyecto tiene `index.html`, escenas `<template>` en `compositions/` y recursos en `assets/`. El runtime oficial monta las escenas en el mismo DOM y posiciona sus timelines; no hace falta compilar el proyecto. Cada host, raíz de escena y clave de timeline debe compartir id. La revisión mide el DOM ensamblado, incluidas las escenas.
 
-Usar una carpeta pequeña con `index.html` y sus recursos locales. Se copia la carpeta que contiene ese HTML: máximo 256 entradas, ocho niveles, 32 MiB por archivo y 128 MiB total. Se rechazan enlaces simbólicos/duros, archivos especiales, rutas absolutas, `..` y tipos ajenos a composiciones. La copia queda en un temporal privado bajo userData; el origen se abre para lectura con comprobación de identidad y sin seguir enlaces. La biblioteca local `../node_modules/gsap/dist/gsap.min.js` (también `node_modules/gsap/dist/gsap.min.js`) la sirve la instalación fijada, sin copiar node_modules del proyecto.
+El elemento raíz declara `data-composition-id="main"`, `data-width`, `data-height` y `data-duration`; `window.__timelines.main` debe ser una timeline GSAP pausada. Formatos: vertical 1080×1920, cuadrado 1080×1080 y horizontal 1920×1080; 30 fps y hasta 120 segundos. GSAP fijado se sirve en `assets/vendor/gsap.min.js`, `node_modules/gsap/dist/gsap.min.js` y `../node_modules/gsap/dist/gsap.min.js`. La ruta de vendor prevalece sobre cualquier copia del proyecto.
 
-El adaptador usa el runtime y las funciones de posicionamiento de HyperFrames 0.9.64 instalados en el paso 1, Puppeteer de ese mismo lock y el Chrome fijado. No carga CLI, configuración, plugins ni scripts Node del proyecto. Captura la composición con su tamaño declarado (que debe coincidir con el formato), y envía cuadros a ffmpeg por una tubería. MP4 H.264/yuv420p, 30 fps, hasta 120 s, CRF 18; ffprobe comprueba códec, dimensiones, fps y duración. Los tres PNG de control del MP4 se extraen del archivo ya codificado. Los PNG para revisión miden un cuarto por dimensión. Solo MP4/PNG se copian de vuelta, sin sobrescribir, mediante `documents/output-path.ts`.
+La copia privada tiene topes de 256 entradas, ocho niveles, 32 MiB por archivo y 128 MiB total. Rechaza enlaces simbólicos/duros, archivos especiales y tipos ajenos al proyecto. La lectura comprueba identidad y tamaño por descriptor sin seguir enlaces. No se carga configuración, plugins ni código Node del proyecto.
 
-Esta primera integración captura imágenes mediante el navegador y codifica solo video: no mezcla pistas de audio de la composición. No se presenta como equivalente completo al CLI de HyperFrames (sin bundling de subcomposiciones ni descarga/localización automática de recursos). Si se necesita audio, requiere una ampliación explícita del adaptador y sus pruebas.
+En Chat, `cuadros` admite `html` (512 KiB) o `archivos`, un objeto de rutas relativas → texto. Solo HTML, CSS, JS, JSON y SVG: 64 archivos, 512 KiB por archivo y 4 MiB de texto total. Se rechazan binarios, rutas absolutas, `..`, separadores ambiguos y duplicados por mayúsculas. El primer envío necesita `index.html`; la respuesta devuelve `composicion`. Un envío posterior con esa ruta y `archivos` reemplaza únicamente los archivos enviados, mediante escritura segura. El presupuesto incluye el texto ya guardado. El transporte de video admite 9 MiB para texto escapado; el resto de los MCP conserva su tope previo.
 
-## Red, procesos y consentimiento
+Todo queda bajo la carpeta privada de esa conversación, en `.lazunox/trabajo/video/composicion-…`. La app determina sesión y carpeta; el modelo no puede elegir otra conversación. Code comprueba proyectos abiertos en cada llamada; Tareas conserva el proxy y la traducción de rutas existente, sin cambios de WSL.
 
-El navegador recibe un proxy a un puerto cerrado, sin excepción implícita de loopback, con excepción exacta para el puerto de su servidor de archivos. Resolución DNS bloqueada excepto 127.0.0.1, QUIC y UDP WebRTC sin proxy desactivados. Además se intercepta cada solicitud antes de navegar: solo GET/HEAD al origen y prefijo aleatorio de ese render. El servidor solo sirve archivos copiados y GSAP, no tiene API, proxy ni redirecciones. CSP propia: scripts y estilos locales/inline, recursos locales/datos, connect solo a ese origen; sin frames, workers, objetos, formularios ni base. Las composiciones no pueden usar service workers. El archivo y el resto de puertos quedan fuera. Windows conserva el sandbox de Chrome; el bloqueo real allí debe verificarse con la prueba indicada abajo.
+## Fuentes sin conexión
 
-En Mac todos los procesos del render se lanzan con un perfil Seatbelt separado, deny default: lectura del temporal, piezas y bibliotecas/fuentes del sistema; escritura solo al temporal (y `/dev/null`), red únicamente loopback. La restricción al puerto exacto la impone adicionalmente el navegador. Si Seatbelt falla, la herramienta devuelve error, sin relanzar fuera del perfil. Este entorno de desarrollo rechaza `sandbox_apply`, por lo que ese perfil **todavía necesita prueba real en una terminal normal**.
+Se usan los **42 WOFF2 embebidos** de HyperFrames 0.9.64. El worker los lee del paquete verificado, sirve únicamente esos archivos por un prefijo privado y declara `@font-face` antes de cargar la composición. No llama al compilador ni a Google Fonts. Una familia incluida funciona por su nombre, sin copiar fuentes al proyecto.
 
-Una operación por atadura, dos en la instancia única de la app; las llamadas adicionales reciben ocupado para reintentar. Render: máximo cinco minutos; llamada completa incluyendo consentimiento/instalación: dieciséis. Se cancela por desconexión HTTP, revocación del token, parada del servidor o cambio/parada de la sesión que main comprueba periódicamente. Cada render usa su propio grupo de procesos en POSIX; Chrome no crea otro grupo. Al terminar o cancelar se mata ese grupo; Windows usa taskkill con el PID propio y `/T /F`. stdin sirve de vigía si main desaparece.
+| Familias | Pesos normales incluidos |
+| --- | --- |
+| Inter, Montserrat, Outfit, Nunito, Playfair Display, Roboto, Lato, Poppins | 400, 700, 900 |
+| Oswald, Space Mono, IBM Plex Mono, JetBrains Mono, EB Garamond, Source Code Pro, Noto Sans JP, Open Sans | 400, 700 |
+| League Gothic, Archivo Black | 400 |
 
-Si faltan piezas, se pregunta con el diálogo nativo de botones ya usado por Lazunox: «Ahora no» como opción segura e «Instalar (X MB)», con tamaño que incluye Node faltante y aviso GPL. Después de aceptar, una ventana sin preload ni privilegios muestra fase y porcentaje; cerrarla cancela. Ajustes conserva su tarjeta. El motor no decide instalar. Las unitarias usan procesos y descargas dobles.
+Los archivos incluidos son subconjuntos latinos: no se promete cobertura de otros alfabetos ni otros pesos exactos. Otra familia necesita su archivo local y `@font-face`; no se descarga. Las familias también figuran en las descripciones de herramientas.
 
-## Repetir la prueba real en Mac
+## Fotos
 
-Desde el repositorio, con Node local compatible:
+Ambas herramientas aceptan `fotos: [{origen, destino: "assets/foto.jpg"}]`, hasta 24. `origen` puede ser una ruta del ámbito concedido o un id/ruta preparado por `documentos_imagenes_usar`. En Chat también puede ser nombre o id de un adjunto humano de la conversación activa. Un nombre ambiguo exige id. Main resuelve los ids en el registro de esa misma carpeta/conversación; nunca en otra.
+
+Cada foto debe tener firma PNG/JPEG/WebP/GIF, hasta 32 MiB y 40 megapíxeles. Se rechazan vistas previas marcadas y enlaces. Fotos y audio explícito suman como máximo 96 MiB por llamada; la copia completa conserva 128 MiB. Las fotos persisten en el proyecto para siguientes llamadas. No se insertan créditos automáticamente y una foto local no se rechaza por su licencia.
+
+**Límite del buscador existente:** el flujo de documentos solo busca/prepara licencias libres y revalida esa condición en el registro persistente. No se amplió en este paso: separar un modo de video exige cambiar búsqueda, candidatos, validación y procedencia sin relajar documentos. Para fotos de otras licencias se acepta el archivo local aportado. El video conserva la procedencia que ya tenga la foto preparada, sin convertirla en crédito visible.
+
+## Audio de la persona
+
+`render` admite hasta 16 pistas: `{origen, inicio, desde, hasta, volumen, fundidoEntrada, fundidoSalida}`. Tiempos en segundos; valores por defecto 0, salvo volumen 1 y `hasta` al final del archivo. Entrada MP3/M4A/WAV/AAC, hasta 32 MiB por archivo. Solo archivos del ámbito concedido o adjuntos humanos verificables; ninguna URL remota. En Chat, el compositor actual admite imágenes y documentos, **todavía no adjuntar audio**: el resolvedor admite partes humanas de audio si llegan por un canal compatible, pero no se añadió esa interfaz.
+
+Los `<audio>` locales del DOM ensamblado también se mezclan. Se leen `data-start`, `data-duration`, `data-media-start`, `data-playback-rate` (0.1–10), `data-volume` (0–3.98), `data-fade-in` y `data-fade-out`, con desplazamiento y límite de la escena. `muted`/`data-hidden` silencian la pista. La automatización compleja `data-automation` no se aplica y genera aviso; no se extrae audio de `<video>` en este paso.
+
+ffprobe valida el origen, el recorte y la pista. ffmpeg mezcla dentro del mismo worker: volumen, fundidos lineales, retraso, mezcla, limitador y silencio hasta completar el clip. Usa protocolos/demuxers cerrados (`file,pipe`; MP3/WAV/MOV/AAC), sin playlists ni red. La salida es H.264/yuv420p, 30 fps y AAC a 48 kHz cuando hay audio; ffprobe comprueba códec y duración de ambas pistas. Un video sin audio permanece mudo. No se genera ni descarga música o voz. El tono del smoke es exclusivamente un fixture de prueba.
+
+## Revisión y hoja de contactos
+
+Dentro del worker se reutilizan los módulos **del paquete fijado**:
+
+- `lintHyperframeHtml`, sobre el texto de cada HTML, incluidas las escenas.
+- `createPageDriver`, sobre la página ya aislada: auditoría oficial de geometría y superposiciones.
+- `createContactSheet`, el generador de hojas del paquete usado por snapshot. Si Sharp no está presente, no se instala: se dibuja una hoja propia con los mismos cuadros y se informa.
+
+La respuesta indica `revision.oficial`, `hojaOficial` y `alcance`. **No se ejecuta el check completo de CLI.** No hay API exportada del pipeline completo sobre una página ya autorizada; su ruta normal abre navegadores/servidores propios. Además, `lintProject` sigue rutas de recursos escritas por el autor desde Node, fuera de las restricciones del navegador en Windows. Se usa su lint puro y el auditor sobre la página existente, más la alternativa propia. No se incluyen todas las comprobaciones de movimiento, contraste y craft del CLI.
+
+Se muestrean los tiempos pedidos, ocho interiores y entradas/medios/bordes de escena o beats, hasta 24 tiempos. La revisión propia detecta texto desbordado, recortado o tapado, área segura, cobertura y cuadros casi vacíos. Los avisos se agrupan por problema y elemento, con rango de tiempo; no se emite una copia por segundo. Los avisos no bloquean el MP4. Es un muestreo y puede omitir defectos breves; no hace OCR de imágenes/canvas ni sustituye mirar el movimiento.
+
+`cuadros` entrega de uno a seis PNG a mitad por dimensión (540×960 vertical) y una hoja de contactos como imagen adicional, con tiempos. Los PNG individuales se reducen a un cuarto si superan 3 MiB en conjunto o 2 MiB por imagen. La hoja tiene un presupuesto separado de 1 MiB. El render devuelve tres controles extraídos del MP4 final. Main solo publica nombres fijos PNG/MP4 del temporal, mediante escritura segura; nunca sigue rutas arbitrarias del JSON del worker.
+
+## Aislamiento y cancelación
+
+Chrome usa proxy a un puerto cerrado, con excepción exacta para el servidor de ese render; DNS externo, QUIC y UDP WebRTC sin proxy desactivados. Intercepción antes de navegar: solo GET/HEAD al origen/prefijo aleatorio de la composición, además de imágenes/fuentes/medios `data:`. Servidor sin APIs, proxy ni redirecciones; solo proyecto, GSAP fijado y las 42 fuentes. CSP propia, sin frames, workers, objetos, formularios ni base. No se cambia la CSP principal ni la del visor.
+
+Mac lanza worker, Chrome, ffmpeg y ffprobe con Seatbelt deny default, lectura limitada a temporal/piezas/bibliotecas/fuentes y escritura solo al temporal. Si falla no se relanza sin perfil. Windows conserva sandbox Chrome, proxy e intercepción. El worker recibe `HYPERFRAMES_NO_TELEMETRY`, `HYPERFRAMES_NO_UPDATE_CHECK`, `HYPERFRAMES_NO_AUTO_INSTALL` y `HYPERFRAMES_NO_OPTIONAL_INSTALL` a 1; entorno acotado sin credenciales del motor ni del proveedor.
+
+Una operación por atadura, dos globales; cinco minutos de render y dieciséis con consentimiento/instalación. Cancelación por desconexión, revocación o cambio de sesión; grupo POSIX propio y taskkill por PID/árbol propio en Windows. stdin vigila la muerte de main. Se borran temporales al terminar. Instalación conserva consentimiento nativo y progreso cancelable.
+
+## Repetir en Mac y Windows
+
+Copiar el proyecto de referencia **solo con `index.html`, `compositions/` y `assets/`** a una carpeta de prueba. No incluir `renders/`. Usar piezas instaladas únicamente en un perfil temporal `lzx-video-*`:
 
 ```sh
-node scripts/video/render-smoke.mjs --install --project RUTA_VIDEO_PRUEBA --report informe-render-mac.json
+node scripts/video/render-smoke.mjs --project RUTA_VIDEO_PRUEBA --composition-project COPIA_PANADERIA --installed-user-data PERFIL_TEMPORAL --report informe.json
 ```
 
-Crea un userData nuevo en el temporal del sistema; no abre la app instalada ni usa el userData personal. Instala allí las piezas, llama ambas herramientas mediante HTTP MCP autenticado, comprueba una composición hostil, tiempos, duración y salida. `--node` es la alternativa si Electron aborta antes de JavaScript. La prueba también permite reutilizar **solo** un userData temporal anterior de las pruebas con `--installed-user-data RUTA_TEMPORAL`.
+El smoke copia las piezas al perfil temporal propio y borra sus copias y piezas de trabajo al terminar; el informe debe quedar fuera de ese temporal. Sin piezas, omitir `--installed-user-data` y pasar `--install` para consentir instalación solo allí. El mismo comando funciona en una terminal Windows no elevada. Alternativa Node: añadir `--node`. **Solo para diagnóstico Mac**: añadir `--node --diagnostic-without-seatbelt`; no certifica Seatbelt ni Electron.
 
-En un aislamiento que no permite Seatbelt, `--node --diagnostic-without-seatbelt` comprueba el adaptador, el bloqueo de solicitudes del navegador y el MP4 por MCP. Ese modo existe **solo en el script de prueba**, no en el servicio del producto; su informe dice `diagnosticOnly: true`, `seatbelt: false` y no valida el aislamiento Mac.
+Exigir: panadería H.264 1080×1920, 30 fps, 15 s; hoja de contactos con escenas; render con imagen; tono de 10 s recortado/mezclado en un MP4 de 9 s con AAC de 9 s, también desde `<audio>`; `networkProbePixel: 00ff00`, `localCanaryHits: 0`; temporales y procesos propios vacíos tras cancelar. Mirar la hoja y reproducir el MP4; las pruebas automáticas miden audio, no lo escuchan. Repetir fotos/archivos desde Chat y rutas desde Code/Tareas, cancelación y revocación.
 
-La composición hostil intenta tres fetch con `mode: no-cors`: HTTPS externo, otro puerto local realmente abierto y un archivo canario fuera de la composición. Solo pinta verde si **los tres rechazan**; el script decodifica el PNG con el ffmpeg fijado y exige el píxel `00ff00`, y además exige cero peticiones al servidor canario (previamente se comprueba que era accesible). Así una respuesta opaca o un 404 no se confunden con bloqueo. Se guardan informes sin tokens. El worker devuelve errores si la composición no inicializa o no respeta dimensiones/duración.
-
-## Prueba pendiente en Windows (Claude)
-
-En una terminal no elevada del PC, con este árbol y una copia de `video-prueba`:
-
-```powershell
-node scripts/video/render-smoke.mjs --install --project "RUTA_VIDEO_PRUEBA" --report "informe-render-win.json"
-node scripts/video/render-smoke.mjs --node --install --project "RUTA_VIDEO_PRUEBA" --report "informe-render-win-node.json"
-npx vitest run src/main/video src/shared/video-permissions.test.ts src/main/tasks/inline-config.test.ts
-```
-
-Exigir: 3 PNG 270×480 y MP4 1080×1920, 15 s, H.264, 30 fps; tres controles del MP4; `networkProbePixel: 00ff00`, `localCanaryHits: 0`, temporales vacíos y ningún descendiente de los PID del render vivo. Revisar los tres PNG: introducción, productos y cierre; reproducir el MP4 completo. Probar además cancelar durante cuadros/render/instalación, «Ahora no», «Instalar», progreso y cerrar el aviso; repetir desde Chat, Code y Overdrive WSL, verificando que los archivos regresan a su carpeta. No usar el diagnóstico sin Seatbelt en Windows. Una prueba fallida de red no se aprueba: conservar el informe y corregir antes de dar N24 por verificada.
-
-Estado actual: pruebas con dobles y render real de diagnóstico bajo Node en Mac; Electron, Seatbelt efectivo y Windows real pendientes. Los tiempos y resultados exactos están en el informe externo V32-VIDEO-PASO2-RENDER-INFORME.md.
+**Estado:** diagnóstico real Node en Mac aprobado para escenas, foto, audio, revisión, red y limpieza. Electron termina con SIGABRT y Seatbelt rechaza `sandbox_apply` en este entorno. Ejecución Mac nativa y Windows real pendientes. No se usa el perfil personal ni la app instalada, no se cambia WSL ni se publica nada.

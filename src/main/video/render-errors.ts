@@ -8,6 +8,7 @@ export const RENDER_CODES = [
   'tiempo_fuera',
   'no_inicializa',
   'tiempo_agotado',
+  'audio_invalido',
   'fallo_render'
 ] as const
 export type RenderCode = (typeof RENDER_CODES)[number]
@@ -46,9 +47,10 @@ export function explainRenderError(e: VideoRenderError, format: string, width: n
     tiempo_fuera: `El cuadro de ${d.time} s queda fuera del clip (${d.duration} s). Pide un segundo menor que data-duration.`,
     no_inicializa: `El HTML no inicializa. Revisa el script y GSAP local.${d.console ? ` Primer error de la página (diagnóstico): ${JSON.stringify(d.console)}.` : ''}`,
     tiempo_agotado: 'Se agotó el tiempo del render. Simplifica la composición o acorta el clip y vuelve a pedir cuadros.',
+    audio_invalido: `No se pudo mezclar el audio local. Revisa formato, recorte, inicio y volumen.${d.console ? ` Diagnóstico: ${JSON.stringify(d.console)}.` : ''}`,
     fallo_render: 'Falló el render de video. Revisa la composición y vuelve a pedir cuadros; si persiste, informa el fallo.'
   }
-  if (['tiempo_agotado', 'fallo_render'].includes(e.renderCode)) return messages[e.renderCode]
+  if (['tiempo_agotado', 'fallo_render', 'audio_invalido'].includes(e.renderCode)) return messages[e.renderCode]
   const duration = seconds ?? (typeof d.duration === 'number' && d.duration > 0 && d.duration <= 120 ? d.duration : 15)
   return `${messages[e.renderCode]}\nEsqueleto mínimo para ${format} (adapta el contenido):\n<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden}#main{position:relative;width:${width}px;height:${height}px;background:#18251d;color:white;font:64px Arial;display:grid;place-items:center}</style><div id="main" data-composition-id="main" data-start="0" data-width="${width}" data-height="${height}" data-duration="${duration}" data-fps="30"><p>Tu contenido</p></div><script src="../node_modules/gsap/dist/gsap.min.js"></script><script>const tl=gsap.timeline({paused:true});tl.to({},{duration:${duration}},0);window.__timelines={main:tl};</script>`
 }

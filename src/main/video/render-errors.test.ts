@@ -5,7 +5,7 @@ describe('errores de composición', () => {
     const error = parseRenderError({ error: { code, data: { width: 1920, height: 1080, duration: 9, time: 12 } } })!
     const message = explainRenderError(error, 'vertical', 1080, 1920, 15)
     expect(message).not.toContain('aislamiento')
-    if (!['tiempo_agotado', 'fallo_render'].includes(code)) {
+    if (!['tiempo_agotado', 'fallo_render', 'audio_invalido'].includes(code)) {
       expect(message).toContain('data-width="1080" data-height="1920" data-duration="15"')
       expect(message).toContain('gsap.timeline({paused:true})')
     }
@@ -25,4 +25,12 @@ describe('errores de composición', () => {
       '9 s, pero pediste 15 s'
     )
   })
+})
+
+it('el fallo de audio explica el recorte sin añadir un esqueleto HTML ajeno al problema', () => {
+  const error = parseRenderError({ error: { code: 'audio_invalido', data: { console: 'El recorte termina fuera del audio.' } } })!
+  const message = explainRenderError(error, 'vertical', 1080, 1920, 9)
+  expect(message).toContain('recorte')
+  expect(message).toContain('termina fuera')
+  expect(message).not.toContain('Esqueleto')
 })

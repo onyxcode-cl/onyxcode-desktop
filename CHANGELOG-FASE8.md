@@ -1,6 +1,14 @@
 # Fase 8 — Onboarding y distribución
 
 
+## F8-B336 — Proyectos de video, fotos, fuentes locales y AAC (V32, paso 5)
+
+`video_cuadros` admite proyectos completos con escenas `<template>`, `archivos` de texto incrementales en Chat (64/512 KiB/4 MiB) y hoja de contactos. Ambas herramientas copian `fotos` locales o preparadas por id en el ámbito de la conversación/proyecto, sin créditos automáticos ni bloqueo de licencia sobre archivos locales. El buscador de documentos conserva sus comprobaciones de licencias: ampliarlo queda fuera de esta tanda. GSAP fijado en `assets/vendor/gsap.min.js`; 42 WOFF2 de 18 familias disponibles por nombre sin red. `video_render` mezcla audio local de la persona y `<audio>` de las escenas, con recortes, volumen, fundidos y AAC validado por ffprobe.
+
+Revisión dentro del mismo worker: lint HTML puro y auditor de geometría/superposiciones oficiales sobre la página aislada, más revisión propia. Avisos agrupados por elemento y rango; hoja oficial con alternativa propia si falta Sharp, sin instalaciones opcionales. Se informa que no es el pipeline completo de check (movimiento/contraste/craft). No se cambian skill, WSL, CSP principal ni visor. Audio por adjunto en el compositor Chat y audio de `<video>` pendientes.
+
+Pruebas: `video/project-input.test.ts`, `video/offline-tools.test.ts`, `video/mcp-server.test.ts`, `video/request.test.ts`, regresión de video/documentos/transporte y smoke real con panadería, foto y AAC por argumento y HTML. Diagnóstico Node Mac sin Seatbelt aprobado; Electron SIGABRT y Seatbelt EPERM, Windows real pendiente en N26. Procedimiento y límites: `docs/VIDEO-RENDER.md`; informe externo `V32-VIDEO-PASO5-HERRAMIENTAS-INFORME.md`.
+
 ## F8-B335 — Skill video y reproductor MP4 (V32, paso 3)
 
 Skill `video` incluida en Chat, Code y Overdrive y en el catálogo es/en: composición HTML + GSAP para el motor fijado, tres cuadros que mirar antes del render y tres controles finales, máximo tres rondas, formatos y límites explícitos (render actual sin mezcla de audio). No instala paquetes por terminal.

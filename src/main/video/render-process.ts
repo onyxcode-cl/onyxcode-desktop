@@ -14,11 +14,15 @@ export interface RenderJob {
   times: number[]
   paths: VideoPaths
   node: string
+  audio?: (import('./project-input').AudioInput & { file: string })[]
 }
 export interface RenderOutput {
   duration?: number
   mp4?: string
   images: string[]
+  contactSheet?: string
+  revision?: { oficial: boolean; hojaOficial: boolean; fuentesLocales?: number; alcance: string }
+  audio?: { codec: string; duration: number }
   ownedPids?: number[]
   avisos?: string[]
   cobertura?: { segundo: number; proporcion: number }[]
@@ -69,6 +73,8 @@ export function renderEnvironment(work: string, paths: VideoPaths): Record<strin
     HYPERFRAMES_FFPROBE_PATH: paths.ffprobe,
     HYPERFRAMES_NO_TELEMETRY: '1',
     HYPERFRAMES_NO_UPDATE_CHECK: '1',
+    HYPERFRAMES_NO_AUTO_INSTALL: '1',
+    HYPERFRAMES_NO_OPTIONAL_INSTALL: '1',
     DO_NOT_TRACK: '1'
   }
 }

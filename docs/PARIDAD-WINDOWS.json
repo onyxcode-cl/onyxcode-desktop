@@ -1185,6 +1185,22 @@
       ],
       "nota": "Mismo HTML video y esquema Electron en Mac y Windows. 500 MiB, ftyp, Range y validación de carpeta por petición; miniatura al 40 % sin red. Dobles Windows y pasos de prueba preparados; Windows real pendiente. El diagnóstico Node no valida protocolo/sesión Electron.",
       "comprobacion": null
+    },
+    {
+      "id": "N26",
+      "funcion": "Proyectos de video con escenas, archivos de Chat, fotos, audio AAC y revisión sin conexión (F8-B336)",
+      "estado": "NO VERIFICADO",
+      "evidencia": [
+        "src/main/video/project-input.ts:1",
+        "src/main/video/mcp-server.ts:1",
+        "src/main/video/request.ts:1",
+        "resources/video/render-worker.mjs:1",
+        "resources/video/offline-tools.mjs:1",
+        "scripts/video/render-smoke-entry.ts:1",
+        "docs/VIDEO-RENDER.md:1"
+      ],
+      "nota": "Mismo worker y validadores en Mac/Windows, sin WSL. Diagnóstico Node Mac real con panadería, foto, AAC desde argumento y audio HTML, hoja oficial y prueba hostil sin accesos al canario. Check oficial parcial (lint puro y geometría/superposiciones); CLI completo no se ejecuta. Sharp opcional ausente usa hoja propia sin instalar. Electron SIGABRT y Seatbelt EPERM en este entorno; Windows real pendiente del smoke documentado. Buscador de fotos sigue limitado a licencias libres; video acepta archivos locales de cualquier licencia. Adjuntar audio desde el compositor Chat sigue pendiente.",
+      "comprobacion": null
     }
   ]
 }

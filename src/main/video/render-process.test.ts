@@ -54,6 +54,8 @@ describe('procesos del render', () => {
       HOME: dir,
       HYPERFRAMES_NO_UPDATE_CHECK: '1',
       HYPERFRAMES_NO_TELEMETRY: '1',
+      HYPERFRAMES_NO_AUTO_INSTALL: '1',
+      HYPERFRAMES_NO_OPTIONAL_INSTALL: '1',
       HYPERFRAMES_FFMPEG_PATH: job.paths.ffmpeg
     })
     vi.unstubAllEnvs()

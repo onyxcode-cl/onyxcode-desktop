@@ -484,10 +484,12 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
       const { videoMcpServer } = await import('../video')
       const { activeChatPhotoSession } = await import('../documents/chat-photos')
       const { activeDocumentSession } = await import('../documents/mcp-server')
-      const { videoRequest } = await import('../video/request')
+      const { videoRequest, videoAttachment } = await import('../video/request')
       this.videoApi = videoMcpServer()
       const block = await videoMcpServer().configFor({
         folder: '<video-sidecar>',
+        media: async (session, origin, kind) =>
+          this.connection ? videoAttachment(this.connection, this.options.chatDirectory, session, origin, kind) : null,
         request: async (root, session, chat) =>
           this.connection ? videoRequest(this.connection, chat ? this.options.chatDirectory : root, session) : null,
         code: { roots: () => openCodeFolders() },
