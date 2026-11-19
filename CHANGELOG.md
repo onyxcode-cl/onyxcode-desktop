@@ -4,6 +4,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.35] - 2026-11-18
+
+### Mejoras
+
+- **Videos con música siempre:** la IA ahora usa cualquier música que encuentre para tus promos (te dice la licencia en una línea si es solo para uso no comercial), así que tus videos ya no salen mudos.
+- **Videos con más vida, con cualquier IA:** cada escena lleva algo en movimiento y Lazunox avisa a la IA si la imagen queda quieta más de 2 segundos o si un cambio de escena queda vacío. Funciona también con modelos rápidos como Haiku.
+- **Pedir cambios a un video actualiza el mismo archivo:** «más alegre» o «que el logo se mueva más» cambian tu video, sin crear copias.
+- **Fotos más apropiadas:** del tema de tu negocio, sin caras reconocibles ni lugares famosos presentados como si fueran tuyos. Y la IA no inventa días, precios ni horarios que no le diste.
+
+### Arreglos
+
+- En el Chat, la IA ya puede revisar los cuadros de tu video antes de entregarlo.
+- El aviso para instalar las piezas de video ya no se responde solo al presionar Enter.
+
 ## [1.8.34] - 2026-11-18
 
 ### Mejoras
