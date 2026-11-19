@@ -322,8 +322,9 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
 
       const persistEnv = permissionPersistEnvFor(settingsStore.get(), permissionDir())
       if (persistEnv.LAZUNOX_PERMISSION_DIR) ensurePermissionDir(persistEnv.LAZUNOX_PERMISSION_DIR)
+      const opencodeEnv = getOpencodeEnv()
       const childEnv = minimalEnv({
-        ...getOpencodeEnv(),
+        ...opencodeEnv,
         // `rg` incluido al principio del PATH: el motor lo busca ahí y, si no lo halla, intenta bajarlo de internet (1.8.17).
         ...bundledRipgrepPathEnv(),
         ...appOpencodeConfigEnv(),
@@ -351,6 +352,14 @@ export class OpencodeServer extends EventEmitter<ServerEvents> {
             documentsMcp: documents,
             chatPhotosMcp: chatPhotos,
             videoMcp: video,
+            videoRead:
+              video && opencodeEnv.OPENCODE_CONFIG_DIR && opencodeEnv.XDG_DATA_HOME
+                ? {
+                    skillDirectory: join(opencodeEnv.OPENCODE_CONFIG_DIR, 'skills', 'video'),
+                    toolOutputDirectory: join(opencodeEnv.XDG_DATA_HOME, 'opencode', 'tool-output'),
+                    chatDirectory: this.options.chatDirectory
+                  }
+                : undefined,
             permission,
             chatSubagents,
             modelFallback: settingsStore.get().modelFallback,

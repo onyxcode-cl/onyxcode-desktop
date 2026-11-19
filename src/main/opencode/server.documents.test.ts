@@ -49,7 +49,9 @@ vi.mock('./code-mcp-permission', async (orig) => ({
   ...(await orig<typeof import('./code-mcp-permission')>()),
   readGlobalOpencodeConfig: () => ({ servers: [], permission: {} })
 }))
-vi.mock('../tasks/opencode-config', () => ({ getOpencodeEnv: () => ({}) }))
+vi.mock('../tasks/opencode-config', () => ({
+  getOpencodeEnv: () => ({ OPENCODE_CONFIG_DIR: '/tmp/lazunox-test/opencode-config', XDG_DATA_HOME: '/tmp/lazunox-test/opencode-data' })
+}))
 vi.mock('./code-docs-instructions', () => ({ codeDocsInstructions: () => state.instructions }))
 vi.mock('../embedded-browser/mcp-server', () => ({ embeddedBrowserMcp: { setApi: () => {}, configFor: async () => null } }))
 vi.mock('../embedded-browser/service', () => ({ embeddedBrowser: {} }))

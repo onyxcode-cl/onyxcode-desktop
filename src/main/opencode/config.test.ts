@@ -310,3 +310,42 @@ it('Chat puede cargar únicamente la skill video cuando tiene el MCP', () => {
   expect(absent.agent.chat.permission.skill).toBeUndefined()
   expect(absent.agent.chat.permission['*']).toBe('deny')
 })
+
+it.each(['/perfil', 'C:\\perfil'])('Chat solo puede leer skill de video y PNG de las herramientas (%s)', (base) => {
+  const normalized = base.replace(/\\/g, '/')
+  const cfg = buildInlineConfig({
+    videoMcp: {},
+    videoRead: { skillDirectory: `${base}/skills/video`, toolOutputDirectory: `${base}/tool-output`, chatDirectory: `${base}/chat` }
+  }) as {
+    agent: {
+      chat: { permission: { read: Record<string, string>; external_directory: Record<string, string>; '*': string; edit?: string } }
+    }
+  }
+  const permission = cfg.agent.chat.permission
+  const evaluate = (path: string) =>
+    Object.entries(permission.read).reduce(
+      (action, [pattern, next]) =>
+        new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$').test(path) ? (next as string) : action,
+      'deny'
+    )
+  for (const path of [
+    `${normalized}/skills/video/SKILL.md`,
+    `${normalized}/skills/video/references/types/promo.md`,
+    `${normalized}/tool-output/tool_123.png`,
+    `${normalized}/chat/videos/abc/.lazunox/trabajo/video/def/contactos.png`
+  ]) {
+    expect(evaluate(path)).toBe('allow')
+    if (base.startsWith('C:')) expect(evaluate(path.replace(/\//g, '\\'))).toBe('allow')
+  }
+  for (const path of [
+    `${normalized}/skills/pdf/SKILL.md`,
+    `${normalized}/tool-output/tool_123.txt`,
+    `${normalized}/auth.json`,
+    `${normalized}/chat/secreto.png`,
+    `${normalized}/skills/video/hack.js`
+  ])
+    expect(evaluate(path)).toBe('deny')
+  expect(permission['*']).toBe('deny')
+  expect(permission.external_directory['*']).toBe('deny')
+  expect(permission.edit).toBeUndefined()
+})

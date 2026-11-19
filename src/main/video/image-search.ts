@@ -38,6 +38,10 @@ interface Deps {
   search?: typeof searchWebImages
   download?: typeof downloadVideoMedia
 }
+const PEOPLE = /\b(personas?|people|portrait|retratos?|rostros?|faces?|baristas?|equipo|staff|team|man|woman)\b/i
+export function preferNoPeople(input: FreeImageSearch): boolean {
+  return !PEOPLE.test([input.requirements?.subject, ...(input.requirements?.required ?? [])].join(' '))
+}
 export class VideoImagesService {
   private readonly fallback: Pick<FreeImagesService, 'search' | 'view' | 'use'>
   private readonly processor: FreeImageProcessor
@@ -59,7 +63,7 @@ export class VideoImagesService {
         uso: 'video',
         ...(previous ? { searchId: undefined, requirements: previous.input.requirements } : {})
       })
-      found.notice = `Sin clave de imágenes web en Ajustes; se buscaron fotos en catálogos públicos con reintentos cortos. Si faltan fotos, prueba otro sujeto corto antes de rendirte; usa solo fuentes sin clave. ${found.notice ?? ''}`
+      found.notice = `Sin clave de imágenes web en Ajustes; se buscaron fotos en catálogos públicos con reintentos cortos. Prefiere fotos sin personas reconocibles en primer plano, salvo que la persona las pida o entregue. Si faltan fotos, prueba otro sujeto corto antes de rendirte; usa solo fuentes sin clave. ${found.notice ?? ''}`
       return found
     }
     if (input.searchId !== undefined && !previous) throw new FreeImageError('searchId no pertenece a esta búsqueda.')
@@ -98,7 +102,12 @@ export class VideoImagesService {
     const signal = AbortSignal.timeout(60000)
     try {
       for (const query of normalized.queries.slice(0, 4)) {
-        const found = await (this.deps.search ?? searchWebImages)(config.provider, key, query, signal)
+        const found = await (this.deps.search ?? searchWebImages)(
+          config.provider,
+          key,
+          preferNoPeople(normalized) ? `${query} -people -portrait` : query,
+          signal
+        )
         for (const file of found) {
           if (result.candidates.length >= 6 || this.candidates.size >= 96) break
           if (

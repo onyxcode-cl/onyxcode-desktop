@@ -58,6 +58,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     'Compón un index.html con una línea de tiempo de HyperFrames y recursos locales. Primero pide cuadros, MIRA todas las imágenes, corrige y recién después pide el MP4. Declara data-width, data-height y data-duration en el elemento data-composition-id. Sin internet. En Chat envía html o archivos en cuadros; se guarda solo en esa conversación.'
   private readonly completion = new Map<VideoBinding, Promise<void>>()
   private readonly outputs = new WeakMap<VideoBinding, Map<string, { abs: string; rel: string; sha: string }>>()
+  private readonly sessionOutputs = new Map<string, { abs: string; rel: string; sha: string }>()
+  private readonly mediaCache = new WeakMap<VideoBinding, Map<string, Awaited<ReturnType<typeof downloadVideoMedia>>>>()
   private readonly running = new Map<VideoBinding, AbortController>()
   constructor(private readonly deps: VideoRenderDeps) {
     super('video-mcp')
@@ -88,7 +90,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         type: 'array',
         maxItems: 24,
         description:
-          'Usa fotos genéricas del tema; nunca presentes lugares, locales ni personas reconocibles como propios, salvo fotos aportadas o identidad solicitada. Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
+          'Fotos sin personas reconocibles en primer plano, salvo que la persona las pida o entregue. Usa fotos genéricas del tema; nunca presentes lugares o locales reconocibles como propios salvo fotos aportadas o identidad solicitada. Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
         items: {
           type: 'object',
           additionalProperties: false,
@@ -122,7 +124,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'musica_buscar',
         description:
-          'Busca música con 1 o 2 palabras en inglés de género o ánimo (acoustic, calm). Reintenta consultas cortas si no hay pistas; informa si no encuentra. Catálogo público sin clave; devuelve título, segundos, etiquetas, licencia y origen HTTPS para audio.',
+          'Una promo lleva música. Busca con 1 o 2 palabras en inglés (acoustic, calm). Cualquier licencia, sin filtrar ni descartar pistas por licencia. Devuelve licenciaFrase exacta: repítela en una línea solo si es no comercial, sin bloquear el video. Responsabilidad del dueño. Devuelve origen HTTPS para audio.',
         inputSchema: {
           type: 'object',
           additionalProperties: false,
@@ -159,7 +161,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'render',
         description:
-          'Tras mirar y corregir los cuadros, genera un MP4 H.264 a 30 fps; AAC con música HTTPS, audio local o <audio> del proyecto y tres imágenes de control. Máximo 120 s. ' +
+          'Tras mirar y corregir los cuadros, genera un MP4 H.264 a 30 fps; AAC con música HTTPS, audio local o <audio> del proyecto y tres imágenes de control. Una corrección de la misma composición actualiza el mismo MP4 aunque cambies nombre. Solo si la persona pide otra versión aparte pasa nueva_version: true. Máximo 120 s. ' +
           COMPOSITION_CONTRACT,
         inputSchema: {
           type: 'object',
@@ -168,7 +170,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
             ...common,
             duracion: { type: 'number', exclusiveMinimum: 0, maximum: 120 },
             fps: { type: 'integer', enum: [30] },
-            nombre: { type: 'string', maxLength: 80 }
+            nombre: { type: 'string', maxLength: 80 },
+            nueva_version: { type: 'boolean', description: 'Solo true cuando la persona pide explícitamente otra versión aparte.' }
           },
           required: ['composicion', 'formato', 'duracion', 'fps', 'nombre']
         }
@@ -207,7 +210,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     const permitted =
       name === 'cuadros'
         ? ['composicion', 'formato', 'carpeta', 'segundos', 'html', 'archivos', 'fotos', 'audio']
-        : ['composicion', 'formato', 'carpeta', 'duracion', 'fps', 'nombre', 'fotos', 'audio']
+        : ['composicion', 'formato', 'carpeta', 'duracion', 'fps', 'nombre', 'fotos', 'audio', 'nueva_version']
     if (Object.keys(args).some((k) => !permitted.includes(k))) return fail('Hay argumentos de video no admitidos.')
     if (typeof args.formato !== 'string' || !Object.hasOwn(VIDEO_FORMATS, args.formato))
       return fail('Usa formato vertical, cuadrado u horizontal.')
@@ -222,7 +225,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         args.fps !== 30 ||
         typeof args.nombre !== 'string' ||
         !args.nombre.trim() ||
-        args.nombre.length > 80)
+        args.nombre.length > 80 ||
+        (args.nueva_version !== undefined && typeof args.nueva_version !== 'boolean'))
     )
       return fail('El render requiere duración de hasta 120 s (en cuadros de 1/30 s), fps 30 y nombre de salida.')
     if (name === 'render') {
@@ -345,9 +349,22 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       }
       // Recursos: ids preparados y adjuntos humanos se resuelven por main; ninguna ruta arbitraria de Chat.
       const remote = new Map<string, Awaited<ReturnType<typeof downloadVideoMedia>>>()
+      let cache = this.mediaCache.get(binding)
+      if (!cache) this.mediaCache.set(binding, (cache = new Map()))
       const resource = async (origin: string, kind: 'photo' | 'audio'): Promise<Buffer> => {
         if (/^[a-z][a-z0-9+.-]*:/i.test(origin) && !origin.startsWith('imagen:') && !/^[a-z]:[\\/]/i.test(origin)) {
-          const downloaded = await (this.deps.download ?? downloadVideoMedia)(origin, kind, ac.signal)
+          const key = JSON.stringify([root, initial, kind, origin])
+          let downloaded = cache.get(key)
+          if (!downloaded) {
+            downloaded = await (this.deps.download ?? downloadVideoMedia)(origin, kind, ac.signal)
+            // Solo bytes verificados; nunca se guarda un render ni una medición de movimiento.
+            while (
+              cache.size &&
+              (cache.size >= 64 || [...cache.values()].reduce((n, v) => n + v.bytes.length, downloaded.bytes.length) > MAX_MEDIA_TOTAL)
+            )
+              cache.delete(cache.keys().next().value!)
+            cache.set(key, downloaded)
+          }
           if (kind === 'photo') validatePhoto(downloaded.bytes)
           remote.set(origin, downloaded)
           return downloaded.bytes
@@ -430,9 +447,12 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       let pieces = this.deps.pieces()
       if (pieces.state === 'unsupported') return fail('El video no está disponible en este equipo.')
       if (pieces.state === 'missing') {
-        if (!(await this.deps.consent(pieces.missingBytes, ac.signal)))
-          return fail('No se instalaron las piezas de video: elegiste «Ahora no». Puedes pedirlo de nuevo cuando quieras instalarlas.')
+        const accepted = await this.deps.consent(pieces.missingBytes, ac.signal)
         ac.signal.throwIfAborted()
+        if (!accepted)
+          return fail(
+            'No se instalaron las piezas de video: no se recibió autorización para instalarlas. Puedes pedirlo de nuevo cuando quieras.'
+          )
         await this.deps.install(ac.signal)
         pieces = this.deps.pieces()
       }
@@ -467,8 +487,9 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         result,
         name === 'render' ? (args.nombre as string) : 'cuadro',
         binding,
-        initial && request && request === finalRequest ? JSON.stringify([initial]) : null,
+        initial,
         String(composition),
+        args.nueva_version === true,
         ac.signal
       )
       return {
@@ -528,8 +549,9 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     result: RenderOutput,
     name: string,
     binding: VideoBinding,
-    request: string | null,
+    session: string | null,
     composition: string,
+    newVersion: boolean,
     signal: AbortSignal
   ): Promise<{ info: Record<string, unknown>; images: Buffer[] }> {
     // El worker solo entrega estos nombres fijos dentro de SU temporal. No se siguen rutas de su JSON.
@@ -544,11 +566,12 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     const paths: string[] = []
     const images: Buffer[] = []
     const path = (p: string): string => binding.toAgentPath?.(p) ?? p
-    let outputs = this.outputs.get(binding)
+    // La conversación conserva su identidad aunque el motor renueve la atadura MCP.
+    let outputs = session ? this.sessionOutputs : this.outputs.get(binding)
     if (!outputs) this.outputs.set(binding, (outputs = new Map()))
     const write = async (name: string, ext: string, bytes: Buffer, maxBytes: number, subfolder?: string) => {
-      const key = JSON.stringify([root, request, composition, cleanName(name), ext, subfolder])
-      const previous = request ? outputs!.get(key) : undefined
+      const key = JSON.stringify([root, session, composition, ext, subfolder])
+      const previous = !newVersion ? outputs!.get(key) : undefined
       const written =
         (previous && rewriteCreated(root, previous, bytes, maxBytes)) ||
         (await writeNewFile(root, { name, ext, bytes, maxBytes, subfolder }))

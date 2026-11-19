@@ -126,3 +126,23 @@ it('muestrea .clip, solapamientos y la mitad de tweens cortos', () => {
   expect(times.some((t) => Math.abs(t - 4.1) < 0.001)).toBe(true)
   expect(times).toContain(2.2)
 })
+
+it('avisa desde 2 s quietos fuera del cierre; permite los últimos 1,5 s y las pausas de las referencias', () => {
+  const frames = (duration: number, start: number, end: number) =>
+    Uint8Array.from(
+      Array.from({ length: duration * 4 + 1 }, (_, i) => Array(4096).fill(i >= start * 4 && i <= end * 4 ? 42 : i % 2 ? 255 : 0)).flat()
+    )
+  expect(measureMotion(frames(15, 6, 8), 15).aviso).not.toBeNull()
+  expect(measureMotion(frames(15, 12.75, 15), 15).aviso).toBeNull()
+  expect(measureMotion(frames(15, 6, 7.75), 15).aviso).toBeNull()
+})
+it('muestrea cada décima antes y después de TODOS los cortes, aun con muchas escenas', () => {
+  document.write(Array.from({ length: 12 }, (_, i) => `<div class="clip" data-start="${i * 5}" data-duration="5"></div>`).join(''))
+  const times = transitionSamples()
+  for (const boundary of [5, 30, 55]) for (let i = -5; i <= 5; i++) expect(times).toContain(boundary + i / 10)
+})
+it('detecta una tarjeta vacía aunque su fondo tenga mucho contraste', () => {
+  const review = scene('clean')
+  for (const p of document.querySelectorAll('p')) (p as HTMLElement).style.opacity = '0'
+  expect(review().issues.join(' ')).toContain('tarjeta sin contenido visible')
+})

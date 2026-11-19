@@ -143,6 +143,13 @@ export const ChatFiles = memo(function ChatFiles({ parts, done }: { parts: reado
   const [files, setFiles] = useState<ChatFileInfo[]>([])
   // Solo cuenta lo que cambia las rutas, no cada actualización del stream.
   const key = done ? detectChatFiles({ parts, root }).join('\n') : ''
+  // Otro render de la misma ruta cambia bytes/miniatura sin cambiar la lista de archivos.
+  const revision = done
+    ? parts
+        .filter((p) => p.type === 'tool' && p.state.status === 'completed')
+        .map((p) => p.id)
+        .join('|')
+    : ''
   useEffect(() => {
     const extras = isRemoteSurface() ? null : getExtras()
     if (!key || !extras) {
@@ -157,7 +164,7 @@ export const ChatFiles = memo(function ChatFiles({ parts, done }: { parts: reado
     return () => {
       alive = false
     }
-  }, [key])
+  }, [key, revision, done])
   if (files.length === 0) return null
   return (
     <div role="group" aria-label={t('chat.file.group')} className="flex flex-col gap-1">

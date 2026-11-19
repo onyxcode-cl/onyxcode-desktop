@@ -37,11 +37,24 @@ export function sniffAudio(b: Buffer): 'mp3' | 'm4a' | 'aac' | 'wav' | 'ogg' | n
 
 export async function downloadVideoMedia(origin: string, kind: 'photo' | 'audio', signal: AbortSignal, deps?: PublicHttpsDeps) {
   const blocked = ['youtube.com', 'youtu.be', 'googlevideo.com', 'spotify.com', 'scdn.co', 'netflix.com', 'music.apple.com']
-  const { bytes, url } = await publicHttpsBytes(origin, kind === 'photo' ? WEB_PHOTO_BYTES : WEB_AUDIO_BYTES, signal, {
-    ...deps,
-    allowUrl: (u) =>
-      (deps?.allowUrl?.(u) ?? true) && (kind !== 'audio' || !blocked.some((h) => u.hostname === h || u.hostname.endsWith('.' + h)))
-  })
+  let downloaded: Awaited<ReturnType<typeof publicHttpsBytes>>
+  try {
+    downloaded = await publicHttpsBytes(origin, kind === 'photo' ? WEB_PHOTO_BYTES : WEB_AUDIO_BYTES, signal, {
+      timeoutMs: kind === 'audio' ? 90_000 : 30_000,
+      ...deps,
+      allowUrl: (u) =>
+        (deps?.allowUrl?.(u) ?? true) && (kind !== 'audio' || !blocked.some((h) => u.hostname === h || u.hostname.endsWith('.' + h)))
+    })
+  } catch (error) {
+    signal.throwIfAborted()
+    const timeout = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)
+    throw new Error(
+      timeout
+        ? `Se agotó el tiempo de descarga de ${kind === 'audio' ? 'audio' : 'la foto'}; prueba otra pista o vuelve a intentarlo.`
+        : `No se pudo descargar ${kind === 'audio' ? 'el audio' : 'la foto'}: ${error instanceof Error ? error.message : 'fallo de red'}`
+    )
+  }
+  const { bytes, url } = downloaded
   const image = kind === 'photo' ? sniffImage(bytes) : null
   const ext = kind === 'photo' ? image?.ext : sniffAudio(bytes)
   if (!ext || (image && image.width * image.height > MAX_IMAGE_PIXELS))

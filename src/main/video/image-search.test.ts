@@ -185,3 +185,16 @@ it('claves cifradas, estado sin secretos, cambio de proveedor y borrado', async 
   expect(() => unavailable.save('serper', 'x')).toThrow('seguro')
   expect(await readFile(join(dir, 'video-image-search.bin'), 'utf8')).toBe('unchanged')
 })
+
+it('prefiere búsquedas sin personas en primer plano para sujetos que no son personas', async () => {
+  const search = vi.fn<typeof searchWebImages>(async () => [photo])
+  await service({ search }).search({ uso: 'video', queries: ['coffee', 'cappuccino'], requirements: { subject: 'café', usage: 'promo' } })
+  expect(search.mock.calls[0][2]).toBe('coffee -people -portrait')
+  search.mockClear()
+  await service({ search }).search({
+    uso: 'video',
+    queries: ['portrait', 'retrato'],
+    requirements: { subject: 'retratos de personas', usage: 'promo' }
+  })
+  expect(search.mock.calls[0][2]).toBe('portrait')
+})

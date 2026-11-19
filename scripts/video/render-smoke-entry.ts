@@ -275,6 +275,78 @@ async function main(): Promise<void> {
       fps: 30,
       nombre: 'v32-render-15-vertical'
     })
+    report.renderRepetido = await call('render', {
+      composicion: 'promo/index.html',
+      formato: 'vertical',
+      duracion: 15,
+      fps: 30,
+      nombre: 'v32-render-15-vertical'
+    })
+    const videoPath = (r: unknown) => (r as { text: { ruta: string } }).text.ruta
+    if (videoPath(report.render) !== videoPath(report.renderRepetido)) throw Error('El mismo nombre creó otro MP4')
+    report.renderOtroNombre = await call('render', {
+      composicion: 'promo/index.html',
+      formato: 'vertical',
+      duracion: 15,
+      fps: 30,
+      nombre: 'v32-mas-alegre'
+    })
+    if (videoPath(report.render) !== videoPath(report.renderOtroNombre)) throw Error('Cambiar nombre creó otro MP4')
+    report.renderAparte = await call('render', {
+      composicion: 'promo/index.html',
+      formato: 'vertical',
+      duracion: 15,
+      fps: 30,
+      nombre: 'v32-aparte',
+      nueva_version: true
+    })
+    if (videoPath(report.render) === videoPath(report.renderAparte)) throw Error('No se creó la versión aparte')
+    // Tramo quieto de 3 s en medio y tarjeta sin texto durante una transición de 0,6 s.
+    for (const kind of ['quieto3', 'tarjeta-vacia'] as const) {
+      await mkdir(join(folder, kind))
+      const extra =
+        kind === 'quieto3'
+          ? "tl.fromTo('#moving',{x:0},{x:400,duration:3,ease:'none'},0);tl.to('#moving',{x:0,duration:3,ease:'none'},6);"
+          : "tl.set('p',{opacity:0},4);tl.set('p',{opacity:1},4.6);"
+      const html = qualityComposition('clean')
+        .replace('<section ', '<section class="clip" data-start="0" data-duration="9" ')
+        .replace('</section>', '<span data-beat data-start="4" data-duration="0.6"></span></section>')
+        .replace(
+          '</div><script',
+          kind === 'quieto3'
+            ? '<div id="moving" style="position:absolute;left:100px;top:600px;width:360px;height:700px;background:#fff"></div></div><script'
+            : '</div><script'
+        )
+        .replace('window.__timelines=', `${extra}window.__timelines=`)
+      await writeFile(join(folder, kind, 'index.html'), html)
+      const checked = await call('render', { composicion: `${kind}/index.html`, formato: 'vertical', duracion: 9, fps: 30, nombre: kind })
+      const avisos = checked.text.avisos as string[]
+      if (
+        kind === 'quieto3'
+          ? !(checked.text.movimiento as { aviso?: string; tramos: { inicio: number; fin: number }[] }).aviso ||
+            !(checked.text.movimiento as { tramos: { inicio: number; fin: number }[] }).tramos.some(
+              (s) => s.inicio >= 2.75 && s.inicio <= 3.25 && s.fin >= 6 && s.fin <= 6.25
+            )
+          : !avisos.some((s) => s.includes('tarjeta sin contenido'))
+      )
+        throw Error(`Falta aviso en ${kind}`)
+      report[kind] = checked
+      const evidence = arg('--evidence-dir')
+      if (evidence) {
+        await mkdir(evidence, { recursive: true })
+        await cp(videoPath(checked), join(evidence, `${kind}.mp4`))
+        for (const [i, frame] of (checked.text.cuadros as string[]).entries()) await cp(frame, join(evidence, `${kind}-${i + 1}.png`))
+      }
+      if (kind === 'quieto3') {
+        await writeFile(
+          join(folder, kind, 'index.html'),
+          html.replace(extra, "tl.fromTo('#moving',{x:0},{x:400,duration:9,ease:'none'},0);")
+        )
+        const revised = await call('cuadros', { composicion: `${kind}/index.html`, formato: 'vertical', segundos: [1, 4.5, 8] })
+        if ((revised.text.movimiento as { aviso?: string }).aviso) throw Error('La revisión continua reutilizó una medida quieta')
+        report.movimientoRecalculado = revised
+      }
+    }
     // Foto local: misma copia declarativa que en Chat/Code/Tareas, sin red ni atribución automática.
     const mediaDir = join(folder, 'media')
     await mkdir(mediaDir)

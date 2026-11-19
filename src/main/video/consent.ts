@@ -1,13 +1,12 @@
 /** El aviso Mac se adjunta a Lazunox: la hoja asíncrona no bloquea el bucle de main. */
 import { BrowserWindow, dialog } from 'electron'
-import { askButtons, type ButtonsDialog } from '../util/native-dialog'
+import type { ButtonsDialog } from '../util/native-dialog'
 
 export async function askVideoInstall(options: ButtonsDialog, platform = process.platform): Promise<number> {
-  if (platform !== 'darwin') return askButtons(options)
-  if (options.signal?.aborted) return 0
+  if (options.signal?.aborted) return -1
   const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
   // Sin ventana no se usa runModal: se cancela sin instalar.
-  if (!parent || parent.isDestroyed()) return 0
+  if (!parent || parent.isDestroyed()) return -1
   if (parent.isMinimized()) parent.restore()
   parent.show()
   parent.focus()
@@ -16,10 +15,11 @@ export async function askVideoInstall(options: ButtonsDialog, platform = process
     message: options.message,
     detail: options.detail,
     buttons: options.buttons,
-    defaultId: 0,
+    // Sin botón de Return: una tecla pendiente al enviar el Chat no responde la hoja.
+    defaultId: platform === 'darwin' ? -1 : 0,
     cancelId: 0,
     noLink: true,
     ...(options.signal ? { signal: options.signal } : {})
   })
-  return options.signal?.aborted ? 0 : result.response
+  return options.signal?.aborted ? -1 : result.response
 }

@@ -9,7 +9,7 @@ import type { Part } from '@opencode-ai/sdk/v2/client'
 const EXT =
   'mp4|png|jpe?g|gif|webp|bmp|avif|svg|pdf|docx?|xlsx?|xlsm|pptx?|odt|ods|odp|rtf|html?|md|markdown|txt|log|csv|tsv|json|ya?ml|toml|xml|js|mjs|ts|tsx|jsx|css|sql|py|sh|bat|cmd|ps1|command|exe'
 /** Ruta absoluta (posix o con unidad de Windows) que termina en una extensión conocida; admite espacios y acentos. */
-const ABS_RE = new RegExp(`(?:(?<![\\w/.~:-])\\/|(?<![\\w])[A-Za-z]:[\\\\/])[^\\n"'\`<>|*?]{0,300}?\\.(?:${EXT})(?![\\w])`, 'gi')
+const ABS_RE = new RegExp(`(?:(?<![\\w/.~:-])\\/|(?<![\\w])[A-Za-z]:[\\\\/])[^\\n"'\`<>|*?]{0,4096}?\\.(?:${EXT})(?![\\w])`, 'gi')
 const EXT_AT_END = new RegExp(`\\.(?:${EXT})$`, 'i')
 
 const isAbs = (p: string): boolean => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p)
@@ -61,7 +61,7 @@ export function detectChatFiles({ parts, root }: ChatFileScanInput): string[] {
   const add = (raw: string, allowRelative: boolean): void => {
     if (found.length >= MAX_CANDIDATES) return
     const abs = resolveCandidate(raw, allowRelative ? root : null)
-    if (!abs || /(?:^|[\\/])\.lazunox[\\/]trabajo(?:[\\/]|$)/i.test(abs) || seen.has(abs)) return
+    if (!abs || /(?:^|[\\/])(?:\.lazunox[\\/]trabajo|tool-output)(?:[\\/]|$)/i.test(abs) || seen.has(abs)) return
     seen.add(abs)
     found.push(abs)
   }
@@ -81,7 +81,22 @@ export function detectChatFiles({ parts, root }: ChatFileScanInput): string[] {
       if (s.length <= 400 && !s.includes('\n')) add(s, true)
       scan(s)
     }
-    if (typeof p.state.output === 'string') scan(p.state.output)
+    if (typeof p.state.output === 'string') {
+      // JSON puede escapar barras, espacios y Unicode. Primero recupera las cadenas completas.
+      const values: string[] = []
+      let json = false
+      try {
+        stringsOf(JSON.parse(p.state.output), values)
+        json = true
+      } catch {
+        /* salida en prosa */
+      }
+      for (const value of values) {
+        add(value, true)
+        scan(value)
+      }
+      if (!json) scan(p.state.output)
+    }
   }
   return found
 }

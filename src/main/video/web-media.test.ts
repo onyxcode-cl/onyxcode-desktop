@@ -64,3 +64,14 @@ it('rechaza audio de plataformas cerradas y redirecciones hacia ellas', async ()
     ).rejects.toThrow()
   }
 })
+
+it('un plazo de red agotado informa descarga, no permisos ni archivos', async () => {
+  await expect(
+    downloadVideoMedia('https://example.org/audio.mp3', 'audio', new AbortController().signal, {
+      ...fetchBytes(Buffer.from('fffb9064', 'hex')),
+      request: async () => {
+        throw new DOMException('demasiado lento', 'TimeoutError')
+      }
+    })
+  ).rejects.toThrow('tiempo de descarga de audio')
+})

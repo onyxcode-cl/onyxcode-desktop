@@ -95,6 +95,22 @@ it.each(['Chat', 'Code', 'Overdrive'] as const)('HTTPS se descarga en main y per
     })
     expect(output.isError, JSON.stringify(output)).toBeUndefined()
     expect(JSON.parse((output.content[0] as { text: string }).text).audio.codec).toBe('aac')
+    // Las revisiones y el render repetido no vuelven a bajar el mismo MP3.
+    expect(media).toHaveBeenCalledTimes(2)
+    media.mockRejectedValueOnce(new DOMException('red lenta en el segundo intento', 'TimeoutError'))
+    const repeated = await server.invoke(binding, 'render', {
+      ...common,
+      composicion: result.composicion,
+      duracion: 15,
+      fps: 30,
+      nombre: 'Promo-alegre',
+      audio
+    })
+    expect(repeated.isError, JSON.stringify(repeated)).toBeUndefined()
+    expect(JSON.parse((repeated.content[0] as { text: string }).text).ruta).toBe(
+      JSON.parse((output.content[0] as { text: string }).text).ruta
+    )
+    expect(media).toHaveBeenCalledTimes(2)
     expect(await readdir(join(dir, 'private'))).toEqual([])
     const actualRoot = mode === 'Chat' ? join(dir, 'chat/videos', (await readdir(join(dir, 'chat/videos')))[0]!) : root
     const assets = join(actualRoot, dirname(result.composicion), 'assets')

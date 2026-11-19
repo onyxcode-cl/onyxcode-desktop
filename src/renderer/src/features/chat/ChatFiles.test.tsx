@@ -156,3 +156,28 @@ it('MP4 muestra cuadro y duración y abre el visor al pulsar la miniatura', asyn
   act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Ver video"]')!.click())
   expect(seen).toHaveBeenCalledWith(file, undefined)
 })
+
+it('otro render de la misma ruta renueva el peso y la miniatura', async () => {
+  const file: ChatFileInfo = {
+    path: '/c/promo.mp4',
+    name: 'promo.mp4',
+    bytes: 1000,
+    kind: 'other',
+    canView: true,
+    canOpen: true,
+    video: { duration: 15, poster: 'data:image/jpeg;base64,antes' }
+  }
+  invoke.mockResolvedValue([file])
+  const renderParts = (id: string) =>
+    [
+      { id, type: 'tool', tool: 'video_render', state: { status: 'completed', input: {}, output: JSON.stringify({ ruta: file.path }) } }
+    ] as unknown as Part[]
+  act(() => root.render(createElement(ChatFiles, { parts: renderParts('render1'), done: true })))
+  await flush()
+  expect(host.querySelector('img')?.getAttribute('src')).toBe(file.video!.poster)
+  invoke.mockResolvedValue([{ ...file, bytes: 2000, video: { duration: 15, poster: 'data:image/jpeg;base64,despues' } }])
+  act(() => root.render(createElement(ChatFiles, { parts: renderParts('render2'), done: true })))
+  await flush()
+  expect(host.querySelector('img')?.getAttribute('src')).toBe('data:image/jpeg;base64,despues')
+  expect(host.textContent).toContain('2 KB')
+})

@@ -48,6 +48,7 @@ export interface InlineConfigOptions {
    */
   documentsMcp?: Record<string, unknown> | null
   videoMcp?: Record<string, unknown> | null
+  videoRead?: { skillDirectory: string; toolOutputDirectory: string; chatDirectory: string }
   /** MCP propio con solo tres herramientas de fotos, atado a la conversación activa por main. */
   chatPhotosMcp?: Record<string, unknown> | null
   /**
@@ -90,6 +91,7 @@ function denyRules(permission: Record<string, unknown> | null | undefined): Reco
 }
 
 export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string, unknown> {
+  const videoRead = opts.videoMcp && opts.videoRead ? chatVideoRead(opts.videoRead) : {}
   return {
     $schema: 'https://opencode.ai/config.json',
     // La app fija la versión del SDK: sin auto-actualización del binario (AUDIT.md B3/§1.2).
@@ -352,8 +354,18 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
           // `read` debe seguir ANUNCIADO al modelo: el servidor del modelo gratuito de OpenCode (FreeTierError 403)
           // rechaza toda petición cuya lista de herramientas no incluya `read`. Con `read: deny` (o `'*': deny` a secas)
           // el motor lo quita de la lista. Truco: la última regla de `read` no es `'*'`, así que el motor lo anuncia,
-          // pero ninguna ruta real coincide con el patrón permitido y toda lectura se deniega.
-          read: { '*': 'deny', [CHAT_READ_SENTINEL]: 'allow' },
+          // Sin video solo coincide el centinela. Con video se añaden únicamente guías y PNG de las herramientas.
+          read: { '*': 'deny', ...videoRead, [CHAT_READ_SENTINEL]: 'allow' },
+          ...(Object.keys(videoRead).length
+            ? {
+                external_directory: {
+                  '*': 'deny',
+                  ...Object.fromEntries(
+                    Object.keys(videoRead).map((p) => [p.slice(0, Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')) + 1) + '*', 'allow'])
+                  )
+                }
+              }
+            : {}),
           // Subagentes (F8-B206): solo el ayudante del Chat, y solo con la función encendida para el Chat.
           ...(opts.chatSubagents ? { task: { '*': 'deny', [CHAT_HELPER_AGENT]: 'allow' } } : {})
         }
@@ -410,4 +422,23 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
       computer: { disable: true }
     }
   }
+}
+
+/** Excepciones de solo lectura: guías de video y PNG de las herramientas, nunca el resto del perfil. */
+export function chatVideoRead(paths: NonNullable<InlineConfigOptions['videoRead']>): Record<string, 'allow'> {
+  const clean = (p: string): string => p.replace(/\\/g, '/').replace(/\/$/, '')
+  const skill = clean(paths.skillDirectory),
+    output = clean(paths.toolOutputDirectory),
+    chat = clean(paths.chatDirectory)
+  if ([skill, output, chat].some((p) => !/^(?:\/|[A-Za-z]:\/)/.test(p) || /[*?\[\]{}\0]/.test(p))) return {}
+  return Object.fromEntries(
+    [
+      `${skill}/SKILL.md`,
+      `${skill}/NOTICE.md`,
+      `${skill}/references/*.md`,
+      `${output}/tool_*.png`,
+      `${chat}/videos/*/.lazunox/trabajo/video/*/cuadro-*.png`,
+      `${chat}/videos/*/.lazunox/trabajo/video/*/contactos.png`
+    ].flatMap((p) => (/^[A-Za-z]:\//.test(p) ? [p, p.replace(/\//g, '\\')] : [p]).map((pattern) => [pattern, 'allow']))
+  )
 }

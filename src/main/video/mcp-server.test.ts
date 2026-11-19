@@ -112,7 +112,7 @@ describe('video: atadura, copia y resultados', () => {
     expect(await readFile(c.ruta, 'utf8')).toBe('edición de la persona')
     binding.request = async () => null
     const f = JSON.parse(text(await server.invoke(binding, 'render', render)))
-    expect(f.ruta).toBe(join(root, 'Promo (3).mp4'))
+    expect(f.ruta).toBe(e.ruta)
   })
   it('no reemplaza salidas de otra composición o sesión aunque se repita el nombre', async () => {
     let session = 'ses_1'
@@ -245,7 +245,7 @@ describe('video: validación y consentimiento', () => {
         ? { state: 'ready', paths: { chrome: '/chrome', ffmpeg: '/ffmpeg', ffprobe: '/ffprobe', hyperframes: '/hyperframes' } }
         : { state: 'missing', missingBytes: 245874652 }
     deps.consent = vi.fn(async () => false)
-    expect(text(await server.invoke(binding, 'cuadros', args))).toContain('Ahora no')
+    expect(text(await server.invoke(binding, 'cuadros', args))).toContain('no se recibió autorización')
     expect(deps.install).not.toHaveBeenCalled()
     deps.consent = vi.fn(async () => true)
     deps.install = vi.fn(async () => {
@@ -563,4 +563,65 @@ it('el transporte de video acepta archivos de Chat mayores de 1 MiB, con límite
   })
   expect(response.status).toBe(200)
   expect((await response.json()).result.isError).toBeUndefined()
+})
+
+it('la herramienta conserva el MP4 al cambiar nombre; nueva_version crea una salida aparte que se puede corregir', async () => {
+  const render = { composicion: args.composicion, formato: 'vertical', duracion: 15, fps: 30, nombre: 'Original' }
+  const first = JSON.parse(text(await server.invoke(binding, 'render', render)))
+  const changed = await server.invoke(binding, 'render', { ...render, nombre: 'Original-alegre' })
+  expect(changed.isError).toBeUndefined()
+  expect(JSON.parse(text(changed)).ruta).toBe(first.ruta)
+  const apart = JSON.parse(text(await server.invoke(binding, 'render', { ...render, nueva_version: true })))
+  expect(apart.ruta).not.toBe(first.ruta)
+  expect(JSON.parse(text(await server.invoke(binding, 'render', { ...render, nombre: 'Corrección' }))).ruta).toBe(apart.ruta)
+  expect((await readdir(root)).filter((p) => p.endsWith('.mp4'))).toHaveLength(2)
+  expect((await server.invoke(binding, 'render', { ...render, nueva_version: 'true' })).isError).toBe(true)
+})
+it('dos renders de Chat con mismo nombre y misma composición publican imágenes y reemplazan el mismo MP4', async () => {
+  binding = { folder: '<chat>', chat: { directory: join(dir, 'chat'), activeSession: async () => 'ses_repeat' } }
+  const preview = JSON.parse(text(await server.invoke(binding, 'cuadros', { formato: 'vertical', segundos: [0], html: '<html/>' })))
+  const render = { composicion: preview.composicion, formato: 'vertical', duracion: 15, fps: 30, nombre: 'Promo' }
+  const first = await server.invoke(binding, 'render', render)
+  const second = await server.invoke(binding, 'render', render)
+  expect(second.isError).toBeUndefined()
+  expect(JSON.parse(text(first)).ruta).toBe(JSON.parse(text(second)).ruta)
+  expect(second.content.filter((c) => c.type === 'image')).toHaveLength(3)
+})
+it('cancelar la espera de consentimiento informa cancelación, sin atribuir una respuesta a la persona', async () => {
+  deps.pieces = () => ({ state: 'missing', missingBytes: 100 })
+  const ac = new AbortController()
+  deps.consent = async () => {
+    ac.abort()
+    return false
+  }
+  const out = text(await server.invoke(binding, 'cuadros', args, ac.signal))
+  expect(out).toContain('canceló')
+  expect(out).not.toContain('Ahora no')
+  expect(deps.install).not.toHaveBeenCalled()
+})
+it('una revisión vuelve a ejecutar el worker con los bytes nuevos; no reutiliza movimiento', async () => {
+  deps.render = vi.fn(async (job) => ({
+    ...(await result(job)),
+    movimiento: {
+      porcentajeQuieto: (await readFile(job.composition, 'utf8')).includes('nuevo') ? 0 : 50,
+      tramos: [],
+      intervalo: 0.25,
+      aviso: null
+    }
+  }))
+  expect(JSON.parse(text(await server.invoke(binding, 'cuadros', args))).movimiento.porcentajeQuieto).toBe(50)
+  await writeFile(join(root, 'promo/index.html'), '<html>nuevo</html>')
+  expect(JSON.parse(text(await server.invoke(binding, 'cuadros', args))).movimiento.porcentajeQuieto).toBe(0)
+  expect(deps.render).toHaveBeenCalledTimes(2)
+})
+
+it('la misma conversación conserva su salida al renovar la atadura del motor', async () => {
+  const directory = join(dir, 'chat')
+  binding = { folder: '<chat>', chat: { directory, activeSession: async () => 'ses_rebind' } }
+  const preview = JSON.parse(text(await server.invoke(binding, 'cuadros', { formato: 'vertical', segundos: [0], html: '<html/>' })))
+  const render = { composicion: preview.composicion, formato: 'vertical', duracion: 15, fps: 30, nombre: 'Promo' }
+  const first = JSON.parse(text(await server.invoke(binding, 'render', render)))
+  const rebound = { folder: '<chat>', chat: { directory, activeSession: async () => 'ses_rebind' } }
+  const second = JSON.parse(text(await server.invoke(rebound, 'render', { ...render, nombre: 'Otro-nombre' })))
+  expect(second.ruta).toBe(first.ruta)
 })

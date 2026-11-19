@@ -19,7 +19,7 @@ Si piden un video, hazlo. No propongas tres historias ni esperes aprobación: de
 
 - **Code:** una subcarpeta por video dentro de `./.lazunox/trabajo/` (por ejemplo `.lazunox/trabajo/promo-cafe/index.html`). Pasa `carpeta` (la ruta absoluta del proyecto abierto) a las dos herramientas.
 - **Overdrive:** la misma estructura, sin pasar `carpeta`.
-- **Chat:** no tienes herramientas de archivos.
+- **Chat:** puedes leer esta skill, sus referencias y los PNG de las herramientas de video; no puedes leer otros archivos ni escribirlos.
   - Un solo archivo: envía el `index.html` completo en `html` de `video_cuadros` (hasta 512 KB), con escenas `.clip` superpuestas, como el ejemplo de abajo.
   - Varios archivos: envía `archivos` como `{ruta: contenido}` con `index.html`, `compositions/*.html` y otros textos (`.css`, `.js`, `.json`, `.svg`). Hasta 64 archivos, 512 KiB cada uno y 4 MiB en total. Solo texto: fotos y audio entran por `fotos` y `audio` (abajo).
   - Usa `html` o `archivos`, nunca los dos en la misma llamada. La respuesta trae `composicion`: usa esa ruta tal cual en las llamadas siguientes y en `video_render`. Para corregir, envía `composicion` con otro `html` completo, o con `archivos` que traiga solo los archivos que cambian.
@@ -48,6 +48,7 @@ Si piden un video, hazlo. No propongas tres historias ni esperes aprobación: de
    - Si no puedes ver imágenes, dilo. No afirmes que hiciste una revisión visual.
    - En medio de una transición de empuje o barrido, es esperable un aviso de «área segura» o de «tapado» sobre lo que está entrando o saliendo. Compruébalo en el cuadro. El mismo aviso con el texto ya quieto sí es un error. Los avisos oficiales esperables (estructura de un solo archivo, recorte de un acercamiento de cámara) están en `references/formato.md` §13; cualquier otro se corrige.
 6. **Render.** Llama a `video_render` solo después de mirar y corregir: `{"composicion":"…/index.html","formato":"vertical","duracion":15,"fps":30,"nombre":"promo"}`.
+   - Una corrección de la misma `composicion` reemplaza su MP4 aunque cambies `nombre`. Solo si la persona pide otra versión aparte usa `nueva_version: true`. Conserva la composición devuelta al corregir.
    - `duracion` es igual a `data-duration` de la raíz y es múltiplo de 1/30.
    - Agrega la música o el audio de la persona aquí en `audio` (sección Audio). Una promo lleva música por defecto, salvo que la persona diga que no.
    - Mira los 3 cuadros de control y los avisos que devuelve. No entregues con avisos pendientes sin corregirlos o explicarlos.
@@ -77,6 +78,8 @@ El detalle y los errores de la herramienta están en `references/formato.md`.
 11. Los IDs son únicos. No dejes nada visible creado por script que podría ir escrito en el HTML.
 
 ## Movimiento real: las reglas que más pesan
+
+**Receta obligatoria por escena:** un elemento con movimiento continuo durante toda la escena; entrada y salida con causa (el objeto abre, empuja o revela lo siguiente); nada casi quieto durante 2 s o más. Un título puede quedar fijo mientras el producto, el fondo o la cámara sigue actuando.
 
 El oficio completo, las 9 transiciones medidas y las fallas comunes están en `references/movimiento.md`.
 
@@ -118,7 +121,7 @@ Sigue el destino que nombren. La duración por defecto es 15 s y la máxima, 120
 
 Cuando la persona pide fotos o el tema las necesita (un local, un producto, un lugar real), usa imágenes reales: primero las de la persona; si faltan, busca en la web. Para video vale cualquier licencia, sin créditos; la responsabilidad del uso es del dueño del video.
 
-1. Define sujeto y orientación. Usa fotos genéricas del tema (café, pan, interior); nunca presentes lugares, locales o personas reconocibles como propios de la persona, salvo fotos aportadas o una identidad solicitada (como Fortnite).
+1. Fotos sin personas reconocibles en primer plano, salvo que la persona las pida explícitamente o las entregue. Define sujeto y orientación. Usa fotos genéricas del tema (café, pan, interior); nunca presentes lugares, locales o personas reconocibles como propios de la persona, salvo fotos aportadas o una identidad solicitada (como Fortnite).
 2. Busca con `documentos_imagenes_buscar`, `uso:"video"`, 2–3 consultas y requisitos (en Code, `carpeta`). Usa el buscador general elegido en Ajustes: Serper (Google Imágenes) o Brave. Compara la hoja numerada, amplía 1–2 finalistas con `documentos_imagenes_ver` y prepara la elegida con `documentos_imagenes_usar` y `evaluation:{mode:"visual",observed,meets:[],doubts}`. Usa su id. Puedes elegir ninguna.
 3. Sin clave, insiste antes de rendirte: la herramienta reintenta consultas cortas del sujeto en inglés y español en catálogos públicos. Si sigue sin fotos, prueba otra búsqueda corta y luego `websearch`, `webfetch` o el navegador en fuentes que respondan sin clave (Wikimedia, Openverse). No uses el buscador de Unsplash: requiere clave y Source fue retirado. Obtén la URL HTTPS del archivo original JPG/PNG/WebP/GIF. No raspes buscadores de imágenes ni eludas restricciones de descarga.
 4. Mira la foto antes de elegirla; no uses miniaturas, marcas de agua ni imágenes que no coinciden. Pasa la URL en `fotos[].origen`; la app descarga desde main (20 MiB, 40 megapíxeles), valida y guarda en `assets/`. La extensión de `destino` debe coincidir con el tipo real. La URL queda como dato de procedencia; el HTML sigue sin red.
@@ -134,6 +137,7 @@ Cuando la persona pide fotos o el tema las necesita (un local, un producto, un l
 ## Audio
 
 - El audio de la persona tiene prioridad; si no hay, busca música adecuada con `video_musica_buscar` (1 o 2 palabras en inglés de género o ánimo, por ejemplo `{"consulta":"acoustic","limite":6}`). Una promo lleva música por defecto, salvo que la persona diga que no. Elige una pista con duración suficiente y pasa su `origen` HTTPS en `audio` con recorte y fundidos. No descargues de plataformas que lo impiden, no generes voces ni hagas sonido con código.
+- Música de cualquier licencia, igual que las fotos: no descartes una pista por licencia; la responsabilidad es del dueño del video. Solo si `noComercial` es true menciona en una línea la `licenciaFrase` exacta que devuelve la búsqueda, sin reinterpretarla ni bloquear el video.
 - Formatos: `.mp3`, `.m4a`, `.wav`, `.aac` o `.ogg`, hasta 16 pistas (50 MiB por descarga web). `video_render` las mezcla en el MP4 (AAC). `video_cuadros` no suena: admite `audio` para preparar los archivos, y debes repetir la lista en `video_render` para mezclarlos.
 - **Forma principal (sirve en los tres modos):** en `video_render` pasa `audio: [{"origen": "…", "inicio": 0, "desde": 8, "hasta": 23, "volumen": 0.8, "fundidoEntrada": 0.4, "fundidoSalida": 1.5}]`.
   - `origen`: URL HTTPS pública devuelta por la búsqueda, o en Chat, el nombre o id del archivo que adjuntó la persona; en Code y Overdrive, la ruta relativa del archivo en el proyecto o la tarea.
@@ -148,7 +152,27 @@ Cuando la persona pide fotos o el tema las necesita (un local, un producto, un l
 - No pongas créditos ni pies de foto, salvo que la persona los pida.
 - No agregues subtítulos ni logos inventados. Sin el archivo del logo, escribe el nombre.
 - No uses videos generados por modelos.
-- No inventes cifras, precios ni horarios: si no los tienes, márcalos como «cifra de ejemplo» o déjalos fuera.
+- Días, precios, horarios y cifras: solo los que dio la persona; si faltan, déjalos fuera. Nunca inventes «todos los días».
+- Escribe en español neutro o en la variante que usa la persona. No cambies a voseo si no lo usa.
+
+## Ejemplo mínimo de la receta: 4 s
+
+El producto sale del horno, sigue subiendo y girando durante toda la escena y entra en la bolsa al salir. Cambia el objeto y la causa según el tema.
+
+```html
+<!doctype html><html lang="es"><meta charset="utf-8">
+<style>html,body{margin:0;width:1080px;height:1920px;overflow:hidden}#main{position:relative;width:1080px;height:1920px;background:#25392b;color:#fff;font:80px Arial;overflow:hidden}h1{position:absolute;left:90px;top:220px;width:900px;margin:0;font-size:80px;line-height:1.2}#horno{position:absolute;left:90px;top:500px;width:900px;height:1000px;background:#101b14}#pan{position:absolute;left:180px;top:700px;width:720px;height:600px;background:#e4ad64;border-radius:50%}#bolsa{position:absolute;left:90px;top:1300px;width:900px;height:420px;background:#b88651}</style>
+<div id="main" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-duration="4" data-fps="30"><section class="clip" data-start="0" data-duration="4"><h1>Pan recién hecho</h1><div id="horno"></div><div id="pan"></div><div id="bolsa"></div></section></div>
+<script src="assets/vendor/gsap.min.js"></script><script>
+const tl=gsap.timeline({paused:true});
+// Movimiento continuo: sale del horno y viaja hacia la bolsa durante los 4 s.
+tl.fromTo('#pan',{y:0,rotation:-12},{y:420,rotation:12,duration:4,ease:'none'},0);
+tl.fromTo('#pan',{scale:0.6},{scale:1,duration:0.5,ease:'expo.out'},0);
+// La bolsa recibe el pan: la salida continúa la misma acción.
+tl.to('#pan',{scale:0.5,duration:0.4,ease:'power3.in'},3.6);
+window.__timelines={main:tl};
+</script></html>
+```
 
 ## Ejemplo: 8 s vertical, un solo `index.html`
 

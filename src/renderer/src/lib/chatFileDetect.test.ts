@@ -95,3 +95,18 @@ it('oculta los PNG internos en texto, entradas y salidas, conserva MP4 y fotos p
     expect(files).toEqual([normalizeAbs(mp4), normalizeAbs(photo)])
   }
 })
+
+it('encuentra rutas largas de Chat y JSON con barras o Unicode escapados', () => {
+  const ruta = '/data/' + 'conversacion/'.repeat(28) + 'promo-café.mp4'
+  const output = JSON.stringify({ cuadros: ['/data/.lazunox/trabajo/video/abc/cuadro-1.png'], ruta })
+    .replace(/\//g, '\\/')
+    .replace('é', '\\u00e9')
+  expect(detectChatFiles({ parts: [tool('video_render', {}, output)], root: '/data' })).toEqual([ruta])
+  expect(detectChatFiles({ parts: [text(`[Descargar el reel](${ruta})`)], root: '/data' })).toEqual([ruta])
+})
+
+it('los PNG internos de muchas revisiones no llenan el límite antes de llegar al MP4', () => {
+  const pngs = Array.from({ length: 48 }, (_, i) => tool('video_cuadros', {}, `/perfil/opencode-data/opencode/tool-output/tool_${i}.png`))
+  const ruta = '/chat/videos/abc/reel.mp4'
+  expect(detectChatFiles({ parts: [...pngs, tool('video_render', {}, JSON.stringify({ ruta }))], root: '/chat' })).toEqual([ruta])
+})

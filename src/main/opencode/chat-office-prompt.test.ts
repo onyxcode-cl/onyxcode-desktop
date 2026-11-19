@@ -31,7 +31,7 @@ it.each([
   {
     path: 'src/main/opencode/config.ts',
     end: "          'Si eligen la opción HTML/CSS",
-    sha256: 'c5081a20a662e70eaeb2dcacb0f1e0c17820211acfa1822313ba8b9b158afa6b'
+    sha256: '672685c4e4e4bacb564c58f9bc084f2e761f2668fdce342ccbc085b8d3f6d15f'
   }
 ])('$path: conserva el prefijo de guía aprobado en V26 y la regla de formato', ({ path, end, sha256 }) => {
   const source = readFileSync(resolve(root, path), 'utf8')
@@ -39,6 +39,7 @@ it.each([
   expect(endIndex).toBeGreaterThan(source.indexOf('REGLA OBLIGATORIA'))
   // V26 autoriza identidad y fotos preparadas (tres permisos específicos). Huellas del prefijo actualizado;
   // F8-B334 añade el bloque MCP video y su opción al prefijo de config; la guía de formato no cambia.
+  // F8-B338 añade rutas de lectura de video y su cálculo; no cambia ninguna frase de la guía.
   // La pregunta original de formato se congela además por separado abajo.
   expect(createHash('sha256').update(source.slice(0, endIndex)).digest('hex')).toBe(sha256)
 })

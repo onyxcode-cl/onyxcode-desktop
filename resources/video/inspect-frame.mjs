@@ -97,6 +97,18 @@ export function inspectFrame({ width, height }) {
     coverage = Math.max(0, (r - l) * (b - t) / (width * height))
   }
   currentElement = stage
+  if (!content.length) add('cuadro casi vacío: no hay contenido visible dentro del lienzo')
+  // Una tarjeta con fondo puede tener mucha variación de color y aun así no mostrar su contenido.
+  for (const el of shapes) {
+    if (el === stage || /^(IMG|SVG|CANVAS|VIDEO|PATH|RECT|CIRCLE|LINE|POLYGON|ELLIPSE)$/.test(el.tagName.toUpperCase())) continue
+    const r = el.getBoundingClientRect()
+    const area = Math.max(0, Math.min(width, r.right) - Math.max(0, r.left)) * Math.max(0, Math.min(height, r.bottom) - Math.max(0, r.top))
+    if (area < width * height * 0.08 || area > width * height * 0.9) continue
+    const hasText = texts.some((t) => el === t.el || el.contains(t.el))
+    const hasMedia = shown.some((child) => child !== el && el.contains(child) && /^(IMG|SVG|CANVAS|VIDEO)$/.test(child.tagName.toUpperCase()))
+    const expectedContent = el.textContent.trim() || el.querySelector('img,svg,canvas,video')
+    if (expectedContent && !hasText && !hasMedia) { currentElement = el; add('tarjeta sin contenido visible durante el cambio de escena') }
+  }
   if (content.length && coverage < 0.6) add(`el contenido ocupa solo el ${Math.round(coverage * 100)} % del lienzo; revisa el espacio vacío`)
   return { issues, details, visibleText: texts.length, coverage }
 }
@@ -138,7 +150,7 @@ export function measureMotion(bytes, duration, step = 0.25) {
   }
   if (start !== null && duration - start >= 1) spans.push({ inicio: start, fin: duration })
   const percentage = spans.reduce((n, s) => n + s.fin - s.inicio, 0) / duration * 100
-  const warning = percentage > 35.00001 || spans.some((s) => s.fin - s.inicio > 2.5)
+  const warning = percentage > 35.00001 || spans.some((s) => Math.min(s.fin, duration - 1.5) - s.inicio >= 2)
   return { porcentajeQuieto: Math.round(percentage * 10) / 10, tramos: spans, intervalo: step, aviso: warning ? `La imagen está quieta el ${Math.round(percentage)} % del tiempo (${spans.map((s) => `${s.inicio}–${s.fin} s`).join(' y ')}): agrega movimiento continuo (fondo, cámara, objetos) en esos tramos.` : null }
 }
 
@@ -152,12 +164,13 @@ export function transitionSamples() {
   })
   const times = starts.flatMap(({ start, duration }) => {
     const previousEnd = starts.filter((s) => s.start < start && s.start + s.duration > start).map((s) => s.start + s.duration)
-    return [start - 0.2, start + 0.2, start + duration / 2, previousEnd.length ? (start + Math.min(...previousEnd)) / 2 : start + 0.3]
+    const around = (boundary) => Array.from({ length: 11 }, (_, i) => Math.round((boundary - 0.5 + i * 0.1) * 1000) / 1000)
+    return [...around(start), ...around(start + duration), start + duration / 2, previousEnd.length ? (start + Math.min(...previousEnd)) / 2 : start + 0.3]
   })
   const tl = window.__timelines?.main
   for (const tween of tl?.getChildren?.(true, true, false) ?? []) {
     const d = tween.duration()
     if (d > 0 && d <= 1.2) times.push(tween.globalTime(d / 2) - tl.globalTime(0))
   }
-  return [...new Set(times)].filter((t) => Number.isFinite(t) && t >= 0).sort((a, b) => a - b).slice(0, 64)
+  return [...new Set(times)].filter((t) => Number.isFinite(t) && t >= 0).sort((a, b) => a - b).slice(0, 2048)
 }

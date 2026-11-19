@@ -1,6 +1,6 @@
 # Sonido
 
-El audio de la persona tiene prioridad. Si no hay, busca música adecuada con `video_musica_buscar`. Un video promocional lleva música por defecto, salvo que la persona diga que no. No generes voces ni sonido con código (osciladores, tonos, «pitidos»).
+El audio de la persona tiene prioridad. Si no hay, busca música adecuada con `video_musica_buscar`. Un video promocional lleva música por defecto, salvo que la persona diga que no. Acepta música de cualquier licencia; no la descartes por licencia. La responsabilidad es del dueño del video. Solo si es no comercial, repite en una línea la `licenciaFrase` exacta de la herramienta, sin bloquear. No generes voces ni sonido con código (osciladores, tonos, «pitidos»).
 
 ## 1. Cuándo hay sonido
 

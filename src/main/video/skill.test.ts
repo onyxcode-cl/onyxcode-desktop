@@ -34,3 +34,19 @@ it('las guías citadas existen y hay aviso de licencia', () => {
   for (const ref of skill.matchAll(/references\/([a-z/]+\.md)/g)) expect(existsSync(join(dir, 'references', ref[1]!))).toBe(true)
   expect(readFileSync(join(dir, 'NOTICE.md'), 'utf8')).toContain('Apache')
 })
+
+it('incluye reglas breves para cualquier modelo: música, datos, idioma, personas y movimiento', () => {
+  for (const rule of [
+    'no descartes una pista por licencia',
+    'licenciaFrase',
+    'Días, precios, horarios y cifras: solo los que dio la persona',
+    'español neutro',
+    'Fotos sin personas reconocibles en primer plano',
+    'Receta obligatoria por escena',
+    'movimiento continuo durante toda la escena',
+    'entrada y salida con causa',
+    'nueva_version: true',
+    'Ejemplo mínimo de la receta'
+  ])
+    expect(skill).toContain(rule)
+})

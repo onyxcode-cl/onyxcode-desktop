@@ -1230,9 +1230,12 @@
         "src/main/video/web-media-mcp.test.ts:1",
         "src/shared/video-permissions.ts:1",
         "src/main/video/image-search-settings.ts:1",
-        "src/renderer/src/features/settings/impl/VideoImageSearch.tsx:1"
+        "src/renderer/src/features/settings/impl/VideoImageSearch.tsx:1",
+        "src/main/opencode/config.test.ts:1",
+        "src/renderer/src/lib/chatFileDetect.test.ts:1",
+        "src/main/video/consent.test.ts:1"
       ],
-      "nota": "Descargas desde main también en Windows, sin WSL. Dobles de Chat, Code y Overdrive comprueban fotos/audio, assets, procedencia y AAC. Búsqueda y MP4 de 15 s reales en Mac como diagnóstico Node sin Seatbelt; sandbox-exec bloqueado por el entorno. Serper/Brave requieren clave y no se probaron con una real; Windows nativo e interacción en Electron pendientes.",
+      "nota": "Descargas desde main también en Windows, sin WSL. Dobles de Chat, Code y Overdrive comprueban fotos/audio, assets, procedencia y AAC. Búsqueda y MP4 de 15 s reales en Mac como diagnóstico Node sin Seatbelt; sandbox-exec bloqueado por el entorno. Serper/Brave requieren clave y no se probaron con una real; Windows nativo e interacción en Electron pendientes. Paso 9: reemplazo por composición con versión aparte explícita, licencia musical exacta sin filtro, lectura acotada de skill/PNG en Chat, medición sin caché con umbral de tramo de 2 s y muestras densas en cortes, descargas verificadas reutilizadas y audio con 90 s. Separadores Windows cubiertos por unitarias; cambio del consentimiento Windows a hoja Electron con padre. Windows real posterior al arreglo sigue pendiente; no se tocó WSL.",
       "comprobacion": null
     }
   ]

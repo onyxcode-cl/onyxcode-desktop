@@ -87,3 +87,23 @@ it('si ningún reintento encuentra pistas, explica el silencio y respeta la canc
   )
   await expect(searchVideoMusic({ consulta: 'calm music' }, AbortSignal.abort(), { get })).rejects.toThrow()
 })
+
+it('no filtra ninguna licencia y entrega la frase exacta, incluida NC y ND', async () => {
+  const labels = ['by', 'by-sa', 'by-nc-sa', 'by-nc-nd', 'cc0', 'desconocida']
+  const result = await searchVideoMusic({ consulta: 'happy', limite: 12 }, new AbortController().signal, {
+    get: async (url) => {
+      expect(new URL(url).searchParams.has('license')).toBe(false)
+      expect(new URL(url).searchParams.has('license_type')).toBe(false)
+      return Buffer.from(
+        JSON.stringify({ results: labels.map((license, i) => ({ license, license_version: '3.0', url: `https://example.org/${i}.mp3` })) })
+      )
+    }
+  })
+  expect(result.pistas.map((p) => p.licencia)).toEqual(labels)
+  expect(result.pistas[2]).toMatchObject({
+    licenciaFrase: 'Licencia CC BY-NC-SA 3.0: atribución, no comercial, compartir igual.',
+    noComercial: true
+  })
+  expect(result.pistas[3].licenciaFrase).toContain('sin obras derivadas')
+  expect(result.pistas[0].noComercial).toBe(false)
+})
