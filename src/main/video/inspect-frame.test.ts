@@ -6,9 +6,10 @@ import { qualityComposition } from './fixtures/quality'
 
 // Executes the exact browser function shipped with the worker, without a separate copy of its algorithm.
 const source = readFileSync(join(__dirname, '../../../resources/video/inspect-frame.mjs'), 'utf8').replace(/export function /g, 'function ')
-const { inspectFrame, colorVariation, needsSmallerFrames, measureMotion, transitionSamples } = new Function(
-  source + ';return {inspectFrame,colorVariation,needsSmallerFrames,measureMotion,transitionSamples}'
+const { inspectFrame, colorVariation, needsSmallerFrames, measureMotion, transitionSamples, encodedEmptyFrames } = new Function(
+  source + ';return {inspectFrame,colorVariation,needsSmallerFrames,measureMotion,transitionSamples,encodedEmptyFrames}'
 )() as {
+  encodedEmptyFrames: (bytes: Uint8Array) => { time: number; message: string }[]
   measureMotion: (
     bytes: Uint8Array,
     duration: number
@@ -101,8 +102,10 @@ describe('revisión automática de composiciones', () => {
   })
 })
 
-it('prefiere mitad para tres cuadros normales y reduce seis cuadros ruidosos o uno que supera el límite individual', () => {
-  expect(needsSmallerFrames([300000, 240000, 200000])).toBe(false)
+it('cada adjunto entra en los 256 KiB del motor, aunque el total sea pequeño', () => {
+  expect(needsSmallerFrames([256 * 1024, 240000, 200000])).toBe(false)
+  expect(needsSmallerFrames([256 * 1024 + 1])).toBe(true)
+  expect(needsSmallerFrames([300000, 240000, 200000])).toBe(true)
   expect(needsSmallerFrames(Array(6).fill(600000))).toBe(true)
   expect(needsSmallerFrames([2100000])).toBe(true)
 })
@@ -145,4 +148,40 @@ it('detecta una tarjeta vacía aunque su fondo tenga mucho contraste', () => {
   const review = scene('clean')
   for (const p of document.querySelectorAll('p')) (p as HTMLElement).style.opacity = '0'
   expect(review().issues.join(' ')).toContain('tarjeta sin contenido visible')
+})
+
+it('muestra típica de voseo avisa con corrección condicional; tú no genera aviso', () => {
+  const review = scene('clean')
+  const label = document.querySelector('p')!
+  for (const text of ['Vení a probarlo', 'Pasá', 'Probalo', 'Tenés café']) {
+    label.textContent = text
+    expect(review().issues.join(' ')).toContain('si la persona no lo usó')
+  }
+  label.textContent = 'Ven a probarlo'
+  expect(review().issues.join(' ')).not.toContain('voseo')
+})
+it('un set y un cambio breve se revisan cuadro a cuadro aunque no tengan .clip', () => {
+  Object.assign(window, {
+    __timelines: {
+      main: {
+        globalTime: () => 8,
+        getChildren: () => [
+          { duration: () => 0, globalTime: () => 13.3 },
+          { duration: () => 0.3, globalTime: (t: number) => 13.3 + t }
+        ]
+      }
+    }
+  })
+  const times = transitionSamples()
+  for (let f = 159; f <= 167; f++) expect(times).toContain(f / 30)
+})
+it('MP4: detecta incluso un único cuadro vacío, con tiempo absoluto y sin depender de segundos pedidos', () => {
+  const textured = Uint8Array.from({ length: 768 }, (_, i) => (i % 2 ? 255 : 0))
+  const bytes = new Uint8Array(768 * 180)
+  for (let i = 0; i < 180; i++) bytes.set(textured, i * 768)
+  bytes.fill(42, 159 * 768, 162 * 768)
+  expect(encodedEmptyFrames(bytes)).toEqual([
+    { time: 5.3, message: 'MP4 final: cuadro casi vacío entre 5.30 y 5.40 s (poca variación de color)' }
+  ])
+  expect(() => encodedEmptyFrames(new Uint8Array(1))).toThrow('incompleta')
 })

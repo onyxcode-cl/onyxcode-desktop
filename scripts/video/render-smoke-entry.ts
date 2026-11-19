@@ -198,7 +198,10 @@ async function main(): Promise<void> {
       ms: performance.now() - t0,
       responseBytes: Buffer.byteLength(body),
       text: JSON.parse(rpc.result.content.find((c: { type: string }) => c.type === 'text').text),
-      images: rpc.result.content.filter((c: { type: string }) => c.type === 'image').length
+      images: rpc.result.content.filter((c: { type: string }) => c.type === 'image').length,
+      imageBytes: rpc.result.content
+        .filter((c: { type: string }) => c.type === 'image')
+        .map((c: { data: string }) => Buffer.from(c.data, 'base64').length)
     }
   }
   const report: Record<string, unknown> = {
@@ -210,6 +213,75 @@ async function main(): Promise<void> {
     diagnosticOnly: diagnostic
   }
   try {
+    if (process.argv.includes('--quality-step10')) {
+      // Un hueco corto fuera de los segundos solicitados; repetir no debe ocultarlo.
+      const gap = qualityComposition('clean')
+        .replace(
+          '</div><script',
+          '<div id="cover" style="position:absolute;inset:0;background:#18251d;z-index:99;opacity:0"></div></div><script'
+        )
+        .replace('window.__timelines=', "tl.set('#cover',{opacity:1},5.3);tl.set('#cover',{opacity:0},5.4);window.__timelines=")
+      await mkdir(join(folder, 'paso10'))
+      await writeFile(join(folder, 'paso10/index.html'), gap)
+      const first = await call('cuadros', { composicion: 'paso10/index.html', formato: 'vertical', segundos: [0, 2, 7] })
+      const second = await call('cuadros', { composicion: 'paso10/index.html', formato: 'vertical', segundos: [1, 3, 8] })
+      const final = await call('render', {
+        composicion: 'paso10/index.html',
+        formato: 'vertical',
+        duracion: 9,
+        fps: 30,
+        nombre: 'hueco-persistente'
+      })
+      for (const checked of [first, second, final]) {
+        if (!(checked.text.avisos as string[]).some((s) => s.includes('cuadro casi vacío'))) throw Error('Desapareció el hueco de 5.3 s')
+      }
+      if (!(final.text.avisos as string[]).some((s) => s.includes('MP4 final: cuadro casi vacío')))
+        throw Error('Falta revisión del MP4 decodificado')
+      if (!String(final.text.entrega).includes('no entregues como terminado sin decirlo')) throw Error('Falta advertencia de entrega')
+      report.hueco = { first, second, final }
+      // Ruido fijo a resolución completa: los seis originales deben superar 256 KiB.
+      const noise = qualityComposition('clean')
+        .replace('</div><script', '<canvas id="noise" width="1080" height="1920" style="position:absolute;inset:0"></canvas></div><script')
+        .replace(
+          'window.__timelines=',
+          `
+        const ctx=document.querySelector('canvas').getContext('2d'), pixels=ctx.createImageData(1080,1920);let seed=42;
+        for(let i=0;i<pixels.data.length;i+=4){seed=(Math.imul(seed,1664525)+1013904223)>>>0;pixels.data[i]=seed&255;pixels.data[i+1]=(seed>>>8)&255;pixels.data[i+2]=(seed>>>16)&255;pixels.data[i+3]=255;}ctx.putImageData(pixels,0,0);
+        window.__timelines=`
+        )
+      await mkdir(join(folder, 'ruido'))
+      await writeFile(join(folder, 'ruido/index.html'), noise)
+      const frames = await call('cuadros', { composicion: 'ruido/index.html', formato: 'vertical', segundos: [0, 1, 2, 3, 4, 8] })
+      const attached = frames.text.adjuntos as { pedidos: number; enviados: number; noAdjuntados: string[] }
+      if (frames.images !== 7 || attached.pedidos !== 7 || attached.enviados !== 7 || attached.noAdjuntados.length)
+        throw Error('No llegaron los seis cuadros y la hoja')
+      if (frames.imageBytes.some((n: number) => n > 256 * 1024)) throw Error('Adjunto sobre el tope del motor')
+      const before = frames.text.imagenesOriginalesBytes as number[]
+      if (!before || before.slice(0, 6).some((n) => n <= 256 * 1024)) throw Error('Los originales no superaban el tope de prueba')
+      report.ruido = frames
+      const evidence = arg('--evidence-dir')
+      if (evidence) {
+        await mkdir(evidence, { recursive: true })
+        await cp(String(final.text.ruta), join(evidence, 'hueco-persistente.mp4'))
+        await cp(String(second.text.hojaContactos), join(evidence, 'hueco-contactos.png'))
+        for (const [i, frame] of (frames.text.cuadros as string[]).entries()) await cp(frame, join(evidence, `ruido-${i + 1}.png`))
+        await cp(String(frames.text.hojaContactos), join(evidence, 'ruido-contactos.png'))
+      }
+      report.ownedDirectPidsLeft = ownPids.filter((pid) => {
+        try {
+          process.kill(pid, 0)
+          return true
+        } catch {
+          return false
+        }
+      })
+      report.childrenLeft = children.size
+      report.temporaryRendersLeft = await readdir(join(userData, 'video-render-tmp'))
+      if ((report.ownedDirectPidsLeft as number[]).length || children.size || (report.temporaryRendersLeft as string[]).length)
+        throw Error('Quedan procesos o temporales propios')
+      report.ok = true
+      return
+    }
     const quality: Record<string, unknown> = {}
     for (const kind of ['clean', 'overflow', 'overlap', 'gap', 'narrow'] as const) {
       await mkdir(join(folder, kind))

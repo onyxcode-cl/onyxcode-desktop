@@ -1,3 +1,4 @@
+import { registerVideoConversationWindow } from './video/consent'
 import { stopEveryBackground } from './host-exec/runner'
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, Notification, powerMonitor, screen } from 'electron'
 import { existsSync } from 'node:fs'
@@ -188,6 +189,7 @@ function createWindow(): BrowserWindow {
     }
   })
   registerWindowRole(win.webContents, 'main')
+  registerVideoConversationWindow(win)
   // La barra lateral translúcida se puede cambiar en Ajustes con la ventana abierta.
   const solidBg = (): string => (nativeTheme.shouldUseDarkColors ? BRAND_COLORS.bgDark : BRAND_COLORS.bgLight)
   // Windows: con vidrio, los controles nativos (minimizar/maximizar/cerrar) van sin fondo propio para no dejar un rectángulo sólido.

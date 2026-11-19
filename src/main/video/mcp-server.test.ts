@@ -625,3 +625,39 @@ it('la misma conversación conserva su salida al renovar la atadura del motor', 
   const second = JSON.parse(text(await server.invoke(rebound, 'render', { ...render, nombre: 'Otro-nombre' })))
   expect(second.ruta).toBe(first.ruta)
 })
+
+it('pone los avisos graves primero y exige explicar antes de entregar, también en el render', async () => {
+  deps.render = async (job) => ({
+    ...(await result(job)),
+    avisos: ['Revisión oficial: estructura', '5.3 s: texto tapado', '5.4 s: cuadro casi vacío']
+  })
+  const r = JSON.parse(
+    text(
+      await server.invoke(binding, 'render', {
+        composicion: args.composicion,
+        formato: 'vertical',
+        duracion: 15,
+        fps: 30,
+        nombre: 'Avisos'
+      })
+    )
+  )
+  expect(Object.keys(r)[0]).toBe('avisos')
+  expect(r.avisos[0]).toContain('tapado')
+  expect(r.accion).toContain('Corrige')
+  expect(r.entrega).toContain('no entregues como terminado sin decirlo')
+})
+it('declara explícitamente toda imagen que inesperadamente supera el tope; no finge revisión completa', async () => {
+  deps.render = async (job) => {
+    const r = await result(job)
+    await writeFile(r.images[1], Buffer.concat([png, Buffer.alloc(300000)]))
+    return r
+  }
+  const r = await server.invoke(binding, 'cuadros', args)
+  const info = JSON.parse(text(r))
+  expect(info.adjuntos).toMatchObject({ pedidos: 3, enviados: 2 })
+  expect(info.adjuntos.noAdjuntados).toHaveLength(1)
+  expect(info.avisos[0]).toContain('NO SE ADJUNTÓ')
+  expect(info.avisos[0]).toContain('No afirmes haberla revisado visualmente')
+  expect(r.content.filter((c) => c.type === 'image')).toHaveLength(2)
+})

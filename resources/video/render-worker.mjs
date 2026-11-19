@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url'
 import { randomBytes } from 'node:crypto'
 import { FONT_NAMES, embeddedFonts, groupWarnings, audioFilter } from './offline-tools.mjs'
 import { once } from 'node:events'
-import { inspectFrame, colorVariation, needsSmallerFrames, measureMotion, transitionSamples } from './inspect-frame.mjs'
+import { inspectFrame, colorVariation, needsSmallerFrames, measureMotion, transitionSamples, encodedEmptyFrames } from './inspect-frame.mjs'
 
 const job = JSON.parse(process.argv[2])
 const { work, paths, width, height } = job
@@ -186,7 +186,8 @@ async function main() {
   } catch { findings.push({ message: 'No se pudo completar el lint oficial sin conexión.' }) }
   const sheetFrames = []
   const sceneTimes = await page.evaluate(transitionSamples)
-  const checkTimes = [...new Set([...job.times, ...sceneTimes.filter((t) => t < metadata.duration), ...Array.from({ length: 8 }, (_, i) => metadata.duration * (i + 1) / 9)])].sort((a, b) => a - b)
+  const checkTimes = [...new Set([...job.times, ...Array.from({ length: Math.ceil(metadata.duration * 4) }, (_, i) => i / 4), ...sceneTimes.filter((t) => t < metadata.duration), ...Array.from({ length: 8 }, (_, i) => metadata.duration * (i + 1) / 9)])].sort((a, b) => a - b)
+  const coverageTimes = new Set([...job.times, ...checkTimes.filter((_, i) => i % Math.max(1, Math.ceil(checkTimes.length / 256)) === 0)])
   const sheetTimes = new Set(checkTimes.length <= 24 ? checkTimes : [...job.times, ...Array.from({ length: 24 - job.times.length }, (_, i) => checkTimes[Math.round(i * (checkTimes.length - 1) / (23 - job.times.length))])])
   // Uniform thumbnails measure time, independently of the denser geometry checks at transitions.
   for (let i = 0; i <= Math.ceil(metadata.duration * 4); i++) {
@@ -210,14 +211,16 @@ async function main() {
       await page.screenshot({ path: file, type: 'png' })
       sheetFrames.push(file)
     }
-    cobertura.push({ segundo: time, proporcion: review.coverage })
-    if (!review.visibleText) {
-      const file = join(work, 'inspect.png')
-      await page.screenshot({ path: file, type: 'png' })
-      const rgb = await run(paths.ffmpeg, ['-v', 'error', '-i', file, '-vf', 'scale=16:16', '-frames:v', '1', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-threads', '1', 'pipe:1'], true)
-      if (colorVariation(rgb) < 8) findings.push({ time, message: 'cuadro casi vacío: sin texto visible y con poca variación de color' })
-    }
+    // La geometría se revisa en todos los instantes; el informe resume hasta 256 coberturas.
+    if (coverageTimes.has(time)) cobertura.push({ segundo: time, proporcion: review.coverage })
+    // Los textos DOM pueden estar detrás de una cortina o un clip-path: no son prueba de píxeles visibles.
+    await page.screenshot({ path: join(work, `audit-${String(checkTimes.indexOf(time)).padStart(4, '0')}.png`), type: 'png', clip: { x: 0, y: 0, width, height, scale: 16 / width } })
   }
+  const auditPixels = await run(paths.ffmpeg, ['-v', 'error', '-i', join(work, 'audit-%04d.png'), '-vf', 'scale=16:16', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-threads', '1', 'pipe:1'], true, 8 * 1024 * 1024)
+  if (auditPixels.length !== checkTimes.length * 768) throw Error('Revisión visual incompleta')
+  for (let i = 0; i < checkTimes.length; i++) if (colorVariation(auditPixels.subarray(i * 768, (i + 1) * 768)) < 8)
+    findings.push({ time: checkTimes[i], message: 'cuadro casi vacío: poca variación de color en la imagen, aunque el DOM declare texto' })
+
   let contactSheet
   if (sheetFrames.length) {
     contactSheet = join(work, 'contactos.png')
@@ -277,8 +280,14 @@ async function main() {
     const finished = new Promise((done, reject) => { encoder.once('error', reject); encoder.once('close', (code) => code === 0 ? done() : reject(Error(encoderError || 'Encoder failed'))) })
     // Observe rejection immediately, including while screenshots are being captured.
     void finished.catch(() => {})
+    const transitionFrames = new Set(sceneTimes.map((t) => Math.round(t * 30)))
     for (let frame = 0; frame < Math.round(job.seconds * 30); frame++) {
       await seek(frame / 30)
+      if (transitionFrames.has(frame)) {
+        const review = await page.evaluate(inspectFrame, { width, height })
+        for (const issue of review.details) if (/tapado|recortado|se sale|sin contenido visible/.test(issue.message))
+          findings.push({ time: frame / 30, ...issue, message: 'MP4 final: ' + issue.message })
+      }
       const bytes = await page.screenshot({ type: 'jpeg', quality: 95, optimizeForSpeed: true })
       if (encoder.exitCode !== null || encoder.signalCode !== null) throw Error('Encoder stopped')
       if (!encoder.stdin.write(bytes)) await Promise.race([once(encoder.stdin, 'drain'), finished.then(() => { throw Error('Encoder stopped') })])
@@ -338,17 +347,22 @@ async function main() {
     for (let i = 0; i < job.times.length; i++) await run(paths.ffmpeg, ['-v', 'error', '-y', '-ss', String(job.times[i]), '-i', mp4, '-frames:v', '1', '-vf', 'scale=iw/2:ih/2', '-threads', '1', images[i]])
     if (!Number.isFinite(duration) || Math.abs(duration - job.seconds) > 1 / 30 || stream.codec_name !== 'h264' || stream.width !== width || stream.height !== height || stream.r_frame_rate !== '30/1') throw Error('MP4 verification failed')
   }
-  // Budget: at most 3 MiB of PNG (~4 MiB base64). Prefer half size; noisy compositions fall back to quarter.
-  const sizes = await Promise.all(images.map(async (p) => (await lstat(p)).size))
-  if (needsSmallerFrames(sizes)) {
-    for (const file of images) {
+  if (mp4) {
+    const decoded = await run(paths.ffmpeg, ['-v', 'error', '-i', mp4, '-an', '-vf', 'scale=16:16', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-threads', '1', 'pipe:1'], true, 4 * 1024 * 1024)
+    findings.push(...encodedEmptyFrames(decoded))
+  }
+  // Cada adjunto debe entrar en el tope del motor (256 KiB), también la hoja.
+  const imagenesOriginalesBytes = []
+  for (const file of [...images, ...(contactSheet ? [contactSheet] : [])]) {
+    imagenesOriginalesBytes.push((await lstat(file)).size)
+    while (needsSmallerFrames([(await lstat(file)).size])) {
       const resized = join(work, 'resized.png')
-      await run(paths.ffmpeg, ['-v', 'error', '-y', '-i', file, '-vf', 'scale=iw/2:ih/2', '-threads', '1', resized])
+      await run(paths.ffmpeg, ['-v', 'error', '-y', '-i', file, '-vf', 'scale=max(1\\,floor(iw*0.75)):max(1\\,floor(ih*0.75))', '-threads', '1', resized])
       await rename(resized, file)
     }
   }
   // Filenames are fixed. Advisory page text is capped by inspectFrame; main never authorizes from these diagnostics.
-  return { duration, mp4, images, contactSheet, ownedPids, avisos: groupWarnings(findings), cobertura, movimiento, audio: audioInfo, revision: { oficial, hojaOficial, fuentesLocales: fontProof.filter(Boolean).length, alcance: 'Lint y muestreo oficial de geometría y superposiciones, más revisión propia de movimiento. No ejecuta el pipeline completo de check (contraste y craft).' } }
+  return { duration, mp4, images, imagenesOriginalesBytes, contactSheet, ownedPids, avisos: groupWarnings(findings), cobertura, movimiento, audio: audioInfo, revision: { oficial, hojaOficial, fuentesLocales: fontProof.filter(Boolean).length, alcance: 'Lint y muestreo oficial de geometría y superposiciones, más revisión propia de movimiento y todos los cuadros del MP4 final para vacíos; geometría/texto en los cambios de escena por DOM, no OCR del MP4. No ejecuta el pipeline completo de check (contraste y craft).' } }
 }
 try {
   const output = await main()

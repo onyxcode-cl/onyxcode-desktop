@@ -19,6 +19,7 @@ export interface RenderOutput {
   duration?: number
   mp4?: string
   images: string[]
+  imagenesOriginalesBytes?: number[]
   contactSheet?: string
   revision?: { oficial: boolean; hojaOficial: boolean; fuentesLocales?: number; alcance: string }
   movimiento?: { porcentajeQuieto: number; tramos: { inicio: number; fin: number }[]; intervalo: number; aviso: string | null }

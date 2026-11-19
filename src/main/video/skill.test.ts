@@ -50,3 +50,24 @@ it('incluye reglas breves para cualquier modelo: música, datos, idioma, persona
   ])
     expect(skill).toContain(rule)
 })
+
+it('fotos genéricas de producto válidas, tú por defecto y producto que cambia de estado', () => {
+  expect(skill).toContain('busca 2–3 fotos del sujeto antes de componer')
+  expect(skill).toContain('es justo lo que se quiere')
+  expect(skill).toContain('No descartes los avisos de texto tapado o escena vacía')
+  expect(skill).toContain('español neutro con «tú»')
+  expect(skill).toContain('se arma, se dora, se llena o se sirve')
+  expect(skill).toContain('su corteza crece hasta convertirse en el fondo')
+  const reference = readFileSync(join(dir, 'references/formato.md'), 'utf8')
+  for (const value of [
+    'todos los días',
+    '8:00',
+    '20:00',
+    'Calle Lira',
+    'DESDE 2014',
+    'cada lunes',
+    'VENTAS 2026',
+    'de crecimiento en el año'
+  ])
+    expect(reference).not.toContain(value)
+})

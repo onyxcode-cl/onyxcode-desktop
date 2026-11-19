@@ -16,6 +16,9 @@ export function embeddedFonts(data, base) {
   if (files.size !== 42) throw Error('El paquete fijado no contiene las 42 fuentes esperadas.')
   return { files, css: css.join('\n') }
 }
+export function seriousWarning(message) {
+  return /vacío|sin contenido visible|tapado|recortado|se sale|overflow|overlap|occlu/i.test(message)
+}
 export function groupWarnings(findings) {
   const groups = new Map()
   for (const finding of findings) {
@@ -26,7 +29,8 @@ export function groupWarnings(findings) {
     if (Number.isFinite(finding.time)) entry.times.push(finding.time)
     groups.set(key, entry)
   }
-  return [...groups.values()].slice(0, 80).map(({ message, selector, times }) => {
+  const priority = (s) => /cuadro casi vacío|tarjeta sin contenido visible/.test(s) ? 3 : s.startsWith('MP4 final:') ? 2 : Number(seriousWarning(s))
+  return [...groups.values()].sort((a, b) => priority(b.message) - priority(a.message)).slice(0, 80).map(({ message, selector, times }) => {
     const sorted = [...new Set(times)].sort((a, b) => a - b)
     const label = (n) => Number(n.toFixed(2))
     const span = sorted.length ? `${label(sorted[0])}${sorted.length > 1 ? `–${label(sorted.at(-1))}` : ''} s: ` : ''

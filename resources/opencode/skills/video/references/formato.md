@@ -217,7 +217,7 @@ Si la marca tiene una fuente propia y no hay archivo, usa la más parecida de la
 
 ```js
 const cuenta = { n: 0 };
-tl.fromTo(cuenta, { n: 0 }, { n: 72, duration: 1.2, ease: "expo.out", onUpdate: () => {
+tl.fromTo(cuenta, { n: 0 }, { n: 100, duration: 1.2, ease: "expo.out", onUpdate: () => {
   document.getElementById("numero").textContent = Math.round(cuenta.n);
 } }, 4.85);
 ```
@@ -309,7 +309,7 @@ La forma más simple, en los tres modos, es la lista `audio` de `video_render` (
 
 ## 13. Lo que ve la revisión automática
 
-`video_cuadros` y `video_render` revisan los segundos que pides, 8 instantes repartidos en todo el video (D/9 … 8D/9) y cada cambio de escena o `.clip` cada 0,1 s en ±0,5 s del inicio y del final, además de su mitad y la mitad de las transiciones. Además comparan miniaturas cada 0,25 s: `movimiento` informa porcentaje y tramos casi quietos de al menos 1 s; avisa por encima del 35 % o con un tramo de 2 s o más fuera de los últimos 1,5 s. Devuelven `avisos` (con segundo y texto) y `cobertura` (cuánto del lienzo ocupa el contenido en cada instante). `video_cuadros` devuelve además una **hoja de contactos** con hasta 24 de esos instantes: úsala para ver el movimiento entre tus cuadros.
+`video_cuadros` y `video_render` revisan los segundos que pides, 8 instantes repartidos en todo el video (D/9 … 8D/9) y cada cambio de escena o `.clip` cada cuadro (1/30 s) en ±0,5 s del inicio y del final, además de su mitad y la mitad de las transiciones. Además comparan miniaturas cada 0,25 s: `movimiento` informa porcentaje y tramos casi quietos de al menos 1 s; avisa por encima del 35 % o con un tramo de 2 s o más fuera de los últimos 1,5 s. Devuelven `avisos` (con segundo y texto) y `cobertura` (cuánto del lienzo ocupa el contenido en cada instante). `video_cuadros` devuelve además una **hoja de contactos** con hasta 24 de esos instantes: úsala para ver el movimiento entre tus cuadros.
 
 Hay dos clases de avisos:
 - los de la app, en español (texto que se sale, tapado, recortado, cobertura, cuadro casi vacío);
@@ -398,9 +398,9 @@ Tres escenas superpuestas. Muestra: título por palabras con desenfoque, un traz
   <section id="e1" class="escena clip" data-start="0" data-duration="4.8" style="z-index:1">
     <div id="e1-mundo" class="escena">
       <div class="marco">
-        <p id="e1-kicker" class="kicker">TOSTADO ESTA SEMANA</p>
+        <p id="e1-kicker" class="kicker">EL CAFÉ EN MOVIMIENTO</p>
         <h1 id="e1-titulo"><span>Café</span> <span>que</span><br><span>despierta.</span></h1>
-        <p id="e1-pie" class="pie">TOSTADORES DESDE 2014</p>
+        <p id="e1-pie" class="pie">EL PRODUCTO ES PROTAGONISTA</p>
       </div>
       <div id="e1-deco" class="deco"></div>
     </div>
@@ -419,12 +419,12 @@ Tres escenas superpuestas. Muestra: título por palabras con desenfoque, un traz
     <div class="fondo"></div>
     <div class="marco">
       <p id="e2-kicker" class="kicker">DEL TUESTE A TU TAZA</p>
-      <h2 id="e2-cifra"><span id="e2-numero">0</span><small> h</small></h2>
-      <p id="e2-sub">como máximo, siempre.</p>
+      <h2 id="e2-cifra"><span id="e2-numero">0</span><small> %</small></h2>
+      <p id="e2-sub">La taza se llena.</p>
       <div id="e2-lista">
-        <div class="item"><i></i>Grano de altura</div>
-        <div class="item"><i></i>Tostado cada lunes</div>
-        <div class="item"><i></i>Molido al momento</div>
+        <div class="item"><i></i>Elige tu café</div>
+        <div class="item"><i></i>Prepara la taza</div>
+        <div class="item"><i></i>Sirve y disfruta</div>
       </div>
     </div>
     <div id="e2-barra" class="deco"></div>
@@ -436,10 +436,10 @@ Tres escenas superpuestas. Muestra: título por palabras con desenfoque, un traz
       <div class="marco">
         <p id="e3-kicker" class="kicker">TE ESPERAMOS</p>
         <div id="e3-centro">
-          <h2 id="e3-nombre">Brasa</h2>
-          <div id="e3-cta">Tu primera taza, hoy</div>
+          <h2 id="e3-nombre">Tu marca</h2>
+          <div id="e3-cta">Disfruta tu café</div>
         </div>
-        <p id="e3-dato">Calle Lira 240 · todos los días<br>de 8:00 a 20:00</p>
+        <p id="e3-dato">Datos del negocio solo si los aporta la persona</p>
       </div>
       <div id="e3-deco" class="deco"></div>
     </div>
@@ -467,7 +467,7 @@ Tres escenas superpuestas. Muestra: título por palabras con desenfoque, un traz
   // Escena 2 (empieza en 4.6 s, ya con el mismo color de la taza). Su rótulo llega con la escena: ningún cuadro queda liso.
   tl.fromTo("#e2-kicker", { y: 40 }, { y: 0, duration: 0.5, ease: "power3.out" }, 4.6);
   const cuenta = { n: 0 };
-  tl.fromTo(cuenta, { n: 0 }, { n: 72, duration: 1.2, ease: "expo.out", onUpdate: () => {
+  tl.fromTo(cuenta, { n: 0 }, { n: 100, duration: 1.2, ease: "expo.out", onUpdate: () => {
     document.getElementById("e2-numero").textContent = Math.round(cuenta.n);
   } }, 4.85);
   tl.fromTo("#e2-cifra", { opacity: 0, scale: 0.9, transformOrigin: "0% 100%" }, { opacity: 1, scale: 1, duration: 0.6, ease: "expo.out" }, 4.85);
@@ -629,7 +629,7 @@ promo-huerta/
 
 ### Ejemplo 3: canvas dibujado desde el tiempo + GSAP, cuadrado, 6 s
 
-Barras que crecen y una línea de tendencia dibujadas en canvas desde el tiempo, grano de papel con azar con semilla, una fuente incluida por la app (`Inter`) y una cifra que cuenta con GSAP. Algo cambia hasta los 3,9 s y el cierre se sostiene 2 s. Las cifras son de ejemplo: si la persona no dio datos, márcalas como ejemplo al entregar.
+Barras que crecen y una línea de tendencia dibujadas en canvas desde el tiempo, grano de papel con azar con semilla, una fuente incluida por la app (`Inter`) y una cifra que cuenta con GSAP. Algo cambia hasta los 3,9 s y el cierre se sostiene 2 s. Las barras son formas de demostración, rotuladas como tales en pantalla. No representan ventas ni resultados de un negocio; sustituye por datos reales solo si la persona los aporta.
 
 ```html
 <!doctype html>
@@ -656,14 +656,14 @@ Barras que crecen y una línea de tendencia dibujadas en canvas desde el tiempo,
 <div id="main" data-composition-id="main" data-start="0" data-duration="6" data-width="1080" data-height="1080" data-fps="30">
   <canvas id="lienzo" width="1080" height="1080"></canvas>
   <div id="texto">
-    <p id="kicker">VENTAS 2026</p>
-    <h1 id="titulo">Cada trimestre,<br>un poco más.</h1>
+    <p id="kicker">EJEMPLO ANIMADO</p>
+    <h1 id="titulo">Formas que<br>se dibujan.</h1>
   </div>
-  <div id="total"><b id="total-num">0 %</b><span>de crecimiento en el año</span></div>
-  <p id="nota">El mejor: el cuarto trimestre</p>
+  <div id="total"><b id="total-num">0 %</b><span>de la animación de muestra</span></div>
+  <p id="nota">Formas de muestra, no son datos reales</p>
 </div>
 <script>
-  // Datos de ejemplo: márcalos como ejemplo si la persona no los entregó.
+  // Alturas de las formas de muestra: no son datos de un negocio.
   const datos = [42, 55, 61, 78];
   const D = 6;
   const lienzo = document.getElementById("lienzo");
@@ -711,7 +711,7 @@ Barras que crecen y una línea de tendencia dibujadas en canvas desde el tiempo,
   tl.fromTo("#titulo", { opacity: 0.3, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power3.out" }, 0.1);
   tl.fromTo("#total", { opacity: 0.3, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.6);
   const cifra = { v: 0 };
-  tl.fromTo(cifra, { v: 0 }, { v: 86, duration: 1.6, ease: "expo.out", onUpdate: () => {
+  tl.fromTo(cifra, { v: 0 }, { v: 100, duration: 1.6, ease: "expo.out", onUpdate: () => {
     document.getElementById("total-num").textContent = Math.round(cifra.v) + " %";
   } }, 0.7);
   tl.fromTo("#nota", { opacity: 0, clipPath: "inset(0% 100% 0% 0%)" }, { opacity: 1, clipPath: "inset(0% 0% 0% 0%)", duration: 0.5, ease: "power2.inOut" }, 3.4);

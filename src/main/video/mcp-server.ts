@@ -50,6 +50,7 @@ const COMPOSITION_CONTRACT =
   'HTML obligatorio: elemento con data-composition-id="main", data-width, data-height y data-duration que coincidan con el formato (vertical 1080×1920, cuadrado 1080×1080, horizontal 1920×1080). Timeline GSAP pausada en window.__timelines.main que dure todo el clip; Escenas <template> en compositions/ y recursos en assets/. GSAP local en assets/vendor/gsap.min.js. Fuentes sin red: ' +
   FONT_FAMILIES +
   '. Corrige los avisos antes de entregar o explícalos a la persona.'
+const seriousWarning = (s: string): boolean => /vacío|sin contenido visible|tapado|recortado|se sale|overflow|overlap|occlu/i.test(s)
 const fail = (text: string): McpToolResult => ({ isError: true, content: [{ type: 'text', text }] })
 
 export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
@@ -90,7 +91,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         type: 'array',
         maxItems: 24,
         description:
-          'Fotos sin personas reconocibles en primer plano, salvo que la persona las pida o entregue. Usa fotos genéricas del tema; nunca presentes lugares o locales reconocibles como propios salvo fotos aportadas o identidad solicitada. Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
+          'Fotos sin personas reconocibles en primer plano, salvo que la persona las pida o entregue. Para comida, local o producto real busca 2–3 fotos del sujeto antes de componer. Una foto genérica de pan o empanadas es válida: no debe ser del negocio exacto. Usa fotos genéricas del tema; nunca presentes lugares o locales reconocibles como propios salvo fotos aportadas o identidad solicitada. Fotos de cualquier licencia: origen HTTPS público, ruta concedida, id de imagenes_usar o adjunto de Chat; destino assets/… (20 MiB web).',
         items: {
           type: 'object',
           additionalProperties: false,
@@ -135,7 +136,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       {
         name: 'cuadros',
         description:
-          'Saca de 1 a 6 PNG a mitad de tamaño (reduce si supera el presupuesto). Míralos y corrige antes de renderizar. En Chat envía html o archivos; devuelve también hoja de contactos. ' +
+          'Saca de 1 a 6 PNG y hoja de contactos, todos adjuntos de hasta 256 KiB (reduce lo necesario). Míralos y corrige antes de renderizar. En Chat envía html o archivos; devuelve también hoja de contactos. ' +
           COMPOSITION_CONTRACT,
         inputSchema: {
           type: 'object',
@@ -492,11 +493,25 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
         args.nueva_version === true,
         ac.signal
       )
+      const avisos = [
+        ...(result.avisos ?? []),
+        ...output.missing.map((p) => `NO SE ADJUNTÓ la imagen ${p}: supera 256 KiB. No afirmes haberla revisado visualmente.`)
+      ].sort((a, b) => Number(seriousWarning(b) || b.startsWith('NO SE')) - Number(seriousWarning(a) || a.startsWith('NO SE')))
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify({
+              avisos,
+              ...(avisos.length ? { accion: 'Corrige estos avisos o explícalos a la persona antes de entregar.' } : {}),
+              ...(name === 'render' && (avisos.some(seriousWarning) || output.missing.length)
+                ? { entrega: 'Hay avisos graves pendientes: no entregues como terminado sin decirlo.' }
+                : {}),
+              adjuntos: {
+                pedidos: times.length + Number(!!result.contactSheet),
+                enviados: output.images.length,
+                noAdjuntados: output.missing
+              },
               composicion: composition,
               duracion: result.duration,
               audio: result.audio,
@@ -504,8 +519,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
               revision: result.revision,
               movimiento: result.movimiento,
               ...output.info,
-              avisos: result.avisos ?? [],
               cobertura: result.cobertura ?? [],
+              imagenesOriginalesBytes: result.imagenesOriginalesBytes,
               imagenesBytes: output.images.reduce((n, b) => n + 4 * Math.ceil(b.length / 3), 0)
             })
           },
@@ -553,7 +568,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
     composition: string,
     newVersion: boolean,
     signal: AbortSignal
-  ): Promise<{ info: Record<string, unknown>; images: Buffer[] }> {
+  ): Promise<{ info: Record<string, unknown>; images: Buffer[]; missing: string[] }> {
     // El worker solo entrega estos nombres fijos dentro de SU temporal. No se siguen rutas de su JSON.
     if (
       result.images.length < 1 ||
@@ -565,6 +580,7 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       throw new Error('El render devolvió archivos no admitidos.')
     const paths: string[] = []
     const images: Buffer[] = []
+    const missing: string[] = []
     const path = (p: string): string => binding.toAgentPath?.(p) ?? p
     // La conversación conserva su identidad aunque el motor renueve la atadura MCP.
     let outputs = session ? this.sessionOutputs : this.outputs.get(binding)
@@ -589,7 +605,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       const filePath = join(root, frames, `cuadro-${i + 1}.png`)
       safeWriteFile(root, filePath, bytes, { replace: true, refuseLinkTarget: true })
       paths.push(path(filePath))
-      images.push(bytes)
+      if (bytes.length <= 256 * 1024) images.push(bytes)
+      else missing.push(path(filePath))
     }
     const info: Record<string, unknown> = { cuadros: paths }
     if (result.contactSheet) {
@@ -600,7 +617,8 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       const file = join(root, frames, 'contactos.png')
       safeWriteFile(root, file, bytes, { replace: true, refuseLinkTarget: true })
       info.hojaContactos = path(file)
-      images.push(bytes)
+      if (bytes.length <= 256 * 1024) images.push(bytes)
+      else missing.push(path(file))
     }
     if (result.mp4) {
       signal.throwIfAborted()
@@ -619,6 +637,6 @@ export class VideoMcpServer extends LoopbackMcpServer<VideoBinding> {
       info.ruta = path(written.abs)
       info.bytes = written.bytes
     }
-    return { info, images }
+    return { info, images, missing }
   }
 }

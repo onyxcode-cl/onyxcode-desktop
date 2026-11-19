@@ -2,9 +2,18 @@
 import { BrowserWindow, dialog } from 'electron'
 import type { ButtonsDialog } from '../util/native-dialog'
 
+const conversations = new WeakSet<BrowserWindow>()
+/** Solo main registra aquí las ventanas principales que pueden originar el pedido. */
+export function registerVideoConversationWindow(window: BrowserWindow): void {
+  conversations.add(window)
+}
+
 export async function askVideoInstall(options: ButtonsDialog, platform = process.platform): Promise<number> {
   if (options.signal?.aborted) return -1
-  const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+  // Solo ventanas registradas como conversación; quick/overlay/visor nunca son padres.
+  const isConversation = (w: BrowserWindow | null): w is BrowserWindow => !!w && !w.isDestroyed() && conversations.has(w)
+  const focused = BrowserWindow.getFocusedWindow()
+  const parent = isConversation(focused) ? focused : BrowserWindow.getAllWindows().find(isConversation)
   // Sin ventana no se usa runModal: se cancela sin instalar.
   if (!parent || parent.isDestroyed()) return -1
   if (parent.isMinimized()) parent.restore()

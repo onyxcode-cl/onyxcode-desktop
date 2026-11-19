@@ -35,7 +35,7 @@ Todo lo que dice ser el producto es el producto. Un botón inventado hace perder
 2. **Falta una pantalla del producto:** pon un marcador claramente rotulado («Captura: Ajustes → Movimiento») y dilo en la respuesta. Nunca un panel o tablero inventado.
 3. **Algo que no se ve** (velocidad, una API, un servicio): muestra la interfaz real que lo expone, una analogía real que el espectador conozca, una salida real de terminal o una lista de hechos reales. Nunca un tablero hecho de memoria.
 4. **Logo, íconos y fuentes** son los archivos de la marca que entregó la persona. Nunca los redibujes de memoria ni pongas un cuadrado de color en lugar del ícono de una app. Sin logo entregado, el cierre usa el nombre escrito como marca de texto, no un logo inventado.
-5. **Fotos:** sin URLs en la composición; la foto aprobada entra con `fotos` de `video_cuadros` como archivo local (por ejemplo `assets/fotos/pan.jpg`). Si no se puede incorporar, dilo y sigue sin ella; no la reemplaces por un dibujo sin avisar. Sin créditos ni pies de foto automáticos.
+5. **Fotos:** para comida, local o producto real, busca antes de componer aunque no pidan fotos. Una foto genérica de pan, empanadas o café sirve como imagen del tema; no exige coincidir con el negocio exacto. No la presentes como foto del local propio. Sin URLs en la composición; la foto aprobada entra con `fotos` de `video_cuadros` como archivo local (por ejemplo `assets/fotos/pan.jpg`). Si no se puede incorporar, dilo y sigue sin ella; no la reemplaces por un dibujo sin avisar. Sin créditos ni pies de foto automáticos.
 
 ## El producto en pantalla
 

@@ -49,3 +49,12 @@ it('el filtro recorta, retrasa, cambia volumen y fundidos, mezcla y rellena hast
   expect(filter).toContain('amix=inputs=1:duration=longest:normalize=0')
   expect(filter).toContain('apad,atrim=duration=9[mix]')
 })
+
+it('los avisos de MP4 y texto tapado preceden al lint aunque haya más de 80 hallazgos', () => {
+  const warnings = groupWarnings([
+    ...Array.from({ length: 100 }, (_, i) => ({ message: `Revisión oficial: estructura ${i}` })),
+    { time: 5.3, message: 'MP4 final: cuadro casi vacío' },
+    { time: 5.4, message: 'el texto queda tapado' }
+  ])
+  expect(warnings.slice(0, 2)).toEqual(['5.3 s: MP4 final: cuadro casi vacío', '5.4 s: el texto queda tapado'])
+})

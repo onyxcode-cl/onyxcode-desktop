@@ -46,12 +46,12 @@ Si piden un video, hazlo. No propongas tres historias ni esperes aprobación: de
 
    Puedes hacer como máximo **3 rondas de cuadros**. Cómo juzgar los cuadros está en `references/revision.md`.
    - Si no puedes ver imágenes, dilo. No afirmes que hiciste una revisión visual.
-   - En medio de una transición de empuje o barrido, es esperable un aviso de «área segura» o de «tapado» sobre lo que está entrando o saliendo. Compruébalo en el cuadro. El mismo aviso con el texto ya quieto sí es un error. Los avisos oficiales esperables (estructura de un solo archivo, recorte de un acercamiento de cámara) están en `references/formato.md` §13; cualquier otro se corrige.
+   - No descartes los avisos de texto tapado o escena vacía como «estructurales»: corrige o explica a la persona el instante concreto antes de entregar. No digas «el texto se lee bien» sin comprobarlo. Si una salida intencional provoca un aviso de área segura, compruébala y explícala. Los avisos oficiales esperables (estructura de un solo archivo, recorte de un acercamiento de cámara) están en `references/formato.md` §13; cualquier otro se corrige.
 6. **Render.** Llama a `video_render` solo después de mirar y corregir: `{"composicion":"…/index.html","formato":"vertical","duracion":15,"fps":30,"nombre":"promo"}`.
    - Una corrección de la misma `composicion` reemplaza su MP4 aunque cambies `nombre`. Solo si la persona pide otra versión aparte usa `nueva_version: true`. Conserva la composición devuelta al corregir.
    - `duracion` es igual a `data-duration` de la raíz y es múltiplo de 1/30.
    - Agrega la música o el audio de la persona aquí en `audio` (sección Audio). Una promo lleva música por defecto, salvo que la persona diga que no.
-   - Mira los 3 cuadros de control y los avisos que devuelve. No entregues con avisos pendientes sin corregirlos o explicarlos.
+   - Mira los 3 cuadros de control y los avisos que devuelve. Comprueba `adjuntos`: si falta alguna imagen, dilo y no afirmes haberla visto. No entregues con avisos pendientes sin corregirlos o explicarlos.
 7. **Entrega** en una línea: el enlace a `ruta` · la duración en segundos · el peso calculado desde `bytes` (KB = 1000 bytes, MB = 1 000 000 bytes). Luego, en palabras simples, di qué supuestos tomaste y qué quedó pendiente. La revisión es por muestreo y no cubre cada cuadro; no lo presentes como si lo fuera.
 
 ## Contrato mínimo
@@ -119,12 +119,12 @@ Sigue el destino que nombren. La duración por defecto es 15 s y la máxima, 120
 
 ## Fotos
 
-Cuando la persona pide fotos o el tema las necesita (un local, un producto, un lugar real), usa imágenes reales: primero las de la persona; si faltan, busca en la web. Para video vale cualquier licencia, sin créditos; la responsabilidad del uso es del dueño del video.
+Para comida, un local o un producto real, busca 2–3 fotos del sujeto antes de componer, aunque no pidan fotos. Una foto genérica del producto (pan, empanadas, café) es justo lo que se quiere; no tiene que ser del negocio ni de la ciudad exactos. Si la persona pide fotos o un lugar real, también usa imágenes reales: primero las de la persona; si faltan, busca en la web. Para video vale cualquier licencia, sin créditos; la responsabilidad del uso es del dueño del video.
 
 1. Fotos sin personas reconocibles en primer plano, salvo que la persona las pida explícitamente o las entregue. Define sujeto y orientación. Usa fotos genéricas del tema (café, pan, interior); nunca presentes lugares, locales o personas reconocibles como propios de la persona, salvo fotos aportadas o una identidad solicitada (como Fortnite).
 2. Busca con `documentos_imagenes_buscar`, `uso:"video"`, 2–3 consultas y requisitos (en Code, `carpeta`). Usa el buscador general elegido en Ajustes: Serper (Google Imágenes) o Brave. Compara la hoja numerada, amplía 1–2 finalistas con `documentos_imagenes_ver` y prepara la elegida con `documentos_imagenes_usar` y `evaluation:{mode:"visual",observed,meets:[],doubts}`. Usa su id. Puedes elegir ninguna.
 3. Sin clave, insiste antes de rendirte: la herramienta reintenta consultas cortas del sujeto en inglés y español en catálogos públicos. Si sigue sin fotos, prueba otra búsqueda corta y luego `websearch`, `webfetch` o el navegador en fuentes que respondan sin clave (Wikimedia, Openverse). No uses el buscador de Unsplash: requiere clave y Source fue retirado. Obtén la URL HTTPS del archivo original JPG/PNG/WebP/GIF. No raspes buscadores de imágenes ni eludas restricciones de descarga.
-4. Mira la foto antes de elegirla; no uses miniaturas, marcas de agua ni imágenes que no coinciden. Pasa la URL en `fotos[].origen`; la app descarga desde main (20 MiB, 40 megapíxeles), valida y guarda en `assets/`. La extensión de `destino` debe coincidir con el tipo real. La URL queda como dato de procedencia; el HTML sigue sin red.
+4. Mira la foto antes de elegirla; no uses miniaturas ni marcas de agua. Descarta las que no muestran el producto, pero no una foto útil solo por ser genérica. No afirmes una variedad regional que no puedes verificar. Pasa la URL en `fotos[].origen`; la app descarga desde main (20 MiB, 40 megapíxeles), valida y guarda en `assets/`. La extensión de `destino` debe coincidir con el tipo real. La URL queda como dato de procedencia; el HTML sigue sin red.
 
 **Cómo entra la foto (igual en Chat, Code y Overdrive):** en `video_cuadros` pasa `fotos: [{"origen": "<id de documentos_imagenes_usar>", "destino": "assets/fotos/pan.jpg"}]`.
 - `origen` puede ser la URL HTTPS pública del archivo original, el id que aprobó `documentos_imagenes_usar`, el nombre o id de una foto que adjuntó la persona en Chat, o la ruta relativa de una foto que ya está en el proyecto o la tarea.
@@ -153,23 +153,25 @@ Cuando la persona pide fotos o el tema las necesita (un local, un producto, un l
 - No agregues subtítulos ni logos inventados. Sin el archivo del logo, escribe el nombre.
 - No uses videos generados por modelos.
 - Días, precios, horarios y cifras: solo los que dio la persona; si faltan, déjalos fuera. Nunca inventes «todos los días».
-- Escribe en español neutro o en la variante que usa la persona. No cambies a voseo si no lo usa.
+- Escribe en español neutro con «tú», o en la variante que usa la persona. Si no usó voseo, escribe «Ven», «Pasa», «Pruébalo», «Tienes»; evita «Vení», «Pasá», «Probalo», «Tenés».
 
 ## Ejemplo mínimo de la receta: 4 s
 
-El producto sale del horno, sigue subiendo y girando durante toda la escena y entra en la bolsa al salir. Cambia el objeto y la causa según el tema.
+El producto actúa: se arma, se dora, se llena o se sirve. En vez de flotar o girar por adorno, cambia de estado y causa lo siguiente. Ejemplo completo: el pan se dora y su corteza crece hasta convertirse en el fondo del cierre; adapta el objeto al pedido.
 
 ```html
 <!doctype html><html lang="es"><meta charset="utf-8">
-<style>html,body{margin:0;width:1080px;height:1920px;overflow:hidden}#main{position:relative;width:1080px;height:1920px;background:#25392b;color:#fff;font:80px Arial;overflow:hidden}h1{position:absolute;left:90px;top:220px;width:900px;margin:0;font-size:80px;line-height:1.2}#horno{position:absolute;left:90px;top:500px;width:900px;height:1000px;background:#101b14}#pan{position:absolute;left:180px;top:700px;width:720px;height:600px;background:#e4ad64;border-radius:50%}#bolsa{position:absolute;left:90px;top:1300px;width:900px;height:420px;background:#b88651}</style>
-<div id="main" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-duration="4" data-fps="30"><section class="clip" data-start="0" data-duration="4"><h1>Pan recién hecho</h1><div id="horno"></div><div id="pan"></div><div id="bolsa"></div></section></div>
+<style>html,body{margin:0;width:1080px;height:1920px;overflow:hidden}#main{position:relative;width:1080px;height:1920px;background:#25392b;overflow:hidden;font:80px Arial;color:#fff}#pan{position:absolute;left:180px;top:640px;width:720px;height:520px;background:#f1dfaa;border-radius:50%}h1{position:absolute;left:90px;top:240px;width:900px;margin:0;font-size:80px;line-height:1.2}#cierre{opacity:0;color:#25392b}</style>
+<div id="main" data-composition-id="main" data-start="0" data-width="1080" data-height="1920" data-duration="4" data-fps="30"><div id="pan"></div><h1 id="inicio">Pan recién hecho</h1><h1 id="cierre">Para compartir</h1></div>
 <script src="assets/vendor/gsap.min.js"></script><script>
 const tl=gsap.timeline({paused:true});
-// Movimiento continuo: sale del horno y viaja hacia la bolsa durante los 4 s.
-tl.fromTo('#pan',{y:0,rotation:-12},{y:420,rotation:12,duration:4,ease:'none'},0);
-tl.fromTo('#pan',{scale:0.6},{scale:1,duration:0.5,ease:'expo.out'},0);
-// La bolsa recibe el pan: la salida continúa la misma acción.
-tl.to('#pan',{scale:0.5,duration:0.4,ease:'power3.in'},3.6);
+// Actúa: la masa se hincha y cambia a corteza dorada.
+tl.fromTo('#pan',{scale:0.85,backgroundColor:'#f1dfaa'},{scale:1,backgroundColor:'#bc7537',duration:1.2,ease:'power2.inOut'},0);
+// La misma corteza cubre el cuadro y se vuelve el mundo siguiente.
+tl.to('#pan',{scale:7,duration:0.6,ease:'power3.in'},1.2);
+tl.to('#inicio',{opacity:0,duration:0.2},1.2);
+tl.to('#cierre',{opacity:1,duration:0.2},1.8);
+tl.to({},{duration:4},0);
 window.__timelines={main:tl};
 </script></html>
 ```

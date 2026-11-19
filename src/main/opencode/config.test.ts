@@ -1,3 +1,4 @@
+import { posix, win32 } from 'node:path'
 import { readFileSync } from 'node:fs'
 import { modelFallbackInline } from '@shared/model-fallback'
 import { resolve } from 'node:path'
@@ -322,10 +323,12 @@ it.each(['/perfil', 'C:\\perfil'])('Chat solo puede leer skill de video y PNG de
     }
   }
   const permission = cfg.agent.chat.permission
-  const evaluate = (path: string) =>
-    Object.entries(permission.read).reduce(
+  const evaluate = (path: string, rules = permission.read) =>
+    Object.entries(rules).reduce(
       (action, [pattern, next]) =>
-        new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$').test(path) ? (next as string) : action,
+        new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$').test(path.replace(/\\/g, '/'))
+          ? (next as string)
+          : action,
       'deny'
     )
   for (const path of [
@@ -335,7 +338,14 @@ it.each(['/perfil', 'C:\\perfil'])('Chat solo puede leer skill de video y PNG de
     `${normalized}/chat/videos/abc/.lazunox/trabajo/video/def/contactos.png`
   ]) {
     expect(evaluate(path)).toBe('allow')
-    if (base.startsWith('C:')) expect(evaluate(path.replace(/\//g, '\\'))).toBe('allow')
+    const api = base.startsWith('C:') ? win32 : posix
+    const native = base.startsWith('C:') ? path.replace(/\//g, '\\') : path
+    expect(evaluate(api.relative(`${base}/chat`, native))).toBe('allow')
+    // Project.fromDirectory sin Git usa worktree="/". En Windows equivale a la raíz de la unidad del cwd.
+    const globalWorktree = base.startsWith('C:') ? win32.parse(native).root : '/'
+    expect(evaluate(api.relative(globalWorktree, native))).toBe('allow')
+    expect(evaluate(native)).toBe('allow')
+    expect(evaluate(api.dirname(native).replace(/\\/g, '/') + '/*', permission.external_directory)).toBe('allow')
   }
   for (const path of [
     `${normalized}/skills/pdf/SKILL.md`,
@@ -343,8 +353,12 @@ it.each(['/perfil', 'C:\\perfil'])('Chat solo puede leer skill de video y PNG de
     `${normalized}/auth.json`,
     `${normalized}/chat/secreto.png`,
     `${normalized}/skills/video/hack.js`
-  ])
+  ]) {
     expect(evaluate(path)).toBe('deny')
+    const api = base.startsWith('C:') ? win32 : posix
+    expect(evaluate(api.relative(`${base}/chat`, path))).toBe('deny')
+  }
+  expect(Object.keys(permission.read)).toContain(`${normalized}/skills/video/references/**`)
   expect(permission['*']).toBe('deny')
   expect(permission.external_directory['*']).toBe('deny')
   expect(permission.edit).toBeUndefined()

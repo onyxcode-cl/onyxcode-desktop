@@ -1,3 +1,4 @@
+import { getVideoInfo, nextVideoInfoRequest, publishVideoInfo, subscribeVideoInfo } from '../../lib/chatVideoInfo'
 import { VideoThumbnail } from '../../components/artifacts/VideoThumbnail'
 import { PptxFileActions } from '../../components/artifacts/PptxFileActions'
 /**
@@ -7,7 +8,7 @@ import { PptxFileActions } from '../../components/artifacts/PptxFileActions'
  * Ejecutables y scripts solo ofrecen «Mostrar en la carpeta». Solo escritorio; main confirma que cada ruta existe y está en una
  * carpeta permitida (`extras:chatFile:info`) y la revalida en cada acción; se piden únicamente cuando el turno terminó.
  */
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect, useState, useSyncExternalStore } from 'react'
 import { Code2, File, FileImage, FileSpreadsheet, FileText, FolderOpen, Globe, ShieldAlert, SquareArrowOutUpRight, Eye } from 'lucide-react'
 import type { Part } from '@opencode-ai/sdk/v2/client'
 import type { ChatFileInfo, ChatFileKind } from '@shared/ipc-extras'
@@ -98,7 +99,9 @@ export function ChatFileButtons({ info, compact = false }: { info: ChatFileInfo;
   )
 }
 
-function FileCard({ file }: { file: ChatFileInfo }): React.JSX.Element {
+function FileCard({ file: original }: { file: ChatFileInfo }): React.JSX.Element {
+  const latest = useSyncExternalStore(subscribeVideoInfo, () => getVideoInfo(original.path))
+  const file = latest ?? original
   const t = useT()
   const Icon = ICON[file.kind]
   const meta = [t(kindLabelKey(file)), formatFileSize(file.bytes, getLang())].filter(Boolean).join(' · ')
@@ -157,9 +160,14 @@ export const ChatFiles = memo(function ChatFiles({ parts, done }: { parts: reado
       return
     }
     let alive = true
+    const request = nextVideoInfoRequest()
     extras
       .invoke('extras:chatFile:info', { paths: key.split('\n') })
-      .then((r) => alive && setFiles(r))
+      .then((r) => {
+        if (!alive) return
+        publishVideoInfo(r, request)
+        setFiles(r)
+      })
       .catch(() => alive && setFiles([]))
     return () => {
       alive = false

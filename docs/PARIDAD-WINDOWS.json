@@ -1233,9 +1233,12 @@
         "src/renderer/src/features/settings/impl/VideoImageSearch.tsx:1",
         "src/main/opencode/config.test.ts:1",
         "src/renderer/src/lib/chatFileDetect.test.ts:1",
-        "src/main/video/consent.test.ts:1"
+        "src/main/video/consent.test.ts:1",
+        "src/main/video/inspect-frame.test.ts:1",
+        "src/main/video/offline-tools.test.ts:1",
+        "src/renderer/src/features/chat/ChatFiles.test.tsx:1"
       ],
-      "nota": "Descargas desde main también en Windows, sin WSL. Dobles de Chat, Code y Overdrive comprueban fotos/audio, assets, procedencia y AAC. Búsqueda y MP4 de 15 s reales en Mac como diagnóstico Node sin Seatbelt; sandbox-exec bloqueado por el entorno. Serper/Brave requieren clave y no se probaron con una real; Windows nativo e interacción en Electron pendientes. Paso 9: reemplazo por composición con versión aparte explícita, licencia musical exacta sin filtro, lectura acotada de skill/PNG en Chat, medición sin caché con umbral de tramo de 2 s y muestras densas en cortes, descargas verificadas reutilizadas y audio con 90 s. Separadores Windows cubiertos por unitarias; cambio del consentimiento Windows a hoja Electron con padre. Windows real posterior al arreglo sigue pendiente; no se tocó WSL.",
+      "nota": "Descargas desde main también en Windows, sin WSL. Dobles de Chat, Code y Overdrive comprueban fotos/audio, assets, procedencia y AAC. Búsqueda y MP4 de 15 s reales en Mac como diagnóstico Node sin Seatbelt; sandbox-exec bloqueado por el entorno. Serper/Brave requieren clave y no se probaron con una real; Windows nativo e interacción en Electron pendientes. Paso 9: reemplazo por composición con versión aparte explícita, licencia musical exacta sin filtro, lectura acotada de skill/PNG en Chat, medición sin caché con umbral de tramo de 2 s y muestras densas en cortes, descargas verificadas reutilizadas y audio con 90 s. Separadores Windows cubiertos por unitarias; cambio del consentimiento Windows a hoja Electron con padre. Windows real posterior al arreglo sigue pendiente; no se tocó WSL. Paso 10: lecturas en rutas relativas al worktree (causa real del rechazo), references/**, adjuntos PNG individuales de hasta 256 KiB, avisos graves primero, revisión visual independiente de texto DOM, transiciones cuadro a cuadro y vacíos en MP4 final. Consentimiento de Mac/Windows limitado a ventanas principales registradas y tarjetas de Chat sincronizadas por ruta; pruebas con Windows inyectado. Windows real posterior al arreglo y hoja nativa siguen pendientes.",
       "comprobacion": null
     }
   ]

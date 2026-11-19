@@ -1,3 +1,4 @@
+import { posix, win32 } from 'node:path'
 import { VIDEO_SERVER, chatVideoPermissions } from '@shared/video-permissions'
 /**
  * Configuración inyectada a `opencode serve` vía la variable OPENCODE_CONFIG_CONTENT.
@@ -361,7 +362,9 @@ export function buildInlineConfig(opts: InlineConfigOptions = {}): Record<string
                 external_directory: {
                   '*': 'deny',
                   ...Object.fromEntries(
-                    Object.keys(videoRead).map((p) => [p.slice(0, Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')) + 1) + '*', 'allow'])
+                    Object.keys(videoRead)
+                      .filter((p) => /^(?:\/|[A-Za-z]:\/)/.test(p))
+                      .map((p) => [p.slice(0, p.lastIndexOf('/') + 1) + '*', 'allow'])
                   )
                 }
               }
@@ -435,10 +438,18 @@ export function chatVideoRead(paths: NonNullable<InlineConfigOptions['videoRead'
     [
       `${skill}/SKILL.md`,
       `${skill}/NOTICE.md`,
-      `${skill}/references/*.md`,
+      `${skill}/references/**`,
       `${output}/tool_*.png`,
       `${chat}/videos/*/.lazunox/trabajo/video/*/cuadro-*.png`,
       `${chat}/videos/*/.lazunox/trabajo/video/*/contactos.png`
-    ].flatMap((p) => (/^[A-Za-z]:\//.test(p) ? [p, p.replace(/\//g, '\\')] : [p]).map((pattern) => [pattern, 'allow']))
+    ].flatMap((p) => {
+      // read.ts pide path.relative(worktree, archivo); external_directory pide la ruta absoluta.
+      // El proyecto global sin Git usa worktree="/"; también cubre un worktree igual a Chat.
+      const relative = /^[A-Za-z]:\//.test(chat) ? win32.relative(chat, p).replace(/\\/g, '/') : posix.relative(chat, p)
+      const globalRelative = /^[A-Za-z]:\//.test(chat)
+        ? win32.relative(win32.parse(chat).root, p).replace(/\\/g, '/')
+        : posix.relative('/', p)
+      return [...new Set([p, relative, globalRelative])].map((pattern) => [pattern, 'allow'])
+    })
   )
 }

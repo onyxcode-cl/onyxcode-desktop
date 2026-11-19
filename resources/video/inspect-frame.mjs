@@ -54,6 +54,8 @@ export function inspectFrame({ width, height }) {
   const shapes = shown.filter(painted)
   for (const { el, rects, text } of texts) {
     currentElement = el
+    const voseo = text.match(/(?:^|[^a-záéíóúñ])(vení|pasá|probalo|tenés|querés|podés|hacé|vos)(?=$|[^a-záéíóúñ])/i)
+    if (voseo) add(`posible voseo en el texto "${text}": si la persona no lo usó, corrige a español neutro con tú`)
     const box = el.getBoundingClientRect()
     const overflow = (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) || (el.clientHeight > 0 && el.scrollHeight > el.clientHeight + 2)
     if (overflow || rects.some((r) => outside(r, box))) add(`el texto "${text}" se sale de su caja`)
@@ -126,9 +128,9 @@ export function colorVariation(rgb) {
   return Math.sqrt(variance / 3)
 }
 
-/** PNG budget before base64 encoding. Half size is preferred; quarter size bounds noisy six-frame responses. */
+/** Tope individual del motor antes de base64: todos los cuadros y la hoja deben entrar. */
 export function needsSmallerFrames(sizes) {
-  return sizes.reduce((a, b) => a + b, 0) > 3 * 1024 * 1024 || sizes.some((n) => n > 2 * 1024 * 1024)
+  return sizes.some((n) => n > 256 * 1024)
 }
 
 /** Uniform 64×64 gray thumbnails, every 250 ms. Ignore pauses shorter than one second. */
@@ -164,13 +166,37 @@ export function transitionSamples() {
   })
   const times = starts.flatMap(({ start, duration }) => {
     const previousEnd = starts.filter((s) => s.start < start && s.start + s.duration > start).map((s) => s.start + s.duration)
-    const around = (boundary) => Array.from({ length: 11 }, (_, i) => Math.round((boundary - 0.5 + i * 0.1) * 1000) / 1000)
+    const around = (boundary) => Array.from({ length: 31 }, (_, i) => Math.round((boundary - 0.5 + i / 30) * 3000) / 3000)
     return [...around(start), ...around(start + duration), start + duration / 2, previousEnd.length ? (start + Math.min(...previousEnd)) / 2 : start + 0.3]
   })
   const tl = window.__timelines?.main
   for (const tween of tl?.getChildren?.(true, true, false) ?? []) {
     const d = tween.duration()
-    if (d > 0 && d <= 1.2) times.push(tween.globalTime(d / 2) - tl.globalTime(0))
+    if (d >= 0 && d <= 1.2) {
+      const start = tween.globalTime(0) - tl.globalTime(0)
+      const end = tween.globalTime(d) - tl.globalTime(0)
+      // Incluye los set() y todos los cuadros del cambio, no solo su punto medio.
+      if (Number.isFinite(start) && Number.isFinite(end))
+        for (let f = Math.max(0, Math.floor((start - 0.1) * 30)); f <= Math.min(3599, Math.ceil((end + 0.1) * 30)); f++) times.push(f / 30)
+    }
   }
-  return [...new Set(times)].filter((t) => Number.isFinite(t) && t >= 0).sort((a, b) => a - b).slice(0, 2048)
+  return [...new Set(times)].filter((t) => Number.isFinite(t) && t >= 0 && t < 120).sort((a, b) => a - b)
+}
+
+/** Revisa TODOS los cuadros decodificados del MP4, incluidos huecos entre muestras DOM. */
+export function encodedEmptyFrames(bytes, fps = 30) {
+  const size = 16 * 16 * 3
+  if (!bytes.length || bytes.length % size) throw Error('Revisión del MP4 incompleta')
+  const findings = []
+  let start = null
+  const count = bytes.length / size
+  for (let i = 0; i <= count; i++) {
+    const empty = i < count && colorVariation(bytes.subarray(i * size, (i + 1) * size)) < 8
+    if (empty && start === null) start = i
+    if (!empty && start !== null) {
+      findings.push({ time: start / fps, message: `MP4 final: cuadro casi vacío entre ${(start / fps).toFixed(2)} y ${(i / fps).toFixed(2)} s (poca variación de color)` })
+      start = null
+    }
+  }
+  return findings
 }

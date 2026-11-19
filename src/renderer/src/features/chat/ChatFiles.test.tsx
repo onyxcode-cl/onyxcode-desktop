@@ -181,3 +181,42 @@ it('otro render de la misma ruta renueva el peso y la miniatura', async () => {
   expect(host.querySelector('img')?.getAttribute('src')).toBe('data:image/jpeg;base64,despues')
   expect(host.textContent).toContain('2 KB')
 })
+
+it('actualizar el segundo mensaje también renueva la tarjeta del primer mensaje memoizado', async () => {
+  const path = '/c/correccion-entre-mensajes.mp4'
+  const first = [{ type: 'text', text: path }] as Part[]
+  const second = [
+    { id: 'nuevo', type: 'tool', tool: 'video_render', state: { status: 'completed', output: JSON.stringify({ ruta: path }) } }
+  ] as unknown as Part[]
+  const file: ChatFileInfo = {
+    path,
+    name: 'correccion-entre-mensajes.mp4',
+    bytes: 1000000,
+    kind: 'other',
+    canView: true,
+    canOpen: true,
+    video: { duration: 15, poster: 'data:image/jpeg;base64,vieja' }
+  }
+  invoke.mockResolvedValue([file])
+  act(() => root.render(createElement('div', null, createElement(ChatFiles, { key: 'primero', parts: first, done: true }))))
+  await flush()
+  invoke.mockResolvedValue([{ ...file, bytes: 2500000, video: { duration: 16, poster: 'data:image/jpeg;base64,nueva' } }])
+  act(() =>
+    root.render(
+      createElement(
+        'div',
+        null,
+        createElement(ChatFiles, { key: 'primero', parts: first, done: true }),
+        createElement(ChatFiles, { key: 'segundo', parts: second, done: true })
+      )
+    )
+  )
+  await flush()
+  const cards = host.querySelectorAll('[data-chat-file]')
+  expect(cards).toHaveLength(2)
+  for (const card of cards) {
+    expect(card.textContent).toContain('2,5 MB')
+    expect(card.textContent).toContain('0:16')
+    expect(card.querySelector('img')?.getAttribute('src')).toContain('nueva')
+  }
+})
