@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). L
 Cada sección se usa tal cual como notas de la release en GitHub (`scripts/release-notes.mjs`), así que se escribe en lenguaje llano para
 quien usa la app. El detalle técnico de cada cambio está en `CHANGELOG-FASE6.md`, `CHANGELOG-FASE7.md` y `CHANGELOG-FASE8.md`.
 
+## [1.8.34] - 2026-11-18
+
+### Mejoras
+
+- **Videos con música y fotos de verdad:** la IA ahora encuentra música y fotos aunque las pida con frases largas, y las usa en tus promos sin que tengas que configurar nada. Las fotos son del tema (pan, café, un interior), nunca de lugares o personas reconocibles presentadas como si fueran tuyas, salvo que tú las entregues o pidas algo concreto, como «fotos de Fortnite».
+- **Videos con más movimiento:** Lazunox mide cuánto tiempo la imagen queda quieta y le pide a la IA que agregue movimiento cuando parece una presentación de diapositivas. También revisa los cambios de escena para que ningún texto quede cortado o tapado.
+- **Correcciones del mismo video sin copias:** al pedir cambios a un video, se actualiza el mismo archivo en vez de crear «video (2)».
+
 ## [1.8.33] - 2026-11-18
 
 ### Arreglos importantes
